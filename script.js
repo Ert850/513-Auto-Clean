@@ -226,68 +226,101 @@
   }
   window.addEventListener('scroll', onVelocityScroll, { passive: true });
 
-  /* ---------- Quote form (Web3Forms) ---------- */
-  var form = document.getElementById('quoteForm');
-  var formCard = document.getElementById('formCard');
-  var formMsg = document.getElementById('formMsg');
+  /* ---------- Web3Forms handler ----------
+     Shared by both forms on the page: the booking request (#quoteForm) and the
+     question form (#inquiryForm). Each finds its own card and status region, so
+     a message never lands in the wrong form. */
+  var SUCCESS = {
+    quoteForm: "Got it — thanks! I'll get back to you shortly with pricing and a time. Need it sooner? Call or text (513) 279-2915.",
+    inquiryForm: "Thanks — your question is in. I'll get back to you shortly, usually the same day."
+  };
 
-  function showMsg(type, text) {
-    formMsg.className = 'form-msg ' + type;
-    formMsg.textContent = text;
-  }
+  document.querySelectorAll('form.js-w3form').forEach(function (form) {
+    var card = form.closest('.form-card');
+    var msg = form.querySelector('.form-msg');
+    if (!msg) return;
 
-  if (form) {
+    function showMsg(type, text) {
+      msg.className = 'form-msg ' + type;
+      msg.textContent = text;
+    }
+
     form.addEventListener('submit', function (e) {
       e.preventDefault();
 
-      // basic validation
       var name = form.name.value.trim();
       var phone = form.phone.value.trim();
       if (!name || !phone) {
-        showMsg('err', 'Please add your name and phone so I can reach you.');
+        showMsg('err', 'Please add your name and phone so we can reach you.');
+        (name ? form.phone : form.name).focus();
+        return;
+      }
+      // The question form needs an actual question.
+      if (form.id === 'inquiryForm' && !form.message.value.trim()) {
+        showMsg('err', 'Let us know what your question is and we\'ll answer it.');
+        form.message.focus();
         return;
       }
 
-      var accessKey = form.access_key.value;
-      // If the Web3Forms key hasn't been set yet, fall back to a pre-filled text/email
-      if (!accessKey || accessKey === 'YOUR_WEB3FORMS_ACCESS_KEY') {
-        var body = 'Name: ' + name +
-          '%0APhone: ' + phone +
-          '%0AEmail: ' + form.email.value.trim() +
-          '%0AVehicle: ' + form.vehicle.value.trim() +
-          '%0ACity/ZIP: ' + form.zip.value.trim() +
-          '%0AService: ' + form.service.value +
-          '%0ADetails: ' + form.message.value.trim();
-        window.location.href = 'sms:+15132792915?&body=' +
-          encodeURIComponent('Quote request — ' + name + ', ' + phone + '. ' + form.service.value + '. ' + form.vehicle.value);
-        showMsg('ok', "Opening your messaging app… or just call/text me at (513) 279-2915!");
-        return;
-      }
-
-      // Submit to Web3Forms via fetch
-      formCard.classList.add('is-sending');
+      if (card) card.classList.add('is-sending');
       showMsg('ok', 'Sending…');
-      var data = new FormData(form);
 
       fetch('https://api.web3forms.com/submit', {
         method: 'POST',
-        body: data,
+        body: new FormData(form),
         headers: { 'Accept': 'application/json' }
       })
         .then(function (res) { return res.json().then(function (j) { return { ok: res.ok, j: j }; }); })
         .then(function (r) {
-          formCard.classList.remove('is-sending');
+          if (card) card.classList.remove('is-sending');
           if (r.ok && r.j.success) {
             form.reset();
-            showMsg('ok', "Got it — thanks! I'll get back to you shortly with pricing and a time. Need it sooner? Call or text (513) 279-2915.");
+            showMsg('ok', SUCCESS[form.id] || SUCCESS.inquiryForm);
           } else {
-            showMsg('err', 'Something went wrong sending that. Please call or text me at (513) 279-2915 and I\'ll get you booked.');
+            showMsg('err', 'Something went wrong sending that. Please call or text (513) 279-2915 and we\'ll sort it out.');
           }
         })
         .catch(function () {
-          formCard.classList.remove('is-sending');
-          showMsg('err', 'Network hiccup. Please call or text me at (513) 279-2915 and I\'ll get you booked.');
+          if (card) card.classList.remove('is-sending');
+          showMsg('err', 'Network hiccup. Please call or text (513) 279-2915 and we\'ll sort it out.');
         });
     });
-  }
+  });
+
+  /* ---------- Copy phone number ---------- */
+  document.querySelectorAll('.phone-copy').forEach(function (btn) {
+    var label = btn.querySelector('.copy-label');
+    var original = label ? label.textContent : '';
+    var revert;
+
+    btn.addEventListener('click', function () {
+      var text = btn.getAttribute('data-copy') || '';
+
+      function done(ok) {
+        btn.classList.toggle('copied', ok);
+        if (label) label.textContent = ok ? 'Copied' : 'Press Ctrl+C';
+        clearTimeout(revert);
+        revert = setTimeout(function () {
+          btn.classList.remove('copied');
+          if (label) label.textContent = original;
+        }, 2000);
+      }
+
+      // Clipboard API needs a secure context; fall back to a hidden textarea.
+      if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(text).then(function () { done(true); }, function () { done(false); });
+        return;
+      }
+      var ta = document.createElement('textarea');
+      ta.value = text;
+      ta.setAttribute('readonly', '');
+      ta.style.cssText = 'position:absolute;left:-9999px';
+      document.body.appendChild(ta);
+      ta.select();
+      var ok = false;
+      try { ok = document.execCommand('copy'); } catch (err) { ok = false; }
+      document.body.removeChild(ta);
+      done(ok);
+    });
+  });
 })();
