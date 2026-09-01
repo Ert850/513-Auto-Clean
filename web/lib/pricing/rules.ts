@@ -31,10 +31,19 @@ export interface MileageRules {
 }
 
 export interface SurchargeRules {
-  /** Start times strictly before this hour (local) are premium. */
-  earlyBeforeHour: number;
-  /** Start times at or after this hour (local) are premium. */
-  lateFromHour: number;
+  /**
+   * Minutes past local midnight. A start STRICTLY BEFORE this is premium,
+   * so 10:00 itself is not. 600 = 10:00.
+   */
+  earlyBeforeMinutes: number;
+  /**
+   * Minutes past local midnight. A start STRICTLY AFTER this is premium,
+   * so 6:00 PM itself is not and 6:01 PM is. 1080 = 18:00.
+   *
+   * Stored in minutes rather than hours precisely because 18:00 and 18:01
+   * are the same hour but land on opposite sides of this rule.
+   */
+  lateAfterMinutes: number;
   /** Added for an early/late start. */
   timeOfDayBp: number;
   /** Added when the customer opts into Priority Booking. */
@@ -58,6 +67,11 @@ export interface PricingRules {
   window: BookingWindowRules;
   /** Discount when one vehicle gets both an interior and an exterior package. */
   comboDiscountCents: number;
+  /**
+   * Off each vehicle after the first. The 2nd, 3rd, 4th ... each get this,
+   * applied to that vehicle's own subtotal (packages + add-ons - combo).
+   */
+  additionalVehicleDiscountBp: number;
   /** Applied per vehicle rather than once per booking. See quote.ts. */
   comboPerVehicle: boolean;
   /** Hourly rate for add-ons. */
@@ -89,8 +103,8 @@ export const DEFAULT_RULES: PricingRules = {
     roundNearestBelowMin: 30,
   },
   surcharge: {
-    earlyBeforeHour: 10, // before 10:00
-    lateFromHour: 18, // at or after 18:00
+    earlyBeforeMinutes: 10 * 60, // before 10:00 (10:00 itself is not premium)
+    lateAfterMinutes: 18 * 60, // after 18:00 (6:00 PM is not, 6:01 PM is)
     timeOfDayBp: 2000, // +20%
     priorityBp: 2000, // +20%
     maxTotalBp: 3000, // capped at +30%
@@ -100,6 +114,7 @@ export const DEFAULT_RULES: PricingRules = {
   },
   comboDiscountCents: 1500, // $15
   comboPerVehicle: true,
+  additionalVehicleDiscountBp: 1000, // 10% off the 2nd vehicle onward
   addonRateCents: 5000, // $50/hr
   addonMinHours: 1,
   depositBp: 5000, // 50%
