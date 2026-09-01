@@ -760,3 +760,13 @@ html.scrolling-fast .reveal { transition: none; transition-delay: 0s; }
 @media (min-width: 820px) {
   .inq-grid { grid-template-columns: 0.8fr 1.2fr; gap: 2.4rem; align-items: start; }
 }
+
+/* Booking CTA panel (replaces the old quote form in the contact section) */
+.book-cta { background: var(--paper-2); border: 1px solid var(--line); border-radius: var(--r-lg); padding: clamp(1.4rem, 4vw, 2rem); box-shadow: var(--shadow-md); }
+.book-cta h3 { font-family: var(--font-display); font-size: 1.4rem; margin: 0 0 .4rem; }
+.book-cta .bc-sub { color: var(--text-soft); line-height: 1.6; margin: 0 0 1.2rem; }
+.book-cta .bc-points { list-style: none; margin: 0 0 1.5rem; padding: 0; display: grid; gap: .6rem; }
+.book-cta .bc-points li { display: flex; gap: .55rem; align-items: flex-start; font-size: .92rem; color: var(--text-soft); line-height: 1.5; }
+.book-cta .bc-points svg { width: 16px; height: 16px; color: var(--red); flex: none; margin-top: .16rem; }
+.book-cta .fineprint { margin-top: .9rem; text-align: center; }
+.book-cta .fineprint a { color: var(--red); font-weight: 600; }

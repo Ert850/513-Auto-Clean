@@ -72,20 +72,6 @@
     });
   });
 
-  /* ---------- Prefill form when a package "Book" button is clicked ---------- */
-  var serviceSelect = document.getElementById('service');
-  document.querySelectorAll('.svc-card .btn[href="#quote"]').forEach(function (btn) {
-    btn.addEventListener('click', function () {
-      var card = btn.closest('.svc-card');
-      if (!card || !serviceSelect) return;
-      var name = card.querySelector('h3') ? card.querySelector('h3').textContent.trim() : '';
-      // match an option that starts with the package name
-      Array.prototype.forEach.call(serviceSelect.options, function (opt) {
-        if (opt.text.indexOf(name) === 0) serviceSelect.value = opt.value || opt.text;
-      });
-    });
-  });
-
   /* ---------- Before / after sliders ---------- */
   document.querySelectorAll('.ba-slider').forEach(function (slider) {
     var stage = slider.querySelector('.ba-stage');
