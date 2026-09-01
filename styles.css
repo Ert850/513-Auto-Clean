@@ -695,3 +695,68 @@ html.scrolling-fast .reveal { transition: none; transition-delay: 0s; }
 .legal .toc b { display: block; margin-bottom: .5rem; font-size: .95rem; }
 .legal .toc ol { margin: 0; padding-left: 1.2rem; }
 .legal .toc li { margin-bottom: .3rem; font-size: .93rem; }
+
+/* ============================================================
+   QUESTION / INQUIRY SECTION
+   ============================================================ */
+.inquiry { background: var(--paper); padding-block: clamp(56px, 9vh, 96px); }
+.inq-grid { display: grid; grid-template-columns: 1fr; gap: 1.8rem; margin-top: 2.4rem; }
+
+.inq-side { align-self: start; }
+.inq-side h3 { font-family: var(--font-display); font-size: 1.3rem; margin: 0 0 .3rem; }
+.inq-side-sub { color: var(--text-soft); font-size: .93rem; margin: 0 0 1rem; }
+
+.phone-chip {
+  display: inline-flex; align-items: stretch; gap: 0;
+  border: 1px solid var(--line); background: var(--paper-2);
+  border-radius: var(--r-sm); overflow: hidden; box-shadow: var(--shadow-sm);
+  max-width: 100%;
+}
+.phone-chip .phone-num {
+  font-family: var(--font-display); font-weight: 800; font-size: 1.18rem;
+  color: var(--text); padding: .7rem .95rem; text-decoration: none; white-space: nowrap;
+  display: inline-flex; align-items: center; transition: color .2s, background .2s;
+}
+.phone-chip .phone-num:hover { color: var(--red); background: rgba(224,26,26,.04); }
+.phone-copy {
+  display: inline-flex; align-items: center; gap: .35rem;
+  border: 0; border-left: 1px solid var(--line); background: transparent;
+  color: var(--text-soft); font: inherit; font-size: .82rem; font-weight: 700;
+  padding: 0 .8rem; cursor: pointer; transition: color .2s, background .2s;
+}
+.phone-copy:hover { color: var(--red); background: rgba(224,26,26,.05); }
+.phone-copy svg { width: 15px; height: 15px; }
+.phone-copy.copied { color: #1a8a3f; }
+
+.inq-email {
+  display: inline-flex; align-items: center; gap: .5rem; margin-top: .9rem;
+  color: var(--text-soft); font-size: .95rem; text-decoration: none; word-break: break-all;
+}
+.inq-email:hover { color: var(--red); }
+.inq-email svg { width: 17px; height: 17px; flex: none; }
+
+.inq-points { list-style: none; margin: 1.5rem 0 0; padding: 0; display: grid; gap: .6rem; }
+.inq-points li {
+  display: flex; gap: .55rem; align-items: flex-start;
+  color: var(--text-soft); font-size: .92rem; line-height: 1.5;
+}
+.inq-points svg { width: 16px; height: 16px; color: var(--red); flex: none; margin-top: .18rem; }
+
+/* preferred-contact radios */
+.contact-pref { border: 0; padding: 0; margin: 0 0 1rem; }
+.contact-pref legend {
+  padding: 0; font-size: .86rem; font-weight: 700; color: var(--text); margin-bottom: .45rem;
+}
+.pref-opts { display: flex; gap: .5rem; flex-wrap: wrap; }
+.pref {
+  display: inline-flex; align-items: center; gap: .4rem; cursor: pointer;
+  border: 1px solid var(--line); border-radius: var(--r-sm);
+  padding: .45rem .85rem; font-size: .9rem; transition: border-color .2s, background .2s;
+}
+.pref:hover { border-color: var(--red); }
+.pref input { accent-color: var(--red); margin: 0; }
+.pref:has(input:checked) { border-color: var(--red); background: var(--red-ghost); font-weight: 700; }
+
+@media (min-width: 820px) {
+  .inq-grid { grid-template-columns: 0.8fr 1.2fr; gap: 2.4rem; align-items: start; }
+}
