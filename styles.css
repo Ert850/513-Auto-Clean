@@ -621,6 +621,11 @@ section { padding-block: clamp(64px, 9vw, 120px); position: relative; }
 .reveal[data-d="3"] { transition-delay: .24s; }
 .reveal[data-d="4"] { transition-delay: .32s; }
 
+/* Fast scrubbing: when the user flicks quickly, drop the fade + stagger so no
+   element is ever caught mid-transition. Specificity (0,2,1) beats the
+   [data-d] delay rules (0,2,0), so the stagger is cancelled too. */
+html.scrolling-fast .reveal { transition: none; transition-delay: 0s; }
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; scroll-behavior: auto !important; }
   .reveal { opacity: 1; transform: none; }
