@@ -14,10 +14,22 @@
 <meta property="og:description" content="Professional interior & exterior detailing brought to your home or workplace across Greater Cincinnati. Call or text 513-279-2915." />
 <meta property="og:url" content="https://513autoclean.com/" />
 <meta property="og:image" content="https://513autoclean.com/images/hero-exterior.jpg" />
+<meta property="og:image:width" content="1600" />
+<meta property="og:image:height" content="1200" />
+<meta property="og:image:alt" content="Freshly detailed glossy white SUV in a Cincinnati driveway" />
+<meta property="og:site_name" content="513 Auto Clean" />
+<meta property="og:locale" content="en_US" />
+
+<!-- Twitter / X card -->
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="513 Auto Clean, Mobile Car Detailing in Cincinnati" />
+<meta name="twitter:description" content="Professional interior &amp; exterior detailing brought to your home or workplace across Greater Cincinnati. Call or text 513-279-2915." />
+<meta name="twitter:image" content="https://513autoclean.com/images/hero-exterior.jpg" />
 
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230b0e13'/%3E%3Ctext x='32' y='42' font-family='Arial' font-weight='800' font-size='24' fill='%23ff3b3b' text-anchor='middle'%3E513%3C/text%3E%3C/svg%3E" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="preload" as="image" href="images/hero-exterior.webp" type="image/webp" fetchpriority="high" />
 <link rel="stylesheet" href="styles.css" />
 
 <!-- Local Business structured data (SEO) -->
@@ -36,6 +48,64 @@
   "address": { "@type": "PostalAddress", "addressLocality": "Cincinnati", "addressRegion": "OH", "addressCountry": "US" },
   "aggregateRating": { "@type": "AggregateRating", "ratingValue": "5.0", "reviewCount": "21" },
   "openingHoursSpecification": [{ "@type": "OpeningHoursSpecification", "dayOfWeek": ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"], "opens": "07:00", "closes": "22:00" }]
+}
+</script>
+
+<!-- FAQ structured data (mirrors the on-page FAQ section verbatim) -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "Do you really come to my home or work?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Yes, 513 Auto Clean is fully mobile. We come to your driveway, apartment lot, or office parking spot anywhere in Greater Cincinnati and bring all the tools, products, and equipment needed for the job."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Can you remove pet hair, stains, and odors?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Absolutely. Full Interior details are built for deeper cleanup, and we offer pet hair removal, steam treatment, and ozone odor resets as add-ons (billed at $50/hr) for tougher jobs. Tell us what you're dealing with and we'll set the right expectations up front."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "How long does a detail take?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Express details run about 1.25 hours, basic details around 2 hours, and full details about 4 hours, depending on the size and condition of the vehicle. We'll give you a time estimate when we book."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "What do you need from me on the day?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Just a place to park the vehicle and access where possible. We handle the rest. If water or power access is a question, mention it when booking and we'll sort it out, it's rarely an issue."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "How much does it cost, and how do I pay?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Packages start at $65. Pricing depends on the package, add-ons, and travel distance, all confirmed before we book, with no surprise upsells. Book interior and exterior together and you save $15 automatically."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "What if I'm not happy with the result?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Then it's not done. If anything's off after we leave, reach out and we'll come back and make it right. That's the deal."
+      }
+    }
+  ]
 }
 </script>
 </head>
@@ -118,7 +188,10 @@
 <!-- ============ HERO ============ -->
 <section class="hero" id="home">
   <div class="hero-bg">
-    <img src="images/hero-exterior.jpg" alt="Freshly detailed glossy white SUV in a Cincinnati driveway" fetchpriority="high" />
+    <picture>
+      <source srcset="images/hero-exterior.webp" type="image/webp" />
+      <img src="images/hero-exterior.jpg" alt="Freshly detailed glossy white SUV in a Cincinnati driveway" fetchpriority="high" width="1600" height="1200" />
+    </picture>
   </div>
   <div class="hero-overlay"></div>
   <div class="wrap">
@@ -736,7 +809,7 @@
     </div>
     <div class="footer-bottom">
       <span>© <span id="year">2026</span> 513 Auto Clean · Mobile Detailing in Cincinnati, OH</span>
-      <span>Built with care for a local small business.</span>
+      <span><a href="privacy.html">Privacy Policy</a> &middot; Built with care for a local small business.</span>
     </div>
   </div>
 </footer>

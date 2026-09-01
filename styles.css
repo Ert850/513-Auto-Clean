@@ -212,6 +212,7 @@ section { padding-block: clamp(64px, 9vw, 120px); position: relative; }
   padding-block: clamp(90px, 14vh, 150px);
 }
 .hero-bg { position: absolute; inset: 0; z-index: -2; }
+.hero-bg picture { display: block; width: 100%; height: 100%; }
 .hero-bg img { width: 100%; height: 100%; object-fit: cover; object-position: center 60%; }
 .hero-overlay {
   position: absolute; inset: 0; z-index: -1;
@@ -659,3 +660,33 @@ section { padding-block: clamp(64px, 9vw, 120px); position: relative; }
 @media (min-width: 1100px) {
   .addon-grid { grid-template-columns: repeat(6, 1fr); }
 }
+
+/* ============================================================
+   LEGAL PAGES (privacy, terms, cancellation)
+   ============================================================ */
+.legal-head { background: var(--ink); color: #fff; padding-block: clamp(70px, 11vh, 120px) clamp(40px, 7vh, 70px); }
+.legal-head h1 { font-family: var(--font-display); font-size: clamp(2rem, 5vw, 3rem); line-height: 1.1; margin: 0 0 .6rem; }
+.legal-head .eff { color: var(--text-inv-soft); font-size: .92rem; }
+.legal-head .back { display: inline-flex; align-items: center; gap: .4rem; color: var(--red-bright); font-weight: 700; font-size: .9rem; margin-bottom: 1.1rem; }
+.legal-head .back svg { width: 16px; height: 16px; }
+
+.legal { padding-block: clamp(48px, 8vh, 80px); }
+.legal .wrap { max-width: 760px; }
+.legal h2 { font-family: var(--font-display); font-size: clamp(1.25rem, 2.6vw, 1.6rem); margin: 2.4rem 0 .7rem; line-height: 1.25; }
+.legal h2:first-of-type { margin-top: 0; }
+.legal h3 { font-size: 1.02rem; font-weight: 800; margin: 1.5rem 0 .5rem; }
+.legal p, .legal li { color: var(--text-soft); line-height: 1.75; }
+.legal p { margin: 0 0 1rem; }
+.legal ul { margin: 0 0 1.2rem; padding-left: 1.2rem; }
+.legal li { margin-bottom: .5rem; }
+.legal a { color: var(--red); font-weight: 600; text-decoration: underline; text-underline-offset: 2px; }
+.legal strong { color: var(--text); }
+.legal .callout {
+  border-left: 3px solid var(--red); background: rgba(224,26,26,.05);
+  padding: 1rem 1.1rem; border-radius: 0 8px 8px 0; margin: 0 0 1.4rem;
+}
+.legal .callout p:last-child { margin-bottom: 0; }
+.legal .toc { background: var(--paper-2); border: 1px solid var(--line); border-radius: var(--r-md); padding: 1.1rem 1.3rem; margin-bottom: 2.4rem; }
+.legal .toc b { display: block; margin-bottom: .5rem; font-size: .95rem; }
+.legal .toc ol { margin: 0; padding-left: 1.2rem; }
+.legal .toc li { margin-bottom: .3rem; font-size: .93rem; }
