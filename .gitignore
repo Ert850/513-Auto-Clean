@@ -1,0 +1,45 @@
+# ---------------------------------------------------------------
+# Secrets. NEVER commit these.
+# .env.local holds SHOP_ORIGIN_* (Elijah's home address), Stripe
+# secret keys, the Google service-account JSON, and Twilio creds.
+# ---------------------------------------------------------------
+.env
+.env.*
+!.env.example
+*.pem
+*-service-account*.json
+gcp-credentials*.json
+
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Build output
+.next/
+out/
+build/
+dist/
+.vercel
+.netlify
+
+# Test / coverage
+coverage/
+*.lcov
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Editor / OS
+.DS_Store
+Thumbs.db
+Desktop.ini
+.idea/
+*.swp
+
+# Local scratch
+*.local
+tmp/
