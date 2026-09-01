@@ -157,21 +157,74 @@
   })();
   */
 
-  /* ---------- Scroll reveal ---------- */
+  /* ---------- Scroll reveal ----------
+     Elements fade up when scrolling at a normal pace. When the page is being
+     scrubbed quickly, we snap them in with no fade or stagger (see the
+     .scrolling-fast rule in styles.css) so the page stays readable in real
+     time at any scroll speed. Anything still below the viewport keeps its
+     animation for the next slow scroll. */
   var reveals = document.querySelectorAll('.reveal');
+  var docEl = document.documentElement;
+  var io = null;
+
+  function markIn(el) {
+    el.classList.add('in');
+    if (io) io.unobserve(el);
+  }
+
   if ('IntersectionObserver' in window) {
-    var io = new IntersectionObserver(function (entries) {
+    io = new IntersectionObserver(function (entries) {
       entries.forEach(function (en) {
-        if (en.isIntersecting) {
-          en.target.classList.add('in');
-          io.unobserve(en.target);
-        }
+        if (en.isIntersecting) markIn(en.target);
       });
-    }, { threshold: 0.12, rootMargin: '0px 0px -8% 0px' });
+    }, {
+      threshold: 0,
+      // Trigger well before the element reaches the viewport so ordinary
+      // scrolling never shows an unrevealed element.
+      rootMargin: '400px 0px 400px 0px'
+    });
     reveals.forEach(function (el) { io.observe(el); });
   } else {
     reveals.forEach(function (el) { el.classList.add('in'); });
   }
+
+  /* Scroll-velocity watch. IntersectionObserver callbacks are async and can
+     fall behind a hard flick, so while scrolling fast we also sweep
+     synchronously once per animation frame. */
+  var FAST_PX_PER_MS = 1.6;   // ~1.6px/ms — a deliberate fast flick, not a normal drag
+  var SWEEP_BAND = 600;       // px above/below the viewport to force-reveal
+  var vLastY = window.scrollY || window.pageYOffset;
+  var vLastT = Date.now();
+  var fastTimer = null;
+  var sweepQueued = false;
+
+  function sweep() {
+    sweepQueued = false;
+    if (!io) return;
+    var vh = window.innerHeight;
+    for (var i = 0; i < reveals.length; i++) {
+      var el = reveals[i];
+      if (el.classList.contains('in')) continue;
+      var r = el.getBoundingClientRect();
+      if (r.top < vh + SWEEP_BAND && r.bottom > -SWEEP_BAND) markIn(el);
+    }
+  }
+
+  function onVelocityScroll() {
+    var now = Date.now();
+    var y = window.scrollY || window.pageYOffset;
+    var dt = now - vLastT;
+    if (dt > 0 && Math.abs(y - vLastY) / dt > FAST_PX_PER_MS) {
+      docEl.classList.add('scrolling-fast');
+      if (!sweepQueued) { sweepQueued = true; requestAnimationFrame(sweep); }
+      clearTimeout(fastTimer);
+      // Restore the animation shortly after the flick settles.
+      fastTimer = setTimeout(function () { docEl.classList.remove('scrolling-fast'); }, 180);
+    }
+    vLastY = y;
+    vLastT = now;
+  }
+  window.addEventListener('scroll', onVelocityScroll, { passive: true });
 
   /* ---------- Quote form (Web3Forms) ---------- */
   var form = document.getElementById('quoteForm');
