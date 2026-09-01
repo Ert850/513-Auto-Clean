@@ -1,10 +1,18 @@
 import type { BookingWindowRules, SurchargeRules } from "./rules.js";
 
 export interface SurchargeContext {
-  /** Local hour (0-23) the job is scheduled to START. Not when it ends. */
-  startHourLocal: number;
+  /**
+   * Minutes past local midnight at which the job is scheduled to START.
+   * Not when it ends. 7:30 AM = 450, 6:01 PM = 1081.
+   */
+  startMinutesLocal: number;
   /** Customer opted into Priority Booking to reach a slot inside the lead window. */
   priorityBooking: boolean;
+}
+
+/** Convenience for building a context from a wall clock. */
+export function minutesOfDay(hour: number, minute = 0): number {
+  return hour * 60 + minute;
 }
 
 export interface SurchargeBreakdown {
@@ -22,10 +30,14 @@ export interface SurchargeBreakdown {
  *
  * IMPORTANT: judged on the START time only. A 4pm job that runs until 8pm is
  * not an evening job. Elijah was explicit about this.
+ *
+ * Both boundaries are STRICT and exclusive of the boundary minute itself:
+ * 09:59 is premium and 10:00 is not; 18:00 is not premium and 18:01 is.
  */
 export function computeSurcharge(ctx: SurchargeContext, r: SurchargeRules): SurchargeBreakdown {
   const isEarlyOrLate =
-    ctx.startHourLocal < r.earlyBeforeHour || ctx.startHourLocal >= r.lateFromHour;
+    ctx.startMinutesLocal < r.earlyBeforeMinutes ||
+    ctx.startMinutesLocal > r.lateAfterMinutes;
 
   const timeOfDayBp = isEarlyOrLate ? r.timeOfDayBp : 0;
   const priorityBp = ctx.priorityBooking ? r.priorityBp : 0;

@@ -42,6 +42,7 @@ export type LineKind =
   | "package"
   | "addon"
   | "combo_discount"
+  | "additional_vehicle_discount"
   | "surcharge"
   | "travel";
 
@@ -80,10 +81,11 @@ export interface Quote {
  *   1. package prices, per vehicle
  *   2. add-ons at $50/hr with a 1-hour minimum, per vehicle
  *   3. combo discount -$15 when ONE VEHICLE gets both interior and exterior
- *   4. => serviceSubtotal
- *   5. premium surcharge, applied to serviceSubtotal ONLY (never to travel)
- *   6. travel fee, added once per appointment regardless of vehicle count
- *   7. => total, then deposit = 50% of total
+ *   4. -10% off each vehicle after the first, on that vehicle's own subtotal
+ *   5. => serviceSubtotal
+ *   6. premium surcharge, applied to serviceSubtotal ONLY (never to travel)
+ *   7. travel fee, added once per appointment regardless of vehicle count
+ *   8. => total, then deposit = 50% of total
  *
  * Travel sits after the surcharge and is never discounted or marked up.
  */
@@ -91,8 +93,10 @@ export function quote(cart: CartInput, r: PricingRules): Quote {
   const lines: QuoteLine[] = [];
 
   cart.vehicles.forEach((vehicle, vi) => {
+    const vehicleLines: QuoteLine[] = [];
+
     for (const pkg of vehicle.packages) {
-      lines.push({
+      vehicleLines.push({
         kind: "package",
         label: pkg.name,
         vehicleIndex: vi,
@@ -103,7 +107,7 @@ export function quote(cart: CartInput, r: PricingRules): Quote {
 
     for (const addon of vehicle.addons) {
       const hours = Math.max(addon.hours, r.addonMinHours);
-      lines.push({
+      vehicleLines.push({
         kind: "addon",
         label: hours === 1 ? addon.name : `${addon.name} (${hours} hrs)`,
         vehicleIndex: vi,
@@ -118,13 +122,32 @@ export function quote(cart: CartInput, r: PricingRules): Quote {
     const hasInterior = vehicle.packages.some((p) => p.category === "interior");
     const hasExterior = vehicle.packages.some((p) => p.category === "exterior");
     if (hasInterior && hasExterior) {
-      lines.push({
+      vehicleLines.push({
         kind: "combo_discount",
         label: "Interior + exterior discount",
         vehicleIndex: vi,
         amountCents: -r.comboDiscountCents,
         durationMin: 0,
       });
+    }
+
+    lines.push(...vehicleLines);
+
+    // Every vehicle after the first gets 10% off ITS OWN subtotal — so the
+    // 2nd, 3rd and 4th each earn it, rather than one discount spread across
+    // the booking. Taken after the combo discount, so the two stack.
+    if (vi > 0 && r.additionalVehicleDiscountBp > 0) {
+      const vehicleSubtotal = vehicleLines.reduce((s, l) => s + l.amountCents, 0);
+      const discount = Math.round((vehicleSubtotal * r.additionalVehicleDiscountBp) / 10_000);
+      if (discount > 0) {
+        lines.push({
+          kind: "additional_vehicle_discount",
+          label: `Additional vehicle discount (${r.additionalVehicleDiscountBp / 100}% off vehicle ${vi + 1})`,
+          vehicleIndex: vi,
+          amountCents: -discount,
+          durationMin: 0,
+        });
+      }
     }
   });
 

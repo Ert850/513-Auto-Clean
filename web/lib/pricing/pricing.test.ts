@@ -5,6 +5,7 @@ import { DEFAULT_RULES as R } from "./rules.js";
 import {
   computeSurcharge,
   earliestBookableDate,
+  minutesOfDay,
   requiresPriorityBooking,
 } from "./surcharge.js";
 import { quote, type CartInput, type PackageRef } from "./quote.js";
@@ -16,7 +17,7 @@ const EXPRESS_INT: PackageRef = { id: "ei", name: "Express Interior", category: 
 const BASIC_INT: PackageRef = { id: "bi", name: "Basic Interior", category: "interior", priceCents: 11500, durationMin: 120 };
 const FULL_INT: PackageRef = { id: "fi", name: "Full Interior", category: "interior", priceCents: 19500, durationMin: 240 };
 const EXPRESS_EXT: PackageRef = { id: "ee", name: "Express Exterior", category: "exterior", priceCents: 6500, durationMin: 75 };
-const FULL_EXT: PackageRef = { id: "fe", name: "Full Exterior", category: "exterior", priceCents: 19500, durationMin: 240 };
+const FULL_EXT: PackageRef = { id: "fe", name: "Full Exterior", category: "exterior", priceCents: 21000, durationMin: 240 };
 
 const cart = (over: Partial<CartInput> = {}): CartInput => ({
   vehicles: [{ label: "Test car", packages: [FULL_INT], addons: [] }],
@@ -73,28 +74,35 @@ describe("mileage ladder", () => {
 });
 
 describe("premium surcharges", () => {
-  const s = (hour: number, priority: boolean) =>
-    computeSurcharge({ startHourLocal: hour, priorityBooking: priority }, R.surcharge);
+  const s = (h: number, m: number, priority: boolean) =>
+    computeSurcharge({ startMinutesLocal: minutesOfDay(h, m), priorityBooking: priority }, R.surcharge);
 
-  it("charges 20% before 10am and from 6pm", () => {
-    expect(s(7, false).appliedBp).toBe(2000);
-    expect(s(9, false).appliedBp).toBe(2000);
-    expect(s(18, false).appliedBp).toBe(2000);
-    expect(s(20, false).appliedBp).toBe(2000);
+  it("is premium strictly BEFORE 10am — 9:59 yes, 10:00 no", () => {
+    expect(s(9, 59, false).appliedBp).toBe(2000);
+    expect(s(10, 0, false).appliedBp).toBe(0);
+    expect(s(10, 1, false).appliedBp).toBe(0);
+    expect(s(7, 0, false).appliedBp).toBe(2000);
+  });
+
+  it("is premium strictly AFTER 6pm — 6:00 no, 6:01 yes", () => {
+    expect(s(17, 59, false).appliedBp).toBe(0);
+    expect(s(18, 0, false).appliedBp).toBe(0); // 6:00 PM is NOT premium
+    expect(s(18, 1, false).appliedBp).toBe(2000); // 6:01 PM is
+    expect(s(20, 30, false).appliedBp).toBe(2000);
   });
 
   it("charges nothing during normal hours", () => {
-    for (const h of [10, 12, 15, 17]) expect(s(h, false).appliedBp).toBe(0);
+    for (const h of [10, 12, 15, 17]) expect(s(h, 0, false).appliedBp).toBe(0);
   });
 
   it("judges the START time only, so a job running late is not premium", () => {
     // 4pm start is normal even though a 4-hour Full Interior ends at 8pm.
-    expect(s(16, false).appliedBp).toBe(0);
+    expect(s(16, 0, false).appliedBp).toBe(0);
   });
 
   it("adds priority to time-of-day but caps the total at 30%", () => {
-    expect(s(12, true).appliedBp).toBe(2000); // priority only
-    const both = s(7, true);
+    expect(s(12, 0, true).appliedBp).toBe(2000); // priority only
+    const both = s(7, 0, true);
     expect(both.timeOfDayBp + both.priorityBp).toBe(4000); // would be 40%
     expect(both.appliedBp).toBe(3000); // capped
     expect(both.capped).toBe(true);
@@ -145,10 +153,11 @@ describe("quote engine", () => {
   it("applies the combo discount per vehicle", () => {
     const both = { label: "A", packages: [FULL_INT, FULL_EXT], addons: [] };
     const one = quote(cart({ vehicles: [both] }), R);
-    expect(one.serviceSubtotalCents).toBe(19500 + 19500 - 1500);
+    expect(one.serviceSubtotalCents).toBe(19500 + 21000 - 1500); // $375
 
+    // Second vehicle earns the combo again, then 10% off its own subtotal.
     const two = quote(cart({ vehicles: [both, { ...both, label: "B" }] }), R);
-    expect(two.serviceSubtotalCents).toBe(2 * (19500 + 19500 - 1500)); // earned twice
+    expect(two.serviceSubtotalCents).toBe(39000 + Math.round(39000 * 0.9)); // $741
   });
 
   it("does not give the combo across different vehicles", () => {
@@ -161,7 +170,8 @@ describe("quote engine", () => {
       }),
       R,
     );
-    expect(q.serviceSubtotalCents).toBe(39000); // no discount
+    // No combo (different vehicles), but the 2nd vehicle still gets 10% off.
+    expect(q.serviceSubtotalCents).toBe(19500 + Math.round(21000 * 0.9)); // $384
   });
 
   it("bills add-ons at $50/hr with a 1-hour minimum", () => {
@@ -185,12 +195,32 @@ describe("quote engine", () => {
     expect(three.travelCents).toBe(6500);
   });
 
+  it("gives 10% off EVERY vehicle after the first", () => {
+    const v = { label: "x", packages: [FULL_INT], addons: [] }; // $195 each
+    const discounted = Math.round(19500 * 0.9); // $175.50
+
+    expect(quote(cart({ vehicles: [v] }), R).serviceSubtotalCents).toBe(19500);
+    expect(quote(cart({ vehicles: [v, v] }), R).serviceSubtotalCents).toBe(19500 + discounted);
+    expect(quote(cart({ vehicles: [v, v, v] }), R).serviceSubtotalCents).toBe(19500 + 2 * discounted);
+    expect(quote(cart({ vehicles: [v, v, v, v] }), R).serviceSubtotalCents).toBe(19500 + 3 * discounted);
+  });
+
+  it("discounts each extra vehicle on its OWN subtotal, not the first vehicle's", () => {
+    const big = { label: "big", packages: [FULL_INT], addons: [] }; // $195
+    const small = { label: "small", packages: [EXPRESS_EXT], addons: [] }; // $65
+    // Second vehicle is the cheap one, so the discount is 10% of $65, not of $195.
+    const q = quote(cart({ vehicles: [big, small] }), R);
+    expect(q.serviceSubtotalCents).toBe(19500 + Math.round(6500 * 0.9)); // $253.50
+    const line = q.lines.find((l) => l.kind === "additional_vehicle_discount");
+    expect(line?.amountCents).toBe(-650);
+  });
+
   it("applies the surcharge to service only, never to travel", () => {
     const q = quote(
       cart({
         vehicles: [{ label: "A", packages: [FULL_INT], addons: [] }],
         oneWayMinutes: 60, // $65 travel
-        surchargeContext: { startHourLocal: 7, priorityBooking: false }, // +20%
+        surchargeContext: { startMinutesLocal: minutesOfDay(7), priorityBooking: false }, // +20%
       }),
       R,
     );
@@ -202,7 +232,7 @@ describe("quote engine", () => {
 
   it("caps a 7am priority booking at +30%", () => {
     const q = quote(
-      cart({ surchargeContext: { startHourLocal: 7, priorityBooking: true } }),
+      cart({ surchargeContext: { startMinutesLocal: minutesOfDay(7), priorityBooking: true } }),
       R,
     );
     expect(q.surchargeBp).toBe(3000);
@@ -218,7 +248,7 @@ describe("quote engine", () => {
           { label: "B", packages: [BASIC_INT], addons: [] },
         ],
         oneWayMinutes: 45,
-        surchargeContext: { startHourLocal: 19, priorityBooking: false },
+        surchargeContext: { startMinutesLocal: minutesOfDay(19), priorityBooking: false },
       }),
       R,
     );
