@@ -23,7 +23,13 @@ const cart = (over: Partial<CartInput> = {}): CartInput => ({
   vehicles: [{ label: "Test car", packages: [FULL_INT], addons: [] }],
   oneWayMinutes: null,
   surchargeContext: null,
+  zip: null,
   ...over,
+});
+
+/** Flat-priced add-on tier, the shape the funnel now builds. */
+const addon = (id: string, name: string, tierLabel: string, priceCents: number, durationMin = 60) => ({
+  id, name, tierId: "t", tierLabel, priceCents, durationMin,
 });
 
 describe("mileage ladder", () => {
@@ -77,17 +83,17 @@ describe("premium surcharges", () => {
   const s = (h: number, m: number, priority: boolean) =>
     computeSurcharge({ startMinutesLocal: minutesOfDay(h, m), priorityBooking: priority }, R.surcharge);
 
-  it("is premium strictly BEFORE 10am — 9:59 yes, 10:00 no", () => {
+  it("is premium strictly BEFORE 10am, 9:59 yes, 10:00 no", () => {
     expect(s(9, 59, false).appliedBp).toBe(2000);
     expect(s(10, 0, false).appliedBp).toBe(0);
     expect(s(10, 1, false).appliedBp).toBe(0);
     expect(s(7, 0, false).appliedBp).toBe(2000);
   });
 
-  it("is premium strictly AFTER 6pm — 6:00 no, 6:01 yes", () => {
+  it("is premium from 6pm onward, 5:59 no, 6:00 yes", () => {
     expect(s(17, 59, false).appliedBp).toBe(0);
-    expect(s(18, 0, false).appliedBp).toBe(0); // 6:00 PM is NOT premium
-    expect(s(18, 1, false).appliedBp).toBe(2000); // 6:01 PM is
+    expect(s(18, 0, false).appliedBp).toBe(2000); // 6:00 PM IS premium
+    expect(s(18, 1, false).appliedBp).toBe(2000);
     expect(s(20, 30, false).appliedBp).toBe(2000);
   });
 
@@ -100,11 +106,12 @@ describe("premium surcharges", () => {
     expect(s(16, 0, false).appliedBp).toBe(0);
   });
 
-  it("adds priority to time-of-day but caps the total at 30%", () => {
+  it("never stacks: early/late AND priority is still one flat 20%", () => {
     expect(s(12, 0, true).appliedBp).toBe(2000); // priority only
+    expect(s(7, 0, false).appliedBp).toBe(2000); // early only
     const both = s(7, 0, true);
     expect(both.timeOfDayBp + both.priorityBp).toBe(4000); // would be 40%
-    expect(both.appliedBp).toBe(3000); // capped
+    expect(both.appliedBp).toBe(2000); // charged once
     expect(both.capped).toBe(true);
   });
 });
@@ -174,17 +181,47 @@ describe("quote engine", () => {
     expect(q.serviceSubtotalCents).toBe(19500 + Math.round(21000 * 0.9)); // $384
   });
 
-  it("bills add-ons at $50/hr with a 1-hour minimum", () => {
+  it("prices add-ons from their chosen severity tier", () => {
     const q = quote(
       cart({
         vehicles: [
-          { label: "A", packages: [EXPRESS_INT], addons: [{ id: "ph", name: "Pet Hair Removal", hours: 0.25 }] },
+          { label: "A", packages: [EXPRESS_INT], addons: [addon("pet-hair", "Pet Hair Removal", "Heavy", 10000, 120)] },
         ],
       }),
       R,
     );
-    expect(q.serviceSubtotalCents).toBe(8500 + 5000); // floored up to 1hr
-    expect(q.serviceDurationMin).toBe(75 + 60);
+    expect(q.serviceSubtotalCents).toBe(8500 + 10000);
+    expect(q.serviceDurationMin).toBe(75 + 120);
+    expect(q.lines.find((l) => l.kind === "addon")?.label).toBe("Pet Hair Removal: Heavy");
+  });
+
+  it("prices Showroom Ready by the hour with a 6 hour floor and flat deposit", () => {
+    const short = quote(cart({ vehicles: [{ label: "A", packages: [], addons: [], showroomHours: 2 }] }), R);
+    expect(short.serviceSubtotalCents).toBe(60000); // floored to 6 hrs
+    expect(short.depositCents).toBe(60000); // flat $600 beats 50%
+    expect(short.hasShowroom).toBe(true);
+
+    const long = quote(cart({ vehicles: [{ label: "A", packages: [], addons: [], showroomHours: 20 }] }), R);
+    expect(long.serviceSubtotalCents).toBe(200000);
+    expect(long.depositCents).toBe(100000); // 50% now exceeds the flat floor
+  });
+
+  it("prices paint correction with its ceramic upgrade", () => {
+    const q = quote(
+      cart({
+        vehicles: [{
+          label: "A", packages: [], addons: [],
+          correction: {
+            tierId: "two-step", tierLabel: "2 step paint correction",
+            priceCents: 90000, durationMin: 480,
+            coatingId: "5yr", coatingLabel: "5 year", coatingAddCents: 15000,
+          },
+        }],
+      }),
+      R,
+    );
+    expect(q.serviceSubtotalCents).toBe(105000);
+    expect(q.lines.filter((l) => l.kind === "correction" || l.kind === "coating")).toHaveLength(2);
   });
 
   it("charges travel once per appointment, not per vehicle", () => {
@@ -230,24 +267,25 @@ describe("quote engine", () => {
     expect(q.totalCents).toBe(19500 + 3900 + 6500);
   });
 
-  it("caps a 7am priority booking at +30%", () => {
+  it("charges one flat 20% for a 7am priority booking, not 40%", () => {
     const q = quote(
       cart({ surchargeContext: { startMinutesLocal: minutesOfDay(7), priorityBooking: true } }),
       R,
     );
-    expect(q.surchargeBp).toBe(3000);
-    expect(q.surchargeCents).toBe(5850); // 30% of $195
-    expect($(q.totalCents)).toBe(253.5);
+    expect(q.surchargeBp).toBe(2000);
+    expect(q.surchargeCents).toBe(3900); // 20% of $195
+    expect($(q.totalCents)).toBe(234);
   });
 
   it("keeps every line item reconciling to the total", () => {
     const q = quote(
       cart({
         vehicles: [
-          { label: "A", packages: [FULL_INT, FULL_EXT], addons: [{ id: "oz", name: "Ozone", hours: 2 }] },
+          { label: "A", packages: [FULL_INT, FULL_EXT], addons: [addon("ozone", "Ozone Odor Reset", "One hour treatment", 5000)] },
           { label: "B", packages: [BASIC_INT], addons: [] },
         ],
         oneWayMinutes: 45,
+        zip: "45220",
         surchargeContext: { startMinutesLocal: minutesOfDay(19), priorityBooking: false },
       }),
       R,
@@ -255,6 +293,40 @@ describe("quote engine", () => {
     const summed = q.lines.reduce((s, l) => s + l.amountCents, 0);
     expect(summed).toBe(q.totalCents);
     expect(q.depositCents + q.balanceCents).toBe(q.totalCents);
+  });
+});
+
+describe("sales tax", () => {
+  it("is pending until a ZIP is known, rather than silently zero", () => {
+    const q = quote(cart(), R);
+    expect(q.taxIsEstimate).toBe(true);
+    expect(q.taxCents).toBe(0);
+  });
+
+  it("applies the Hamilton County rate to a Cincinnati ZIP", () => {
+    const q = quote(cart({ zip: "45220" }), R);
+    expect(q.taxRateBp).toBe(780);
+    expect(q.taxCounty).toBe("hamilton");
+    expect(q.taxCents).toBe(Math.round(19500 * 0.078)); // $15.21
+    expect(q.totalCents).toBe(19500 + q.taxCents);
+  });
+
+  it("taxes travel too, since it is part of the price of a taxable service", () => {
+    const noTravel = quote(cart({ zip: "45220" }), R);
+    const withTravel = quote(cart({ zip: "45220", oneWayMinutes: 60 }), R); // $65
+    expect(withTravel.taxCents).toBeGreaterThan(noTravel.taxCents);
+    expect(withTravel.taxCents).toBe(Math.round((19500 + 6500) * 0.078));
+  });
+
+  it("falls back to the busiest county for an unknown ZIP, and says so", () => {
+    const q = quote(cart({ zip: "99999" }), R);
+    expect(q.taxRateBp).toBe(780);
+    expect(q.taxCounty).toBe(null);
+  });
+
+  it("uses the Kentucky flat rate across the river", () => {
+    const q = quote(cart({ zip: "41011" }), R);
+    expect(q.taxRateBp).toBe(600);
   });
 });
 

@@ -2,7 +2,7 @@
  * Tunable pricing rules.
  *
  * These are the seed values. At runtime they come from the `pricing_rules`
- * table so Elijah can change them in the admin panel without a deploy — but
+ * table so Elijah can change them in the admin panel without a deploy, but
  * the shape and the defaults live here, and every pure function takes them as
  * an argument rather than reading a global. That is what makes the money math
  * testable without a database.
@@ -37,19 +37,34 @@ export interface SurchargeRules {
    */
   earlyBeforeMinutes: number;
   /**
-   * Minutes past local midnight. A start STRICTLY AFTER this is premium,
-   * so 6:00 PM itself is not and 6:01 PM is. 1080 = 18:00.
+   * Minutes past local midnight. A start AT OR AFTER this is premium, so a
+   * 6:00 PM start does carry the surcharge. 1080 = 18:00.
    *
-   * Stored in minutes rather than hours precisely because 18:00 and 18:01
-   * are the same hour but land on opposite sides of this rule.
+   * Stored in minutes rather than hours so the boundary can be moved to a
+   * half hour without a schema change.
    */
-  lateAfterMinutes: number;
+  lateFromMinutes: number;
   /** Added for an early/late start. */
   timeOfDayBp: number;
   /** Added when the customer opts into Priority Booking. */
   priorityBp: number;
-  /** Hard ceiling once the above are added together. */
+  /**
+   * Hard ceiling once the above are added together. Set to the same value as
+   * a single surcharge so early/late AND priority never compound: the
+   * customer pays one 20%, not two.
+   */
   maxTotalBp: number;
+}
+
+export interface ShowroomRules {
+  /** Showroom Ready is time-and-materials, not a fixed package. */
+  hourlyCents: number;
+  minimumHours: number;
+  /**
+   * Flat deposit rather than a percentage, because the final total is open
+   * ended until the vehicle is seen.
+   */
+  depositCents: number;
 }
 
 export interface BookingWindowRules {
@@ -65,6 +80,7 @@ export interface PricingRules {
   mileage: MileageRules;
   surcharge: SurchargeRules;
   window: BookingWindowRules;
+  showroom: ShowroomRules;
   /** Discount when one vehicle gets both an interior and an exterior package. */
   comboDiscountCents: number;
   /**
@@ -104,13 +120,18 @@ export const DEFAULT_RULES: PricingRules = {
   },
   surcharge: {
     earlyBeforeMinutes: 10 * 60, // before 10:00 (10:00 itself is not premium)
-    lateAfterMinutes: 18 * 60, // after 18:00 (6:00 PM is not, 6:01 PM is)
+    lateFromMinutes: 18 * 60, // 18:00 onward, so a 6:00 PM start IS premium
     timeOfDayBp: 2000, // +20%
     priorityBp: 2000, // +20%
-    maxTotalBp: 3000, // capped at +30%
+    maxTotalBp: 2000, // one flat 20% total, never stacked
   },
   window: {
     minLeadDays: 3,
+  },
+  showroom: {
+    hourlyCents: 10000, // $100/hr
+    minimumHours: 6,
+    depositCents: 60000, // $600
   },
   comboDiscountCents: 1500, // $15
   comboPerVehicle: true,

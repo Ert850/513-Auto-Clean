@@ -20,24 +20,25 @@ export interface SurchargeBreakdown {
   priorityBp: number;
   /** Sum of the two, after the cap. This is what actually gets charged. */
   appliedBp: number;
-  /** True when the cap bit — useful for showing "capped at 30%" in the UI. */
+  /** True when the cap bit, i.e. both surcharges fired but only one is charged. */
   capped: boolean;
 }
 
 /**
- * Premium pricing. Two independent +20% surcharges that add together but are
- * capped at +30% in total, so a 7am-tomorrow booking is +30%, not +40%.
+ * Premium pricing. Two independent +20% surcharges, but the cap equals a
+ * single surcharge, so they never compound: a 7am-tomorrow booking pays one
+ * flat 20%, not 40%.
  *
  * IMPORTANT: judged on the START time only. A 4pm job that runs until 8pm is
  * not an evening job. Elijah was explicit about this.
  *
- * Both boundaries are STRICT and exclusive of the boundary minute itself:
- * 09:59 is premium and 10:00 is not; 18:00 is not premium and 18:01 is.
+ * Morning is exclusive, evening is inclusive: 09:59 is premium and 10:00 is
+ * not, while 18:00 itself IS premium.
  */
 export function computeSurcharge(ctx: SurchargeContext, r: SurchargeRules): SurchargeBreakdown {
   const isEarlyOrLate =
     ctx.startMinutesLocal < r.earlyBeforeMinutes ||
-    ctx.startMinutesLocal > r.lateAfterMinutes;
+    ctx.startMinutesLocal >= r.lateFromMinutes;
 
   const timeOfDayBp = isEarlyOrLate ? r.timeOfDayBp : 0;
   const priorityBp = ctx.priorityBooking ? r.priorityBp : 0;

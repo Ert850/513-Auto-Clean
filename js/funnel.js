@@ -1,5 +1,5 @@
 /* ============================================================
-   513 Auto Clean — booking funnel
+   513 Auto Clean, booking funnel
    Pricing comes from window.ACPricing (js/pricing.bundle.js), which is the
    same TypeScript engine covered by the unit tests. Nothing here recomputes
    money on its own.
@@ -38,14 +38,14 @@
 
   /* ---------------- steps ---------------- */
   var STEPS = [
-    { id: 'intent',   title: 'What does your vehicle need?', render: renderIntent,   valid: vIntent },
-    { id: 'package',  title: 'Choose your package',          render: renderPackage,  valid: vPackage },
-    { id: 'addons',   title: 'Any add-ons?',                 render: renderAddons,   valid: always },
-    { id: 'vehicles', title: 'Your vehicles',                render: renderVehicles, valid: vVehicles },
-    { id: 'location', title: 'Where are we detailing?',      render: renderLocation, valid: vLocation },
-    { id: 'timing',   title: 'When works for you?',          render: renderTiming,   valid: vTiming },
-    { id: 'contact',  title: 'How do we reach you?',         render: renderContact,  valid: vContact },
-    { id: 'review',   title: 'Review your booking',          render: renderReview,   valid: always }
+    { id: 'intent',  title: 'What does your vehicle need?', render: renderIntent,  valid: vIntent },
+    { id: 'package', title: 'Choose your package',         render: renderPackage, valid: vPackage },
+    { id: 'addons',  title: 'Any add-ons?',                render: renderAddons,  valid: always },
+    { id: 'vehicles', title: 'Your vehicles',               render: renderVehicles, valid: vVehicles },
+    { id: 'location', title: 'Where are we detailing?',     render: renderLocation, valid: vLocation },
+    { id: 'timing',  title: 'When works for you?',         render: renderTiming,  valid: vTiming },
+    { id: 'contact', title: 'How do we reach you?',        render: renderContact, valid: vContact },
+    { id: 'review',  title: 'Review your booking',         render: renderReview,  valid: always }
   ];
 
   function always() { return null; }
@@ -156,7 +156,7 @@
       html += '</div>';
     });
 
-    // Showroom Ready — a quote request, not an instant booking.
+    // Showroom Ready, a quote request, not an instant booking.
     html += '<button type="button" class="showroom' + (v.showroom ? ' on' : '') + '" data-showroom="1">' +
       '<b>' + esc(P.SHOWROOM_READY.name) + ' <sup>*</sup></b>' +
       '<span>' + esc(P.SHOWROOM_READY.tagline) + '</span>' +
@@ -176,7 +176,7 @@
     if (v.intent === 'both') {
       var cats = v.packageIds.map(function (id) { return findPkg(id).category; });
       if (cats.indexOf('interior') < 0 || cats.indexOf('exterior') < 0)
-        return 'You picked "Both" — choose an interior package and an exterior package.';
+        return 'You picked "Both", choose an interior package and an exterior package.';
     }
     return null;
   }
@@ -185,7 +185,7 @@
   function renderAddons() {
     var v = state.vehicles[state.active];
     var rate = RULES.addonRateCents;
-    var html = '<p class="step-sub">Billed at <b>' + $(rate) + '/hour</b> with a one-hour minimum. Most take about an hour &mdash; we&rsquo;ll confirm on site before doing extra.</p><div class="addon-list">';
+    var html = '<p class="step-sub">Billed at <b>' + $(rate) + '/hour</b> with a one-hour minimum. Most take about an hour, we&rsquo;ll confirm on site before doing extra.</p><div class="addon-list">';
     P.ADDONS.forEach(function (a) {
       var picked = v.addons.filter(function (x) { return x.id === a.id; })[0];
       html += '<div class="addon-row' + (picked ? ' on' : '') + '">' +
@@ -229,7 +229,7 @@
   /* ---- step 5: location ---- */
   function renderLocation() {
     var a = state.address;
-    return '<p class="step-sub">We come to you. Travel is quoted from your address &mdash; the first 10 minutes of drive time are free.</p>' +
+    return '<p class="step-sub">We come to you. Travel is quoted from your address, the first 10 minutes of drive time are free.</p>' +
       '<div class="field"><label for="l1">Street address <span class="req">*</span></label>' +
       '<input type="text" id="l1" data-addr="line1" value="' + esc(a.line1) + '" placeholder="505 Example St" autocomplete="address-line1" autofocus /></div>' +
       '<div class="field-row">' +
@@ -241,10 +241,10 @@
       '<label class="chk"><input type="checkbox" id="noLoc"' + (state.noGoodLocation ? ' checked' : '') + ' />' +
       '<span>I don&rsquo;t have a good location for a detail near me</span></label>' +
       (state.noGoodLocation
-        ? '<div class="chk-panel"><p>No problem &mdash; this is usually easy to solve. Local spots like retail parking lots often work well, especially for interior details. Tell us roughly where you are and we&rsquo;ll sort somewhere out with you.</p>' +
+        ? '<div class="chk-panel"><p>No problem, this is usually easy to solve. Local spots like retail parking lots often work well, especially for interior details. Tell us roughly where you are and we&rsquo;ll sort somewhere out with you.</p>' +
           '<textarea data-note="loc" rows="3" placeholder="e.g. I live in an apartment with no driveway, but there is a big lot behind the Kroger on Ludlow">' + esc(state.locationNote) + '</textarea></div>'
         : '') +
-      '<p class="hint">Your exact travel fee is confirmed with your booking &mdash; we calculate it from real drive time, not a flat rate.</p>';
+      '<p class="hint">Your exact travel fee is confirmed with your booking, we calculate it from real drive time, not a flat rate.</p>';
   }
   function vLocation() {
     var a = state.address;
@@ -307,7 +307,7 @@
       '<label class="chk sm"><input type="checkbox" id="cSms"' + (state.consent.sms ? ' checked' : '') + ' />' +
       '<span>Text me about my booking. Msg &amp; data rates may apply. Reply STOP to opt out. <span class="req">*</span></span></label>' +
       '<label class="chk sm"><input type="checkbox" id="cMedia"' + (state.consent.media ? ' checked' : '') + ' />' +
-      '<span>You may photograph or film my vehicle for social media. We always blur children and any private information such as plates and documents. <i>Optional &mdash; leave unticked if you&rsquo;d rather we didn&rsquo;t.</i></span></label>' +
+      '<span>You may photograph or film my vehicle for social media. We always blur children and any private information such as plates and documents. <i>Optional, leave unticked if you&rsquo;d rather we didn&rsquo;t.</i></span></label>' +
       '</div>';
   }
   function vContact() {
@@ -321,14 +321,14 @@
   /* ---- step 8: review ---- */
   function renderReview() {
     var q = currentQuote();
-    return '<p class="step-sub">One last look. Nothing is charged now &mdash; we&rsquo;ll confirm your time and send a secure payment link.</p>' +
+    return '<p class="step-sub">One last look. Nothing is charged now, we&rsquo;ll confirm your time and send a secure payment link.</p>' +
       '<div class="review">' + lineTable(q, true) + '</div>' +
       '<div class="review-block"><b>Where</b><p>' +
       esc([state.address.line1, state.address.city, state.address.zip].filter(Boolean).join(', ')) +
       (state.noGoodLocation ? '<br /><i>Needs a location sorted: ' + esc(state.locationNote || 'no note given') + '</i>' : '') +
       '</p></div>' +
       '<div class="review-block"><b>When</b><p>' + esc(state.preferredDays.join(', ')) + ' &middot; ' + esc(state.preferredWindow) +
-      (state.priority ? '<br /><i>Priority booking — within 3 days</i>' : '') + '</p></div>' +
+      (state.priority ? '<br /><i>Priority booking, within 3 days</i>' : '') + '</p></div>' +
       '<div class="review-block"><b>You</b><p>' + esc(state.contact.name) + ' &middot; ' + esc(state.contact.phone) +
       (state.contact.email ? ' &middot; ' + esc(state.contact.email) : '') + '</p></div>' +
       (hasShowroom() ? '<p class="hint warn">Showroom Ready is priced after we see the vehicle, so the total above excludes it. We&rsquo;ll come back with a quote.</p>' : '') +
@@ -344,7 +344,7 @@
         '</td><td>' + $(l.amountCents) + '</td></tr>';
     }).join('');
 
-    var travel = '<tr class="travel pending"><td>Travel<i> — from your address</i></td><td>Quoted on confirmation</td></tr>';
+    var travel = '<tr class="travel pending"><td>Travel<i>, from your address</i></td><td>Quoted on confirmation</td></tr>';
     var total = '<tr class="tot"><td>Service total</td><td>' + $(q.totalCents) + '</td></tr>';
     var dep = full
       ? '<tr class="dep"><td>Deposit to book (50%)</td><td>' + $(q.depositCents) + '</td></tr>' +
@@ -496,7 +496,7 @@
           (v.addons.length ? '\n     Add-ons: ' + v.addons.map(function (a) { return a.name + ' (' + a.hours + 'hr)'; }).join(', ') : '');
       }).join('\n') + '\n\n' +
       'WHEN\n  Days: ' + state.preferredDays.join(', ') + '\n  Window: ' + state.preferredWindow +
-      (state.priority ? '\n  ** PRIORITY — wants within 3 days (+' + (RULES.surcharge.priorityBp / 100) + '%) **' : '') + '\n\n' +
+      (state.priority ? '\n  ** PRIORITY, wants within 3 days (+' + (RULES.surcharge.priorityBp / 100) + '%) **' : '') + '\n\n' +
       'PRICING\n' + lines + '\n' +
       '  Travel: quoted on confirmation\n' +
       '  SERVICE TOTAL: ' + $(q.totalCents) + '\n' +
@@ -509,7 +509,7 @@
 
     var fd = new FormData();
     fd.append('access_key', WEB3FORMS_KEY);
-    fd.append('subject', 'BOOKING REQUEST — ' + state.contact.name + ' — ' + $(q.totalCents));
+    fd.append('subject', 'BOOKING REQUEST, ' + state.contact.name + ', ' + $(q.totalCents));
     fd.append('from_name', '513 Auto Clean Booking Funnel');
     fd.append('name', state.contact.name);
     fd.append('phone', state.contact.phone);
@@ -540,7 +540,7 @@
       '<div class="done"><div class="done-ic">' +
       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 6L9 17l-5-5"/></svg></div>' +
       '<h1>Request sent, ' + esc(state.contact.name.split(' ')[0]) + '.</h1>' +
-      '<p>We&rsquo;ve got your details and we&rsquo;ll confirm your exact time and final price shortly &mdash; usually the same day. Your travel fee gets calculated from real drive time and included then.</p>' +
+      '<p>We&rsquo;ve got your details and we&rsquo;ll confirm your exact time and final price shortly, usually the same day. Your travel fee gets calculated from real drive time and included then.</p>' +
       '<p class="done-tot">Service total <b>' + $(q.totalCents) + '</b> &middot; deposit <b>' + $(q.depositCents) + '</b></p>' +
       '<p class="done-sm">Need it sooner? Call or text <a href="tel:+15132792915">(513) 279-2915</a>.</p>' +
       '<a class="btn btn-ghost" href="index.html">Back to the site</a></div>';
