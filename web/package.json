@@ -12,8 +12,15 @@
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
+    "drizzle-kit": "^0.31.10",
     "esbuild": "^0.28.2",
     "typescript": "^5.7.2",
     "vitest": "^2.1.8"
+  },
+  "dependencies": {
+    "@neondatabase/serverless": "^1.1.0",
+    "drizzle-orm": "^0.45.2",
+    "googleapis": "^178.0.0",
+    "stripe": "^22.6.1"
   }
 }
