@@ -1,5 +1,5 @@
 /* ============================================================
-   513 Auto Clean — interactions
+   513 Auto Clean, interactions
    ============================================================ */
 (function () {
   'use strict';
@@ -97,7 +97,7 @@
     setPos(parseFloat(range.value));
   });
 
-  /* ---------- Availability calendar (commented out — schedule section removed) ---------- */
+  /* ---------- Availability calendar (commented out, schedule section removed) ---------- */
   /*
   (function () {
     var el = document.getElementById('schedule-cal');
@@ -177,7 +177,7 @@
   /* Scroll-velocity watch. IntersectionObserver callbacks are async and can
      fall behind a hard flick, so while scrolling fast we also sweep
      synchronously once per animation frame. */
-  var FAST_PX_PER_MS = 1.6;   // ~1.6px/ms — a deliberate fast flick, not a normal drag
+  var FAST_PX_PER_MS = 1.6;   // ~1.6px/ms, a deliberate fast flick, not a normal drag
   var SWEEP_BAND = 600;       // px above/below the viewport to force-reveal
   var vLastY = window.scrollY || window.pageYOffset;
   var vLastT = Date.now();
@@ -217,8 +217,8 @@
      question form (#inquiryForm). Each finds its own card and status region, so
      a message never lands in the wrong form. */
   var SUCCESS = {
-    quoteForm: "Got it — thanks! I'll get back to you shortly with pricing and a time. Need it sooner? Call or text (513) 279-2915.",
-    inquiryForm: "Thanks — your question is in. I'll get back to you shortly, usually the same day."
+    quoteForm: "Got it, thanks! I'll get back to you shortly with pricing and a time. Need it sooner? Call or text (513) 279-2915.",
+    inquiryForm: "Thanks, your question is in. I'll get back to you shortly, usually the same day."
   };
 
   document.querySelectorAll('form.js-w3form').forEach(function (form) {

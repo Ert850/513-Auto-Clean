@@ -4,7 +4,7 @@ import type { Catalog, Package, ServiceComponent } from "./types.js";
  * Seed catalog. Prices confirmed with Elijah; component wording is verbatim
  * from the live site so the funnel and the marketing page never disagree.
  *
- * COMPONENT VALUES ARE NULL ON PURPOSE. See ServiceComponent.valueCents —
+ * COMPONENT VALUES ARE NULL ON PURPOSE. See ServiceComponent.valueCents,
  * a component without a price cannot be added or removed, because inventing
  * a number here would either overcharge a customer or quietly erode margin.
  * Customization switches on per-component as Elijah prices them in admin.
@@ -30,7 +30,7 @@ const COMPONENTS: ServiceComponent[] = [
   // ---- interior ----
   c("int-vac-quick", "Quick vacuum of seats & carpets", "interior", 20, false),
   c("int-vac-full", "Full vacuum of seats & carpets", "interior", 30, false),
-  c("int-vac-deep", "Thorough vacuum — seats, carpets & trunk", "interior", 45, false),
+  c("int-vac-deep", "Thorough vacuum, seats, carpets & trunk", "interior", 45, false),
   c("int-mats-rinse", "Rinse & refresh floor mats", "interior", 10),
   c("int-mats-clean", "Clean & rinse floor mats", "interior", 15),
   c("int-mats-dress", "Wash & dress floor mats", "interior", 20),
@@ -152,9 +152,9 @@ const PACKAGES: Package[] = [
     slug: "full-exterior",
     name: "Full Exterior",
     category: "exterior",
-    // Deliberately a strict superset of Basic — that ladder is the whole
+    // Deliberately a strict superset of Basic, that ladder is the whole
     // reason to step up, so the composition makes it literal.
-    tagline: "The full restore — decon, protect & seal with ceramic.",
+    tagline: "The full restore, decon, protect & seal with ceramic.",
     priceCents: 21000,
     durationMin: 240,
     componentIds: [
@@ -173,27 +173,3 @@ export const SEED_CATALOG: Catalog = {
   components: Object.fromEntries(COMPONENTS.map((x) => [x.id, x])),
   packages: PACKAGES,
 };
-
-/** Add-ons. Priced by the hour at $50 with a 1-hour minimum. */
-export const SEED_ADDONS = [
-  { id: "pet-hair", name: "Pet Hair Removal", subtitle: "Seats & carpet" },
-  { id: "steam", name: "Steam Treatment", subtitle: "Deep sanitize" },
-  { id: "ozone", name: "Ozone Odor Reset", subtitle: "Smoke & smells" },
-  { id: "seat-removal", name: "Seat Removal", subtitle: "Cleans underneath" },
-  { id: "headlight", name: "Headlight Restoration", subtitle: "Plus ceramic" },
-  { id: "clay-bar", name: "Clay Bar", subtitle: "All panels" },
-] as const;
-
-/**
- * Showroom Ready is a quote request, not a bookable package: every service
- * taken to its logical extreme, priced per vehicle after inspection.
- * Constrained to weekends at 10:00 with a full free day.
- */
-export const SHOWROOM_READY = {
-  id: "showroom-ready",
-  name: "Showroom Ready",
-  tagline: "Every service taken to its logical extreme. Custom quote.",
-  weekendsOnly: true,
-  startTimeLocal: "10:00",
-  requiresFullDay: true,
-} as const;

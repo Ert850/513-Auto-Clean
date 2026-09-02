@@ -3,11 +3,19 @@
  *
  * Bundled by `npm run build:funnel` into ../js/pricing.bundle.js and loaded by
  * the booking funnel on the static site. Everything it exposes is the SAME
- * code the unit tests cover — the funnel never reimplements pricing in ad-hoc
+ * code the unit tests cover, the funnel never reimplements pricing in ad-hoc
  * browser JS, which is exactly how the old site ended up with prices in three
  * places that drifted apart.
  */
-import { SEED_ADDONS, SEED_CATALOG, SHOWROOM_READY } from "./catalog/seed.js";
+import { SEED_CATALOG } from "./catalog/seed.js";
+import {
+  ADDONS,
+  MAINTENANCE_PLAN,
+  PAINT_CORRECTION,
+  SERVICE_LEVELS,
+  SHOWROOM_READY,
+} from "./catalog/addons.js";
+import { SEED_TAX_TABLE, computeTax, lookupRate } from "./pricing/tax.js";
 import {
   addableComponents,
   componentsOf,
@@ -25,7 +33,7 @@ import {
 } from "./pricing/surcharge.js";
 import { quote } from "./pricing/quote.js";
 
-/** Format integer cents as $1,234.50 — or $1,234 when it lands on the dollar. */
+/** Format integer cents as $1,234.50, or $1,234 when it lands on the dollar. */
 export function formatCents(cents: number): string {
   const whole = Math.abs(cents) % 100 === 0;
   const s = (Math.abs(cents) / 100).toLocaleString("en-US", {
@@ -38,8 +46,14 @@ export function formatCents(cents: number): string {
 const api = {
   RULES: DEFAULT_RULES,
   CATALOG: SEED_CATALOG,
-  ADDONS: SEED_ADDONS,
+  ADDONS,
   SHOWROOM_READY,
+  PAINT_CORRECTION,
+  MAINTENANCE_PLAN,
+  SERVICE_LEVELS,
+  TAX_TABLE: SEED_TAX_TABLE,
+  computeTax,
+  lookupRate,
   quote,
   mileageFeeCents,
   averageOneWayMinutes,

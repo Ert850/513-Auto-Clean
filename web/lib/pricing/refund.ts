@@ -36,7 +36,7 @@ export interface RefundResult {
  *   < 24 hrs out      -> nothing
  *
  * Anything paid ABOVE the deposit (i.e. a pay-in-full customer) is always fully
- * refundable — only the deposit portion is at risk. That keeps the policy
+ * refundable, only the deposit portion is at risk. That keeps the policy
  * defensible: the customer is never worse off for having paid early.
  *
  * The $25 exists because Stripe does NOT return its processing fee on a
@@ -92,7 +92,7 @@ export function computeRefund(input: RefundInput, r: PricingRules): RefundResult
  * whatever they would NOT have got back had they simply cancelled.
  *
  * Moving the deposit is a bookkeeping entry against the new booking, never a
- * refund-and-recharge — that would cost two processing fees and strand the
+ * refund-and-recharge, that would cost two processing fees and strand the
  * money for days.
  */
 export function rescheduleFeeCents(input: RefundInput, r: PricingRules): number {

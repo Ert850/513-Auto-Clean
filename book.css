@@ -1,5 +1,5 @@
 /* ============================================================
-   513 Auto Clean — booking funnel
+   513 Auto Clean, booking funnel
    Loads AFTER styles.css and reuses its :root tokens and .btn styles.
    ============================================================ */
 
@@ -64,7 +64,7 @@
   border-radius: var(--r-md); padding: 1rem 1.1rem; transition: border-color .18s, box-shadow .18s;
 }
 .showroom:hover { border-color: var(--red-bright); }
-.showroom.on { border-color: var(--red-bright); box-shadow: 0 0 0 3px rgba(255,59,59,.25); }
+.showroom.on { border-color: var(--red-bright); box-shadow: 0 0 0 3px rgba(255,59,59.25); }
 .showroom b { font-family: var(--font-display); font-size: 1.08rem; }
 .showroom sup { color: var(--red-bright); }
 .showroom span { display: block; color: var(--text-inv-soft); font-size: .88rem; margin-top: .2rem; }
@@ -111,11 +111,11 @@
 /* ---------- fields ---------- */
 .book-flow .field { margin-bottom: 1rem; }
 .book-flow .field label { display: block; font-size: .86rem; font-weight: 700; margin-bottom: .35rem; }
-.book-flow .field input, .book-flow .field textarea, .chk-panel textarea {
+.book-flow .field input.book-flow .field textarea.chk-panel textarea {
   width: 100%; padding: .75rem .9rem; border: 1px solid var(--line); border-radius: var(--r-sm);
   font: inherit; background: var(--paper-2); color: var(--text);
 }
-.book-flow .field input:focus, .book-flow .field textarea:focus, .chk-panel textarea:focus {
+.book-flow .field input:focus.book-flow .field textarea:focus.chk-panel textarea:focus {
   outline: 2px solid var(--red); outline-offset: 1px; border-color: transparent;
 }
 .book-flow .field-row { display: grid; gap: 1rem; grid-template-columns: 1fr; }
@@ -168,7 +168,7 @@
 .lines .pending td:last-child { color: var(--text-soft); font-style: italic; font-size: .8rem; }
 .lines .tot td { border-top: 1px solid var(--line); padding-top: .6rem; font-weight: 800; font-size: 1rem; }
 .lines .dep td { padding-top: .5rem; font-weight: 700; color: var(--red); }
-.lines .bal td, .lines .dur td { color: var(--text-soft); font-size: .83rem; }
+.lines .bal td.lines .dur td { color: var(--text-soft); font-size: .83rem; }
 
 .review { background: var(--paper-2); border: 1px solid var(--line); border-radius: var(--r-md); padding: 1.1rem; margin-bottom: 1rem; }
 .review-block { padding: .8rem 0; border-bottom: 1px solid var(--line); }
@@ -190,7 +190,7 @@
 .book-bar {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 90;
   background: var(--paper-2); border-top: 1px solid var(--line);
-  box-shadow: 0 -6px 24px rgba(11,14,19,.10);
+  box-shadow: 0 -6px 24px rgba(11,14,19.10);
   padding-bottom: env(safe-area-inset-bottom);
 }
 .bb-toggle {
@@ -220,6 +220,6 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .pick, .pkg, .book-progress .bar, .bb-toggle svg { transition: none; }
+  .pick.pkg.book-progress .bar.bb-toggle svg { transition: none; }
   .pick:hover { transform: none; }
 }

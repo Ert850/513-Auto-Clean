@@ -1,8 +1,8 @@
-# 513 Auto Clean — Website
+# 513 Auto Clean, Website
 
 A fast, mobile-first, conversion-focused static site for **513 Auto Clean**, UC student-owned mobile car detailing in Cincinnati. Built to mirror the proven structure of the Archer Detailing reference site, with a bold red-and-black identity matching the 513 Auto Clean logo.
 
-Plain **HTML + CSS + JS** — no build step. Deploys free anywhere (Netlify, Vercel, GitHub Pages, Cloudflare Pages) or onto your current host.
+Plain **HTML + CSS + JS**, no build step. Deploys free anywhere (Netlify, Vercel, GitHub Pages, Cloudflare Pages) or onto your current host.
 
 ```
 513-autoclean/
@@ -18,9 +18,9 @@ Plain **HTML + CSS + JS** — no build step. Deploys free anywhere (Netlify, Ver
 
 ## ✅ Do these 2 things before going live
 
-### 1. Make the quote form deliver to your inbox (Web3Forms — free, ~30 sec)
+### 1. Make the quote form deliver to your inbox (Web3Forms, free, ~30 sec)
 
-The form is wired to **Web3Forms**, which emails submissions straight to your Gmail. Until you add a key, the form gracefully falls back to opening a pre-filled **text message** to you — so you never lose a lead.
+The form is wired to **Web3Forms**, which emails submissions straight to your Gmail. Until you add a key, the form gracefully falls back to opening a pre-filled **text message** to you, so you never lose a lead.
 
 To turn on email delivery:
 
@@ -70,9 +70,9 @@ The gallery is built from **6 interactive before/after sliders** (drag to reveal
 
 ## 📝 Things you'll likely want to update
 
-- **Review count** — shown as `21+ reviews` and `5.0` (hero badge, reviews section, and the SEO `aggregateRating` in `index.html`). Update as your count grows, or let the live widget handle it.
-- **Prices** — set per your latest: Interior $75 / $115 / $195, Exterior $65 / $115 / $210, combo saves $15, add-ons $50/hr. Change them in the `#services` cards and the form's `<select>` if they shift.
-- **Service areas** — listed by region with area codes (513/937, 859, 812/765) covering ~1 hr / ~50 mi of downtown Cincinnati. Edit the `#areas` section to add or remove towns.
+- **Review count**, shown as `21+ reviews` and `5.0` (hero badge, reviews section, and the SEO `aggregateRating` in `index.html`). Update as your count grows, or let the live widget handle it.
+- **Prices**, set per your latest: Interior $75 / $115 / $195, Exterior $65 / $115 / $210, combo saves $15, add-ons $50/hr. Change them in the `#services` cards and the form's `<select>` if they shift.
+- **Service areas**, listed by region with area codes (513/937, 859, 812/765) covering ~1 hr / ~50 mi of downtown Cincinnati. Edit the `#areas` section to add or remove towns.
 
 ---
 
@@ -99,9 +99,9 @@ or just double-click `index.html` to open it straight in your browser.
 
 ## 🚀 Deploy
 
-**Easiest (free):** drag this folder onto **https://app.netlify.com/drop** — live in seconds with HTTPS.
+**Easiest (free):** drag this folder onto **https://app.netlify.com/drop**, live in seconds with HTTPS.
 
-**Replace your current WordPress site:** point your `513autoclean.com` domain at the new host (Netlify/Vercel/Cloudflare Pages all give free SSL + custom-domain instructions). The old WordPress export in your Downloads is not needed — this is a clean rebuild.
+**Replace your current WordPress site:** point your `513autoclean.com` domain at the new host (Netlify/Vercel/Cloudflare Pages all give free SSL + custom-domain instructions). The old WordPress export in your Downloads is not needed, this is a clean rebuild.
 
 ---
 

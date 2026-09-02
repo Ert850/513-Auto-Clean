@@ -1,7 +1,7 @@
 import type { ServiceCategory } from "../pricing/quote.js";
 
 /**
- * A single unit of work — "shampoo upholstery", "ceramic sealant applied".
+ * A single unit of work, "shampoo upholstery", "ceramic sealant applied".
  *
  * Packages are COMPOSITIONS of these rather than flat priced rows, because
  * customers can add or remove individual parts of a package. Modelling this
@@ -27,7 +27,7 @@ export interface ServiceComponent {
   /** Cost of consumables, for margin tracking. Null until measured. */
   materialsCostCents: number | null;
   /**
-   * False for work that defines the package and cannot be stripped out —
+   * False for work that defines the package and cannot be stripped out,
    * you cannot remove "hand wash" from an exterior detail and still have one.
    */
   removable: boolean;

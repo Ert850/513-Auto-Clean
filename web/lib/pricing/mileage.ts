@@ -1,7 +1,7 @@
 import type { MileageRules } from "./rules.js";
 
 /**
- * Travel fee. Pure — no I/O, no clock, no network.
+ * Travel fee. Pure, no I/O, no clock, no network.
  *
  * `oneWayMinutes` is NOT a single Google lookup. It is the average of the two
  * real legs, each priced at its actual traffic time (see measureOneWayMinutes
@@ -53,7 +53,7 @@ export function averageOneWayMinutes(outboundMinutes: number, returnMinutes: num
 
 /**
  * Total minutes of driving a booking commits Elijah to. This is what gets
- * subtracted from an availability block alongside the job itself — per the
+ * subtracted from an availability block alongside the job itself, per the
  * outline's rule that a 4-hour detail plus an hour of travel needs a 5-hour
  * window.
  */
