@@ -138,7 +138,7 @@ const PACKAGES: Package[] = [
     category: "interior",
     tagline: "A solid clean that gets the everyday grime out.",
     note:
-      "A blowout and thorough vacuum through the seats, carpet and trunk, mats cleaned, surfaces wiped down, and the visible grime taken off. The car looks and feels clean when you get back in it. It does NOT shampoo or extract the upholstery, treat set-in stains, condition leather, or brush out every seam and crevice. A vacuum does not lift what has worked its way down into the weave, so engrained fibers, pet hair and grit in the carpet will not all come out, and stains already in the fabric will still be there. If the carpet is marked or the car smells, you want Full, or Basic with a stain treatment added.",
+      "A blowout and thorough vacuum through the seats, carpet and trunk, mats cleaned, surfaces wiped down, and the visible grime taken off. The car looks and feels clean when you get back in it. It does NOT shampoo or extract the upholstery, treat set-in stains, condition leather, or brush out every seam and crevice. A vacuum and air compressor blow out alone does not lift what has worked its way down into the upholstery, so engrained fibers, pet hair and grit in the carpet will not all come out, and stains already in the fabric will still be there. Those do come out with a Full Interior, or with Basic plus pet hair removal, a stain treatment, or both.",
     priceCents: 12500,
     durationMin: 120,
     componentIds: [...BASIC_INT_IDS],
