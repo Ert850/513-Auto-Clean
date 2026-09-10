@@ -69,6 +69,15 @@ import {
   requiresPriorityBooking,
 } from "./pricing/surcharge.js";
 import { quote } from "./pricing/quote.js";
+import {
+  LONGEST_DAY,
+  LONG_JOB_STARTS,
+  dayCapacityMin,
+  describePlan,
+  findMultiDayStarts,
+  fitsOneDay,
+  planDays,
+} from "./availability/multiDay.js";
 import { PROMOS, findPromo, normalisePromo, promoDiscountCents, promoMessage } from "./pricing/promos.js";
 import { ADDON_ICONS, addonIcon } from "./catalog/icons.js";
 import { popularityOf } from "./catalog/popularity.js";
@@ -128,6 +137,13 @@ const api = {
   TIME_WINDOWS,
   computeSlots,
   computeSlotsTiered,
+  LONGEST_DAY,
+  LONG_JOB_STARTS,
+  dayCapacityMin,
+  describePlan,
+  findMultiDayStarts,
+  fitsOneDay,
+  planDays,
   localMinutesOfDay,
   matchWindows,
   mergeIntervals,

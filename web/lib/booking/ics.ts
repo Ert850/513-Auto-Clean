@@ -18,6 +18,8 @@
  * that move or cancel a single occurrence of a series.
  */
 
+import { zonedToUtc } from "../time/zone.js";
+
 export interface BusyInterval {
   start: number;
   end: number;
@@ -46,55 +48,6 @@ export interface IcsOptions {
 /* ---------------- time ---------------- */
 
 const DAY_MS = 86400000;
-
-/**
- * Offset of a named zone at a given instant, in ms.
- *
- * Via Intl rather than a parsed VTIMEZONE block: the browser and Node both
- * ship the full IANA database and keep it patched, which is strictly better
- * than re-implementing DST from the transitions Apple happens to include.
- */
-function zoneOffsetMs(utcMs: number, timeZone: string): number {
-  const dtf = new Intl.DateTimeFormat("en-US", {
-    timeZone,
-    hour12: false,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-  });
-  const parts = dtf.formatToParts(new Date(utcMs));
-  const get = (type: string): number => {
-    const p = parts.find((x) => x.type === type);
-    return p ? Number(p.value) : 0;
-  };
-  const asIfUtc = Date.UTC(
-    get("year"),
-    get("month") - 1,
-    get("day"),
-    get("hour") % 24,
-    get("minute"),
-    get("second"),
-  );
-  return asIfUtc - utcMs;
-}
-
-/** Wall clock in a named zone to epoch ms. Two passes settles DST edges. */
-function zonedToUtc(
-  y: number,
-  mo: number,
-  d: number,
-  h: number,
-  mi: number,
-  s: number,
-  timeZone: string,
-): number {
-  const guess = Date.UTC(y, mo - 1, d, h, mi, s);
-  const once = guess - zoneOffsetMs(guess, timeZone);
-  return guess - zoneOffsetMs(once, timeZone);
-}
 
 interface ParsedTime {
   ms: number;
