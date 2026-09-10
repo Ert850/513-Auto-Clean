@@ -56,17 +56,6 @@ export interface SurchargeRules {
   maxTotalBp: number;
 }
 
-export interface ShowroomRules {
-  /** Showroom Ready is time-and-materials, not a fixed package. */
-  hourlyCents: number;
-  minimumHours: number;
-  /**
-   * Flat deposit rather than a percentage, because the final total is open
-   * ended until the vehicle is seen.
-   */
-  depositCents: number;
-}
-
 export interface BookingWindowRules {
   /**
    * Minimum lead time in WHOLE CALENDAR DAYS. 3 means: on Monday the earliest
@@ -80,7 +69,6 @@ export interface PricingRules {
   mileage: MileageRules;
   surcharge: SurchargeRules;
   window: BookingWindowRules;
-  showroom: ShowroomRules;
   /** Discount when one vehicle gets both an interior and an exterior package. */
   comboDiscountCents: number;
   /**
@@ -136,11 +124,6 @@ export const DEFAULT_RULES: PricingRules = {
   },
   window: {
     minLeadDays: 3,
-  },
-  showroom: {
-    hourlyCents: 10000, // $100/hr
-    minimumHours: 6,
-    depositCents: 60000, // $600
   },
   comboDiscountCents: 1500, // $15
   comboPerVehicle: true,

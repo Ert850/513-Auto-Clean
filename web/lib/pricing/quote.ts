@@ -45,8 +45,6 @@ export interface CartVehicle {
   sizeLabel?: string;
   packages: PackageRef[];
   addons: AddonRef[];
-  /** Set when Showroom Ready is chosen instead of a standard package. */
-  showroomHours?: number;
   correction?: CorrectionRef;
 }
 
@@ -67,7 +65,6 @@ export interface CartInput {
 
 export type LineKind =
   | "package"
-  | "showroom"
   | "addon"
   | "correction"
   | "coating"
@@ -108,7 +105,6 @@ export interface Quote {
   payInFullSavingsCents: number;
   payAfterEligible: boolean;
   serviceDurationMin: number;
-  hasShowroom: boolean;
 }
 
 /**
@@ -116,7 +112,7 @@ export interface Quote {
  *
  * ORDER OF OPERATIONS IS LOAD-BEARING:
  *
- *   1. package prices (or Showroom Ready hours), per vehicle
+ *   1. package prices, per vehicle
  *   2. add-ons, flat priced by severity tier, per vehicle
  *   3. paint correction plus any ceramic upgrade, per vehicle
  *   4. combo discount -$15 when ONE VEHICLE gets both interior and exterior
@@ -138,24 +134,9 @@ export function quote(
   year: number = new Date().getFullYear(),
 ): Quote {
   const lines: QuoteLine[] = [];
-  let showroomDeposit = 0;
-  let hasShowroom = false;
 
   cart.vehicles.forEach((vehicle, vi) => {
     const vLines: QuoteLine[] = [];
-
-    if (vehicle.showroomHours && vehicle.showroomHours > 0) {
-      hasShowroom = true;
-      const hrs = Math.max(vehicle.showroomHours, r.showroom.minimumHours);
-      vLines.push({
-        kind: "showroom",
-        label: "Showroom Ready (" + hrs + " hrs at $" + r.showroom.hourlyCents / 100 + "/hr)",
-        vehicleIndex: vi,
-        amountCents: hrs * r.showroom.hourlyCents,
-        durationMin: hrs * 60,
-      });
-      showroomDeposit += r.showroom.depositCents;
-    }
 
     for (const pkg of vehicle.packages) {
       vLines.push({
@@ -278,10 +259,9 @@ export function quote(
   const totalCents = grossTotalCents - payInFullDiscountCents;
 
   // Normally zero: deposits were removed to cut booking friction, and a card
-  // on file is what confirms the slot. Showroom keeps a floor only if one is
-  // configured, so reintroducing deposits stays a rules change, not a rewrite.
-  const pctDeposit = Math.round((totalCents * r.depositBp) / 10_000);
-  const depositCents = Math.max(pctDeposit, showroomDeposit);
+  // on file is what confirms the slot. Kept as a rule so reintroducing them
+  // stays a config change rather than a rewrite.
+  const depositCents = Math.round((totalCents * r.depositBp) / 10_000);
 
   return {
     lines, serviceSubtotalCents, surchargeCents,
@@ -291,6 +271,6 @@ export function quote(
     totalCents, depositCents, balanceCents: totalCents - depositCents,
     payInFullDiscountCents, payInFullSavingsCents,
     payAfterEligible: totalCents <= r.payAfterMaxCents,
-    serviceDurationMin, hasShowroom,
+    serviceDurationMin,
   };
 }

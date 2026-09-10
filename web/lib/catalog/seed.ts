@@ -172,6 +172,7 @@ const PACKAGES: Package[] = [
     featured: false,
     sortOrder: 3,
     supersetOf: "full-interior",
+    pricePlus: true,
   },
 
   /* ---------------- exterior ---------------- */
@@ -217,6 +218,30 @@ const PACKAGES: Package[] = [
     featured: false,
     sortOrder: 3,
     supersetOf: "basic-exterior",
+  },
+  {
+    id: "showroom-exterior",
+    slug: "showroom-exterior",
+    name: "Showroom Ready",
+    category: "exterior",
+    // PRICE TO CONFIRM: mirrors the interior Showroom at $395 because no
+    // separate exterior figure was given. It is an anchor, so the exact
+    // number matters less than that it sits clearly above Full.
+    tagline: "Everything in Full, taken to its limit. Not a paint correction.",
+    priceCents: 39500,
+    durationMin: 420,
+    durationMaxMin: 480,
+    componentIds: [
+      ...BASIC_EXT_IDS,
+      "ext-paint-decon",
+      "ext-water-spot",
+      "ext-engine-bay",
+      "ext-ceramic",
+    ],
+    featured: false,
+    sortOrder: 4,
+    supersetOf: "full-exterior",
+    pricePlus: true,
   },
 ];
 

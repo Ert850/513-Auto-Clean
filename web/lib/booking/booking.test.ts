@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { blockedReason, displaceableBookings, evaluateSlot } from "./provisional.js";
 import {
+  PREFERRED_STARTS,
   computeSlots,
+  computeSlotsTiered,
   matchWindows,
   mergeIntervals,
   subtractIntervals,
@@ -120,6 +122,50 @@ describe("slot fitting", () => {
   it("never starts before notBefore", () => {
     const slots = computeSlots({ ...req, notBefore: at(11) });
     expect(Math.min(...slots)).toBeGreaterThanOrEqual(at(11));
+  });
+});
+
+describe("preferred start times", () => {
+  // Mon 14 Sep 2026 is a weekday; Sat 19 Sep is not.
+  const req = (day: number) => ({
+    openBlocks: [iv(new Date(2026, 8, day, 6).getTime(), new Date(2026, 8, day, 22).getTime())],
+    busy: [],
+    serviceDurationMin: 120,
+    travelBeforeMin: 30,
+    travelAfterMin: 30,
+    granularityMin: 30,
+    notBefore: new Date(2026, 8, day, 0).getTime(),
+    notAfter: new Date(2026, 8, day, 23).getTime(),
+  });
+
+  const hours = (list: number[]) =>
+    list.map((ms) => new Date(ms).getHours() + ":" + String(new Date(ms).getMinutes()).padStart(2, "0"));
+
+  it("offers only Elijah's usual weekday starts", () => {
+    const slots = computeSlots({ ...req(14), preferredStartsMin: PREFERRED_STARTS });
+    expect(hours(slots)).toEqual(["8:00", "10:00", "16:00", "18:00"]);
+  });
+
+  it("drops to two starts at the weekend", () => {
+    const slots = computeSlots({ ...req(19), preferredStartsMin: PREFERRED_STARTS });
+    expect(hours(slots)).toEqual(["10:00", "16:00"]);
+  });
+
+  it("still returns everything else that fits, separately", () => {
+    const { preferred, other } = computeSlotsTiered(req(14));
+    expect(preferred).toHaveLength(4);
+    expect(other.length).toBeGreaterThan(10);
+    // The two lists never overlap, so nothing is offered twice.
+    expect(other.filter((t) => preferred.includes(t))).toEqual([]);
+  });
+
+  it("skips a usual start that no longer fits around a booking", () => {
+    const busyMorning = {
+      ...req(14),
+      busy: [iv(new Date(2026, 8, 14, 7).getTime(), new Date(2026, 8, 14, 13).getTime())],
+    };
+    const slots = computeSlots({ ...busyMorning, preferredStartsMin: PREFERRED_STARTS });
+    expect(hours(slots)).toEqual(["16:00", "18:00"]);
   });
 });
 

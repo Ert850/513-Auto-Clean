@@ -245,16 +245,11 @@ describe("quote engine", () => {
     expect(q.lines.find((l) => l.kind === "addon")?.label).toBe("Stain Treatment: Moderate to major removal");
   });
 
-  it("prices interior Showroom Ready as a fixed package, not by the hour", () => {
+  it("prices Showroom Ready as a flat anchor, with no hourly path left", () => {
     const q = quote(cart({ vehicles: [{ label: "A", packages: [SHOWROOM_INT], addons: [] }] }), R);
     expect(q.serviceSubtotalCents).toBe(39500);
-    expect(q.hasShowroom).toBe(false); // fixed package, not the hourly path
-  });
-
-  it("still prices exterior Showroom Ready hourly with a 6 hour floor", () => {
-    const short = quote(cart({ vehicles: [{ label: "A", packages: [], addons: [], showroomHours: 2 }] }), R);
-    expect(short.serviceSubtotalCents).toBe(60000); // floored to 6 hrs
-    expect(short.hasShowroom).toBe(true);
+    // The anchor only works if it clears Full by a wide margin.
+    expect(SHOWROOM_INT.priceCents).toBeGreaterThan(FULL_INT.priceCents * 1.5);
   });
 
   it("prices paint correction with its ceramic upgrade", () => {

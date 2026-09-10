@@ -52,6 +52,14 @@ export interface Package {
   /** Upper bound where a package is quoted as a range, e.g. 6 to 8 hours. */
   durationMaxMin?: number;
   /**
+   * Render the price as "$395+" rather than "$395".
+   *
+   * Showroom Ready is priced from a floor and settles on inspection. It earns
+   * its place mostly as a high anchor that makes Full read as the sensible
+   * choice, so the plus has to be visible rather than buried in fine print.
+   */
+  pricePlus?: boolean;
+  /**
    * Set when this package contains every component of another, so the UI can
    * say "everything in Full, plus" rather than repeating the whole list.
    */

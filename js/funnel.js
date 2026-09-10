@@ -45,7 +45,11 @@
       payInFull: false,
       notes: '',
       sending: false,
-      done: false
+      done: false,
+      browse: false,
+      browseQ: '',
+      browseMax: null,
+      browseSort: 'price'
     };
   }
   reset();
@@ -124,6 +128,21 @@
   }
 
   function q() { return P.quote(cart(), RULES); }
+
+  /** Showroom is priced from a floor, so its card has to say so. */
+  function pkgPrice(p) { return $(p.priceCents) + (p.pricePlus ? '+' : ''); }
+
+  function pkgDuration(p) {
+    return p.durationMaxMin
+      ? fmtDur(p.durationMin) + ' to ' + fmtDur(p.durationMaxMin)
+      : fmtDur(p.durationMin);
+  }
+
+  /** Every bookable package, both categories, for the browse view. */
+  function allPackages() {
+    return P.packagesFor('interior').concat(P.packagesFor('exterior'))
+      .filter(function (p) { return !p.requiresPriorDetail; });
+  }
 
   function totalDurationMin() { return q().serviceDurationMin; }
 
@@ -230,11 +249,94 @@
       ['exterior', 'Exterior', 'Wash, wheels, paint, protection'],
       ['both', 'Both', 'Inside and out, and you save ' + $(RULES.comboDiscountCents)]
     ];
+    if (state.browse) return rBrowse();
+
     return '<p class="bk-sub">We will only show packages that fit.</p><div class="bk-cards">' +
       opts.map(function (o) {
         return '<button type="button" class="bk-card' + (v.intent === o[0] ? ' on' : '') + '" data-intent="' + o[0] + '">' +
           '<b>' + o[1] + '</b><span>' + o[2] + '</span></button>';
-      }).join('') + '</div>';
+      }).join('') + '</div>' +
+      '<button type="button" class="bk-browsebar" id="bkBrowse">' +
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>' +
+        '<span><b>Browse through all options</b><i>Every package and price, side by side</i></span>' +
+        '<svg class="bk-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M9 6l6 6-6 6"/></svg>' +
+      '</button>';
+  }
+
+  /* ---- browse everything, with search and a price cap ---- */
+
+  function rBrowse() {
+    var list = allPackages();
+    var qs = state.browseQ.trim().toLowerCase();
+
+    if (qs) {
+      // Match the name, the tagline, and what is actually included, so
+      // searching "leather" or "ceramic" finds the package that does it.
+      list = list.filter(function (p) {
+        var hay = (p.name + ' ' + p.tagline + ' ' + p.category + ' ' +
+          P.componentsOf(p, P.CATALOG).map(function (c) { return c.name; }).join(' ')).toLowerCase();
+        return hay.indexOf(qs) > -1;
+      });
+    }
+    if (state.browseMax !== null) {
+      list = list.filter(function (p) { return p.priceCents <= state.browseMax; });
+    }
+    list = list.slice().sort(function (a, b) {
+      if (state.browseSort === 'price') return a.priceCents - b.priceCents;
+      if (state.browseSort === 'priceDesc') return b.priceCents - a.priceCents;
+      return a.durationMin - b.durationMin;
+    });
+
+    var caps = [12500, 21500, 39500];
+    var html = '<div class="bk-browsehead">' +
+      '<div class="bk-search">' +
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>' +
+        '<input type="search" id="bkQ" data-browseq value="' + esc(state.browseQ) + '" placeholder="Search: leather, ceramic, pet hair, wash..." data-focus />' +
+        (state.browseQ ? '<button type="button" class="bk-qclear" id="bkQClear" aria-label="Clear search">&times;</button>' : '') +
+      '</div>' +
+      '<div class="bk-filters">' +
+        '<span class="bk-filtlab">Under</span>' +
+        caps.map(function (c) {
+          return '<button type="button" class="bk-chip' + (state.browseMax === c ? ' on' : '') + '" data-max="' + c + '">' + $(c) + '</button>';
+        }).join('') +
+        '<button type="button" class="bk-chip' + (state.browseMax === null ? ' on' : '') + '" data-max="all">Any</button>' +
+      '</div>' +
+      '<div class="bk-filters">' +
+        '<span class="bk-filtlab">Sort</span>' +
+        '<button type="button" class="bk-chip' + (state.browseSort === 'price' ? ' on' : '') + '" data-sort="price">Price, low first</button>' +
+        '<button type="button" class="bk-chip' + (state.browseSort === 'priceDesc' ? ' on' : '') + '" data-sort="priceDesc">Price, high first</button>' +
+        '<button type="button" class="bk-chip' + (state.browseSort === 'time' ? ' on' : '') + '" data-sort="time">Quickest</button>' +
+      '</div>' +
+    '</div>';
+
+    if (!list.length) {
+      html += '<p class="bk-empty">Nothing matches that. <button type="button" class="bk-morelink" id="bkReset">Clear filters</button></p>';
+    } else {
+      html += '<p class="bk-count">' + list.length + ' package' + (list.length > 1 ? 's' : '') + '</p><div class="bk-pkgs">';
+      list.forEach(function (p) {
+        var comps = P.componentsOf(p, P.CATALOG).map(function (c) { return esc(c.name); });
+        var base = p.supersetOf ? P.findPackage(p.supersetOf) : null;
+        html += '<button type="button" class="bk-pkg" data-browsepick="' + p.id + '">' +
+          '<span class="bk-pkg-l">' +
+            '<b>' + esc(p.name) + '</b>' +
+            '<i class="bk-cat">' + (p.category === 'interior' ? 'Interior' : 'Exterior') + '</i>' +
+            (p.featured ? '<i class="bk-flag">Most popular</i>' : '') +
+            '<span class="bk-pkg-tag">' + esc(p.tagline) + '</span>' +
+            '<span class="bk-pkg-feat">' +
+              (base
+                ? '<em>Everything in ' + esc(base.name) + '</em>, plus ' +
+                  comps.slice(P.componentsOf(base, P.CATALOG).length).join(', ')
+                : comps.join(', ')) +
+            '</span>' +
+          '</span>' +
+          '<span class="bk-pkg-r"><b>' + pkgPrice(p) + '</b><i>' + pkgDuration(p) + '</i></span>' +
+          '</button>';
+      });
+      html += '</div>';
+    }
+
+    html += '<button type="button" class="bk-morelink" id="bkBrowseBack">Back to the quick picker</button>';
+    return html;
   }
   function vIntent() { return veh().intent ? null : 'Pick interior, exterior, or both.'; }
 
@@ -257,9 +359,7 @@
 
         var on = v.packageIds.indexOf(p.id) > -1;
         var comps = P.componentsOf(p, P.CATALOG).map(function (c) { return esc(c.name); });
-        var dur = p.durationMaxMin
-          ? fmtDur(p.durationMin) + ' to ' + fmtDur(p.durationMaxMin)
-          : fmtDur(p.durationMin);
+        var dur = pkgDuration(p);
 
         html += '<button type="button" class="bk-pkg' + (on ? ' on' : '') + '" data-pkg="' + p.id + '" data-cat="' + cat + '">' +
           '<span class="bk-pkg-l">' +
@@ -273,7 +373,7 @@
                 : comps.join(', ')) +
             '</span>' +
           '</span>' +
-          '<span class="bk-pkg-r"><b>' + $(p.priceCents) + '</b><i>' + dur + '</i></span>' +
+          '<span class="bk-pkg-r"><b>' + pkgPrice(p) + '</b><i>' + dur + '</i></span>' +
           '</button>';
       });
       html += '</div>';
@@ -463,7 +563,7 @@
   function paintSlots(box, win, from, to, dur, errMsg) {
     // Flat 30 minute travel allowance until a Maps key gives us real drive
     // time. Deliberately generous so a slot we offer is one we can keep.
-    var slots = P.computeSlots({
+    var req = {
       openBlocks: win.open,
       busy: win.busy,
       serviceDurationMin: dur,
@@ -472,7 +572,12 @@
       granularityMin: 30,
       notBefore: from,
       notAfter: to
-    });
+    };
+    // Lead with the times Elijah actually works. Everything else that fits
+    // stays available behind "show other times".
+    var tiered = P.computeSlotsTiered(req);
+    var slots = tiered.preferred;
+    var otherSlots = tiered.other;
 
     var split = state.preferredWindows.length
       ? P.matchWindows(slots, state.preferredWindows)
@@ -482,6 +587,13 @@
     var fellBack = false;
     if (!primary.length && split.outsidePreferred.length) {
       primary = split.outsidePreferred;
+      fellBack = true;
+    }
+
+    if (!primary.length && otherSlots.length) {
+      // No usual start times fit, so fall straight through to the rest.
+      primary = otherSlots;
+      otherSlots = [];
       fellBack = true;
     }
 
@@ -522,6 +634,16 @@
 
     if (Object.keys(byDay).length > 3) {
       html += '<button type="button" class="bk-morelink" id="bkMoreDays">Show more dates</button>';
+    }
+    if (otherSlots.length) {
+      html += '<button type="button" class="bk-morelink" id="bkOther">Show other times (' + otherSlots.length + ')</button>' +
+        '<div class="bk-otherslots" hidden><h4>Other times that fit</h4><div class="bk-times">' +
+        otherSlots.slice(0, 24).map(function (ms) {
+          var d = new Date(ms);
+          return '<button type="button" class="bk-time" data-slot="' + ms + '">' +
+            d.toLocaleDateString('en-US', { weekday: 'short', month: 'numeric', day: 'numeric' }) +
+            '<i>' + d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) + '</i></button>';
+        }).join('') + '</div></div>';
     }
     box.innerHTML = html;
   }
@@ -667,10 +789,40 @@
   function onClick(e) {
     var t = e.target.closest(
       '[data-size],[data-intent],[data-pkg],[data-addon],[data-clear],[data-win],[data-slot],' +
-      '[data-consent],[data-pay],[data-delveh],#bkAddVeh,#bkMoreDays,#bkNext,#bkBack,#bkClose,#bkScrim'
+      '[data-consent],[data-pay],[data-delveh],[data-browsepick],[data-max],[data-sort],' +
+      '#bkAddVeh,#bkMoreDays,#bkNext,#bkBack,#bkClose,#bkScrim,#bkBrowse,#bkBrowseBack,' +
+      '#bkQClear,#bkReset,#bkOther'
     );
     if (!t) return;
     var v = veh();
+
+    if (t.id === 'bkBrowse') { state.browse = true; return render(); }
+    if (t.id === 'bkBrowseBack') { state.browse = false; return render(); }
+    if (t.id === 'bkQClear') { state.browseQ = ''; return render(); }
+    if (t.id === 'bkReset') { state.browseQ = ''; state.browseMax = null; return render(); }
+    if (t.dataset.max !== undefined) {
+      state.browseMax = t.dataset.max === 'all' ? null : Number(t.dataset.max);
+      return render();
+    }
+    if (t.dataset.sort) { state.browseSort = t.dataset.sort; return render(); }
+
+    // Picking from browse sets intent AND package in one go, then drops the
+    // customer straight into add-ons rather than replaying the two screens
+    // they just skipped.
+    if (t.dataset.browsepick) {
+      var picked = P.findPackage(t.dataset.browsepick);
+      v.intent = picked.category;
+      v.packageIds = [picked.id];
+      v.addons = [];
+      state.browse = false;
+      return go(3);
+    }
+
+    if (t.id === 'bkOther') {
+      root.querySelectorAll('.bk-otherslots').forEach(function (d) { d.hidden = false; });
+      t.remove();
+      return;
+    }
 
     if (t.dataset.size) { v.size = t.dataset.size; return advance(); }
     if (t.dataset.intent) {
@@ -770,6 +922,17 @@
     if (t.dataset.label !== undefined) { state.vehicles[Number(t.dataset.label)].label = t.value; return; }
     if (t.dataset.note === 'loc') { state.locationNote = t.value; return; }
     if (t.dataset.note === 'general') { state.notes = t.value; return; }
+    if (t.hasAttribute('data-browseq')) {
+      state.browseQ = t.value;
+      // Repaint only the results, so the field never loses focus mid-typing.
+      var body = el('bkBody');
+      var scroll = body.scrollTop;
+      body.innerHTML = STEPS[state.step].render();
+      var input = body.querySelector('[data-browseq]');
+      if (input) { input.focus(); input.setSelectionRange(input.value.length, input.value.length); }
+      body.scrollTop = scroll;
+      return;
+    }
   }
 
   /* ---- address autocomplete (Google Places, only if a key is present) ---- */
