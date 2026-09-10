@@ -914,6 +914,52 @@ function lookupZip(zip) {
   return null;
 }
 
+// lib/pricing/promos.ts
+var PROMOS = [
+  {
+    code: "LIKENEW",
+    label: "LIKENEW, 10% off",
+    percentBp: 1e3,
+    active: true,
+    blurb: "10% off your service."
+  }
+];
+function normalisePromo(code) {
+  return String(code ?? "").trim().toUpperCase().replace(/\s+/g, "");
+}
+function findPromo(code, opts = {}) {
+  const wanted = normalisePromo(code);
+  if (!wanted) return { promo: null, rejected: "empty" };
+  const hit = PROMOS.find((p) => normalisePromo(p.code) === wanted);
+  if (!hit || !hit.active) return { promo: null, rejected: "unknown" };
+  if (hit.expiresOn) {
+    const today = opts.today ?? /* @__PURE__ */ new Date();
+    const stamp = today.getFullYear() + "-" + String(today.getMonth() + 1).padStart(2, "0") + "-" + String(today.getDate()).padStart(2, "0");
+    if (stamp > hit.expiresOn) return { promo: null, rejected: "expired" };
+  }
+  if (hit.minServiceCents !== void 0 && opts.serviceCents !== void 0 && opts.serviceCents < hit.minServiceCents) {
+    return { promo: null, rejected: "too_small" };
+  }
+  return { promo: hit, rejected: null };
+}
+function promoDiscountCents(promo, serviceCents) {
+  if (!promo || serviceCents <= 0) return 0;
+  const raw = promo.percentBp ? Math.round(serviceCents * promo.percentBp / 1e4) : promo.amountCents ?? 0;
+  return Math.max(0, Math.min(raw, serviceCents));
+}
+function promoMessage(rejected) {
+  switch (rejected) {
+    case "expired":
+      return "That code has expired.";
+    case "too_small":
+      return "That code needs a larger booking.";
+    case "empty":
+      return "Enter a code.";
+    default:
+      return "We do not recognise that code.";
+  }
+}
+
 // lib/pricing/mileage.ts
 function mileageFeeCents(oneWayMinutes, r) {
   if (!Number.isFinite(oneWayMinutes) || oneWayMinutes <= r.freeMinutes) return 0;
@@ -1012,6 +1058,18 @@ function quote(cart, r, taxTable = SEED_TAX_TABLE, year = (/* @__PURE__ */ new D
       });
     }
   }
+  const beforePromoCents = lines.reduce((s, l) => s + l.amountCents, 0);
+  const promoLookup = cart.promoCode ? findPromo(cart.promoCode, { serviceCents: beforePromoCents }) : { promo: null, rejected: null };
+  const promoDiscountCents2 = promoDiscountCents(promoLookup.promo, beforePromoCents);
+  if (promoDiscountCents2 > 0 && promoLookup.promo) {
+    lines.push({
+      kind: "promo_discount",
+      label: promoLookup.promo.label,
+      vehicleIndex: null,
+      amountCents: -promoDiscountCents2,
+      durationMin: 0
+    });
+  }
   const serviceSubtotalCents = lines.reduce((s, l) => s + l.amountCents, 0);
   const serviceDurationMin = lines.reduce((s, l) => s + l.durationMin, 0);
   const multiVehicleDiscountCents = -lines.filter((l) => l.kind === "additional_vehicle_discount").reduce((s, l) => s + l.amountCents, 0);
@@ -1067,6 +1125,9 @@ function quote(cart, r, taxTable = SEED_TAX_TABLE, year = (/* @__PURE__ */ new D
   const grossBeforeMultiCents = multiVehicleDiscountCents > 0 ? quote(cart, { ...r, additionalVehicleDiscountBp: 0 }, taxTable, year).totalCents : totalCents;
   const depositCents = Math.round(totalCents * r.depositBp / 1e4);
   return {
+    promoCode: promoLookup.promo ? promoLookup.promo.code : null,
+    promoDiscountCents: promoDiscountCents2,
+    promoRejected: promoLookup.rejected,
     lines,
     serviceSubtotalCents,
     surchargeCents,
@@ -1489,6 +1550,7 @@ function priceFromWire(wire) {
     surchargeContext: wire.slot ? { startMinutesLocal: localMinutesOfDay(wire.slot), priorityBooking: Boolean(wire.priority) } : wire.priority ? { startMinutesLocal: minutesOfDay(12), priorityBooking: true } : null,
     zip: wire.zip ?? null,
     ...wire.payInFull ? { payInFull: true } : {},
+    ...wire.promoCode ? { promoCode: wire.promoCode } : {},
     ...wire.visits ? { visits: Math.max(1, Math.min(wire.visits, wire.vehicles.length || 1)) } : {}
   };
   const q = quote(cart, DEFAULT_RULES, SEED_TAX_TABLE);
@@ -1497,6 +1559,8 @@ function priceFromWire(wire) {
     serviceSubtotalCents: q.serviceSubtotalCents,
     surchargeBp: q.surchargeBp,
     serviceDurationMin: q.serviceDurationMin,
+    promoCode: q.promoCode,
+    promoDiscountCents: q.promoDiscountCents,
     lines: q.lines.map((l) => ({ label: l.label, amountCents: l.amountCents })),
     rejected
   };
@@ -1511,6 +1575,7 @@ export {
   DEFAULT_RULES,
   MAINTENANCE_PLAN,
   MAX_ONE_WAY_MINUTES,
+  PROMOS,
   SEED_CATALOG,
   VEHICLE_SIZES,
   addonIcon,
@@ -1518,13 +1583,17 @@ export {
   componentsOf,
   findAddon,
   findPackage,
+  findPromo,
   isSelectable,
   isUnpriced,
   mergeBusy,
   mileageFeeCents,
+  normalisePromo,
   packagesFor,
   parseIcsBusy,
   priceFromWire,
+  promoDiscountCents,
+  promoMessage,
   quote,
   unavailableReason,
   vehicleSize

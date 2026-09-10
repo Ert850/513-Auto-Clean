@@ -1,3 +1,9 @@
+import {
+  findPromo,
+  promoDiscountCents as promoValueCents,
+  type PromoRejection,
+  type PromoResult,
+} from "./promos.js";
 import { mileageFeeCents } from "./mileage.js";
 import type { PricingRules } from "./rules.js";
 import { applySurchargeCents, computeSurcharge, type SurchargeContext } from "./surcharge.js";
@@ -65,6 +71,11 @@ export interface CartInput {
   /** Customer chose to settle the whole thing now, which earns a discount. */
   payInFull?: boolean;
   /**
+   * Promo code as typed. Looked up here, never trusted as an amount: the
+   * browser sends letters and the engine decides what they are worth.
+   */
+  promoCode?: string | null;
+  /**
    * Separate trips. Normally 1, because every vehicle is done in one visit.
    * Two vehicles booked at different times means driving out twice, so travel
    * is charged twice.
@@ -80,6 +91,7 @@ export type LineKind =
   | "canopy"
   | "size_upcharge"
   | "combo_discount"
+  | "promo_discount"
   | "pay_in_full_discount"
   | "additional_vehicle_discount"
   | "surcharge"
@@ -98,6 +110,11 @@ export interface Quote {
   lines: QuoteLine[];
   serviceSubtotalCents: number;
   surchargeCents: number;
+  /** The code that actually applied, normalised. Null when none did. */
+  promoCode: string | null;
+  promoDiscountCents: number;
+  /** Why a supplied code did not apply, for the message shown to the customer. */
+  promoRejected: PromoRejection | null;
   surchargeBp: number;
   surchargeCapped: boolean;
   travelCents: number;
@@ -233,6 +250,26 @@ export function quote(
     }
   }
 
+  // The promo comes off the SERVICE, after every other discount and before
+  // travel and tax. Travel is a pass-through cost rather than margin, so
+  // discounting it would mean paying for the privilege of driving.
+  const beforePromoCents = lines.reduce((s, l) => s + l.amountCents, 0);
+  const promoLookup: PromoResult = cart.promoCode
+    ? findPromo(cart.promoCode, { serviceCents: beforePromoCents })
+    : { promo: null, rejected: null };
+
+  const promoDiscountCents = promoValueCents(promoLookup.promo, beforePromoCents);
+
+  if (promoDiscountCents > 0 && promoLookup.promo) {
+    lines.push({
+      kind: "promo_discount",
+      label: promoLookup.promo.label,
+      vehicleIndex: null,
+      amountCents: -promoDiscountCents,
+      durationMin: 0,
+    });
+  }
+
   const serviceSubtotalCents = lines.reduce((s, l) => s + l.amountCents, 0);
   const serviceDurationMin = lines.reduce((s, l) => s + l.durationMin, 0);
   const multiVehicleDiscountCents = -lines
@@ -310,6 +347,9 @@ export function quote(
   const depositCents = Math.round((totalCents * r.depositBp) / 10_000);
 
   return {
+    promoCode: promoLookup.promo ? promoLookup.promo.code : null,
+    promoDiscountCents,
+    promoRejected: promoLookup.rejected,
     lines, serviceSubtotalCents, surchargeCents,
     surchargeBp: bd.appliedBp, surchargeCapped: bd.capped,
     travelCents, travelIsEstimate,

@@ -169,6 +169,50 @@ body.bk-open { overflow: hidden; }
 }
 .bk-clear:hover { color: var(--red); }
 
+/* ---------- promo code ---------- */
+/* Collapsed to a link until asked for. A visible empty discount box is an
+   invitation to abandon checkout and go looking for a code. */
+.bk-promolink {
+  display: block; margin: .8rem 0 0; padding: 0; font: inherit; font-size: .85rem;
+  color: var(--text-soft); text-decoration: underline; text-underline-offset: 3px;
+  background: none; border: 0; cursor: pointer;
+}
+.bk-promolink:hover { color: var(--red); }
+
+.bk-promo { margin-top: .9rem; }
+.bk-promo label { display: block; font-size: .8rem; font-weight: 700; margin-bottom: .35rem; }
+.bk-promo-row { display: flex; gap: .5rem; }
+.bk-promo-row input {
+  flex: 1; min-width: 0; font: inherit; font-size: .92rem; letter-spacing: .06em;
+  text-transform: uppercase;
+  border: 1.5px solid var(--line); border-radius: var(--r-sm); padding: .65rem .8rem;
+  background: var(--paper);
+}
+.bk-promo-row input:focus { outline: 2px solid var(--red); outline-offset: 1px; border-color: transparent; }
+.bk-promo-go {
+  flex: none; font: inherit; font-size: .88rem; font-weight: 700; cursor: pointer;
+  padding: .65rem 1.1rem; border-radius: var(--r-sm);
+  border: 1.5px solid var(--ink); background: var(--ink); color: #fff;
+}
+.bk-promo-go:hover { background: var(--red); border-color: var(--red); }
+.bk-promo-err { margin: .4rem 0 0; font-size: .8rem; color: var(--red-deep); }
+
+.bk-promo.on {
+  display: flex; align-items: center; flex-wrap: wrap; gap: .5rem;
+  background: rgba(47,158,94,.10); border: 1px solid rgba(47,158,94,.35);
+  border-radius: var(--r-sm); padding: .6rem .75rem;
+}
+.bk-promo-tag {
+  font-weight: 800; font-size: .78rem; letter-spacing: .08em;
+  background: #2f9e5e; color: #fff; border-radius: 999px; padding: .2rem .6rem;
+}
+.bk-promo-msg { flex: 1; min-width: 0; font-size: .84rem; color: var(--text); }
+.bk-promo-clear {
+  flex: none; font: inherit; font-size: .8rem; color: var(--text-soft);
+  background: none; border: 0; cursor: pointer; text-decoration: underline;
+}
+.bk-promo-clear:hover { color: var(--red); }
+
 .bk-tiers { display: grid; gap: .45rem; }
 .bk-tier {
   display: flex; align-items: center; justify-content: space-between; gap: .8rem;
