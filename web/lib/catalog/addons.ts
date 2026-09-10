@@ -349,6 +349,19 @@ export const COATING_EXPLAINER = {
     "Remove defects that are already there. Whatever the paint looks like when it goes on is what gets sealed in, which is why correction comes first",
     "Mean you never wash the car again. It means washing is quicker and the results last",
   ],
+  /**
+   * Answers "why does it cost that much" before it is asked. Almost all of
+   * the price is hours, and correction cannot be rushed: it is levelling
+   * paint by hand, in passes, checking under lights between each one.
+   */
+  timing: [
+    "Coating only, about 9 hours. Wash, decontaminate, clay, panel wipe, then apply and level the coating by hand and let it cure.",
+    "1 step correction, about 16 hours, usually across two days.",
+    "2 step correction, about 22 hours, two to three days.",
+    "3 to 4 step correction, about 34 hours, three to four days.",
+  ],
+  timingNote:
+    "Nearly all of that is labour. Correction is levelling paint by hand, one pass at a time, checking under inspection lighting between each, and hard paint can add another 20 to 30% on top. The coating itself then has to be applied and levelled panel by panel before it flashes.",
   why:
     "Worth it if you keep your vehicles a while, park outside, or are tired of the paint looking tired. If you are about to sell, or the car lives in a garage and rarely gets dirty, a sealant is usually the better value.",
 };

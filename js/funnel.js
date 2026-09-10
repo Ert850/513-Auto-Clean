@@ -635,6 +635,9 @@
         X.does.map(function (d) { return '<li>' + esc(d) + '</li>'; }).join('') + '</ul>' +
         '<p class="bk-explain-h">What it does not do</p><ul class="no">' +
         X.doesNot.map(function (d) { return '<li>' + esc(d) + '</li>'; }).join('') + '</ul>' +
+        '<p class="bk-explain-h">How long it takes</p><ul class="time">' +
+        X.timing.map(function (d) { return '<li>' + esc(d) + '</li>'; }).join('') + '</ul>' +
+        '<p>' + esc(X.timingNote) + '</p>' +
         '<p class="bk-explain-why">' + esc(X.why) + '</p>' +
       '</details>' +
       '<h3 class="bk-grp">Choose your correction level</h3>' +
@@ -1806,11 +1809,25 @@
       a.addEventListener('click', function (e) {
         e.preventDefault();
         open();
+
         // "View Services" lands on the full catalogue rather than step one.
         if (a.hasAttribute('data-book-browse')) {
           state.step = 1;
           state.browse = true;
-          render();
+          return render();
+        }
+
+        // "Book Basic Exterior" and friends: treat it exactly as if they had
+        // picked that package inside the funnel, so the next thing asked is
+        // the size question rather than a category they already chose.
+        var id = a.getAttribute('data-book-package');
+        var picked = id ? P.findPackage(id) : null;
+        if (picked) {
+          var v = veh();
+          v.intent = picked.category;
+          v.packageIds = [picked.id];
+          v.addons = [];
+          return go(0);
         }
       });
     });

@@ -644,6 +644,14 @@ html.scrolling-fast .reveal { transition: none; transition-delay: 0s; }
 }
 @media (min-width: 820px) {
   .svc-grid { grid-template-columns: repeat(3, 1fr); }
+  /* The correction package spans the row underneath, laid out sideways so a
+     full width card does not become a tall empty box. */
+  .svc-card.wide { grid-column: 1 / -1; }
+  .svc-card.wide { display: grid; grid-template-columns: 1.15fr 1fr; column-gap: 2rem; align-items: start; }
+  .svc-card.wide h3, .svc-card.wide .svc-meta, .svc-card.wide .svc-desc { grid-column: 1; }
+  .svc-card.wide .feat { grid-column: 2; grid-row: 1 / span 4; margin-top: .2rem; }
+  .svc-card.wide .svc-how { grid-column: 1; }
+  .svc-card.wide .svc-foot { grid-column: 1; max-width: 22rem; }
   .steps { grid-template-columns: repeat(3, 1fr); }
   .rev-grid { grid-template-columns: repeat(3, 1fr); }
   .area-grid { grid-template-columns: repeat(3, 1fr); }
@@ -909,3 +917,10 @@ html.scrolling-fast .reveal { transition: none; transition-delay: 0s; }
 .svc-explain ul.ex-yes li::marker { color: #1a8a3f; }
 .svc-explain ul.ex-no li::marker { color: var(--red); }
 .svc-explain .ex-why { font-style: italic; border-top: 1px solid var(--line); padding-top: .8rem; margin-top: 1rem; }
+
+.svc-correction .feat li { display: block; }
+.svc-correction .feat li svg { display: none; }
+.svc-correction .corr-price { color: var(--red); font-family: var(--font-display); margin-left: .4rem; }
+.svc-correction .corr-meta { display: block; font-size: .82rem; color: var(--text-soft); margin-top: .15rem; }
+
+.svc-explain ul.ex-time li::marker { color: var(--amber); }
