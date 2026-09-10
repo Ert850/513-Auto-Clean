@@ -86,7 +86,7 @@ const COMPONENTS: ServiceComponent[] = [
   c("ext-clay-towel", "Clay towel", "exterior", 30),
   c("ext-water-spot", "Hard water spot treatment", "exterior", 30),
   c("ext-engine-bay", "Engine bay clean and protect", "exterior", 30),
-  c("ext-ceramic", "Ceramic sealant applied", "exterior", 45),
+  c("ext-ceramic", "Ceramic wax sealant applied", "exterior", 45),
 ];
 
 const BASIC_INT_IDS = ["int-blowout", "int-mats-clean", "int-surfaces", "int-grime"];
@@ -206,7 +206,7 @@ const PACKAGES: Package[] = [
     category: "exterior",
     tagline: "A thorough hand wash with wheels and tires done properly.",
     note:
-      "A pre-wash to lift the loose grit before anything touches the paint, bug removal, a proper hand wash, blow dry and towel dry, and the wheels done properly: hubcaps, tires and wheel wells scrubbed, then tires dressed. It does NOT decontaminate or clay the paint, remove water spotting, clean the engine bay, or leave a ceramic sealant on it. The paint is clean but still not smooth, and there is no lasting protection. That is the step up to Full.",
+      "A pre-wash to lift the loose grit before anything touches the paint, bug removal, a proper hand wash, blow dry and towel dry, and the wheels done properly: hubcaps, tires and wheel wells scrubbed, then tires dressed. It does NOT decontaminate or clay the paint, remove water spotting, clean the engine bay, or leave a ceramic wax sealant on it. The paint is clean but still not smooth, and there is no lasting protection. That is the step up to Full.",
     priceCents: 11500,
     durationMin: 120,
     componentIds: [...BASIC_EXT_IDS],
@@ -219,9 +219,9 @@ const PACKAGES: Package[] = [
     name: "Full Exterior",
     category: "exterior",
     tagline:
-      "Strips what a wash cannot reach, then protects the paint underneath. Decontaminated, clayed, engine bay cleaned and sealed with ceramic.",
+      "Strips what a wash cannot reach, then protects the paint underneath. Decontaminated, clayed, engine bay cleaned and finished with a ceramic wax sealant.",
     note:
-      "Everything in Basic, then the paint is actually decontaminated: iron and fallout dissolved chemically, a clay towel to shear off what is left, hard water spotting treated, the engine bay cleaned and protected, and a ceramic sealant applied so water beads and dirt struggles to stick. It does NOT correct the paint. Swirl marks, scratches and etching stay exactly as they are, and the sealant goes on over the top of them. Removing those means machine polishing, which is Showroom Ready.",
+      "Everything in Basic, then the paint is actually decontaminated: iron and fallout dissolved chemically, a clay towel to shear off what is left, hard water spotting treated, the engine bay cleaned and protected, and a ceramic wax sealant applied so water beads and dirt struggles to stick. It does NOT correct the paint. Swirl marks, scratches and etching stay exactly as they are, and the sealant goes on over the top of them. Removing those means machine polishing, which is Showroom Ready.",
     priceCents: 21000,
     durationMin: 240,
     componentIds: [

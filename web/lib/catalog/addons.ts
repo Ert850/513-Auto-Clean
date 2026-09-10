@@ -41,9 +41,22 @@ export interface Addon {
   /**
    * Listed but not bookable. Used for work Elijah is not ready to take on,
    * so the capability is visible without the risk of someone buying it.
+   *
+   * An unavailable add-on still shows its price. Withholding the number does
+   * not stop anyone wanting the work, it only stops them knowing whether it
+   * is in their budget when it opens up.
    */
   unavailable?: boolean;
   unavailableNote?: string;
+  /**
+   * Packages that already contain this work. Most exterior add-ons are also
+   * components of Full Exterior, and selling one on top of the other charges
+   * twice for the same job.
+   *
+   * The message names the package rather than deriving it, because importing
+   * the package catalog here would make the two modules circular.
+   */
+  includedIn?: { packageIds: string[]; message: string };
   /** See ServiceComponent.videoUrl. Reserved for the (i) markers. */
   videoUrl?: string;
   /**
@@ -63,6 +76,23 @@ export interface Addon {
   /** Shown when the requirement is unmet, in place of a bare disabled state. */
   requirementMessage?: string;
 }
+
+/**
+ * Correction and coating prices, on top of the Full Exterior base.
+ *
+ * Declared here rather than only inside CORRECTION_TIERS because the Add-ons
+ * table quotes the same work at the same numbers. One constant, so the tier
+ * list and the add-on list cannot drift apart.
+ */
+export const CORRECTION_ADD_CENTS = {
+  coatingOnly: 55000,
+  oneStep: 85000,
+  twoStep: 149500,
+  threeStep: 225000,
+} as const;
+
+/** Shown on everything gated behind Elijah building up his correction setup. */
+const CORRECTION_SOON = "Temporarily unavailable.";
 
 export const ADDONS: Addon[] = [
   /* ---------------- interior ---------------- */
@@ -160,7 +190,11 @@ export const ADDONS: Addon[] = [
     description: "Deep clean and dress the tires and rims.",
     note:
       "Brake dust is not dirt, it is hot metal particles that embed themselves into the wheel finish. A dedicated cleaner dissolves the iron so it rinses off instead of being scrubbed in, then the tire gets a dressing that blocks UV, which is what causes the browning and cracking on sidewalls.",
-    tiers: [{ id: "std", label: "All four", priceCents: null, durationMin: 30 }],
+    includedIn: {
+      packageIds: ["basic-exterior", "full-exterior", "showroom-exterior"],
+      message: "Already included from Basic Exterior up. No need to add it.",
+    },
+    tiers: [{ id: "std", label: "All four", priceCents: 3500, durationMin: 30 }],
   },
   {
     id: "paint-decon",
@@ -169,7 +203,11 @@ export const ADDONS: Addon[] = [
     description: "Chemical decontamination to strip embedded iron and fallout.",
     note:
       "Paint that still feels rough after a wash is holding contamination the soap cannot lift: rail dust, industrial fallout and brake particles that have bonded to the clear coat. An iron remover dissolves them chemically. Skipping this before any polish or coating means grinding those particles into the paint.",
-    tiers: [{ id: "std", label: "Full vehicle", priceCents: null, durationMin: 45 }],
+    includedIn: {
+      packageIds: ["full-exterior", "showroom-exterior"],
+      message: "Already included in Full Exterior. No need to add it.",
+    },
+    tiers: [{ id: "std", label: "Full vehicle", priceCents: 4500, durationMin: 45 }],
   },
   {
     id: "clay-bar",
@@ -178,7 +216,17 @@ export const ADDONS: Addon[] = [
     description: "Mechanically lifts anything decontamination leaves behind, all panels.",
     note:
       "Chemical decon handles metal particles; clay handles everything else, like overspray, tree sap residue and road film. It shears the bonded contamination off the surface as it glides, always on a wet panel so nothing gets dragged. The paint goes from feeling like fine sandpaper to feeling like glass.",
-    tiers: [{ id: "std", label: "All panels", priceCents: null, durationMin: 60 }],
+    includedIn: {
+      packageIds: ["full-exterior", "showroom-exterior"],
+      message: "Already included in Full Exterior. No need to add it.",
+    },
+    // Claying paint that has not been chemically decontaminated first drags
+    // bonded iron across the clear coat, so the two are sold together, the
+    // same way ozone is gated behind stain work.
+    requiresAnyAddonTier: [{ addonId: "paint-decon", tierIds: ["std"] }],
+    requirementMessage:
+      "Clay goes on after the chemical decontamination, never before it. Add Paint Decontamination first, or step up to Full Exterior, which includes both.",
+    tiers: [{ id: "std", label: "All panels", priceCents: 4500, durationMin: 60 }],
   },
   {
     id: "hard-water",
@@ -187,7 +235,11 @@ export const ADDONS: Addon[] = [
     description: "For etched sprinkler and well water spotting on paint and glass.",
     note:
       "Hard water leaves dissolved minerals behind when it dries, and in sun those minerals etch a ring into the clear coat. Caught early a mild acid dissolves them off. Left long enough the etching is physical damage in the paint and needs polishing out, which is a correction job rather than this one.",
-    tiers: [{ id: "std", label: "Full vehicle", priceCents: null, durationMin: 60 }],
+    includedIn: {
+      packageIds: ["full-exterior", "showroom-exterior"],
+      message: "Already included in Full Exterior. No need to add it.",
+    },
+    tiers: [{ id: "std", label: "Full vehicle", priceCents: 5000, durationMin: 60 }],
   },
   {
     id: "engine-bay",
@@ -196,16 +248,28 @@ export const ADDONS: Addon[] = [
     description: "Cleaned, dressed and protected.",
     note:
       "Sensitive electronics get covered first, then a degreaser is left to dwell and agitated by hand rather than blasted with a pressure washer, which is how water finds its way into connectors. Everything is blown dry and the plastics and hoses get a dressing that stops them fading and cracking under engine heat.",
-    tiers: [{ id: "std", label: "Engine bay", priceCents: null, durationMin: 30 }],
+    includedIn: {
+      packageIds: ["full-exterior", "showroom-exterior"],
+      message: "Already included in Full Exterior. No need to add it.",
+    },
+    tiers: [{ id: "std", label: "Engine bay", priceCents: 5000, durationMin: 30 }],
   },
   {
     id: "ceramic-sealant",
-    name: "Ceramic Sealant",
+    // "Ceramic Wax Sealant", never "Ceramic Coating". Those are months against
+    // years of durability and hundreds of dollars apart, and the industry
+    // blurs the two constantly.
+    name: "Ceramic Wax Sealant",
     scope: "exterior",
-    description: "Six months or so of gloss and beading, applied over clean paint.",
+    description:
+      "Six months or so of gloss and beading, applied over clean paint. A wax sealant, not a ceramic coating.",
     note:
-      "A sprayable sealant that bonds to the clear coat and leaves a slick, hydrophobic layer. Water beads and rolls off instead of sheeting and drying into spots, and dirt struggles to key onto the surface, so the car stays cleaner between washes. Far quicker than a coating, and it does not need the paint corrected first.",
-    tiers: [{ id: "std", label: "Full vehicle", priceCents: null, durationMin: 45 }],
+      "A sprayable ceramic infused wax that bonds to the clear coat and leaves a slick, hydrophobic layer. Water beads and rolls off instead of sheeting and drying into spots, and dirt struggles to key onto the surface, so the car stays cleaner between washes. This is not a ceramic coating: a coating cures hard, lasts years, and needs the paint corrected first. This goes on in under an hour, lasts about six months, and can be topped up whenever you like.",
+    includedIn: {
+      packageIds: ["full-exterior", "showroom-exterior"],
+      message: "Already included in Full Exterior. No need to add it.",
+    },
+    tiers: [{ id: "std", label: "Full vehicle", priceCents: 3500, durationMin: 45 }],
   },
   {
     id: "ceramic-coating",
@@ -217,7 +281,14 @@ export const ADDONS: Addon[] = [
     unavailable: true,
     unavailableNote:
       "Booked through Showroom Ready Exterior, which includes the prep a coating needs.",
-    tiers: [{ id: "std", label: "Full vehicle", priceCents: null, durationMin: 300 }],
+    tiers: [
+      {
+        id: "std",
+        label: "Coating only, no correction",
+        priceCents: CORRECTION_ADD_CENTS.coatingOnly,
+        durationMin: 300,
+      },
+    ],
   },
   {
     id: "paint-polish",
@@ -227,8 +298,15 @@ export const ADDONS: Addon[] = [
     note:
       "Swirl marks are thousands of fine scratches in the clear coat, usually from washing. A polish uses an abrasive on a machine pad to level a microscopic amount of clear coat down to the base of those scratches, so they stop catching light. It is removing material, which is why it is done sparingly and by someone who knows how much is there.",
     unavailable: true,
-    unavailableNote: "Temporarily unavailable while we build up our correction setup.",
-    tiers: [{ id: "std", label: "Single stage", priceCents: null, durationMin: 300 }],
+    unavailableNote: CORRECTION_SOON,
+    tiers: [
+      {
+        id: "std",
+        label: "1 step, with coating",
+        priceCents: CORRECTION_ADD_CENTS.oneStep,
+        durationMin: 12 * 60,
+      },
+    ],
   },
   {
     id: "paint-correction",
@@ -238,8 +316,21 @@ export const ADDONS: Addon[] = [
     note:
       "Correction is polishing taken further: a cutting compound removes the defect, then progressively finer passes remove the haze the cutting itself leaves behind. Two and three stage work is how you get a finish that holds up under direct light rather than only looking right in the shade.",
     unavailable: true,
-    unavailableNote: "Temporarily unavailable. Available inside Showroom Ready Exterior.",
-    tiers: [{ id: "std", label: "Multi stage", priceCents: null, durationMin: 600 }],
+    unavailableNote: CORRECTION_SOON,
+    tiers: [
+      {
+        id: "two-step",
+        label: "2 step, with coating",
+        priceCents: CORRECTION_ADD_CENTS.twoStep,
+        durationMin: 18 * 60,
+      },
+      {
+        id: "three-step",
+        label: "3 to 4 step, with coating",
+        priceCents: CORRECTION_ADD_CENTS.threeStep,
+        durationMin: 30 * 60,
+      },
+    ],
   },
 ];
 
@@ -281,6 +372,12 @@ export function addonBlockedReason(
   a: Addon,
   ctx: { packageIds: string[]; addonTiers: { addonId: string; tierId: string }[] },
 ): string | null {
+  // Checked first: telling someone what is missing is pointless when the work
+  // is already paid for inside the package they picked.
+  if (a.includedIn && a.includedIn.packageIds.some((id) => ctx.packageIds.includes(id))) {
+    return a.includedIn.message;
+  }
+
   const needsPackage = a.requiresAnyPackageId?.length ? a.requiresAnyPackageId : null;
   const needsAddon = a.requiresAnyAddonTier?.length ? a.requiresAnyAddonTier : null;
   if (!needsPackage && !needsAddon) return null;
@@ -382,7 +479,7 @@ export const CORRECTION_TIERS: CorrectionTier[] = [
   {
     id: "coating-only",
     label: "Ceramic coating only",
-    addCents: 55000,
+    addCents: CORRECTION_ADD_CENTS.coatingOnly,
     addMin: 5 * 60,
     result: "3 to 5 years of protection, no correction",
     detail:
@@ -392,7 +489,7 @@ export const CORRECTION_TIERS: CorrectionTier[] = [
   {
     id: "one-step",
     label: "1 step paint correction, then coating",
-    addCents: 85000,
+    addCents: CORRECTION_ADD_CENTS.oneStep,
     addMin: 12 * 60,
     result: "Looks perfect from about 5 feet away",
     detail:
@@ -402,7 +499,7 @@ export const CORRECTION_TIERS: CorrectionTier[] = [
   {
     id: "two-step",
     label: "2 step paint correction, then coating",
-    addCents: 149500,
+    addCents: CORRECTION_ADD_CENTS.twoStep,
     addMin: 18 * 60,
     result: "Looks perfect from about 2 feet away",
     detail:
@@ -412,7 +509,7 @@ export const CORRECTION_TIERS: CorrectionTier[] = [
   {
     id: "three-step",
     label: "3 to 4 step paint correction, then coating",
-    addCents: 225000,
+    addCents: CORRECTION_ADD_CENTS.threeStep,
     addMin: 30 * 60,
     result: "Removes 90%+ of all defects, reflective trim included",
     detail:

@@ -175,6 +175,14 @@ body.bk-open { overflow: hidden; }
 .bk-tier-l { font-size: .89rem; font-weight: 700; }
 .bk-tier-l i { display: block; font-style: normal; font-weight: 400; font-size: .79rem; color: var(--text-soft); margin-top: .15rem; line-height: 1.45; }
 .bk-tier-p { font-weight: 800; font-size: .92rem; flex: none; }
+/* A tier that is priced but not bookable yet. A span, not a button, so it
+   cannot be clicked or tabbed to; it is there to answer "what would this
+   cost" and nothing else. */
+.bk-tier.is-off {
+  cursor: default; border-style: dashed; background: transparent; color: var(--text-soft);
+  margin-bottom: .5rem;
+}
+.bk-tier.is-off:hover { border-color: var(--line); }
 
 /* ---------- fields ---------- */
 .bk-field { margin-bottom: .9rem; position: relative; }

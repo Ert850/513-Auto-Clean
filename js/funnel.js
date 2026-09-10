@@ -217,10 +217,15 @@
     P.ADDONS.forEach(function (a) {
       var why = P.unavailableReason(a);
       if (why) {
-        // Listed so the capability is visible, but not pickable.
+        // Listed so the capability is visible, but not pickable. The price
+        // still shows: the answer to "is this even in my range" should not
+        // require sending a message.
+        var pr0 = a.tiers.filter(function (t) { return t.priceCents !== null; });
         out.push({
           kind: 'addon', id: a.id, tierId: a.tiers[0].id, name: a.name,
-          category: a.scope, priceCents: null, pricePlus: false,
+          category: a.scope,
+          priceCents: pr0.length ? pr0[0].priceCents : null,
+          pricePlus: pr0.length > 1,
           durationMin: 0, tagline: a.description, featured: false,
           unavailable: why, detail: '',
           search: a.name + ' ' + a.description + ' ' + a.scope
@@ -483,6 +488,12 @@
     var pOf = function (i) { return i.priceCents === null ? Infinity : i.priceCents; };
     list = list.slice().sort(function (a, b) {
       if (a.unavailable !== b.unavailable) return a.unavailable ? 1 : -1;
+      if (state.browseSort === 'popular') {
+        var d = P.popularityOf(b.id) - P.popularityOf(a.id);
+        // Ties break on price so the order is stable rather than arbitrary,
+        // which matters while the ranking is still a hand written seed.
+        return d !== 0 ? d : pOf(a) - pOf(b);
+      }
       if (state.browseSort === 'price') return pOf(a) - pOf(b);
       if (state.browseSort === 'priceDesc') return pOf(b) - pOf(a);
       return a.durationMin - b.durationMin;
@@ -520,6 +531,7 @@
       '</div>' +
       '<div class="bk-filters">' +
         '<span class="bk-filtlab">Sort</span>' +
+        '<button type="button" class="bk-chip' + (state.browseSort === 'popular' ? ' on' : '') + '" data-sort="popular">Most popular</button>' +
         '<button type="button" class="bk-chip' + (state.browseSort === 'price' ? ' on' : '') + '" data-sort="price">Price, low first</button>' +
         '<button type="button" class="bk-chip' + (state.browseSort === 'priceDesc' ? ' on' : '') + '" data-sort="priceDesc">Price, high first</button>' +
         '<button type="button" class="bk-chip' + (state.browseSort === 'time' ? ' on' : '') + '" data-sort="time">Quickest</button>' +
@@ -724,6 +736,17 @@
             : '');
 
         if (unavailable) {
+          // Same reasoning as the browse list: show what it costs, then say
+          // why it cannot be booked today.
+          var shown = a.tiers.filter(function (t) { return t.priceCents !== null; });
+          if (shown.length) {
+            html += '<div class="bk-tiers' + (shown.length > 1 ? ' multi' : '') + '">' +
+              shown.map(function (t) {
+                return '<span class="bk-tier is-off">' +
+                  '<span class="bk-tier-l">' + esc(t.label) + '</span>' +
+                  '<span class="bk-tier-p">' + $(t.priceCents) + '</span></span>';
+              }).join('') + '</div>';
+          }
           html += '<p class="bk-addon-block">*' + esc(unavailable) + '</p>';
         } else if (blocked) {
           html += '<p class="bk-addon-block">' + esc(blocked) + '</p>';

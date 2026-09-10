@@ -69,6 +69,8 @@ import {
   requiresPriorityBooking,
 } from "./pricing/surcharge.js";
 import { quote } from "./pricing/quote.js";
+import { popularityOf } from "./catalog/popularity.js";
+import { ZIP_GEO, zipGeo } from "./travel/zipGeo.js";
 import { ZIP_RANGES, estimateOneWayMinutes, lookupZip } from "./travel/zipRanges.js";
 
 /** Format integer cents as $1,234.50, or $1,234 when it lands on the dollar. */
@@ -125,8 +127,11 @@ const api = {
   subtractIntervals,
   quote,
   ZIP_RANGES,
+  ZIP_GEO,
+  zipGeo,
   estimateOneWayMinutes,
   lookupZip,
+  popularityOf,
   mileageFeeCents,
   averageOneWayMinutes,
   travelCommitmentMinutes,
