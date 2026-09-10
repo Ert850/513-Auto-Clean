@@ -378,9 +378,10 @@ var CORRECTION_RULES = {
   weekendOnly: true,
   allowedStartsMin: [8 * 60, 10 * 60],
   /**
-   * Only the first day gets scheduled. The rest is arranged directly, because
-   * a 30 hour job cannot sit in one calendar slot and pretending otherwise
-   * would block a fortnight of availability.
+   * Kept for the shape of an old booking record. NOT used for scheduling any
+   * more: a long job is planned across consecutive days by planDays in
+   * lib/availability/multiDay.ts, rather than having its first morning
+   * booked and the rest left to a phone call.
    */
   firstDayMin: 8 * 60,
   garageRequired: true,
@@ -1193,8 +1194,7 @@ function addonIcon(name) {
   return name && ADDON_ICONS[name] || '<circle cx="12" cy="12" r="8.5"/>';
 }
 
-// lib/booking/ics.ts
-var DAY_MS = 864e5;
+// lib/time/zone.ts
 function zoneOffsetMs(utcMs, timeZone) {
   const dtf = new Intl.DateTimeFormat("en-US", {
     timeZone,
@@ -1226,6 +1226,9 @@ function zonedToUtc(y, mo, d, h, mi, s, timeZone) {
   const once = guess - zoneOffsetMs(guess, timeZone);
   return guess - zoneOffsetMs(once, timeZone);
 }
+
+// lib/booking/ics.ts
+var DAY_MS = 864e5;
 function parseTime(value, params, fallbackZone) {
   const v = value.trim();
   const dateOnly = /^(\d{4})(\d{2})(\d{2})$/.exec(v);

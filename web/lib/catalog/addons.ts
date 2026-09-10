@@ -610,9 +610,10 @@ export const CORRECTION_RULES = {
   weekendOnly: true,
   allowedStartsMin: [8 * 60, 10 * 60],
   /**
-   * Only the first day gets scheduled. The rest is arranged directly, because
-   * a 30 hour job cannot sit in one calendar slot and pretending otherwise
-   * would block a fortnight of availability.
+   * Kept for the shape of an old booking record. NOT used for scheduling any
+   * more: a long job is planned across consecutive days by planDays in
+   * lib/availability/multiDay.ts, rather than having its first morning
+   * booked and the rest left to a phone call.
    */
   firstDayMin: 8 * 60,
   garageRequired: true,

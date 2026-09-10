@@ -1061,7 +1061,7 @@
       var lead = new Date(startOfToday().getTime() + P.CORRECTION_RULES.minLeadDays * DAY);
       html += '<p class="bk-note">Correction work starts on a weekend morning from <b>' +
         lead.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }) +
-        '</b>. This reserves the first day.</p>';
+        '</b>, and runs across consecutive days.</p>';
     } else if (!state.priority) {
       html += '<p class="bk-note">Standard bookings start from <b>' +
         earliest.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }) + '</b>.</p>';
@@ -1093,9 +1093,10 @@
     }
     var to = from + (corr ? 70 : 28) * DAY;
 
-    // Correction runs across days, so only the first is reserved. Booking the
-    // full 30 hours as one block would swallow a fortnight of availability.
-    var dur = corr ? CR.firstDayMin : totalDurationMin();
+    // The WHOLE job, however long. Anything past a day gets planned across
+    // consecutive days rather than truncated to its first morning, which is
+    // what used to happen and left the rest to a phone call.
+    var dur = totalDurationMin();
 
     var cfg = { calendarId: CFG.googleCalendarId, apiKey: CFG.googleApiKey };
     var load = P.calendarConfigured(cfg)
@@ -1161,7 +1162,92 @@
     }
   }
 
+  /**
+   * The travel allowance used for scheduling.
+   *
+   * A measured drive when we have one, otherwise a deliberately generous flat
+   * 30 minutes: a slot we offer has to be one we can keep.
+   */
+  function travelAllowanceMin() {
+    return state.travel.source === 'routes' && state.travel.minutes !== null
+      ? state.travel.minutes
+      : 30;
+  }
+
+  /**
+   * Jobs too long for one day.
+   *
+   * A 20 hour detail is not a 20 hour calendar event and it is not a 16 hour
+   * day followed by a 4 hour one either. It is planned into even consecutive
+   * days, and only offered on runs of days that are completely free, because
+   * starting a two day job beside a booked second day is worse than not
+   * offering it.
+   */
+  function paintMultiDay(box, win, from, to, dur, plan) {
+    var found = P.findMultiDayStarts({
+      plan: plan,
+      openBlocks: win.open,
+      busy: win.busy || [],
+      notBefore: from,
+      notAfter: to,
+      allowedWeekdays: corr ? [0, 6] : undefined,
+      limit: 8
+    });
+
+    var head = '<div class="bk-multiday">' +
+      '<b>This one runs across ' + plan.totalDays + ' days</b>' +
+      '<span>' + esc(P.describePlan(plan)) + ' We come back each morning and ' +
+      'the vehicle stays with you overnight.</span></div>';
+
+    if (!found.length) {
+      box.innerHTML = head +
+        '<p class="bk-empty">We do not have ' + plan.totalDays +
+        ' clear days in a row in that range. <a href="index.html#inquiry">Send us a message</a>' +
+        ' and we will find a run of days that works.</p>';
+      return;
+    }
+
+    var html = head + '<div class="bk-days">';
+
+    found.forEach(function (opt) {
+      var first = new Date(opt.startMs);
+      var last = new Date(opt.days[opt.days.length - 1].endMs);
+      var sel = state.slot === opt.startMs;
+
+      html += '<button type="button" class="bk-day' + (sel ? ' on' : '') +
+        '" data-slot="' + opt.startMs + '">' +
+        '<b>' + first.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' }) +
+        ' to ' + last.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' }) + '</b>' +
+        '<span>' + opt.days.map(function (d, i) {
+          return 'Day ' + (i + 1) + ': ' +
+            new Date(d.startMs).toLocaleTimeString('en-US', { hour: 'numeric' }) + ' to ' +
+            new Date(d.endMs).toLocaleTimeString('en-US', { hour: 'numeric' });
+        }).join(' &middot; ') + '</span>' +
+        '</button>';
+    });
+
+    box.innerHTML = html + '</div>';
+  }
+
   function paintSlotsInner(box, win, from, to, dur, errMsg) {
+    var drive = travelAllowanceMin();
+
+    // Past a day's work this stops being a slot search and becomes a plan.
+    if (!P.fitsOneDay(dur, P.LONGEST_DAY, drive, drive)) {
+      var plan = P.planDays({
+        serviceMinutes: dur,
+        travelBeforeMin: drive,
+        travelAfterMin: drive,
+        preferredStartsMin: corr ? P.CORRECTION_RULES.allowedStartsMin : P.LONG_JOB_STARTS
+      });
+      if (!plan.ok) {
+        box.innerHTML = '<p class="bk-empty">' + esc(plan.reason) +
+          ' <a href="index.html#inquiry">Send us a message</a> and we will sort it out.</p>';
+        return;
+      }
+      return paintMultiDay(box, win, from, to, dur, plan);
+    }
+
     // Flat 30 minute travel allowance until a Maps key gives us real drive
     // time. Deliberately generous so a slot we offer is one we can keep.
     var req = {

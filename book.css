@@ -184,6 +184,27 @@ body.bk-open { overflow: hidden; }
 .bk-travel.far { border-color: var(--red); }
 .bk-travel.far b { color: var(--red-deep); }
 
+/* ---------- multi day jobs ---------- */
+/* A job across several days is a different kind of commitment from a slot,
+   so it does not get dressed up as one. */
+.bk-multiday {
+  background: var(--ink); color: #fff; border-radius: var(--r-md);
+  padding: .9rem 1.05rem; margin-bottom: .9rem;
+}
+.bk-multiday b { display: block; font-family: var(--font-display); font-size: 1.02rem; }
+.bk-multiday span { display: block; font-size: .84rem; color: rgba(255,255,255,.78); line-height: 1.55; margin-top: .25rem; }
+
+.bk-days { display: grid; gap: .5rem; }
+.bk-day {
+  display: block; width: 100%; text-align: left; font: inherit; cursor: pointer;
+  background: var(--paper); border: 1.5px solid var(--line); border-radius: var(--r-sm);
+  padding: .7rem .85rem; transition: border-color .16s, background .16s;
+}
+.bk-day:hover { border-color: var(--red); }
+.bk-day.on { border-color: var(--red); background: var(--red-ghost); }
+.bk-day b { display: block; font-size: .92rem; font-weight: 700; }
+.bk-day span { display: block; font-size: .79rem; color: var(--text-soft); margin-top: .2rem; line-height: 1.5; }
+
 /* ---------- promo code ---------- */
 /* Collapsed to a link until asked for. A visible empty discount box is an
    invitation to abandon checkout and go looking for a code. */
