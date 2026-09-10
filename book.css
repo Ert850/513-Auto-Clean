@@ -505,3 +505,34 @@ body.bk-open { overflow: hidden; }
 }
 .bk-garage-q { margin: 0; font-size: .93rem; font-weight: 700; color: var(--text); }
 .bk-garage .bk-yn { margin-top: .7rem; }
+
+/* excluded filter chip in browse */
+.bk-chip.out { border-color: var(--text-soft); background: var(--paper); color: var(--text-soft); }
+.bk-chip.out s { text-decoration-thickness: 1.5px; }
+.bk-chip.clear { border-style: dashed; }
+
+/* segmented, clickable step nav */
+.bk-nav {
+  display: flex; gap: .3rem; overflow-x: auto; flex: none;
+  padding: .5rem .7rem; background: var(--paper-2);
+  border-bottom: 1px solid var(--line); scrollbar-width: none;
+}
+.bk-nav::-webkit-scrollbar { display: none; }
+.bk-seg {
+  flex: none; text-align: left; border: 0; background: none; cursor: pointer;
+  font: inherit; padding: .3rem .55rem; border-radius: var(--r-sm);
+  border-bottom: 2px solid transparent; min-width: 4.2rem;
+}
+.bk-seg:hover:not(.locked) { background: var(--red-ghost); }
+.bk-seg-t { display: block; font-size: .73rem; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; color: var(--text-soft); }
+.bk-seg-s { display: block; font-size: .74rem; color: var(--text-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 8rem; }
+.bk-seg.done .bk-seg-t { color: var(--text); }
+.bk-seg.done .bk-seg-s { color: var(--red); }
+.bk-seg.now { border-bottom-color: var(--red); }
+.bk-seg.now .bk-seg-t { color: var(--red); }
+.bk-seg.locked { opacity: .4; cursor: default; }
+
+.bk-star { color: var(--amber); }
+.bk-soon { color: var(--amber); font-size: .85rem; }
+.bk-pkg.off { opacity: .72; cursor: default; }
+.bk-pkg.off:hover { border-color: var(--line); }

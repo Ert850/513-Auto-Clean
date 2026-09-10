@@ -72,8 +72,12 @@
     });
   });
 
-  /* ---------- Before / after sliders ---------- */
-  document.querySelectorAll('.ba-slider').forEach(function (slider) {
+  /* ---------- Before / after sliders ----------
+     Exposed so js/gallery.js can bind the ones it injects from the manifest,
+     which do not exist when this runs. */
+  function bindSliders() {
+  document.querySelectorAll('.ba-slider:not([data-bound])').forEach(function (slider) {
+    slider.setAttribute('data-bound', '1');
     var stage = slider.querySelector('.ba-stage');
     var range = slider.querySelector('.ba-range');
     if (!stage || !range) return;
@@ -96,6 +100,9 @@
     window.addEventListener('pointerup', function () { dragging = false; });
     setPos(parseFloat(range.value));
   });
+  }
+  bindSliders();
+  window.ACSliders = { bind: bindSliders };
 
   /* ---------- Availability calendar (commented out, schedule section removed) ---------- */
   /*
@@ -173,6 +180,16 @@
   } else {
     reveals.forEach(function (el) { el.classList.add('in'); });
   }
+
+  /* Re-scan for injected content, e.g. the gallery built from the manifest. */
+  window.ACReveal = {
+    observe: function () {
+      var fresh = document.querySelectorAll('.reveal:not(.in)');
+      reveals = document.querySelectorAll('.reveal');
+      if (io) fresh.forEach(function (el) { io.observe(el); });
+      else fresh.forEach(function (el) { el.classList.add('in'); });
+    }
+  };
 
   /* Scroll-velocity watch. IntersectionObserver callbacks are async and can
      fall behind a hard flick, so while scrolling fast we also sweep

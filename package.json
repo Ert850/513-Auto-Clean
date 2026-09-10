@@ -4,7 +4,7 @@
   "type": "module",
   "description": "Static site plus Netlify functions. The app source lives in web/.",
   "scripts": {
-    "build": "cd web && npm ci && npm run build:funnel && npm run build:server",
+    "build": "cd web && npm ci && npm run build:funnel && npm run build:server && npm run build:site",
     "test": "cd web && npm test"
   },
   "dependencies": {
