@@ -31,6 +31,12 @@ export interface ServiceComponent {
    * you cannot remove "hand wash" from an exterior detail and still have one.
    */
   removable: boolean;
+  /**
+   * Short clip showing this step being done. Reserved for the (i) markers
+   * Elijah's editor will film later. Nothing renders one yet: keeping the
+   * field here means adding them is a data change, not a template change.
+   */
+  videoUrl?: string;
 }
 
 export interface Package {
@@ -81,6 +87,8 @@ export interface Package {
    * block would swallow a fortnight of availability.
    */
   schedulingDurationMin?: number;
+  /** See ServiceComponent.videoUrl. Reserved for the (i) markers. */
+  videoUrl?: string;
 }
 
 export interface Catalog {

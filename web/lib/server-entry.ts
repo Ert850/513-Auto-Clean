@@ -10,12 +10,26 @@
  */
 import {
   ADDONS,
+  COATING_TERMS,
   CORRECTION_RULES,
+  CORRECTION_TIERS,
+  MAINTENANCE_PLAN,
+  addonsFor,
   findAddon,
   findCoatingTerm,
   findCorrectionTier,
+  isSelectable,
+  isUnpriced,
+  unavailableReason,
 } from "./catalog/addons.js";
-import { findPackage, vehicleSize } from "./catalog/seed.js";
+import {
+  SEED_CATALOG,
+  VEHICLE_SIZES,
+  findPackage,
+  packagesFor,
+  vehicleSize,
+} from "./catalog/seed.js";
+import { componentsOf } from "./catalog/types.js";
 import { DEFAULT_RULES } from "./pricing/rules.js";
 import { SEED_TAX_TABLE } from "./pricing/tax.js";
 import { minutesOfDay } from "./pricing/surcharge.js";
@@ -140,4 +154,23 @@ export function priceFromWire(wire: WireCart): PricedCart {
   };
 }
 
-export { ADDONS, DEFAULT_RULES, findAddon, findPackage, vehicleSize, quote };
+export {
+  ADDONS,
+  COATING_TERMS,
+  CORRECTION_RULES,
+  CORRECTION_TIERS,
+  DEFAULT_RULES,
+  MAINTENANCE_PLAN,
+  SEED_CATALOG,
+  VEHICLE_SIZES,
+  addonsFor,
+  componentsOf,
+  findAddon,
+  findPackage,
+  isSelectable,
+  isUnpriced,
+  packagesFor,
+  quote,
+  unavailableReason,
+  vehicleSize,
+};

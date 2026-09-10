@@ -20,6 +20,8 @@ import {
   addonsFor,
   findAddon,
   isUnpriced,
+  isSelectable,
+  unavailableReason,
   COATING_TERMS,
   CORRECTION_RULES,
   CORRECTION_TIERS,
@@ -65,6 +67,7 @@ import {
   requiresPriorityBooking,
 } from "./pricing/surcharge.js";
 import { quote } from "./pricing/quote.js";
+import { ZIP_RANGES, lookupZip } from "./travel/zipRanges.js";
 
 /** Format integer cents as $1,234.50, or $1,234 when it lands on the dollar. */
 export function formatCents(cents: number): string {
@@ -87,6 +90,8 @@ const api = {
   addonsFor,
   findAddon,
   isUnpriced,
+  isSelectable,
+  unavailableReason,
   addonBlockedReason,
   CORRECTION_TIERS,
   COATING_TERMS,
@@ -115,6 +120,8 @@ const api = {
   mergeIntervals,
   subtractIntervals,
   quote,
+  ZIP_RANGES,
+  lookupZip,
   mileageFeeCents,
   averageOneWayMinutes,
   travelCommitmentMinutes,

@@ -52,7 +52,7 @@
       browse: false,
       browseQ: '',
       browseMax: null,
-      browseKind: 'all',
+      browseFilters: {},
       browseSort: 'price',
       openBucket: null,
       payMethod: 'card',
@@ -66,16 +66,39 @@
      common path never needs the Continue button. */
 
   var STEPS = [
-    { id: 'size',     title: 'How big is your vehicle?',      auto: true,  render: rSize,    valid: vSize },
-    { id: 'intent',   title: 'What does it need?',            auto: true,  render: rIntent,  valid: vIntent },
-    { id: 'package',  title: 'Choose your package',           auto: true,  render: rPackage, valid: vPackage },
-    { id: 'addons',   title: 'Anything extra?',               auto: false, render: rAddons,  valid: vAddons },
-    { id: 'location', title: 'Where are we detailing?',       auto: false, render: rLoc,     valid: vLoc },
-    { id: 'more',     title: 'Add another vehicle?',          auto: false, render: rMore,    valid: ok },
-    { id: 'time',     title: 'Pick your time',                auto: true,  render: rTime,    valid: vTime },
-    { id: 'contact',  title: 'How do we reach you?',          auto: false, render: rContact, valid: vContact },
-    { id: 'pay',      title: 'Confirm your booking',          auto: false, render: rPay,     valid: vPay }
+    { id: 'size',     tab: 'Vehicle',  title: 'How big is your vehicle?',  auto: true,  render: rSize,    valid: vSize,    sum: sSize },
+    { id: 'intent',   tab: 'Service',  title: 'What does it need?',        auto: true,  render: rIntent,  valid: vIntent,  sum: sIntent },
+    { id: 'package',  tab: 'Package',  title: 'Choose your package',       auto: true,  render: rPackage, valid: vPackage, sum: sPackage },
+    { id: 'addons',   tab: 'Extras',   title: 'Anything extra?',           auto: false, render: rAddons,  valid: vAddons,  sum: sAddons },
+    { id: 'location', tab: 'Where',    title: 'Where are we detailing?',   auto: false, render: rLoc,     valid: vLoc,     sum: sLoc },
+    { id: 'more',     tab: 'Vehicles', title: 'Add another vehicle?',      auto: false, render: rMore,    valid: ok,       sum: sMore },
+    { id: 'time',     tab: 'Time',     title: 'Pick your time',            auto: true,  render: rTime,    valid: vTime,    sum: sTime },
+    { id: 'contact',  tab: 'You',      title: 'How do we reach you?',      auto: false, render: rContact, valid: vContact, sum: sContact },
+    { id: 'pay',      tab: 'Confirm',  title: 'Confirm your booking',      auto: false, render: rPay,     valid: vPay,     sum: sPay }
   ];
+
+  /* Short summaries under each tab, so someone can see at a glance what they
+     already answered and jump straight back to it. */
+  function sSize() { var z = veh().size ? P.vehicleSize(veh().size) : null; return z ? z.label : ''; }
+  function sIntent() { var i = veh().intent; return i === 'both' ? 'Inside and out' : i ? i.charAt(0).toUpperCase() + i.slice(1) : ''; }
+  function sPackage() {
+    var names = veh().packageIds.map(function (id) { return (P.findPackage(id) || {}).name; }).filter(Boolean);
+    return names.join(' + ');
+  }
+  function sAddons() {
+    var n = state.vehicles.reduce(function (t, v) { return t + v.addons.length; }, 0);
+    return n ? n + ' added' : 'None';
+  }
+  function sLoc() { return state.address.city || state.address.zip || ''; }
+  function sMore() { var n = state.vehicles.length; return n > 1 ? n + ' vehicles' : '1 vehicle'; }
+  function sTime() {
+    return state.slot
+      ? new Date(state.slot).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ', ' +
+        new Date(state.slot).toLocaleTimeString('en-US', { hour: 'numeric' })
+      : '';
+  }
+  function sContact() { return state.contact.name ? state.contact.name.split(' ')[0] : ''; }
+  function sPay() { return $(q().totalCents); }
 
   function ok() { return null; }
   function step() { return STEPS[state.step]; }
@@ -188,7 +211,18 @@
       });
     });
     P.ADDONS.forEach(function (a) {
-      if (P.isUnpriced(a)) return;
+      var why = P.unavailableReason(a);
+      if (why) {
+        // Listed so the capability is visible, but not pickable.
+        out.push({
+          kind: 'addon', id: a.id, tierId: a.tiers[0].id, name: a.name,
+          category: a.scope, priceCents: null, pricePlus: false,
+          durationMin: 0, tagline: a.description, featured: false,
+          unavailable: why, detail: '',
+          search: a.name + ' ' + a.description + ' ' + a.scope
+        });
+        return;
+      }
       a.tiers.forEach(function (t) {
         if (t.priceCents === null) return;
         out.push({
@@ -218,6 +252,38 @@
 
   function el(id) { return root.querySelector('#' + id); }
 
+  /**
+   * How far a customer is allowed to jump. Everything up to the furthest
+   * step they have legitimately completed, so going back to change an answer
+   * is one tap and going forward past an unanswered step is not possible.
+   */
+  function furthestValid() {
+    for (var i = 0; i < STEPS.length; i++) {
+      if (STEPS[i].valid()) return i;
+    }
+    return STEPS.length - 1;
+  }
+
+  function renderNav() {
+    var reach = Math.max(state.step, furthestValid());
+    el('bkNav').innerHTML = STEPS.map(function (st, i) {
+      var done = i < reach && !st.valid();
+      var here = i === state.step;
+      var open = i <= reach;
+      var sum = st.sum ? st.sum() : '';
+      return '<button type="button" class="bk-seg' +
+        (here ? ' now' : '') + (done ? ' done' : '') + (open ? '' : ' locked') +
+        '" data-step="' + i + '"' + (open ? '' : ' disabled') +
+        (here ? ' aria-current="step"' : '') + '>' +
+        '<span class="bk-seg-t">' + esc(st.tab) + '</span>' +
+        (sum ? '<span class="bk-seg-s">' + esc(sum) + '</span>' : '') +
+        '</button>';
+    }).join('');
+    // Keep the active segment in view on a narrow screen.
+    var now = el('bkNav').querySelector('.now');
+    if (now && now.scrollIntoView) now.scrollIntoView({ block: 'nearest', inline: 'center' });
+  }
+
   function render() {
     if (state.done) return;
     var s = step();
@@ -226,6 +292,7 @@
     el('bkBar').style.width = pct + '%';
     el('bkProgress').setAttribute('aria-valuenow', String(pct));
     el('bkTitle').textContent = s.title;
+    renderNav();
     el('bkBody').innerHTML = s.render();
 
     var back = el('bkBack');
@@ -281,7 +348,12 @@
     var err = step().valid();
     if (err) { flash(err); return; }
     if (state.step === STEPS.length - 1) { submit(); return; }
-    go(state.step + 1);
+
+    // Skip past anything already answered, which is what happens when someone
+    // picked a package from View Services and only needed the size question.
+    var i = state.step + 1;
+    while (i < STEPS.length - 1 && !STEPS[i].valid() && STEPS[i].auto) i++;
+    go(i);
   }
 
   /* ================= step 1: size ================= */
@@ -325,6 +397,62 @@
 
   /* ---- browse everything, with search and a price cap ---- */
 
+  /** Does an item satisfy a named filter? */
+  function matchesFilter(item, key) {
+    if (key === 'interior') return item.kind === 'package' && item.category === 'interior';
+    if (key === 'exterior') return item.kind === 'package' && item.category === 'exterior';
+    if (key === 'package') return item.kind === 'package';
+    if (key === 'addon') return item.kind === 'addon';
+    return false;
+  }
+
+  /**
+   * Includes win, then excludes trim what is left. With nothing selected,
+   * everything shows.
+   */
+  function applyFilters(list) {
+    var f = state.browseFilters;
+    var ins = Object.keys(f).filter(function (k) { return f[k] === 'in'; });
+    var outs = Object.keys(f).filter(function (k) { return f[k] === 'out'; });
+
+    var kept = ins.length
+      ? list.filter(function (i) { return ins.some(function (k) { return matchesFilter(i, k); }); })
+      : list;
+
+    return outs.length
+      ? kept.filter(function (i) { return !outs.some(function (k) { return matchesFilter(i, k); }); })
+      : kept;
+  }
+
+  /**
+   * Tap cycles include, exclude, off.
+   *
+   * The exclude step is refused when it would empty the list, because a
+   * filter bar that can hide everything just looks broken.
+   */
+  function cycleFilter(key) {
+    if (key === '__clear') { state.browseFilters = {}; return; }
+
+    var cur = state.browseFilters[key];
+    var next = cur === 'in' ? 'out' : cur === 'out' ? null : 'in';
+
+    var trial = Object.assign({}, state.browseFilters);
+    if (next) trial[key] = next; else delete trial[key];
+
+    var was = state.browseFilters;
+    state.browseFilters = trial;
+    if (!applyFilters(browseItems()).length) {
+      // That combination shows nothing, so skip past it rather than
+      // presenting an empty screen.
+      state.browseFilters = was;
+      var skip = cur === 'in' ? null : 'in';
+      var t2 = Object.assign({}, was);
+      if (skip) t2[key] = skip; else delete t2[key];
+      state.browseFilters = t2;
+      if (!applyFilters(browseItems()).length) state.browseFilters = was;
+    }
+  }
+
   function rBrowse() {
     var list = browseItems();
     var qs = state.browseQ.trim().toLowerCase();
@@ -332,22 +460,23 @@
     if (qs) {
       list = list.filter(function (i) { return i.search.toLowerCase().indexOf(qs) > -1; });
     }
-    if (state.browseKind === 'interior') list = list.filter(function (i) { return i.kind === 'package' && i.category === 'interior'; });
-    else if (state.browseKind === 'exterior') list = list.filter(function (i) { return i.kind === 'package' && i.category === 'exterior'; });
-    else if (state.browseKind === 'addon') list = list.filter(function (i) { return i.kind === 'addon'; });
-    else if (state.browseKind === 'package') list = list.filter(function (i) { return i.kind === 'package'; });
+    list = applyFilters(list);
 
     if (state.browseMax !== null) {
-      list = list.filter(function (i) { return i.priceCents <= state.browseMax; });
+      list = list.filter(function (i) { return i.priceCents !== null && i.priceCents <= state.browseMax; });
     }
+    // Unpriced entries sort last whichever way the list is ordered, so the
+    // things that can actually be booked stay at the top.
+    var pOf = function (i) { return i.priceCents === null ? Infinity : i.priceCents; };
     list = list.slice().sort(function (a, b) {
-      if (state.browseSort === 'price') return a.priceCents - b.priceCents;
-      if (state.browseSort === 'priceDesc') return b.priceCents - a.priceCents;
+      if (a.unavailable !== b.unavailable) return a.unavailable ? 1 : -1;
+      if (state.browseSort === 'price') return pOf(a) - pOf(b);
+      if (state.browseSort === 'priceDesc') return pOf(b) - pOf(a);
       return a.durationMin - b.durationMin;
     });
 
     var kinds = [
-      ['all', 'Everything'], ['interior', 'Interior'], ['exterior', 'Exterior'],
+      ['interior', 'Interior'], ['exterior', 'Exterior'],
       ['package', 'Packages'], ['addon', 'Add-ons']
     ];
     var caps = [5000, 12500, 21500, 39500];
@@ -359,9 +488,15 @@
       '</div>' +
       '<div class="bk-filters">' +
         kinds.map(function (k) {
-          return '<button type="button" class="bk-chip' + (state.browseKind === k[0] ? ' on' : '') +
-            '" data-kind="' + k[0] + '">' + k[1] + '</button>';
+          var st = state.browseFilters[k[0]];
+          return '<button type="button" class="bk-chip' +
+            (st === 'in' ? ' on' : st === 'out' ? ' out' : '') +
+            '" data-kind="' + k[0] + '" aria-pressed="' + (st === 'in') + '">' +
+            (st === 'out' ? '<s>' + k[1] + '</s>' : k[1]) + '</button>';
         }).join('') +
+        (Object.keys(state.browseFilters).length
+          ? '<button type="button" class="bk-chip clear" data-kind="__clear">Clear</button>'
+          : '') +
       '</div>' +
       '<div class="bk-filters">' +
         '<span class="bk-filtlab">Under</span>' +
@@ -384,8 +519,9 @@
       html += '<p class="bk-count">' + list.length + ' option' + (list.length > 1 ? 's' : '') + '</p><div class="bk-pkgs">';
       list.forEach(function (i) {
         var dur = i.durationMin ? fmtDur(i.durationMin) : '';
-        html += '<button type="button" class="bk-pkg" data-browsepick="' + esc(i.id) + '"' +
-          (i.kind === 'addon' ? ' data-browsekind="addon" data-browsetier="' + esc(i.tierId) + '"' : '') + '>' +
+        html += '<button type="button" class="bk-pkg' + (i.unavailable ? ' off' : '') + '"' +
+          (i.unavailable ? ' disabled' : ' data-browsepick="' + esc(i.id) + '"') +
+          (i.kind === 'addon' && !i.unavailable ? ' data-browsekind="addon" data-browsetier="' + esc(i.tierId) + '"' : '') + '>' +
           '<span class="bk-pkg-l">' +
             '<b>' + esc(i.name) + '</b>' +
             '<i class="bk-cat">' + (i.category === 'interior' ? 'Interior' : 'Exterior') +
@@ -394,8 +530,11 @@
             '<span class="bk-pkg-tag">' + esc(i.tagline) + '</span>' +
             (i.detail ? '<span class="bk-pkg-feat">' + esc(i.detail) + '</span>' : '') +
           '</span>' +
-          '<span class="bk-pkg-r"><b>' + $(i.priceCents) + (i.pricePlus ? '+' : '') + '</b>' +
-          (dur ? '<i>' + dur + '</i>' : '') + '</span>' +
+          '<span class="bk-pkg-r">' +
+          (i.unavailable
+            ? '<b class="bk-soon">Soon</b><i>' + esc(i.unavailable) + '</i>'
+            : '<b>' + $(i.priceCents) + (i.pricePlus ? '+' : '') + '</b>' + (dur ? '<i>' + dur + '</i>' : '')) +
+          '</span>' +
           '</button>';
       });
       html += '</div>';
@@ -527,17 +666,22 @@
     var html = '<p class="bk-sub">Optional. Skip any you do not need.</p>';
 
     scopes.forEach(function (scope) {
-      var list = P.addonsFor(scope).filter(function (a) { return !P.isUnpriced(a); });
+      // Everything is LISTED, including what cannot be booked yet: hiding a
+      // service also hides the fact that we offer it.
+      var list = P.addonsFor(scope);
       if (!list.length) return;
       if (scopes.length > 1) html += '<h3 class="bk-grp">' + (scope === 'interior' ? 'Interior' : 'Exterior') + '</h3>';
 
       list.forEach(function (a) {
-        var blocked = P.addonBlockedReason(a, ctx);
+        var unavailable = P.unavailableReason(a);
+        var blocked = unavailable ? null : P.addonBlockedReason(a, ctx);
         var chosen = v.addons.filter(function (x) { return x.addonId === a.id; })[0];
         var multi = a.tiers.length > 1;
 
-        html += '<div class="bk-addon' + (chosen ? ' on' : '') + (blocked ? ' off' : '') + '">' +
-          '<div class="bk-addon-h"><b>' + esc(a.name) + '</b>' +
+        html += '<div class="bk-addon' + (chosen ? ' on' : '') +
+          (blocked || unavailable ? ' off' : '') + '">' +
+          '<div class="bk-addon-h"><b>' + esc(a.name) +
+          (unavailable ? '<sup class="bk-star">*</sup>' : '') + '</b>' +
           (chosen ? '<button type="button" class="bk-clear" data-clear="' + a.id + '">Remove</button>' : '') +
           '</div>' +
           '<p class="bk-addon-d">' + esc(a.description) + '</p>' +
@@ -545,7 +689,9 @@
             ? '<details class="bk-how"><summary>How it works</summary><p>' + esc(a.note) + '</p></details>'
             : '');
 
-        if (blocked) {
+        if (unavailable) {
+          html += '<p class="bk-addon-block">*' + esc(unavailable) + '</p>';
+        } else if (blocked) {
           html += '<p class="bk-addon-block">' + esc(blocked) + '</p>';
         } else {
           html += '<div class="bk-tiers' + (multi ? ' multi' : '') + '">';
@@ -1104,7 +1250,7 @@
     var t = e.target.closest(
       '[data-size],[data-intent],[data-pkg],[data-addon],[data-clear],[data-win],[data-slot],' +
       '[data-consent],[data-pay],[data-delveh],[data-browsepick],[data-max],[data-sort],' +
-      '[data-kind],[data-bucket],[data-paymethod],[data-corr],[data-coating],[data-garage],' +
+      '[data-kind],[data-bucket],[data-paymethod],[data-corr],[data-coating],[data-garage],[data-step],' +
       '#bkAddVeh,#bkMoreDays,#bkNext,#bkBack,#bkClose,#bkScrim,#bkBrowse,#bkBrowseBack,' +
       '#bkQClear,#bkReset,#bkOther'
     );
@@ -1120,7 +1266,7 @@
       return render();
     }
     if (t.dataset.sort) { state.browseSort = t.dataset.sort; return render(); }
-    if (t.dataset.kind) { state.browseKind = t.dataset.kind; return render(); }
+    if (t.dataset.kind) { cycleFilter(t.dataset.kind); return render(); }
     if (t.dataset.bucket) {
       state.openBucket = state.openBucket === t.dataset.bucket ? null : t.dataset.bucket;
       return loadSlots();
@@ -1145,14 +1291,16 @@
         v.intent = def.scope;
         v.addons = [{ addonId: def.id, tierId: t.dataset.browsetier }];
         state.browse = false;
-        return go(2);
+        return go(v.size ? 2 : 0);
       }
       var picked = P.findPackage(t.dataset.browsepick);
       v.intent = picked.category;
       v.packageIds = [picked.id];
       v.addons = [];
       state.browse = false;
-      return go(3);
+      // Someone who came in through View Services skipped the size question,
+      // so ask it now rather than pricing the job without it.
+      return go(v.size ? 3 : 0);
     }
 
     if (t.id === 'bkOther') {
@@ -1242,6 +1390,11 @@
       return render();
     }
 
+    if (t.dataset.step !== undefined) {
+      var want = Number(t.dataset.step);
+      if (want <= Math.max(state.step, furthestValid())) return go(want);
+      return;
+    }
     if (t.id === 'bkNext') return advance();
     if (t.id === 'bkBack') return go(state.step - 1);
     if (t.id === 'bkClose' || t.id === 'bkScrim') return close();
@@ -1483,6 +1636,7 @@
       '<div class="bk-progress" id="bkProgress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">' +
         '<div class="bk-bar" id="bkBar"></div>' +
       '</div>' +
+      '<nav class="bk-nav" id="bkNav" aria-label="Booking steps"></nav>' +
       '<header class="bk-head">' +
         '<button type="button" class="bk-back" id="bkBack" hidden aria-label="Back">' +
           '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M19 12H5M11 18l-6-6 6-6"/></svg>' +
@@ -1553,10 +1707,16 @@
     });
 
     // Any Book Now link opens the funnel in place rather than navigating.
-    document.querySelectorAll('a[href="book.html"], a[href="./book.html"], [data-book]').forEach(function (a) {
+    document.querySelectorAll('a[href="book.html"], a[href="./book.html"], [data-book], [data-book-browse]').forEach(function (a) {
       a.addEventListener('click', function (e) {
         e.preventDefault();
         open();
+        // "View Services" lands on the full catalogue rather than step one.
+        if (a.hasAttribute('data-book-browse')) {
+          state.step = 1;
+          state.browse = true;
+          render();
+        }
       });
     });
 

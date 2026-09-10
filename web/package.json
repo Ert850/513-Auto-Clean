@@ -9,7 +9,8 @@
     "typecheck": "tsc --noEmit",
     "build:funnel": "esbuild lib/browser-entry.ts --bundle --format=iife --target=es2018 --minify --outfile=../js/pricing.bundle.js",
     "build:funnel:dev": "esbuild lib/browser-entry.ts --bundle --format=iife --target=es2018 --sourcemap --outfile=../js/pricing.bundle.js",
-    "build:server": "esbuild lib/server-entry.ts --bundle --format=esm --platform=node --target=node20 --outfile=../netlify/functions/_pricing.mjs"
+    "build:server": "esbuild lib/server-entry.ts --bundle --format=esm --platform=node --target=node20 --outfile=../netlify/functions/_pricing.mjs",
+    "build:site": "node scripts/render-site.mjs"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
