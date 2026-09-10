@@ -435,3 +435,25 @@ body.bk-open { overflow: hidden; }
   margin: 0 0 .45rem; font-size: .8rem; font-weight: 800; letter-spacing: .05em;
   text-transform: uppercase; color: var(--text-soft);
 }
+
+/* mechanism explainer, collapsed so it informs without burying the price */
+.bk-how { margin: 0 0 .6rem; }
+.bk-how summary {
+  cursor: pointer; font-size: .81rem; font-weight: 700; color: var(--red);
+  list-style: none; display: inline-flex; align-items: center; gap: .3rem;
+}
+.bk-how summary::-webkit-details-marker { display: none; }
+.bk-how summary::after { content: "+"; font-weight: 800; }
+.bk-how[open] summary::after { content: "\2212"; }
+.bk-how p {
+  margin: .5rem 0 0; font-size: .82rem; line-height: 1.6; color: var(--text-soft);
+  background: var(--paper); border-left: 2px solid var(--line); padding: .6rem .75rem;
+  border-radius: 0 var(--r-sm) var(--r-sm) 0;
+}
+
+/* premium start times, flagged on the slot itself */
+.bk-time.prem { border-style: dashed; }
+.bk-time em {
+  font-style: normal; font-size: .66rem; font-weight: 800; color: #7a5209;
+  background: rgba(240,169,63,.18); padding: .05rem .28rem; border-radius: 4px; margin-left: .3rem;
+}

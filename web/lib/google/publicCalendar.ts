@@ -106,8 +106,21 @@ export interface BusinessHours {
 }
 
 export const DEFAULT_HOURS: BusinessHours = {
-  openMin: 7 * 60, // the site advertises 7 AM to 10 PM, 7 days
-  closeMin: 22 * 60,
+  /**
+   * Wider than the bookable window on purpose, at BOTH ends.
+   *
+   * Customers may start as early as 6am, which means leaving before 6am, so
+   * the block has to open earlier than the earliest start. It closes at 1am
+   * because a service finishing at midnight still needs the drive home, and
+   * the whole commitment has to fit inside one availability block. An hour
+   * covers any return leg the fee ladder would realistically produce.
+   *
+   * What a customer can actually pick is bounded separately by
+   * DEFAULT_BOOKING_WINDOW in ../availability/slots.ts, which is the thing to
+   * change if the bookable hours move.
+   */
+  openMin: 5 * 60,
+  closeMin: 25 * 60,
   days: [0, 1, 2, 3, 4, 5, 6],
   timeZone: "America/New_York",
 };

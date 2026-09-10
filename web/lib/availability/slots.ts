@@ -42,7 +42,36 @@ export interface SlotRequest {
    */
   preferredStartsMin?: { weekday: number[]; weekend: number[] };
   timeZone?: string;
+  /**
+   * Hard bounds on what a customer may pick, separate from what is preferred.
+   *
+   * Elijah will start as early as 6am and as late as 8pm if that is what makes
+   * a particular day work. Those are not his usual times and they carry the
+   * premium, but they are genuinely bookable rather than hidden.
+   */
+  bookingWindow?: BookingWindow;
 }
+
+export interface BookingWindow {
+  /** Earliest local start, minutes past midnight. */
+  earliestStartMin: number;
+  /** Latest local start. */
+  latestStartMin: number;
+  /**
+   * The service itself must be finished by this local minute.
+   *
+   * This is the rule behind "4 hours max at 8pm, 6 hours max at 6pm": both
+   * land exactly on midnight, so one end-time bound expresses the whole thing
+   * and keeps working for a 7pm start without another special case.
+   */
+  serviceEndByMin: number;
+}
+
+export const DEFAULT_BOOKING_WINDOW: BookingWindow = {
+  earliestStartMin: 6 * 60,
+  latestStartMin: 20 * 60,
+  serviceEndByMin: 24 * 60,
+};
 
 const MIN = 60_000;
 
@@ -97,6 +126,7 @@ export function computeSlots(req: SlotRequest): number[] {
   const step = Math.max(1, req.granularityMin) * MIN;
   const out: number[] = [];
   const wanted = req.preferredStartsMin;
+  const win = req.bookingWindow ?? DEFAULT_BOOKING_WINDOW;
 
   for (const f of free) {
     // Earliest the CUSTOMER-FACING start can be: the drive out has to fit
@@ -108,7 +138,13 @@ export function computeSlots(req: SlotRequest): number[] {
       const commitmentEnd = t + (req.serviceDurationMin + req.travelAfterMin) * MIN;
       if (commitmentEnd > f.end) break;
       if (t > req.notAfter) break;
-      if (commitmentStart >= f.start && matchesPreferred(t, wanted, req.timeZone)) out.push(t);
+      if (
+        commitmentStart >= f.start &&
+        withinBookingWindow(t, req.serviceDurationMin, win, req.timeZone) &&
+        matchesPreferred(t, wanted, req.timeZone)
+      ) {
+        out.push(t);
+      }
       t += step;
     }
   }
@@ -124,6 +160,22 @@ export const PREFERRED_STARTS = {
   weekday: [8 * 60, 10 * 60, 16 * 60, 18 * 60],
   weekend: [10 * 60, 16 * 60],
 };
+
+/**
+ * A start is allowed when it falls inside the bookable window AND the service
+ * finishes by the end bound. A 6 hour job cannot start at 8pm, but a 4 hour
+ * one can, which is exactly the behaviour Elijah described.
+ */
+function withinBookingWindow(
+  ms: number,
+  serviceDurationMin: number,
+  win: BookingWindow,
+  timeZone?: string,
+): boolean {
+  const startMin = localMinutesOfDay(ms, timeZone);
+  if (startMin < win.earliestStartMin || startMin > win.latestStartMin) return false;
+  return startMin + serviceDurationMin <= win.serviceEndByMin;
+}
 
 function matchesPreferred(
   ms: number,

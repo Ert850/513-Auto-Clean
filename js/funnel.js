@@ -419,7 +419,10 @@
           '<div class="bk-addon-h"><b>' + esc(a.name) + '</b>' +
           (chosen ? '<button type="button" class="bk-clear" data-clear="' + a.id + '">Remove</button>' : '') +
           '</div>' +
-          '<p class="bk-addon-d">' + esc(a.description) + '</p>';
+          '<p class="bk-addon-d">' + esc(a.description) + '</p>' +
+          (a.note
+            ? '<details class="bk-how"><summary>How it works</summary><p>' + esc(a.note) + '</p></details>'
+            : '');
 
         if (blocked) {
           html += '<p class="bk-addon-block">' + esc(blocked) + '</p>';
@@ -511,6 +514,10 @@
   function rTime() {
     var earliest = P.earliestBookableDate(startOfToday(), RULES.window);
     var html = '<p class="bk-sub">Pick a time that works. Nothing is charged until the next step.</p>';
+
+    html += '<p class="bk-note" style="margin:0 0 .8rem">We usually start at 8, 10, 4 or 6 on a weekday, and 10 or 4 at the weekend. ' +
+      'Anything from 6am to 8pm is bookable if that is what makes a day work, and those carry the ' +
+      RULES.surcharge.timeOfDayBp / 100 + '% premium.</p>';
 
     html += '<div class="bk-windows">' +
       P.TIME_WINDOWS.map(function (w) {
@@ -626,8 +633,14 @@
           var t = new Date(ms);
           var label = t.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
           var end = new Date(ms + 60 * 60000).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-          return '<button type="button" class="bk-time' + (state.slot === ms ? ' on' : '') + '" data-slot="' + ms + '">' +
-            label + '<i>arrive ' + label + ' to ' + end + '</i></button>';
+          var prem = P.computeSurcharge(
+            { startMinutesLocal: P.localMinutesOfDay(ms), priorityBooking: false },
+            RULES.surcharge
+          ).appliedBp > 0;
+          return '<button type="button" class="bk-time' + (state.slot === ms ? ' on' : '') +
+            (prem ? ' prem' : '') + '" data-slot="' + ms + '">' +
+            label + (prem ? '<em>+' + RULES.surcharge.timeOfDayBp / 100 + '%</em>' : '') +
+            '<i>arrive ' + label + ' to ' + end + '</i></button>';
         }).join('') + '</div></div>';
     });
     html += '</div>';
