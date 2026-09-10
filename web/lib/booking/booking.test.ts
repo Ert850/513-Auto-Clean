@@ -169,6 +169,46 @@ describe("preferred start times", () => {
   });
 });
 
+describe("bookable window, 6am to 8pm ending by midnight", () => {
+  const day = (h: number, m = 0) => new Date(2026, 8, 14, h, m).getTime();
+  const req = (durationMin: number) => ({
+    // Spans past midnight, mirroring DEFAULT_HOURS, so the drive home fits.
+    openBlocks: [iv(day(0), new Date(2026, 8, 15, 1).getTime())],
+    busy: [],
+    serviceDurationMin: durationMin,
+    travelBeforeMin: 30,
+    travelAfterMin: 30,
+    granularityMin: 60,
+    notBefore: day(0),
+    notAfter: day(23),
+  });
+  const hrs = (l: number[]) => l.map((ms) => new Date(ms).getHours());
+
+  it("opens at 6am, not earlier", () => {
+    expect(Math.min(...hrs(computeSlots(req(120))))).toBe(6);
+  });
+
+  it("lets a 4 hour job start as late as 8pm", () => {
+    // 8pm + 4h lands exactly on midnight.
+    expect(hrs(computeSlots(req(240)))).toContain(20);
+  });
+
+  it("caps a 6 hour job at a 6pm start", () => {
+    const h = hrs(computeSlots(req(360)));
+    expect(h).toContain(18);
+    expect(Math.max(...h)).toBe(18); // 8pm would run to 2am
+  });
+
+  it("derives the in-between cases from the same midnight rule", () => {
+    // A 5 hour job should reach 7pm and no further.
+    expect(Math.max(...hrs(computeSlots(req(300))))).toBe(19);
+  });
+
+  it("never offers a start past 8pm however short the job", () => {
+    expect(Math.max(...hrs(computeSlots(req(30))))).toBe(20);
+  });
+});
+
 describe("preferred time windows", () => {
   it("splits candidate slots into preferred and everything else", () => {
     const slots = [at(7), at(11), at(13), at(19)];

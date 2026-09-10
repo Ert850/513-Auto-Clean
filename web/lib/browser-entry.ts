@@ -34,6 +34,7 @@ import {
   unconfiguredWindow,
 } from "./google/publicCalendar.js";
 import {
+  DEFAULT_BOOKING_WINDOW,
   PREFERRED_STARTS,
   TIME_WINDOWS,
   computeSlots,
@@ -94,6 +95,7 @@ const api = {
   loadWindow,
   resolveWindow,
   unconfiguredWindow,
+  DEFAULT_BOOKING_WINDOW,
   PREFERRED_STARTS,
   TIME_WINDOWS,
   computeSlots,
