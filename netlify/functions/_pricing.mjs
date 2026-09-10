@@ -175,6 +175,7 @@ function unavailableReason(a) {
   if (isUnpriced(a)) return "Price on request, ask us and we will quote it.";
   return null;
 }
+var COATING_COVERAGE = "Every coating covers the whole vehicle: paint, wheels, plastic trim and glass.";
 var CORRECTION_TIERS = [
   {
     id: "coating-only",
@@ -182,7 +183,7 @@ var CORRECTION_TIERS = [
     addCents: 55e3,
     addMin: 5 * 60,
     result: "3 to 5 years of protection, no correction",
-    detail: "Panel wipe, coating applied and levelled by hand, then left to cure. Existing swirls and scratches stay as they are, sealed under the coating.",
+    detail: "Panel wipe, then coating applied and levelled by hand across paint, wheels, plastic trim and glass, and left to cure. Existing swirls and scratches stay as they are, sealed under the coating.",
     asterisk: true
   },
   {
@@ -197,7 +198,7 @@ var CORRECTION_TIERS = [
   {
     id: "two-step",
     label: "2 step paint correction, then coating",
-    addCents: 15e4,
+    addCents: 149500,
     addMin: 18 * 60,
     result: "Looks perfect from about 2 feet away",
     detail: "A compounding pass to cut deeper defects, then a refining pass to bring the gloss back, then the coating. Removes roughly 80 to 90%.",
@@ -205,11 +206,11 @@ var CORRECTION_TIERS = [
   },
   {
     id: "three-step",
-    label: "3 step paint correction, then coating",
-    addCents: 26e4,
+    label: "3 to 4 step paint correction, then coating",
+    addCents: 225e3,
     addMin: 30 * 60,
-    result: "Removes 90%+ of all defects",
-    detail: "Heavy cut, refine, then a final jewelling pass under inspection lighting before coating. This is show car work and runs across several days.",
+    result: "Removes 90%+ of all defects, reflective trim included",
+    detail: "Heavy cut, refine, then a final jewelling pass under inspection lighting before coating, with a fourth pass where the paint needs it. Reflective trim is corrected and coated alongside the paint. This is show car work and runs across several days.",
     asterisk: false
   }
 ];
@@ -443,7 +444,10 @@ var PACKAGES = [
   {
     id: "showroom-exterior",
     slug: "showroom-exterior",
-    name: "Showroom Ready",
+    // Spelled out because "Showroom Ready" alone reads as a deeper wash next
+    // to the interior package of the same name, and this is neither the same
+    // work nor the same order of price.
+    name: "Showroom Ready (Paint Correction and Protection)",
     category: "exterior",
     // Everything in Full Exterior, then a required correction or coating
     // tier on top. The base here is the Full Exterior work; the tier adds its
@@ -896,6 +900,7 @@ function priceFromWire(wire) {
 }
 export {
   ADDONS,
+  COATING_COVERAGE,
   COATING_TERMS,
   CORRECTION_RULES,
   CORRECTION_TIERS,

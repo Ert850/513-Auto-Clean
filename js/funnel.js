@@ -607,7 +607,8 @@
    */
   function rCorrection(v) {
     var R2 = P.CORRECTION_RULES;
-    var html = '<div class="bk-correction"><h3 class="bk-grp">Choose your correction level</h3>';
+    var html = '<div class="bk-correction"><h3 class="bk-grp">Choose your correction level</h3>' +
+      '<p class="bk-coverage">' + esc(P.COATING_COVERAGE) + '</p>';
 
     html += P.CORRECTION_TIERS.map(function (t) {
       var on = v.correctionTier === t.id;
