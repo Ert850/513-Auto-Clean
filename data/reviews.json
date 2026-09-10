@@ -1,0 +1,246 @@
+{
+  "_comment": "Snapshot of the Google Business Profile reviews, taken by hand on 2026-09-10 because the Places API is not wired up yet. Dates are absolute so the page can render '2 months ago' correctly forever instead of freezing whatever Google said the day it was copied. js/reviews.js prefers /api/reviews when that is configured and falls back to this file, so the section is never empty. Reviews marked feature:false still count toward the total but are not shown as cards.",
+  "source": "https://maps.app.goo.gl/PAAdpX7owQmc1cAz9",
+  "fetchedOn": "2026-09-10",
+  "rating": 5,
+  "count": 32,
+  "reviews": [
+    {
+      "author": "Rena Grunhaus",
+      "rating": 5,
+      "date": "2026-09-09",
+      "text": "Amazing car cleaning! Highly recommend! Super clean and professional service!",
+      "reply": "Thank you! I'm really glad you liked how your vehicles turned out!"
+    },
+    {
+      "author": "Danielle L",
+      "rating": 5,
+      "date": "2026-09-08",
+      "text": "We couldn't be happier with the service we received! A young man came out and detailed our Jeep, and he spent several hours working on it. He was incredibly thorough and meticulous, paying attention to every little detail. You could really",
+      "truncated": true,
+      "reply": "Thank you Danielle! I'm really glad your Jeep turned out so well! I was really pleased with the result on it and fresh new smell when it was complete!"
+    },
+    {
+      "author": "Devon Jones",
+      "rating": 5,
+      "date": "2026-09-03",
+      "text": "Was a great experience, professional and made my car look brand new again. Would definitely recommend using them and will probably use them again in the future.",
+      "reply": "Thank you Devon! I'm really happy with how your vehicle turned out, and glad you like the result too!"
+    },
+    {
+      "author": "Dart Goblin",
+      "rating": 5,
+      "date": "2026-09-03",
+      "text": "Elijah was amazing, he came same day and did an amazing job, he removed all the stains and did an overall amazing job. I will be coming back for sure.",
+      "reply": "Thank you! I'm glad I was able to fit you into the schedule and get your vehicle taken care of! The vehicle truly turned out amazingly."
+    },
+    {
+      "author": "Rutuja Gholap",
+      "rating": 5,
+      "date": "2026-09-03",
+      "text": "",
+      "feature": false,
+      "reply": "Thank you! Really appreciate being able to full interior detail your vehicle."
+    },
+    {
+      "author": "Zach Creech",
+      "rating": 5,
+      "date": "2026-08-10",
+      "text": "Patrick worked on my car while I was working at my office building. Not only was he prompt and professional, but he delivered exceptional results at the convenience of my work, time, and (most importantly) my wallet. I would 100% recommend them to anyone on the fence, and I will be returning in the future.",
+      "reply": "Thank you so much Zach! We pride ourselves on high quality of work, and I'm glad you had a great experience. Thank you again!"
+    },
+    {
+      "author": "julie kantor",
+      "rating": 5,
+      "date": "2026-08-10",
+      "text": "Patrick did an outstanding job detailing the interior of our car. It looked like a brand new car! Really Unbelievable!!",
+      "reply": "Thank you Julie. Patrick is the best!"
+    },
+    {
+      "author": "Michael Jenkins",
+      "rating": 5,
+      "date": "2026-08-10",
+      "text": "I recently needed detailing for a SUV we have. I called and they were scheduled to come. Unfortunately at the last minute they could not due to health/personal vehicle issues. Elijah got me in touch with another vendor overnight and",
+      "truncated": true,
+      "feature": false,
+      "_why": "Not shown as a card because the visible half is about a cancellation and the resolution is cut off. It still counts toward the total, and the link out to Google shows it in full.",
+      "reply": "Thank you for the recommendation, Michael. Apologies again on your poor experience, but looking forward to getting your vehicles done right given we are in better physical health!"
+    },
+    {
+      "author": "Sarah Elam",
+      "rating": 5,
+      "date": "2026-07-10",
+      "text": "Student arrived promptly at scheduled time, was very pleasant and did an incredible job. My wheelchair van has rubberized floors and definitely collects a lot of dirt and dust. He fully steamed everything and it has never looked as nice. We would recommend these guys in a heartbeat.",
+      "reply": "Thank you Sarah! We take pride in being on time, consistent, and getting great results at even better prices. Thank you for putting your trust in 513 Auto Clean!"
+    },
+    {
+      "author": "Heather Grace",
+      "rating": 5,
+      "date": "2026-07-10",
+      "text": "I had a great experience with 513 Auto Clean mobile car detailing service. I did some research before deciding on them and the owner Elijah was quick to respond to my questions and was very friendly and knowledgeable. And you honestly can't",
+      "truncated": true,
+      "reply": "Heather, I so greatly appreciate your genuine response. I'm glad you had a great experience with your detail! Every day with a freshly detailed vehicle and a happy customer is a great day."
+    },
+    {
+      "author": "Dan Ehinger",
+      "rating": 5,
+      "date": "2026-07-10",
+      "text": "Elijah did a fantastic job on detail my car interior and exterior",
+      "reply": "Thank you Dan! I'm glad you are enjoying your newly detailed car."
+    },
+    {
+      "author": "Bill Musolf",
+      "rating": 5,
+      "date": "2026-06-10",
+      "text": "They transformed the interior! It went from eyesore and embarrassing to like new. It was long overdue and I'm so glad I did it. They spent 4+ hours on it. Above and beyond what I was expecting but exactly what I was hoping for.",
+      "reply": "Thank you Bill! I hope you enjoy your newly detailed car!"
+    },
+    {
+      "author": "Kenny Wojtowicz",
+      "rating": 5,
+      "date": "2026-06-10",
+      "text": "Elijah did a great job at a reasonable price. Very legit.",
+      "reply": "Thanks Kenny. I appreciate you reaching out for your vehicle transformation."
+    },
+    {
+      "author": "Barbara Burke",
+      "rating": 5,
+      "date": "2026-05-10",
+      "text": "Elijah did an outstanding job detailing my car. He was prompt, courteous, fairly priced, and incredibly thorough from start to finish. I especially appreciated how he checked in with me along the way to make sure I was happy with the",
+      "truncated": true,
+      "reply": "Barbara, I really appreciate your kind words. I was also astounded by how nicely your car came out! The transformation was awesome. I'm glad I could breathe new life into your vehicle!"
+    },
+    {
+      "author": "Doug Saylor",
+      "rating": 5,
+      "date": "2026-05-10",
+      "text": "513 Auto Clean was awesome. Communication was great with quick responses, showed up on time and the service was great. Definitely work with them again.",
+      "reply": "Thank you Doug! I look forward to working with you in the future. Glad I could transform your truck and SUV for you!"
+    },
+    {
+      "author": "Ann Weber",
+      "rating": 5,
+      "date": "2026-05-10",
+      "text": "Excellent service. Very respectful throughout process. My son said my car looks better than when I bought it!",
+      "reply": "I really appreciate that, Ann. I hope you and your son appreciate your newly detailed car!"
+    },
+    {
+      "author": "Bruce Clement",
+      "rating": 5,
+      "date": "2026-05-10",
+      "text": "Elijah at 513 Auto Clean did a complete detail job on my 2002 VW Passat Wagon last weekend.",
+      "truncated": true,
+      "reply": "Thank you Bruce! I'm glad I could help on your vehicle and make such a difference for you. Looking forward to working with you more in the near future!"
+    },
+    {
+      "author": "Ben Schloss",
+      "rating": 5,
+      "date": "2026-05-10",
+      "text": "Excellent work, very prompt and professional. Would use this service again.",
+      "reply": "Ben, I appreciate the kind words. I hope you enjoy newly detailed cars!"
+    },
+    {
+      "author": "Aboubakar Drame",
+      "rating": 5,
+      "date": "2026-05-10",
+      "text": "Good job",
+      "feature": false,
+      "reply": "Thank you! I appreciate the support."
+    },
+    {
+      "author": "Alex Saylor",
+      "rating": 5,
+      "date": "2026-04-10",
+      "text": "Elijah took very good care of my vehicle! The detail took a little longer than expected but I didn't mind because the job he did spoke for itself. Will recommend and keep in mind for the future!",
+      "reply": "Alex, I appreciate your recommendation! I always make sure every vehicle is set right, even if that means putting a little extra attention in the little things on the detail."
+    },
+    {
+      "author": "Mugisha Steven",
+      "rating": 5,
+      "date": "2026-04-10",
+      "text": "He did a great job on my car",
+      "feature": false,
+      "reply": "I really appreciate it Steven. Thank you for placing your trust in me with your vehicle!"
+    },
+    {
+      "author": "Greg Smith",
+      "rating": 5,
+      "date": "2026-03-10",
+      "text": "Elijah is a true professional, don't be mistaken he's the sole owner and does every single car himself!! He's not some big company looking to make a killing! This kid really took his time (6+ hours), patience, and made sure I received the",
+      "truncated": true,
+      "reply": "Thank you so much. It's always a good day when I can help transform a vehicle!"
+    },
+    {
+      "author": "James Savko",
+      "rating": 5,
+      "date": "2026-03-10",
+      "text": "Elijah did an excellent job detailing my car. He was extremely detail-oriented, worked hard the entire time, and made sure everything looked spotless. The finished result looked fantastic and exceeded my expectations. I'd absolutely recommend him to anyone looking for quality car detailing.",
+      "reply": "James, I really appreciate it! Thank you for trusting me with your vehicle and helping you get your daily driver back in operating condition."
+    },
+    {
+      "author": "Moriah Tolliver",
+      "rating": 5,
+      "date": "2026-03-10",
+      "text": "I am very pleased with 513 Auto Clean. Elijah was kind and professional. He came to my house and worked in my driveway while I was inside cleaning the house! A great service since I didn't want to be stuck waiting at an auto detail shop",
+      "truncated": true,
+      "reply": "Thank you so much Moriah! It was a pleasure meeting you and your dog."
+    },
+    {
+      "author": "Kelly T",
+      "rating": 5,
+      "date": "2026-03-10",
+      "text": "He did a great job with the interior of my car. He was had excellent communication and it was an affordable price. Will definitely use their service again in the future!",
+      "reply": "Thank you so much Kelly."
+    },
+    {
+      "author": "Brian Painter",
+      "rating": 5,
+      "date": "2026-03-10",
+      "text": "Great detailing service! Plan to use again in the future.",
+      "reply": "Thank you Brian! I look forward to working with you in the future."
+    },
+    {
+      "author": "Samuel Schaefer",
+      "rating": 5,
+      "date": "2026-02-10",
+      "text": "10/10, great communication, amazing work. He was able to get a stain out of my car I wasn't able to.",
+      "reply": "Thank you so much Samuel! Glad I could get that stubborn construction stain out of your seat for you."
+    },
+    {
+      "author": "Matias Jordan Rojas",
+      "rating": 5,
+      "date": "2026-02-10",
+      "text": "Excellent work at a good price, my car looks like new now, I recommend it 100%",
+      "reply": "Thank you so much! Really glad I could help you get your new car feeling more like yours. Thanks for the tea as well! It was chilly."
+    },
+    {
+      "author": "Daniel Deno",
+      "rating": 5,
+      "date": "2026-01-10",
+      "text": "Very professional and thorough. Had a set time for me and was there and ready to work right away. Hits every detail on the interior of the vehicle from windows to the mats and all plastic lining. I was very satisfied with the outcome.",
+      "reply": "Thank you Daniel! I really appreciate you letting me work on your truck and getting it extra clean!"
+    },
+    {
+      "author": "Mahidhar",
+      "rating": 5,
+      "date": "2026-01-10",
+      "text": "The guy is very nice. He did my car interior and exterior detailing and the bumper painting. He is exceptional.",
+      "reply": "Thank you Mahidhar! I've loved working with you, and I'm looking forward to continuing to help with your car."
+    },
+    {
+      "author": "Miciah Mikes-Thacker",
+      "rating": 5,
+      "date": "2026-01-10",
+      "text": "Did a great job detailing the interior of my car! It looks great, under my seats has never been this clean.",
+      "reply": "Thank you so much! Taking out the seats always gets that next level clean, always so satisfying to see. Thanks for letting me transform your car!"
+    },
+    {
+      "author": "Madjiguene Muntaxa",
+      "rating": 5,
+      "date": "2026-01-10",
+      "text": "Thank you!",
+      "feature": false,
+      "reply": "Of course! Thank you for trusting me with your car. You were a joy to work with and very kind."
+    }
+  ]
+}

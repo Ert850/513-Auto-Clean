@@ -150,7 +150,13 @@ body.bk-open { overflow: hidden; }
 }
 .bk-addon.on { border-color: var(--red); }
 .bk-addon.off { opacity: .72; }
-.bk-addon-h { display: flex; align-items: center; justify-content: space-between; gap: .8rem; }
+.bk-addon-h { display: flex; align-items: center; gap: .6rem; }
+.bk-addon-h b { flex: 1; }
+.bk-addon-ic {
+  width: 30px; height: 30px; border-radius: 8px; flex: none;
+  background: var(--ink); color: var(--red-bright); display: grid; place-items: center;
+}
+.bk-addon-ic svg { width: 17px; height: 17px; }
 .bk-addon-h b { font-size: .98rem; }
 .bk-addon-d { color: var(--text-soft); font-size: .84rem; line-height: 1.5; margin: .25rem 0 .6rem; }
 .bk-addon-block {

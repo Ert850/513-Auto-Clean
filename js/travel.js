@@ -1,15 +1,19 @@
 /* ============================================================
-   Front page travel map.
+   Service area map and travel fee estimator.
 
-   Shows the whole service area priced at a glance, rather than making
-   someone type a ZIP to find out one number. Uses the same mileage ladder
-   as the booking funnel and the payment functions, so nothing shown here
-   can drift from what actually gets charged.
+   A real slippy map (Leaflet over OpenStreetMap tiles) with every ZIP we
+   quote marked and coloured by fee band. Click a marker, search a ZIP, a
+   town, or a street address, and the fee appears.
 
-   The map is drawn from approximate ZIP centre points and is a schematic,
-   not a street map. It is built in JS and revealed only on success, so a
-   browser that cannot draw it is left with the ZIP lookup underneath
-   rather than an empty box.
+   Every figure comes from the SAME mileage ladder as the booking funnel and
+   the payment functions, so nothing shown here can drift from what actually
+   gets charged.
+
+   Degrades in two steps:
+     1. Leaflet missing or blocked -> a schematic SVG map, drawn from the same
+        data, so the section still works offline or behind a strict network.
+     2. No JavaScript at all -> the town lists below the map, which are plain
+        HTML and are what search engines read anyway.
    ============================================================ */
 (function () {
   'use strict';
@@ -22,32 +26,26 @@
 
   var $ = P.formatCents;
   var BASE_ZIP = '45220';
+  // Clifton, not the house. Close enough to draw from, far enough to publish.
+  var BASE_LATLON = [39.135, -84.517];
 
-  /* ---------- fee bands ---------- */
+  /* ---------------- fee bands ---------------- */
 
-  // Ordered low to high. `max` is the top fee in cents that lands in the band.
-  //
   // Thresholds are set so every band actually holds ZIPs. Wider bands would
   // paint most of the map one colour, which is the same as not colouring it.
-  // Labels say "about" because a band is keyed on the middle of a ZIP while
-  // the readout gives that ZIP's full range.
   var BANDS = [
-    { id: 0, max: 0, label: 'No travel fee' },
-    { id: 1, max: 1000, label: 'About $5 to $10' },
-    { id: 2, max: 2000, label: 'About $15 to $20' },
-    { id: 3, max: 3500, label: 'About $25 to $35' },
-    { id: 4, max: Infinity, label: 'About $45 and up' }
+    { id: 0, max: 0, label: 'No travel fee', color: '#2f9e5e' },
+    { id: 1, max: 1000, label: 'About $5 to $10', color: '#7cb342' },
+    { id: 2, max: 2000, label: 'About $15 to $20', color: '#f0a93f' },
+    { id: 3, max: 3500, label: 'About $25 to $35', color: '#ec6d2a' },
+    { id: 4, max: Infinity, label: 'About $45 and up', color: '#c62828' }
   ];
 
-  function feeCents(min) {
-    return P.mileageFeeCents(min, P.RULES.mileage);
-  }
+  function feeCents(min) { return P.mileageFeeCents(min, P.RULES.mileage); }
 
   function bandOf(cents) {
-    for (var i = 0; i < BANDS.length; i++) {
-      if (cents <= BANDS[i].max) return BANDS[i].id;
-    }
-    return BANDS.length - 1;
+    for (var i = 0; i < BANDS.length; i++) if (cents <= BANDS[i].max) return BANDS[i];
+    return BANDS[BANDS.length - 1];
   }
 
   function esc(s) {
@@ -56,107 +54,170 @@
     });
   }
 
-  /* ---------- readout, shared by the map and the ZIP box ---------- */
+  /* ---------------- the data, joined once ---------------- */
+
+  var POINTS = (function () {
+    var list = [];
+    (P.ZIP_GEO || []).forEach(function (g) {
+      var hit = P.lookupZip(g.zip);
+      if (!hit) return;
+      var mid = Math.round((hit.minMin + hit.maxMin) / 2);
+      var lo = feeCents(hit.minMin), hi = feeCents(hit.maxMin);
+      list.push({
+        zip: g.zip, area: hit.area, lat: g.lat, lon: g.lon,
+        minMin: hit.minMin, maxMin: hit.maxMin, mid: mid,
+        loCents: lo, hiCents: hi,
+        band: bandOf(feeCents(mid)),
+        range: hi === 0 ? 'No travel fee' : lo === hi ? $(hi) : $(lo) + ' to ' + $(hi)
+      });
+    });
+    return list;
+  })();
+
+  var BY_ZIP = {};
+  POINTS.forEach(function (p) { BY_ZIP[p.zip] = p; });
+
+  /* ---------------- readout ---------------- */
+
+  var selected = '';
 
   function describe(zip) {
+    if (BY_ZIP[zip]) return BY_ZIP[zip];
+    // A ZIP we have not mapped individually still resolves through the
+    // three digit prefix bands.
     var hit = P.lookupZip(zip);
     if (!hit) return null;
-    var lo = feeCents(hit.minMin);
-    var hi = feeCents(hit.maxMin);
+    var lo = feeCents(hit.minMin), hi = feeCents(hit.maxMin);
     return {
-      zip: zip,
-      area: hit.area,
-      found: hit.found,
-      minMin: hit.minMin,
-      maxMin: hit.maxMin,
-      loCents: lo,
-      hiCents: hi,
+      zip: zip, area: hit.area, approx: !hit.found,
+      minMin: hit.minMin, maxMin: hit.maxMin, loCents: lo, hiCents: hi,
       range: hi === 0 ? 'No travel fee' : lo === hi ? $(hi) : $(lo) + ' to ' + $(hi)
     };
   }
 
-  function showReadout(zip) {
-    var d = describe(zip);
+  function showFee(d, label) {
     if (!d) {
       out.className = 'travel-out err';
-      out.textContent = 'That does not look like a ZIP we cover. Try another, or ask us and we will check.';
+      out.textContent = 'We do not have that one mapped. Ask us and we will check it for you.';
       return;
     }
-
     out.className = 'travel-out ok';
-
-    if (d.hiCents === 0) {
-      out.innerHTML = '<b>No travel fee</b><span>' + esc(d.area) + ' (' + esc(d.zip) + ') is inside our free radius, about ' +
-        d.minMin + ' to ' + d.maxMin + ' minutes out.</span>';
-      return;
-    }
-
+    var where = esc(label || (d.area + ' (' + d.zip + ')'));
     out.innerHTML =
       '<b>' + esc(d.range) + '</b>' +
-      '<span>' + esc(d.area) + ' (' + esc(d.zip) + '), roughly ' + d.minMin + ' to ' + d.maxMin + ' minutes from us. ' +
-      (d.loCents === 0 ? 'Closer parts of this ZIP fall inside the free radius. ' : '') +
-      'Your exact fee comes from your address when you book.</span>' +
-      (d.found ? '' : '<span class="travel-approx">We do not have this ZIP mapped precisely yet, so this is a wider guess than usual.</span>');
+      '<span>' + where + ', roughly ' + d.minMin + ' to ' + d.maxMin + ' minutes from us. ' +
+      (d.hiCents === 0
+        ? 'That is inside our free radius.'
+        : (d.loCents === 0 ? 'Closer parts of this area fall inside the free radius. ' : '') +
+          'Your exact fee comes from your address when you book.') +
+      '</span>' +
+      (d.approx ? '<span class="travel-approx">We have not mapped this ZIP precisely yet, so this is a wider guess than usual.</span>' : '');
   }
 
-  /* ---------- the map ---------- */
+  function clearOut() {
+    out.className = 'travel-out';
+    out.textContent = '';
+    selected = '';
+  }
 
-  var host = document.getElementById('zipMap');
-  var canvas = document.getElementById('zipMapSvg');
-  var legend = document.getElementById('zipLegend');
-  var selected = '';
+  /* ---------------- legend ---------------- */
 
-  // Areas printed on the map so it reads as a map rather than a scatter of
-  // dots. Chosen for spread, not importance, so the labels do not collide.
-  var ANCHORS = {
-    '45202': 'Downtown',
-    '45242': 'Blue Ash',
-    '45069': 'West Chester',
-    '45011': 'Hamilton',
-    '45044': 'Middletown',
-    '45040': 'Mason',
-    '45140': 'Loveland',
-    '45230': 'Anderson',
-    '45238': 'Delhi',
-    '45030': 'Harrison',
-    '47025': 'Lawrenceburg',
-    '41042': 'Florence',
-    '41071': 'Newport'
-  };
+  (function legend() {
+    var el = document.getElementById('zipLegend');
+    if (!el) return;
+    el.innerHTML = BANDS.map(function (b) {
+      return '<span class="tmap-key"><i style="background:' + b.color + '"></i>' + esc(b.label) + '</span>';
+    }).join('');
+  })();
 
-  function buildMap() {
-    if (!host || !canvas || !P.ZIP_GEO || !P.ZIP_GEO.length) return false;
+  /* ---------------- the real map ---------------- */
 
-    var W = 1000, PAD = 46;
+  var map = null, markers = {}, pin = null;
 
-    // Equirectangular, which is fine over sixty miles: longitude degrees are
-    // squeezed by the cosine of the latitude so the shape does not stretch.
-    var k = Math.cos((39.15 * Math.PI) / 180);
+  function initLeaflet() {
+    var host = document.getElementById('areaMap');
+    if (!host || !window.L) return false;
 
-    var pts = [];
-    var i, g, d;
-    for (i = 0; i < P.ZIP_GEO.length; i++) {
-      g = P.ZIP_GEO[i];
-      d = describe(g.zip);
-      if (!d) continue;
-      pts.push({
-        zip: g.zip, area: d.area, range: d.range,
-        minMin: d.minMin, maxMin: d.maxMin,
-        band: bandOf(feeCents(Math.round((d.minMin + d.maxMin) / 2))),
-        mid: Math.round((d.minMin + d.maxMin) / 2),
-        px: g.lon * k, py: -g.lat
-      });
-    }
-    if (pts.length < 10) return false;
-
-    var minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-    pts.forEach(function (p) {
-      if (p.px < minX) minX = p.px;
-      if (p.px > maxX) maxX = p.px;
-      if (p.py < minY) minY = p.py;
-      if (p.py > maxY) maxY = p.py;
+    map = L.map(host, {
+      center: [39.14, -84.5],
+      zoom: 9,
+      scrollWheelZoom: false, // grabbing the page scroll is hostile on mobile
+      zoomControl: true
     });
 
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 18,
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+    }).addTo(map);
+
+    // Two fingers to pan on touch, so scrolling past the map still works.
+    if (map.tap) map.tap.disable();
+    map.dragging.enable();
+
+    POINTS.forEach(function (p) {
+      var m = L.circleMarker([p.lat, p.lon], {
+        radius: 8,
+        color: '#ffffff',
+        weight: 2,
+        fillColor: p.band.color,
+        fillOpacity: 0.92
+      }).addTo(map);
+
+      m.bindTooltip(p.area + ': ' + p.range, { direction: 'top' });
+      m.bindPopup(
+        '<b>' + esc(p.area) + '</b><br>' + esc(p.zip) +
+        '<br><span class="lp-fee">' + esc(p.range) + '</span>' +
+        '<br><span class="lp-min">' + p.minMin + ' to ' + p.maxMin + ' min from us</span>'
+      );
+      m.on('click', function () { pick(p.zip, { pan: false }); });
+      markers[p.zip] = m;
+    });
+
+    // Where we start from. Marked so the whole map has an origin, without
+    // publishing the actual address.
+    L.circleMarker(BASE_LATLON, {
+      radius: 9, color: '#0b0e13', weight: 3, fillColor: '#ffffff', fillOpacity: 1
+    }).addTo(map).bindTooltip('We start here', { permanent: false, direction: 'top' });
+
+    L.circle(BASE_LATLON, {
+      radius: 8000, color: '#2f9e5e', weight: 1.5, dashArray: '5 7', fill: false
+    }).addTo(map).bindTooltip('Roughly the free travel radius');
+
+    map.fitBounds(POINTS.map(function (p) { return [p.lat, p.lon]; }), { padding: [24, 24] });
+    return true;
+  }
+
+  function highlight(zip) {
+    Object.keys(markers).forEach(function (z) {
+      markers[z].setStyle({ weight: z === zip ? 4 : 2, color: z === zip ? '#0b0e13' : '#ffffff' });
+      markers[z].setRadius(z === zip ? 11 : 8);
+    });
+  }
+
+  function dropPin(lat, lon, label) {
+    if (!map) return;
+    if (pin) map.removeLayer(pin);
+    pin = L.marker([lat, lon]).addTo(map).bindPopup(esc(label)).openPopup();
+    map.setView([lat, lon], 12);
+  }
+
+  /* ---------------- schematic fallback ----------------
+     Same data, no tiles. Only used when Leaflet does not load. */
+
+  function buildSchematic() {
+    var canvas = document.getElementById('zipMapSvg');
+    if (!canvas || POINTS.length < 10) return false;
+
+    var W = 1000, PAD = 46;
+    var k = Math.cos((39.15 * Math.PI) / 180);
+    var pts = POINTS.map(function (p) {
+      return { ref: p, px: p.lon * k, py: -p.lat };
+    });
+
+    var minX = Math.min.apply(null, pts.map(function (p) { return p.px; }));
+    var maxX = Math.max.apply(null, pts.map(function (p) { return p.px; }));
+    var minY = Math.min.apply(null, pts.map(function (p) { return p.py; }));
+    var maxY = Math.max.apply(null, pts.map(function (p) { return p.py; }));
     var scale = (W - PAD * 2) / (maxX - minX);
     var H = Math.round((maxY - minY) * scale + PAD * 2);
 
@@ -165,115 +226,213 @@
       p.y = PAD + (p.py - minY) * scale;
     });
 
-    var base = pts.filter(function (p) { return p.zip === BASE_ZIP; })[0] || pts[0];
-
-    // Faint drive-time rings, sized from the ZIPs that actually sit at each
-    // drive time rather than from a guess about miles per minute.
-    var rings = [15, 30, 45].map(function (target) {
-      var near = pts.filter(function (p) { return Math.abs(p.mid - target) <= 4; });
-      if (near.length < 2) return null;
-      var sum = near.reduce(function (t, p) {
-        return t + Math.sqrt(Math.pow(p.x - base.x, 2) + Math.pow(p.y - base.y, 2));
-      }, 0);
-      return { r: sum / near.length, label: target + ' min' };
-    }).filter(Boolean);
+    var base = pts.filter(function (p) { return p.ref.zip === BASE_ZIP; })[0] || pts[0];
 
     var svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" ' +
-      'aria-label="Map of the Cincinnati area showing the travel fee for each ZIP code. The same figures are available by entering a ZIP below." ' +
+      'aria-label="Schematic map of the service area, coloured by travel fee. The same figures are in the search box." ' +
       'preserveAspectRatio="xMidYMid meet">';
 
-    rings.forEach(function (r) {
+    [15, 30, 45].forEach(function (target) {
+      var near = pts.filter(function (p) { return Math.abs(p.ref.mid - target) <= 4; });
+      if (near.length < 2) return;
+      var r = near.reduce(function (t, p) {
+        return t + Math.sqrt(Math.pow(p.x - base.x, 2) + Math.pow(p.y - base.y, 2));
+      }, 0) / near.length;
       svg += '<circle class="tmap-ring" cx="' + base.x.toFixed(1) + '" cy="' + base.y.toFixed(1) +
-        '" r="' + r.r.toFixed(1) + '"/>' +
-        '<text class="tmap-ringlab" x="' + base.x.toFixed(1) + '" y="' + (base.y - r.r + 13).toFixed(1) +
-        '">' + r.label + '</text>';
+        '" r="' + r.toFixed(1) + '"/>' +
+        '<text class="tmap-ringlab" x="' + base.x.toFixed(1) + '" y="' + (base.y - r + 13).toFixed(1) +
+        '">' + target + ' min</text>';
     });
 
-    // Dots low to high so the expensive edges never hide the free centre.
-    pts.slice().sort(function (a, b) { return b.band - a.band; }).forEach(function (p) {
-      svg += '<circle class="tmap-dot tz-' + p.band + '" data-zip="' + p.zip + '" ' +
+    pts.slice().sort(function (a, b) { return b.ref.band.id - a.ref.band.id; }).forEach(function (p) {
+      svg += '<circle class="tmap-dot" data-zip="' + p.ref.zip + '" fill="' + p.ref.band.color + '" ' +
         'cx="' + p.x.toFixed(1) + '" cy="' + p.y.toFixed(1) + '" r="8">' +
-        '<title>' + esc(p.area) + ' ' + p.zip + ': ' + esc(p.range) + '</title></circle>';
+        '<title>' + esc(p.ref.area) + ' ' + p.ref.zip + ': ' + esc(p.ref.range) + '</title></circle>';
     });
 
-    Object.keys(ANCHORS).forEach(function (zip) {
-      var p = pts.filter(function (q) { return q.zip === zip; })[0];
-      if (!p) return;
-      var left = p.x < base.x;
-      svg += '<text class="tmap-lab" text-anchor="' + (left ? 'end' : 'start') + '" ' +
-        'x="' + (p.x + (left ? -13 : 13)).toFixed(1) + '" y="' + (p.y + 4).toFixed(1) + '">' +
-        esc(ANCHORS[zip]) + '</text>';
-    });
-
-    svg += '<g class="tmap-base"><circle class="tmap-basering" cx="' + base.x.toFixed(1) +
-      '" cy="' + base.y.toFixed(1) + '" r="15"/>' +
+    svg += '<circle class="tmap-basering" cx="' + base.x.toFixed(1) + '" cy="' + base.y.toFixed(1) + '" r="15"/>' +
       '<circle class="tmap-basedot" cx="' + base.x.toFixed(1) + '" cy="' + base.y.toFixed(1) + '" r="6"/>' +
       '<text class="tmap-baselab" x="' + base.x.toFixed(1) + '" y="' + (base.y + 32).toFixed(1) +
-      '" text-anchor="middle">We start here</text></g>';
+      '" text-anchor="middle">We start here</text></svg>';
 
-    svg += '</svg>';
     canvas.innerHTML = svg;
-
-    if (legend) {
-      legend.innerHTML = BANDS.map(function (b) {
-        return '<span class="tmap-key"><i class="tz-' + b.id + '"></i>' + esc(b.label) + '</span>';
-      }).join('');
-    }
-
-    host.hidden = false;
-    return true;
-  }
-
-  function markSelected(zip) {
-    if (!canvas) return;
-    var dots = canvas.querySelectorAll('.tmap-dot');
-    for (var i = 0; i < dots.length; i++) {
-      dots[i].classList.toggle('on', dots[i].getAttribute('data-zip') === zip);
-    }
-  }
-
-  /* ---------- wiring ---------- */
-
-  function pick(zip) {
-    selected = zip;
-    markSelected(zip);
-    showReadout(zip);
-    if (input.value.trim() !== zip) input.value = zip;
-  }
-
-  if (buildMap()) {
+    canvas.hidden = false;
     canvas.addEventListener('click', function (e) {
       var dot = e.target.closest ? e.target.closest('.tmap-dot') : null;
       if (dot) pick(dot.getAttribute('data-zip'));
     });
-    // Hovering previews without committing, so running the mouse across the
-    // map reads out prices as you go and leaving it puts back your own ZIP.
     canvas.addEventListener('mouseover', function (e) {
       var dot = e.target.closest ? e.target.closest('.tmap-dot') : null;
-      if (dot) showReadout(dot.getAttribute('data-zip'));
+      if (dot) showFee(describe(dot.getAttribute('data-zip')));
     });
     canvas.addEventListener('mouseleave', function () {
-      if (selected) showReadout(selected);
+      if (selected) showFee(describe(selected));
+    });
+    return true;
+  }
+
+  /* ---------------- search ---------------- */
+
+  var suggest = document.getElementById('zipSuggest');
+
+  function pick(zip, opts) {
+    var d = describe(zip);
+    if (!d) { showFee(null); return; }
+    selected = zip;
+    highlight(zip);
+    showFee(d);
+    hideSuggest();
+    if (input.value.trim() !== zip) input.value = zip;
+    if (map && markers[zip] && (!opts || opts.pan !== false)) {
+      map.setView(markers[zip].getLatLng(), 12);
+      markers[zip].openPopup();
+    }
+    if (pin && map) { map.removeLayer(pin); pin = null; }
+  }
+
+  function hideSuggest() {
+    if (!suggest) return;
+    suggest.hidden = true;
+    suggest.innerHTML = '';
+  }
+
+  function localMatches(q) {
+    var needle = q.toLowerCase();
+    return POINTS.filter(function (p) {
+      return p.area.toLowerCase().indexOf(needle) > -1 || p.zip.indexOf(needle) === 0;
+    }).slice(0, 6);
+  }
+
+  function renderSuggest(rows, footer) {
+    if (!suggest) return;
+    if (!rows.length && !footer) return hideSuggest();
+    suggest.innerHTML = rows.map(function (p) {
+      return '<button type="button" class="at-sg" data-zip="' + p.zip + '">' +
+        '<span class="sg-dot" style="background:' + p.band.color + '"></span>' +
+        '<span class="sg-name">' + esc(p.area) + '<i>' + esc(p.zip) + '</i></span>' +
+        '<span class="sg-fee">' + esc(p.range) + '</span></button>';
+    }).join('') + (footer || '');
+    suggest.hidden = false;
+  }
+
+  /* Address lookup, only when the local town and ZIP list comes up empty.
+     Nominatim is free and rate limited, so it is a last resort rather than a
+     keystroke handler, and a failure just leaves the local search in place. */
+  var geoTimer = null;
+
+  function geocode(q) {
+    var url = 'https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=us' +
+      '&viewbox=-85.6,39.9,-83.9,38.6&bounded=1&q=' + encodeURIComponent(q);
+    return fetch(url, { headers: { Accept: 'application/json' } })
+      .then(function (r) { return r.ok ? r.json() : Promise.reject(new Error(String(r.status))); })
+      .then(function (rows) {
+        if (!rows || !rows.length) return null;
+        return { lat: Number(rows[0].lat), lon: Number(rows[0].lon), label: rows[0].display_name };
+      });
+  }
+
+  /**
+   * Turn a coordinate into a drive-time band without calling a routing API.
+   *
+   * Takes the three nearest mapped ZIPs and blends their bands by inverse
+   * distance. Cruder than a real route, and clearly labelled as such, but it
+   * is built from the same measured drive times as everything else rather
+   * than from a miles-per-minute guess.
+   */
+  function bandFromLatLon(lat, lon) {
+    var scored = POINTS.map(function (p) {
+      var dx = (p.lon - lon) * Math.cos((39.15 * Math.PI) / 180);
+      var dy = p.lat - lat;
+      return { p: p, d: Math.sqrt(dx * dx + dy * dy) };
+    }).sort(function (a, b) { return a.d - b.d; }).slice(0, 3);
+
+    var wsum = 0, lo = 0, hi = 0;
+    scored.forEach(function (s) {
+      var w = 1 / Math.max(s.d, 0.004);
+      wsum += w;
+      lo += s.p.minMin * w;
+      hi += s.p.maxMin * w;
+    });
+    var minMin = Math.round(lo / wsum), maxMin = Math.round(hi / wsum);
+    var loC = feeCents(minMin), hiC = feeCents(maxMin);
+    return {
+      zip: scored[0].p.zip, area: scored[0].p.area, approx: true,
+      minMin: minMin, maxMin: maxMin, loCents: loC, hiCents: hiC,
+      range: hiC === 0 ? 'No travel fee' : loC === hiC ? $(hiC) : $(loC) + ' to ' + $(hiC)
+    };
+  }
+
+  function search(commit) {
+    var q = input.value.trim();
+    if (!q) { hideSuggest(); clearOut(); return; }
+
+    if (/^\d{5}$/.test(q)) { pick(q); return; }
+
+    var rows = localMatches(q);
+    if (rows.length) {
+      if (commit) { pick(rows[0].zip); return; }
+      renderSuggest(rows);
+      return;
+    }
+
+    // Nothing local. If it reads like a street address, geocode it.
+    if (!commit || q.length < 5) { hideSuggest(); return; }
+
+    renderSuggest([], '<p class="at-sg-note">Looking that up...</p>');
+    geocode(q)
+      .then(function (hit) {
+        hideSuggest();
+        if (!hit) { showFee(null); return; }
+        var d = bandFromLatLon(hit.lat, hit.lon);
+        var short = hit.label.split(',').slice(0, 3).join(',');
+        showFee(d, short);
+        dropPin(hit.lat, hit.lon, short);
+      })
+      .catch(function () {
+        hideSuggest();
+        out.className = 'travel-out err';
+        out.textContent = 'Address lookup is not responding. Try your ZIP code instead, or start a booking for an exact figure.';
+      });
+  }
+
+  /* ---------------- wiring ---------------- */
+
+  if (!initLeaflet()) buildSchematic();
+
+  go.addEventListener('click', function () { search(true); });
+
+  input.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') { e.preventDefault(); search(true); }
+    if (e.key === 'Escape') hideSuggest();
+  });
+
+  input.addEventListener('input', function () {
+    clearTimeout(geoTimer);
+    var q = input.value.trim();
+    if (/^\d{5}$/.test(q)) { pick(q); return; }
+    if (q.length < 2) { hideSuggest(); clearOut(); return; }
+    geoTimer = setTimeout(function () { search(false); }, 180);
+  });
+
+  if (suggest) {
+    suggest.addEventListener('click', function (e) {
+      var b = e.target.closest ? e.target.closest('.at-sg') : null;
+      if (b) pick(b.getAttribute('data-zip'));
     });
   }
 
-  function fromInput() {
-    var zip = input.value.trim().slice(0, 5);
-    if (!/^\d{5}$/.test(zip)) {
-      out.className = 'travel-out err';
-      out.textContent = 'Enter a five digit ZIP code.';
-      return;
-    }
-    pick(zip);
-  }
+  document.addEventListener('click', function (e) {
+    if (suggest && !suggest.contains(e.target) && e.target !== input) hideSuggest();
+  });
 
-  go.addEventListener('click', fromInput);
-  input.addEventListener('keydown', function (e) {
-    if (e.key === 'Enter') { e.preventDefault(); fromInput(); }
-  });
-  input.addEventListener('input', function () {
-    // Estimate as soon as a full ZIP is typed; no reason to make them tap.
-    if (/^\d{5}$/.test(input.value.trim())) fromInput();
-    else { out.textContent = ''; out.className = 'travel-out'; selected = ''; markSelected(''); }
-  });
+  // Leaflet is deferred, so it may land after this file runs.
+  if (!map) {
+    window.addEventListener('load', function () {
+      if (!map && window.L && initLeaflet()) {
+        var fb = document.getElementById('zipMapSvg');
+        if (fb) fb.hidden = true;
+        if (selected) pick(selected);
+      }
+    });
+  }
 })();

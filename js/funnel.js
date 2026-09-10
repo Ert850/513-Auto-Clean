@@ -726,7 +726,10 @@
 
         html += '<div class="bk-addon' + (chosen ? ' on' : '') +
           (blocked || unavailable ? ' off' : '') + '">' +
-          '<div class="bk-addon-h"><b>' + esc(a.name) +
+          '<div class="bk-addon-h"><span class="bk-addon-ic">' +
+          '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' +
+          P.addonIcon(a.icon) + '</svg></span>' +
+          '<b>' + esc(a.name) +
           (unavailable ? '<sup class="bk-star">*</sup>' : '') + '</b>' +
           (chosen ? '<button type="button" class="bk-clear" data-clear="' + a.id + '">Remove</button>' : '') +
           '</div>' +

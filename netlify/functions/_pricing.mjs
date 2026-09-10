@@ -12,6 +12,7 @@ var ADDONS = [
     id: "pet-hair",
     name: "Pet Hair Removal",
     scope: "interior",
+    icon: "paw",
     description: "Seats, carpets, and every crevice it has worked its way into.",
     note: "Pet hair does not vacuum out once it has woven into fabric. It gets lifted mechanically first, with rubber tools and a horsehair brush that drag the fibers back out of the weave, then vacuumed and gone over again. The second pass is where most of it actually comes out.",
     tiers: [
@@ -28,6 +29,7 @@ var ADDONS = [
     id: "stain",
     name: "Stain Treatment",
     scope: "interior",
+    icon: "droplet",
     description: "Two levels. Pick the one that matches what you are dealing with.",
     note: "A stain is either sitting on the fibers or has soaked into them. Treatment breaks the bond so it can be agitated loose and wiped away, which handles anything on the surface. Removal goes further: heat and moisture pull what has soaked in back up out of the padding, and an extractor takes it away rather than pushing it deeper. That is why the deeper option costs more time, not just more product.",
     tiers: [
@@ -51,7 +53,8 @@ var ADDONS = [
     id: "steam",
     name: "Full Vehicle Steam Treatment",
     scope: "interior",
-    description: "All safe portions of the vehicle sanitized and scrubbed with a steamer.",
+    icon: "steam",
+    description: "Every safe surface sanitized and scrubbed with a steamer.",
     note: "Steam cleans with heat rather than chemicals. It softens grease and grime so it wipes off instead of being scrubbed at, gets into vents, seams and seat rails that no cloth reaches, and the heat kills bacteria on contact. Everything dries in minutes because there is very little water involved.",
     tiers: [{ id: "std", label: "Full vehicle", priceCents: 7500, durationMin: 90 }]
   },
@@ -59,8 +62,9 @@ var ADDONS = [
     id: "ozone",
     name: "Ozone Odor Reset",
     scope: "interior",
-    description: "Ozone (O3) destroys the compounds causing the smell instead of covering them. 60 to 90% reduction of organic odors. Must be paired with a stain treatment, or Full Interior and above.",
-    note: "A generator converts the oxygen in the air (O2) into ozone (O3). That extra atom is unstable, so it breaks away and oxidises odor molecules, bacteria and smoke residue on contact. Because it works as a gas it reaches the vents, headliner and seat foam that wiping cannot. It then reverts to ordinary oxygen and leaves nothing behind. The vehicle is sealed while it runs and aired out afterwards.",
+    icon: "molecule",
+    description: "Ozone (O3) destroys the compounds causing the smell, not just the smell.",
+    note: "A generator converts the oxygen in the air (O2) into ozone (O3). That extra atom is unstable, so it breaks away and oxidises odor molecules, bacteria and smoke residue on contact. Because it works as a gas it reaches the vents, headliner and seat foam that wiping cannot. It then reverts to ordinary oxygen and leaves nothing behind. The vehicle is sealed while it runs and aired out afterwards. Expect a 60 to 90% reduction in organic odors. It has to be paired with a stain treatment, or with a Full Interior or above, because ozone cannot remove what is still soaked into the fabric.",
     tiers: [{ id: "std", label: "Ozone treatment", priceCents: 5e3, durationMin: 60 }],
     // Ozone attacks what is left in the air and the plastics. Running it over
     // material that has not been extracted first mostly wastes the customer's
@@ -73,7 +77,8 @@ var ADDONS = [
     id: "seat-removal",
     name: "Seat Removal",
     scope: "interior",
-    description: "Electronic disconnect, full seat removal, and a full clean under and around the seats.",
+    icon: "seat",
+    description: "Front seats out, the floor underneath cleaned properly, then refitted.",
     note: "The worst of an interior collects under the seats, where a vacuum wand cannot reach past the rails. The battery is disconnected first so the airbag sensors in the seat are safe to unplug, the seats come out on their bolts, and the whole floor is cleaned properly before they go back in and get torqued to spec.",
     tiers: [{ id: "std", label: "Front seats out", priceCents: 1e4, durationMin: 120 }]
   },
@@ -82,7 +87,8 @@ var ADDONS = [
     id: "headlight",
     name: "Headlight Restoration",
     scope: "exterior",
-    description: "Oxidation removal, 2000 grit wet sand, 3000 grit wet sand, dry, then ceramic coated.",
+    icon: "headlight",
+    description: "Yellowing sanded off, clarity polished back, then ceramic coated.",
     note: "Headlights yellow because UV breaks down the factory coating on the outside of the plastic. Polishing alone buffs the haze off but leaves the plastic bare, so it clouds again within months. Sanding takes the damaged layer off properly, progressively finer grits bring the clarity back, and a ceramic coating replaces the UV protection that failed in the first place.",
     tiers: [{ id: "std", label: "Both headlights", priceCents: 7500, durationMin: 90 }]
   },
@@ -90,7 +96,8 @@ var ADDONS = [
     id: "tire-rim-shine",
     name: "Tire and Rim Shine",
     scope: "exterior",
-    description: "Deep clean and dress the tires and rims.",
+    icon: "wheel",
+    description: "Brake dust dissolved off the rims, tires cleaned and dressed.",
     note: "Brake dust is not dirt, it is hot metal particles that embed themselves into the wheel finish. A dedicated cleaner dissolves the iron so it rinses off instead of being scrubbed in, then the tire gets a dressing that blocks UV, which is what causes the browning and cracking on sidewalls.",
     includedIn: {
       packageIds: ["basic-exterior", "full-exterior", "showroom-exterior"],
@@ -102,6 +109,7 @@ var ADDONS = [
     id: "paint-decon",
     name: "Paint Decontamination",
     scope: "exterior",
+    icon: "spray",
     description: "Chemical decontamination to strip embedded iron and fallout.",
     note: "Paint that still feels rough after a wash is holding contamination the soap cannot lift: rail dust, industrial fallout and brake particles that have bonded to the clear coat. An iron remover dissolves them chemically. Skipping this before any polish or coating means grinding those particles into the paint.",
     includedIn: {
@@ -114,7 +122,8 @@ var ADDONS = [
     id: "clay-bar",
     name: "Clay Bar or Clay Towel",
     scope: "exterior",
-    description: "Mechanically lifts anything decontamination leaves behind, all panels.",
+    icon: "bar",
+    description: "Lifts what chemical decon leaves behind, across every panel.",
     note: "Chemical decon handles metal particles; clay handles everything else, like overspray, tree sap residue and road film. It shears the bonded contamination off the surface as it glides, always on a wet panel so nothing gets dragged. The paint goes from feeling like fine sandpaper to feeling like glass.",
     includedIn: {
       packageIds: ["full-exterior", "showroom-exterior"],
@@ -131,6 +140,7 @@ var ADDONS = [
     id: "hard-water",
     name: "Hard Water Spot Removal",
     scope: "exterior",
+    icon: "spots",
     description: "For etched sprinkler and well water spotting on paint and glass.",
     note: "Hard water leaves dissolved minerals behind when it dries, and in sun those minerals etch a ring into the clear coat. Caught early a mild acid dissolves them off. Left long enough the etching is physical damage in the paint and needs polishing out, which is a correction job rather than this one.",
     includedIn: {
@@ -143,7 +153,8 @@ var ADDONS = [
     id: "engine-bay",
     name: "Engine Bay Detail",
     scope: "exterior",
-    description: "Cleaned, dressed and protected.",
+    icon: "engine",
+    description: "Degreased by hand, blown dry, then dressed and protected.",
     note: "Sensitive electronics get covered first, then a degreaser is left to dwell and agitated by hand rather than blasted with a pressure washer, which is how water finds its way into connectors. Everything is blown dry and the plastics and hoses get a dressing that stops them fading and cracking under engine heat.",
     includedIn: {
       packageIds: ["full-exterior", "showroom-exterior"],
@@ -158,7 +169,8 @@ var ADDONS = [
     // blurs the two constantly.
     name: "Ceramic Wax Sealant",
     scope: "exterior",
-    description: "Six months or so of gloss and beading, applied over clean paint. A wax sealant, not a ceramic coating.",
+    icon: "shield",
+    description: "Six months of gloss and beading. A sealant, not a ceramic coating.",
     note: "A sprayable ceramic infused wax that bonds to the clear coat and leaves a slick, hydrophobic layer. Water beads and rolls off instead of sheeting and drying into spots, and dirt struggles to key onto the surface, so the car stays cleaner between washes. This is not a ceramic coating: a coating cures hard, lasts years, and needs the paint corrected first. This goes on in under an hour, lasts about six months, and can be topped up whenever you like.",
     includedIn: {
       packageIds: ["full-exterior", "showroom-exterior"],
@@ -170,7 +182,8 @@ var ADDONS = [
     id: "ceramic-coating",
     name: "Ceramic Coating",
     scope: "exterior",
-    description: "Years of protection rather than months. Booked as Showroom Ready Exterior.",
+    icon: "gem",
+    description: "Years of protection rather than months, bonded to the clear coat.",
     note: "A real coating cures into a hard glass-like layer chemically bonded to the clear coat, which is why it lasts years rather than months. It also locks in whatever the paint looks like at the time, so any swirls underneath are sealed in with it. That is why coatings are sold with correction rather than on their own, and why this one lives inside Showroom Ready Exterior.",
     unavailable: true,
     unavailableNote: "Booked through Showroom Ready Exterior, which includes the prep a coating needs.",
@@ -187,7 +200,8 @@ var ADDONS = [
     id: "paint-polish",
     name: "Paint Polish",
     scope: "exterior",
-    description: "A single machine pass to lift light swirling and bring the gloss back.",
+    icon: "polisher",
+    description: "One machine pass to lift light swirling and bring the gloss back.",
     note: "Swirl marks are thousands of fine scratches in the clear coat, usually from washing. A polish uses an abrasive on a machine pad to level a microscopic amount of clear coat down to the base of those scratches, so they stop catching light. It is removing material, which is why it is done sparingly and by someone who knows how much is there.",
     unavailable: true,
     unavailableNote: CORRECTION_SOON,
@@ -204,7 +218,8 @@ var ADDONS = [
     id: "paint-correction",
     name: "Paint Correction",
     scope: "exterior",
-    description: "Multi stage cutting and refining for deeper defects.",
+    icon: "correct",
+    description: "Multi stage cutting and refining for deeper defects and etching.",
     note: "Correction is polishing taken further: a cutting compound removes the defect, then progressively finer passes remove the haze the cutting itself leaves behind. Two and three stage work is how you get a finish that holds up under direct light rather than only looking right in the shade.",
     unavailable: true,
     unavailableNote: CORRECTION_SOON,
@@ -504,7 +519,7 @@ var PACKAGES = [
     category: "exterior",
     tagline: "A clean hand wash and dry to bring back the shine.",
     note: "A rinse, hubcaps scrubbed, a gentle hand wash and a towel dry, with the windows and mirrors cleaned. It takes the surface dirt off and it is quick. It does NOT decontaminate or clay the paint, dress the tires, touch the engine bay, or leave any protection behind. The paint will still feel rough to the touch afterwards, because a wash cannot remove what is bonded to it.",
-    priceCents: 6500,
+    priceCents: 7500,
     durationMin: 75,
     componentIds: ["ext-rinse-hubcaps", "ext-handwash-gentle", "ext-windows", "ext-towel-dry"],
     featured: false,
@@ -517,7 +532,7 @@ var PACKAGES = [
     category: "exterior",
     tagline: "A thorough hand wash with wheels and tires done properly.",
     note: "A pre-wash to lift the loose grit before anything touches the paint, bug removal, a proper hand wash, blow dry and towel dry, and the wheels done properly: hubcaps, tires and wheel wells scrubbed, then tires dressed. It does NOT decontaminate or clay the paint, remove water spotting, clean the engine bay, or leave a ceramic wax sealant on it. The paint is clean but still not smooth, and there is no lasting protection. That is the step up to Full.",
-    priceCents: 11500,
+    priceCents: 12500,
     durationMin: 120,
     componentIds: [...BASIC_EXT_IDS],
     featured: true,
@@ -530,7 +545,7 @@ var PACKAGES = [
     category: "exterior",
     tagline: "Strips what a wash cannot reach, then protects the paint underneath. Decontaminated, clayed, engine bay cleaned and finished with a ceramic wax sealant.",
     note: "Everything in Basic, then the paint is actually decontaminated: iron and fallout dissolved chemically, a clay towel to shear off what is left, hard water spotting treated, the engine bay cleaned and protected, and a ceramic wax sealant applied so water beads and dirt struggles to stick. It does NOT correct the paint. Swirl marks, scratches and etching stay exactly as they are, and the sealant goes on over the top of them. Removing those means machine polishing, which is Showroom Ready.",
-    priceCents: 21e3,
+    priceCents: 24500,
     durationMin: 240,
     componentIds: [
       ...BASIC_EXT_IDS,
@@ -557,7 +572,7 @@ var PACKAGES = [
     // own price and hours. See CORRECTION_TIERS in ./addons.ts.
     tagline: "Everything in Full Exterior, then corrected and ceramic coated.",
     note: "Everything in Full Exterior, then the paint is machine corrected and a durable ceramic coating goes on the paint, wheels, plastic trim and glass. How much correction depends on the tier you pick below. It does NOT repair physical damage. Dents, rock chips and any scratch deep enough to have gone through the clear coat cannot be polished out, because correction removes a little clear coat, it does not add any. We will tell you what will and will not come out before we start.",
-    priceCents: 21e3,
+    priceCents: 24500,
     durationMin: 240,
     requiresCorrectionTier: true,
     schedulingDurationMin: 480,
@@ -1037,6 +1052,43 @@ function quote(cart, r, taxTable = SEED_TAX_TABLE, year = (/* @__PURE__ */ new D
   };
 }
 
+// lib/catalog/icons.ts
+var ADDON_ICONS = {
+  /** Paw print. */
+  paw: '<circle cx="6.8" cy="9.5" r="1.9"/><circle cx="11.4" cy="6.8" r="1.9"/><circle cx="16.6" cy="9" r="1.9"/><path d="M7.2 16.6c0-2.5 2.2-4.3 4.7-4.3s4.7 1.8 4.7 4.3c0 2-1.6 3.4-3.4 3.4-.9 0-1.1-.4-1.3-.4s-.4.4-1.3.4c-1.8 0-3.4-1.4-3.4-3.4z"/>',
+  /** A droplet on a surface: a stain being lifted. */
+  droplet: '<path d="M12 3.4c3 3.7 4.6 6.3 4.6 8.4a4.6 4.6 0 1 1-9.2 0c0-2.1 1.6-4.7 4.6-8.4z"/><path d="M4 20.5h16"/>',
+  /** Vapour rising off a surface. */
+  steam: '<path d="M4 20.5h16"/><path d="M8 17c0-2 2-2.6 2-4.6S8 9.4 8 7.4"/><path d="M12 17c0-2 2-2.6 2-4.6S12 9.4 12 7.4"/><path d="M16 17c0-2 2-2.6 2-4.6"/>',
+  /** Three bonded atoms: O3. */
+  molecule: '<circle cx="6.6" cy="15.2" r="3"/><circle cx="17.4" cy="15.2" r="3"/><circle cx="12" cy="6.6" r="3"/><path d="M9.4 13.1 10.6 10.7"/><path d="M14.6 13.1 13.4 10.7"/><path d="M9.6 15.2h4.8"/>',
+  /** A car seat, back and base. */
+  seat: '<path d="M8.5 3.5h3.5a2 2 0 0 1 2 2v7.5H8.5a2 2 0 0 1-2-2v-5.5a2 2 0 0 1 2-2z"/><path d="M6.5 13h9.5a3 3 0 0 1 3 3v1.5H9.5a3 3 0 0 1-3-3z"/><path d="M8.5 17.5v3"/><path d="M17.5 17.5v3"/>',
+  /** A headlight housing throwing beams. */
+  headlight: '<path d="M4 6.5h4.5a7 7 0 0 1 0 11H4a1 1 0 0 1-1-1v-9a1 1 0 0 1 1-1z"/><path d="M15 8.5h5"/><path d="M15.5 12H21"/><path d="M15 15.5h5"/>',
+  /** A wheel with spokes. */
+  wheel: '<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="3"/><path d="M12 3.5v5.5"/><path d="M12 15v5.5"/><path d="M3.5 12H9"/><path d="M15 12h5.5"/>',
+  /** A spray bottle with mist. */
+  spray: '<path d="M9 9.5h5a2 2 0 0 1 2 2v7.5a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2v-7.5a2 2 0 0 1 2-2z"/><path d="M10 9.5V6h4"/><path d="M14 6l3.2-1.4"/><path d="M19.5 7.2 21 6.7"/><path d="M19.2 10.2l1.6.3"/><path d="M19.8 3.6 21 3"/>',
+  /** A clay block moving across a panel. */
+  bar: '<rect x="7" y="9" width="12" height="6.5" rx="2.5"/><path d="M2.5 9h2.5"/><path d="M1.5 12.2h3.5"/><path d="M2.5 15.5h2.5"/>',
+  /** Water spots, struck through. */
+  spots: '<path d="M8.2 4.6c1.9 2.3 2.9 4 2.9 5.2a2.9 2.9 0 1 1-5.8 0c0-1.2 1-2.9 2.9-5.2z"/><path d="M16.4 11.4c1.5 1.8 2.2 3.1 2.2 4.1a2.2 2.2 0 1 1-4.4 0c0-1 .7-2.3 2.2-4.1z"/><path d="M3.5 20.5 20.5 3.5"/>',
+  /** An engine block with an intake. */
+  engine: '<rect x="3.5" y="10" width="12" height="7.5" rx="1.5"/><path d="M15.5 12.2h2.2l2.8 2.6v2.7h-5"/><path d="M6.5 10V7.2h4.5V10"/><path d="M8.5 7.2h4.5"/>',
+  /** A shield protecting a bead of water. */
+  shield: '<path d="M12 2.6 19.5 5.4v5.9c0 4.8-3.2 8.1-7.5 9.6-4.3-1.5-7.5-4.8-7.5-9.6V5.4z"/><path d="M12 8.6c1.7 2 2.5 3.3 2.5 4.4a2.5 2.5 0 1 1-5 0c0-1.1.8-2.4 2.5-4.4z"/>',
+  /** A faceted gem: hard, glass-like, permanent. */
+  gem: '<path d="M6.5 3.5h11l3 5-8.5 12L3.5 8.5z"/><path d="M3.5 8.5h17"/><path d="M9.7 8.5 12 3.7l2.3 4.8L12 20.5"/>',
+  /** A rotary polisher head. */
+  polisher: '<circle cx="10" cy="14" r="5.8"/><circle cx="10" cy="14" r="2.2"/><path d="M14.3 10.1 17.8 6.6l3.1 3.1-3.5 3.5"/>',
+  /** A polisher lifting swirl marks out of the paint. */
+  correct: '<circle cx="9.2" cy="14.6" r="5.4"/><path d="M13.2 10.8 17 7"/><path d="M15.2 5 19 8.8"/><path d="M6 12.8c1.4 1.1 3.2 1.1 4.6 0"/><path d="M6.4 16.6c1.4 1.1 3.2 1.1 4.6 0"/>'
+};
+function addonIcon(name) {
+  return name && ADDON_ICONS[name] || '<circle cx="12" cy="12" r="8.5"/>';
+}
+
 // lib/server-entry.ts
 function priceFromWire(wire) {
   const rejected = [];
@@ -1135,6 +1187,7 @@ export {
   MAINTENANCE_PLAN,
   SEED_CATALOG,
   VEHICLE_SIZES,
+  addonIcon,
   addonsFor,
   componentsOf,
   findAddon,

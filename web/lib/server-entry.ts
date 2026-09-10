@@ -163,8 +163,11 @@ export function priceFromWire(wire: WireCart): PricedCart {
   };
 }
 
+import { addonIcon } from "./catalog/icons.js";
+
 export {
   ADDONS,
+  addonIcon,
   COATING_COVERAGE,
   COATING_EXPLAINER,
   COATING_TERMS,

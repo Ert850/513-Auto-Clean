@@ -193,7 +193,7 @@ const PACKAGES: Package[] = [
     tagline: "A clean hand wash and dry to bring back the shine.",
     note:
       "A rinse, hubcaps scrubbed, a gentle hand wash and a towel dry, with the windows and mirrors cleaned. It takes the surface dirt off and it is quick. It does NOT decontaminate or clay the paint, dress the tires, touch the engine bay, or leave any protection behind. The paint will still feel rough to the touch afterwards, because a wash cannot remove what is bonded to it.",
-    priceCents: 6500,
+    priceCents: 7500,
     durationMin: 75,
     componentIds: ["ext-rinse-hubcaps", "ext-handwash-gentle", "ext-windows", "ext-towel-dry"],
     featured: false,
@@ -207,7 +207,7 @@ const PACKAGES: Package[] = [
     tagline: "A thorough hand wash with wheels and tires done properly.",
     note:
       "A pre-wash to lift the loose grit before anything touches the paint, bug removal, a proper hand wash, blow dry and towel dry, and the wheels done properly: hubcaps, tires and wheel wells scrubbed, then tires dressed. It does NOT decontaminate or clay the paint, remove water spotting, clean the engine bay, or leave a ceramic wax sealant on it. The paint is clean but still not smooth, and there is no lasting protection. That is the step up to Full.",
-    priceCents: 11500,
+    priceCents: 12500,
     durationMin: 120,
     componentIds: [...BASIC_EXT_IDS],
     featured: true,
@@ -222,7 +222,7 @@ const PACKAGES: Package[] = [
       "Strips what a wash cannot reach, then protects the paint underneath. Decontaminated, clayed, engine bay cleaned and finished with a ceramic wax sealant.",
     note:
       "Everything in Basic, then the paint is actually decontaminated: iron and fallout dissolved chemically, a clay towel to shear off what is left, hard water spotting treated, the engine bay cleaned and protected, and a ceramic wax sealant applied so water beads and dirt struggles to stick. It does NOT correct the paint. Swirl marks, scratches and etching stay exactly as they are, and the sealant goes on over the top of them. Removing those means machine polishing, which is Showroom Ready.",
-    priceCents: 21000,
+    priceCents: 24500,
     durationMin: 240,
     componentIds: [
       ...BASIC_EXT_IDS,
@@ -250,7 +250,7 @@ const PACKAGES: Package[] = [
     tagline: "Everything in Full Exterior, then corrected and ceramic coated.",
     note:
       "Everything in Full Exterior, then the paint is machine corrected and a durable ceramic coating goes on the paint, wheels, plastic trim and glass. How much correction depends on the tier you pick below. It does NOT repair physical damage. Dents, rock chips and any scratch deep enough to have gone through the clear coat cannot be polished out, because correction removes a little clear coat, it does not add any. We will tell you what will and will not come out before we start.",
-    priceCents: 21000,
+    priceCents: 24500,
     durationMin: 240,
     requiresCorrectionTier: true,
     schedulingDurationMin: 480,

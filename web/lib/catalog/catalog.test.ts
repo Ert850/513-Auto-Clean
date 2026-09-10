@@ -10,6 +10,7 @@ import {
   isUnpriced,
   unavailableReason,
 } from "./addons.js";
+import { ADDON_ICONS, addonIcon } from "./icons.js";
 import { popularityOf } from "./popularity.js";
 import { ZIP_GEO, zipGeo } from "../travel/zipGeo.js";
 import { ZIP_RANGES } from "../travel/zipRanges.js";
@@ -75,6 +76,28 @@ describe("add-on pricing", () => {
     const a = get("ceramic-sealant");
     expect(a.name).toBe("Ceramic Wax Sealant");
     expect(a.description.toLowerCase()).toContain("not a ceramic coating");
+  });
+});
+
+describe("add-on presentation", () => {
+  it("gives every add-on a description that fits the card", () => {
+    // The grid went ragged when one blurb was thirty characters and its
+    // neighbour was a hundred and eighty. Enforced rather than eyeballed.
+    const bad = ADDONS.filter((a) => a.description.length < 45 || a.description.length > 80)
+      .map((a) => `${a.id} (${a.description.length})`);
+    expect(bad).toEqual([]);
+  });
+
+  it("gives every add-on its own icon, not a shared default", () => {
+    const missing = ADDONS.filter((a) => !ADDON_ICONS[a.icon]).map((a) => a.id);
+    expect(missing).toEqual([]);
+    const used = new Set(ADDONS.map((a) => a.icon));
+    expect(used.size).toBe(ADDONS.length);
+  });
+
+  it("falls back to a shape rather than to nothing", () => {
+    expect(addonIcon(undefined)).toContain("<circle");
+    expect(addonIcon("no-such-icon")).toContain("<circle");
   });
 });
 
