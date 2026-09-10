@@ -201,6 +201,7 @@
         kind: 'package', id: p.id, name: p.name, category: p.category,
         priceCents: p.priceCents, pricePlus: Boolean(p.pricePlus),
         durationMin: p.durationMin, tagline: p.tagline, featured: p.featured,
+        note: p.note || '',
         detail: p.supersetOf
           ? 'Everything in ' + (P.findPackage(p.supersetOf) || {}).name + ', plus ' +
             P.componentsOf(p, P.CATALOG).map(function (c) { return c.name; })
@@ -230,7 +231,7 @@
           name: a.tiers.length > 1 ? a.name + ': ' + t.label : a.name,
           category: a.scope, priceCents: t.priceCents, pricePlus: false,
           durationMin: t.durationMin, tagline: a.description, featured: false,
-          detail: t.description || '',
+          note: a.note || '', detail: t.description || '',
           search: a.name + ' ' + t.label + ' ' + a.description + ' ' + (t.description || '') + ' ' + a.scope
         });
       });
@@ -535,7 +536,10 @@
             ? '<b class="bk-soon">Soon</b><i>' + esc(i.unavailable) + '</i>'
             : '<b>' + $(i.priceCents) + (i.pricePlus ? '+' : '') + '</b>' + (dur ? '<i>' + dur + '</i>' : '')) +
           '</span>' +
-          '</button>';
+          '</button>' +
+          (i.note
+            ? '<details class="bk-how bk-how-pkg"><summary>How it works</summary><p>' + esc(i.note) + '</p></details>'
+            : '');
       });
       html += '</div>';
     }
@@ -579,7 +583,11 @@
             '</span>' +
           '</span>' +
           '<span class="bk-pkg-r"><b>' + pkgPrice(p) + '</b><i>' + dur + '</i></span>' +
-          '</button>';
+          '</button>' +
+          // Outside the button, so opening it does not also select the package.
+          (p.note
+            ? '<details class="bk-how bk-how-pkg"><summary>How it works</summary><p>' + esc(p.note) + '</p></details>'
+            : '');
       });
       html += '</div>';
     });

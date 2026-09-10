@@ -888,3 +888,11 @@ html.scrolling-fast .reveal { transition: none; transition-delay: 0s; }
 .ad-how p { margin: .45rem 0 0; font-size: .8rem; line-height: 1.6; color: var(--text-soft); }
 
 .svc-coverage { margin-top: 1rem; font-size: .85rem; color: var(--text-soft); font-style: italic; }
+
+/* how it works, on a front page package card */
+.svc-how { margin: .9rem 0 0; }
+.svc-how summary { cursor: pointer; font-size: .8rem; font-weight: 700; color: var(--red); list-style: none; }
+.svc-how summary::-webkit-details-marker { display: none; }
+.svc-how summary::after { content: " +"; font-weight: 800; }
+.svc-how[open] summary::after { content: " ‘2"; }
+.svc-how p { margin: .5rem 0 0; font-size: .82rem; line-height: 1.65; color: var(--text-soft); background: var(--paper); border-left: 2px solid var(--line); padding: .65rem .8rem; border-radius: 0 var(--r-sm) var(--r-sm) 0; }
