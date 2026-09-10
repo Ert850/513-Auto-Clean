@@ -1129,6 +1129,291 @@ function addonIcon(name) {
   return name && ADDON_ICONS[name] || '<circle cx="12" cy="12" r="8.5"/>';
 }
 
+// lib/booking/ics.ts
+var DAY_MS = 864e5;
+function zoneOffsetMs(utcMs, timeZone) {
+  const dtf = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    hour12: false,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit"
+  });
+  const parts = dtf.formatToParts(new Date(utcMs));
+  const get = (type) => {
+    const p = parts.find((x) => x.type === type);
+    return p ? Number(p.value) : 0;
+  };
+  const asIfUtc = Date.UTC(
+    get("year"),
+    get("month") - 1,
+    get("day"),
+    get("hour") % 24,
+    get("minute"),
+    get("second")
+  );
+  return asIfUtc - utcMs;
+}
+function zonedToUtc(y, mo, d, h, mi, s, timeZone) {
+  const guess = Date.UTC(y, mo - 1, d, h, mi, s);
+  const once = guess - zoneOffsetMs(guess, timeZone);
+  return guess - zoneOffsetMs(once, timeZone);
+}
+function parseTime(value, params, fallbackZone) {
+  const v = value.trim();
+  const dateOnly = /^(\d{4})(\d{2})(\d{2})$/.exec(v);
+  if (dateOnly && (params["VALUE"] === "DATE" || v.length === 8)) {
+    const [, y2, mo2, d2] = dateOnly;
+    return {
+      ms: zonedToUtc(Number(y2), Number(mo2), Number(d2), 0, 0, 0, fallbackZone),
+      allDay: true
+    };
+  }
+  const dt = /^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})(Z)?$/.exec(v);
+  if (!dt) return null;
+  const [, y, mo, d, h, mi, s, z] = dt;
+  if (z) {
+    return { ms: Date.UTC(+y, +mo - 1, +d, +h, +mi, +s), allDay: false };
+  }
+  const zone = params["TZID"] || fallbackZone;
+  return { ms: zonedToUtc(+y, +mo, +d, +h, +mi, +s, zone), allDay: false };
+}
+function parseDuration(v) {
+  const m = /^([+-])?P(?:(\d+)W)?(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?)?$/.exec(v.trim());
+  if (!m) return null;
+  const sign = m[1] === "-" ? -1 : 1;
+  const ms = (Number(m[2] ?? 0) * 7 * 86400 + Number(m[3] ?? 0) * 86400 + Number(m[4] ?? 0) * 3600 + Number(m[5] ?? 0) * 60 + Number(m[6] ?? 0)) * 1e3;
+  return sign * ms;
+}
+function readLines(text) {
+  const unfolded = text.replace(/\r\n/g, "\n").replace(/\n[ \t]/g, "");
+  const out = [];
+  for (const line of unfolded.split("\n")) {
+    if (!line) continue;
+    const colon = line.indexOf(":");
+    if (colon < 0) continue;
+    const head = line.slice(0, colon);
+    const value = line.slice(colon + 1);
+    const bits = head.split(";");
+    const name = (bits[0] ?? "").toUpperCase();
+    const params = {};
+    for (const bit of bits.slice(1)) {
+      const eq = bit.indexOf("=");
+      if (eq < 0) continue;
+      params[bit.slice(0, eq).toUpperCase()] = bit.slice(eq + 1).replace(/^"|"$/g, "");
+    }
+    out.push({ name, params, value });
+  }
+  return out;
+}
+function collectEvents(lines, zone) {
+  const events = [];
+  let cur = null;
+  let depth = 0;
+  for (const line of lines) {
+    if (line.name === "BEGIN") {
+      if (line.value === "VEVENT") {
+        cur = {
+          uid: "",
+          start: null,
+          end: null,
+          durationMs: null,
+          rrule: null,
+          exDates: [],
+          rDates: [],
+          recurrenceId: null,
+          cancelled: false,
+          transparent: false
+        };
+        depth = 0;
+      } else if (cur) {
+        depth++;
+      }
+      continue;
+    }
+    if (line.name === "END") {
+      if (line.value === "VEVENT" && cur) {
+        events.push(cur);
+        cur = null;
+      } else if (cur && depth > 0) {
+        depth--;
+      }
+      continue;
+    }
+    if (!cur || depth > 0) continue;
+    switch (line.name) {
+      case "UID":
+        cur.uid = line.value;
+        break;
+      case "DTSTART":
+        cur.start = parseTime(line.value, line.params, zone);
+        break;
+      case "DTEND":
+        cur.end = parseTime(line.value, line.params, zone);
+        break;
+      case "DURATION":
+        cur.durationMs = parseDuration(line.value);
+        break;
+      case "RRULE":
+        cur.rrule = line.value;
+        break;
+      case "RECURRENCE-ID":
+        cur.recurrenceId = parseTime(line.value, line.params, zone);
+        break;
+      case "STATUS":
+        if (line.value.toUpperCase() === "CANCELLED") cur.cancelled = true;
+        break;
+      case "TRANSP":
+        if (line.value.toUpperCase() === "TRANSPARENT") cur.transparent = true;
+        break;
+      case "EXDATE":
+        for (const v of line.value.split(",")) {
+          const t = parseTime(v, line.params, zone);
+          if (t) cur.exDates.push(t.ms);
+        }
+        break;
+      case "RDATE":
+        for (const v of line.value.split(",")) {
+          const t = parseTime(v, line.params, zone);
+          if (t) cur.rDates.push(t.ms);
+        }
+        break;
+      default:
+        break;
+    }
+  }
+  return events;
+}
+var WEEKDAY = { SU: 0, MO: 1, TU: 2, WE: 3, TH: 4, FR: 5, SA: 6 };
+function parseRule(text, zone) {
+  const parts = {};
+  for (const bit of text.split(";")) {
+    const eq = bit.indexOf("=");
+    if (eq > 0) parts[bit.slice(0, eq).toUpperCase()] = bit.slice(eq + 1);
+  }
+  const freq = (parts["FREQ"] ?? "").toUpperCase();
+  if (!freq) return null;
+  const untilRaw = parts["UNTIL"];
+  const until = untilRaw ? parseTime(untilRaw, {}, zone)?.ms ?? null : null;
+  return {
+    freq,
+    interval: Math.max(1, Number(parts["INTERVAL"] ?? 1)),
+    count: parts["COUNT"] ? Number(parts["COUNT"]) : null,
+    until,
+    byDay: (parts["BYDAY"] ?? "").split(",").map((d) => WEEKDAY[d.replace(/^[+-]?\d+/, "").toUpperCase()]).filter((n) => n !== void 0),
+    byMonthDay: (parts["BYMONTHDAY"] ?? "").split(",").map(Number).filter((n) => Number.isFinite(n) && n !== 0)
+  };
+}
+function expand(startMs, rule, from, to, cap) {
+  const out = [];
+  const hardEnd = rule.until !== null ? Math.min(to, rule.until) : to;
+  if (startMs > hardEnd) return out;
+  let emitted = 0;
+  const push = (ms) => {
+    if (rule.count !== null && emitted >= rule.count) return false;
+    emitted++;
+    if (ms >= from && ms <= hardEnd) out.push(ms);
+    return true;
+  };
+  if (rule.freq === "DAILY") {
+    const step = rule.interval * DAY_MS;
+    let ms = startMs;
+    if (rule.count === null && from > startMs) {
+      ms = startMs + Math.floor((from - startMs) / step) * step;
+    }
+    for (let i = 0; i < cap && ms <= hardEnd; i++, ms += step) {
+      if (!push(ms)) break;
+    }
+    return out;
+  }
+  if (rule.freq === "WEEKLY") {
+    const week = rule.interval * 7 * DAY_MS;
+    const days = rule.byDay.length ? rule.byDay : [new Date(startMs).getUTCDay()];
+    let anchor = startMs;
+    if (rule.count === null && from - week > startMs) {
+      anchor = startMs + Math.floor((from - week - startMs) / week) * week;
+    }
+    for (let i = 0; i < cap && anchor <= hardEnd + week; i++, anchor += week) {
+      const base = new Date(anchor);
+      for (const d of days) {
+        const shift = (d - base.getUTCDay() + 7) % 7;
+        const ms = anchor + shift * DAY_MS;
+        if (ms < startMs) continue;
+        if (ms > hardEnd) continue;
+        if (!push(ms)) return out;
+      }
+    }
+    return out;
+  }
+  if (rule.freq === "MONTHLY" || rule.freq === "YEARLY") {
+    const stepMonths = rule.freq === "YEARLY" ? 12 * rule.interval : rule.interval;
+    const d0 = new Date(startMs);
+    for (let i = 0; i < cap; i++) {
+      const ms = Date.UTC(
+        d0.getUTCFullYear(),
+        d0.getUTCMonth() + i * stepMonths,
+        rule.byMonthDay[0] ?? d0.getUTCDate(),
+        d0.getUTCHours(),
+        d0.getUTCMinutes(),
+        d0.getUTCSeconds()
+      );
+      if (ms > hardEnd) break;
+      if (!push(ms)) break;
+    }
+    return out;
+  }
+  return out;
+}
+function parseIcsBusy(text, opts) {
+  const zone = opts.timeZone ?? "America/New_York";
+  const cap = opts.maxOccurrences ?? 400;
+  const events = collectEvents(readLines(text), zone);
+  const overridden = /* @__PURE__ */ new Set();
+  for (const e of events) {
+    if (e.recurrenceId) overridden.add(`${e.uid}@${e.recurrenceId.ms}`);
+  }
+  const raw = [];
+  for (const e of events) {
+    if (e.cancelled || e.transparent || !e.start) continue;
+    if (e.start.allDay && !opts.includeAllDay) continue;
+    let lengthMs;
+    if (e.end) lengthMs = e.end.ms - e.start.ms;
+    else if (e.durationMs !== null) lengthMs = e.durationMs;
+    else lengthMs = e.start.allDay ? DAY_MS : 0;
+    if (lengthMs <= 0) lengthMs = e.start.allDay ? DAY_MS : 30 * 60 * 1e3;
+    const starts = [];
+    if (e.rrule && !e.recurrenceId) {
+      const rule = parseRule(e.rrule, zone);
+      if (rule) starts.push(...expand(e.start.ms, rule, opts.from - lengthMs, opts.to, cap));
+    } else {
+      starts.push(e.start.ms);
+    }
+    starts.push(...e.rDates);
+    for (const s of starts) {
+      if (e.exDates.includes(s)) continue;
+      if (!e.recurrenceId && overridden.has(`${e.uid}@${s}`)) continue;
+      const end = s + lengthMs;
+      if (end <= opts.from || s >= opts.to) continue;
+      raw.push({ start: Math.max(s, opts.from), end: Math.min(end, opts.to) });
+    }
+  }
+  return mergeBusy(raw);
+}
+function mergeBusy(list) {
+  if (!list.length) return [];
+  const sorted = list.slice().sort((a, b) => a.start - b.start);
+  const out = [{ ...sorted[0] }];
+  for (const next of sorted.slice(1)) {
+    const last = out[out.length - 1];
+    if (next.start <= last.end) last.end = Math.max(last.end, next.end);
+    else out.push({ ...next });
+  }
+  return out;
+}
+
 // lib/server-entry.ts
 function priceFromWire(wire) {
   const rejected = [];
@@ -1235,8 +1520,10 @@ export {
   findPackage,
   isSelectable,
   isUnpriced,
+  mergeBusy,
   mileageFeeCents,
   packagesFor,
+  parseIcsBusy,
   priceFromWire,
   quote,
   unavailableReason,

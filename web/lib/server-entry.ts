@@ -166,6 +166,7 @@ export function priceFromWire(wire: WireCart): PricedCart {
 import { addonIcon } from "./catalog/icons.js";
 
 export { MAX_ONE_WAY_MINUTES } from "./travel/zipRanges.js";
+export { parseIcsBusy, mergeBusy } from "./booking/ics.js";
 export { mileageFeeCents } from "./pricing/mileage.js";
 
 export {

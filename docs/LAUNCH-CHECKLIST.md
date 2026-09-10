@@ -24,6 +24,7 @@ only things safe to send me are marked "safe to share" below.
 | 3 | Google Cloud project and keys | You | 30 min | No real drive times, no address autocomplete, no live calendar |
 | 4 | The two Google Calendars | You | 10 min | Times shown are guesses with a warning on them |
 | 5 | Google Place ID | You | 2 min | Reviews come from a snapshot I update by hand |
+| 5b | Personal calendar URL into Netlify | You | 2 min | Bookings can land on top of your own commitments |
 | 6 | Neon Postgres | You | 10 min | Bookings are not stored, so double-booking is possible |
 | 7 | Resend | You | 10 min | No confirmation emails |
 | 8 | PayPal business account | You | 20 min | No PayPal or Venmo at checkout |
@@ -74,7 +75,7 @@ One project covers four separate things. Enable all of these APIs:
 
 | API | What it powers | Without it |
 |-----|----------------|------------|
-| **Routes API** | The real two-leg drive time at booking | Travel is estimated from ZIP bands only |
+| **Routes API** | The real drive time at booking AND on the service area map | Travel is estimated from ZIP bands and distance |
 | **Places API (New)** | Address autocomplete, and the live reviews feed | Typed addresses, snapshot reviews |
 | **Google Calendar API** | Reading your real availability | Standard time slots with a "may need adjusting" warning |
 | **Maps JavaScript API** | Not needed. The map uses OpenStreetMap, which is free | Nothing |
@@ -129,6 +130,29 @@ and enable Places API (New).
 
 Once it is set, `/api/reviews` takes over and the snapshot becomes the
 fallback. Nothing about the page changes visually.
+
+---
+
+## 5b. Your personal calendar
+
+**Built and tested against your real feed.** 597 events parsed, recurrence,
+exceptions, single-instance overrides and both timezones handled, 49 busy
+blocks found in the next 30 days. It just needs the URL in an environment
+variable named `PERSONAL_CALENDAR_ICS`.
+
+**Rotate the link.** You pasted it into a chat, which means it exists in a
+transcript. It is effectively a password: anyone with it can read every title,
+location and attendee on your calendar. In iCloud Calendar, turn Public
+Calendar off and back on, then put the NEW link into Netlify. Thirty seconds,
+and the old one dies instantly.
+
+Two behaviours worth knowing:
+
+- **All-day events do not block.** Birthdays and holidays would otherwise
+  close whole days. On your calendar that is the difference between 230 and
+  618 blocked hours over four months. Timed events are the reliable signal.
+- **iCloud publishes on a delay**, up to about fifteen minutes. For something
+  urgent, block it on `513 Availability` instead, which is read live.
 
 ---
 
