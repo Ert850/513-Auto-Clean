@@ -86,6 +86,12 @@ export const ADDON_ICONS: Record<string, string> = {
     '<path d="M6.5 3.5h11l3 5-8.5 12L3.5 8.5z"/>' +
     '<path d="M3.5 8.5h17"/><path d="M9.7 8.5 12 3.7l2.3 4.8L12 20.5"/>',
 
+  /** A panel with two scratches and a spot being worked. */
+  scratch:
+    '<rect x="2.5" y="5.5" width="19" height="13" rx="2.5"/>' +
+    '<path d="M7 15.8 10.6 9.2"/><path d="M12.4 15.2 14.4 11.4"/>' +
+    '<circle cx="17.4" cy="9.6" r="2.2"/>',
+
   /** A rotary polisher head. */
   polisher:
     '<circle cx="10" cy="14" r="5.8"/><circle cx="10" cy="14" r="2.2"/>' +

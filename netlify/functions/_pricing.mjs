@@ -1,6 +1,8 @@
 // lib/catalog/addons.ts
 var CORRECTION_ADD_CENTS = {
   coatingOnly: 55e3,
+  /** Upgrade from the standard 3 to 5 year coating to a 7 year one. */
+  sevenYear: 15e3,
   oneStep: 85e3,
   twoStep: 149500,
   threeStep: 225e3
@@ -83,6 +85,29 @@ var ADDONS = [
     tiers: [{ id: "std", label: "Front seats out", priceCents: 1e4, durationMin: 120 }]
   },
   /* ---------------- exterior ---------------- */
+  {
+    id: "scratch-reduction",
+    name: "Scratch and Ding Reduction",
+    scope: "exterior",
+    icon: "scratch",
+    description: "Small nicks, dings and scratches reduced, not a full correction.",
+    note: "Spot work on the places you point out, rather than a panel by panel correction of the whole vehicle. The area is cleaned and decontaminated, then the paint immediately around the mark is levelled with a compound and refined back to gloss so the scratch stops catching light. How much comes out depends entirely on depth. If you can catch a fingernail in it, it has gone through the clear coat, and nothing brings that back, because correction removes a little clear coat and cannot add any. Anything shallower usually disappears or drops to almost invisible. We will walk the car with you and tell you which of yours is which before we start.",
+    // A full correction tier already levels the whole vehicle, so charging
+    // for spot work on top of it is charging twice for the same pass.
+    includedIn: {
+      packageIds: ["showroom-exterior"],
+      message: "Already covered by the correction tier on Showroom Ready Exterior."
+    },
+    tiers: [
+      {
+        id: "std",
+        label: "Spot correction",
+        priceCents: 15e3,
+        durationMin: 120,
+        asterisk: "Starting quote. It covers a handful of marks. More scratches and dings around the paint raise it, and we agree the number with you before any work starts."
+      }
+    ]
+  },
   {
     id: "headlight",
     name: "Headlight Restoration",
@@ -183,16 +208,24 @@ var ADDONS = [
     name: "Ceramic Coating",
     scope: "exterior",
     icon: "gem",
-    description: "Years of protection rather than months, bonded to the clear coat.",
+    description: "3 to 5 years of protection with proper maintenance, bonded to the clear coat.",
     note: "A real coating cures into a hard glass-like layer chemically bonded to the clear coat, which is why it lasts years rather than months. It also locks in whatever the paint looks like at the time, so any swirls underneath are sealed in with it. That is why coatings are sold with correction rather than on their own, and why this one lives inside Showroom Ready Exterior.",
     unavailable: true,
     unavailableNote: "Booked through Showroom Ready Exterior, which includes the prep a coating needs.",
     tiers: [
       {
         id: "std",
-        label: "Coating only, no correction",
+        label: "3 to 5 year coating, no correction",
         priceCents: CORRECTION_ADD_CENTS.coatingOnly,
         durationMin: 300
+      },
+      {
+        id: "7yr",
+        label: "7 year coating, no correction",
+        priceCents: CORRECTION_ADD_CENTS.coatingOnly + CORRECTION_ADD_CENTS.sevenYear,
+        // A longer life coating is a thicker, harder product with a longer
+        // cure, not the same bottle sold twice.
+        durationMin: 360
       }
     ]
   },
@@ -330,8 +363,8 @@ var CORRECTION_TIERS = [
   }
 ];
 var COATING_TERMS = [
-  { id: "3yr", label: "3 year", addCents: 0, asterisk: true },
-  { id: "5yr", label: "5 year", addCents: 15e3, asterisk: true },
+  { id: "3yr", label: "3 to 5 year", addCents: 0, asterisk: true },
+  { id: "7yr", label: "7 year", addCents: CORRECTION_ADD_CENTS.sevenYear, asterisk: true },
   { id: "10yr", label: "10 year", addCents: 3e4, asterisk: true }
 ];
 var CORRECTION_RULES = {
@@ -471,7 +504,7 @@ var PACKAGES = [
     name: "Basic Interior",
     category: "interior",
     tagline: "A solid clean that gets the everyday grime out.",
-    note: "A blowout and thorough vacuum through the seats, carpet and trunk, mats cleaned, surfaces wiped down, and the visible grime taken off. The car looks and feels clean when you get back in it. It does NOT shampoo or extract the upholstery, treat set-in stains, condition leather, or brush out every seam and crevice. A vacuum and air compressor blow out alone does not lift what has worked its way down into the upholstery, so engrained fibers, pet hair and grit in the carpet will not all come out, and stains already in the fabric will still be there. Those do come out with a Full Interior, or with Basic plus pet hair removal, a stain treatment, or both.",
+    note: "A blowout and thorough vacuum through the seats, carpet and trunk, mats cleaned, surfaces wiped down, and the visible grime taken off. The car looks and feels clean when you get back in it. It does NOT shampoo or extract the upholstery, treat set-in stains, condition leather, or brush out every seam and crevice. A vacuum and air compressor blow out alone does not lift what has worked its way down into the upholstery, so engrained fibers, pet hair and grit in the carpet will not all come out, and stains already in the fabric will still be there. Most will come out with a Full Interior, or with Basic plus pet hair removal, a stain treatment, or both.",
     priceCents: 12500,
     durationMin: 120,
     componentIds: [...BASIC_INT_IDS],
@@ -484,7 +517,7 @@ var PACKAGES = [
     name: "Full Interior",
     category: "interior",
     tagline: "A deep, top to bottom detail that makes it feel new again.",
-    note: "Everything in Basic, then the deep work: engrained particles pulled out of the carpet, upholstery shampooed and scrubbed, mats washed and dressed, leather conditioned, glass and door jams cleaned, and every crack and crevice brush detailed. Stain reduction is part of it. It does NOT guarantee a stain comes out completely, steam sanitize the whole vehicle, or remove the seats to get underneath them. Deep set stains want the extraction add-on and lingering smells want ozone.",
+    note: "Everything in Basic, then the deep work: engrained particles pulled out of the carpet, upholstery shampooed and scrubbed, mats washed and dressed, leather conditioned, glass and door jams cleaned, and every crack and crevice brush detailed. Stain reduction is part of it. It does NOT guarantee a stain comes out completely, steam sanitize the whole vehicle, or remove the seats to get underneath them. Most engrained fibers and pet hair come out at this level, but the truly stubborn ones woven deep into the carpet backing need the individual fiber lifting in Showroom Ready. Deep set stains want the extraction add-on and lingering smells want ozone.",
     priceCents: 21500,
     durationMin: 240,
     componentIds: [...FULL_INT_IDS],
@@ -1084,6 +1117,8 @@ var ADDON_ICONS = {
   shield: '<path d="M12 2.6 19.5 5.4v5.9c0 4.8-3.2 8.1-7.5 9.6-4.3-1.5-7.5-4.8-7.5-9.6V5.4z"/><path d="M12 8.6c1.7 2 2.5 3.3 2.5 4.4a2.5 2.5 0 1 1-5 0c0-1.1.8-2.4 2.5-4.4z"/>',
   /** A faceted gem: hard, glass-like, permanent. */
   gem: '<path d="M6.5 3.5h11l3 5-8.5 12L3.5 8.5z"/><path d="M3.5 8.5h17"/><path d="M9.7 8.5 12 3.7l2.3 4.8L12 20.5"/>',
+  /** A panel with two scratches and a spot being worked. */
+  scratch: '<rect x="2.5" y="5.5" width="19" height="13" rx="2.5"/><path d="M7 15.8 10.6 9.2"/><path d="M12.4 15.2 14.4 11.4"/><circle cx="17.4" cy="9.6" r="2.2"/>',
   /** A rotary polisher head. */
   polisher: '<circle cx="10" cy="14" r="5.8"/><circle cx="10" cy="14" r="2.2"/><path d="M14.3 10.1 17.8 6.6l3.1 3.1-3.5 3.5"/>',
   /** A polisher lifting swirl marks out of the paint. */
