@@ -512,6 +512,25 @@ section { padding-block: clamp(40px, 5vw, 72px); position: relative; }
   border: 1px solid var(--line-dark); background: var(--ink-3);
 }
 .leaflet-container { font-family: var(--font-body); background: var(--ink-3); }
+
+/* The draggable pin. A divIcon, so there is no image to 404. */
+.ac-pin { background: none; border: 0; }
+.ac-pin-body {
+  display: block; width: 26px; height: 26px; border-radius: 50% 50% 50% 0;
+  transform: rotate(-45deg);
+  background: linear-gradient(135deg, var(--red-bright), var(--red-deep));
+  box-shadow: 0 3px 10px rgba(0,0,0,.45); border: 2px solid #fff;
+  cursor: grab;
+}
+.ac-pin-body::after {
+  content: ""; position: absolute; left: 9px; top: 9px;
+  width: 8px; height: 8px; border-radius: 50%; background: #fff;
+}
+.leaflet-marker-draggable:active .ac-pin-body { cursor: grabbing; }
+
+.at-pin { margin-top: .8rem; gap: .5rem; }
+.at-pin svg { width: 17px; height: 17px; }
+.at-pinhint { margin: .45rem 0 .8rem; font-size: .76rem; color: var(--text-inv-soft); line-height: 1.5; }
 .leaflet-popup-content { margin: .6rem .8rem; font-size: .85rem; line-height: 1.5; }
 .leaflet-popup-content .lp-fee { color: var(--red-deep); font-weight: 800; }
 .leaflet-popup-content .lp-min { color: var(--text-soft); font-size: .78rem; }
@@ -708,12 +727,11 @@ html.scrolling-fast .reveal { transition: none; transition-delay: 0s; }
   .area-lists { grid-template-columns: repeat(3, 1fr); }
   /* The correction package spans the row underneath, laid out sideways so a
      full width card does not become a tall empty box. */
-  .svc-card.wide { grid-column: 1 / -1; }
-  .svc-card.wide { display: grid; grid-template-columns: 1.15fr 1fr; column-gap: 2rem; align-items: start; }
-  .svc-card.wide h3, .svc-card.wide .svc-meta, .svc-card.wide .svc-desc { grid-column: 1; }
-  .svc-card.wide .feat { grid-column: 2; grid-row: 1 / span 4; margin-top: .2rem; }
-  .svc-card.wide .svc-how { grid-column: 1; }
-  .svc-card.wide .svc-foot { grid-column: 1; max-width: 22rem; }
+  /* The correction package spans the row underneath: the package on the
+     left, the correction tiers on the right, so the "+" on the price has its
+     explanation next to it instead of a screen away. */
+  .svc-card.wide { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1.05fr; gap: 2rem; align-items: start; }
+  .svc-card.wide .svc-foot { max-width: 22rem; }
   .steps { grid-template-columns: repeat(3, 1fr); }
   .rev-grid { grid-template-columns: repeat(3, 1fr); }
   .area-grid { grid-template-columns: repeat(3, 1fr); }
@@ -960,13 +978,18 @@ html.scrolling-fast .reveal { transition: none; transition-delay: 0s; }
    ============================================================ */
 .addon-grp { font-size: .74rem; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; color: var(--text-soft); margin: 1.15rem 0 .55rem; }
 .addon .ad-price { display: block; font-style: normal; font-weight: 800; color: var(--red); font-size: .88rem; margin-top: .35rem; }
-.svc-correction { margin-top: 2.4rem; background: var(--paper-2); border: 1px solid var(--line); border-radius: var(--r-lg); padding: clamp(1.2rem, 3vw, 1.8rem); }
-.svc-correction h3 { font-family: var(--font-display); font-size: 1.25rem; margin: 0 0 .4rem; }
-.svc-correction p { color: var(--text-soft); font-size: .92rem; margin: 0 0 1rem; }
-.svc-correction .feat { list-style: none; margin: 0; padding: 0; display: grid; gap: .55rem; }
-.svc-correction .feat li { display: flex; gap: .55rem; align-items: flex-start; font-size: .9rem; color: var(--text-soft); line-height: 1.5; }
-.svc-correction .feat svg { width: 16px; height: 16px; color: var(--red); flex: none; margin-top: .16rem; }
-.svc-correction .feat strong { color: var(--text); }
+.swide-main { display: flex; flex-direction: column; min-width: 0; }
+.svc-corr {
+  min-width: 0; background: var(--paper); border: 1px solid var(--line);
+  border-radius: var(--r-md); padding: 1.1rem 1.2rem;
+}
+.svc-corr h4 { font-family: var(--font-display); font-size: 1.1rem; margin: 0 0 .7rem; }
+.svc-corr .corr-tiers { list-style: none; margin: 0; padding: 0; display: grid; gap: .6rem; }
+.svc-corr .corr-tiers li { display: block; font-size: .9rem; color: var(--text-soft); line-height: 1.45; }
+.svc-corr .corr-tiers li svg { display: none; }
+.svc-corr .corr-tiers strong { color: var(--text); }
+.svc-corr .corr-price { color: var(--red); font-family: var(--font-display); font-weight: 800; margin-left: .35rem; }
+.svc-corr .corr-meta { display: block; font-size: .8rem; color: var(--text-soft); margin-top: .12rem; }
 
 /* add-ons that are listed but not bookable yet */
 .addon.ad-off { opacity: .78; }
@@ -982,7 +1005,7 @@ html.scrolling-fast .reveal { transition: none; transition-delay: 0s; }
 .ad-how[open] summary::after { content: " \2212"; }
 .ad-how p { margin: .45rem 0 0; font-size: .8rem; line-height: 1.6; color: var(--text-soft); }
 
-.svc-coverage { margin-top: 1rem; font-size: .85rem; color: var(--text-soft); font-style: italic; }
+.svc-coverage { margin-top: .9rem; margin-bottom: 0; font-size: .8rem; color: var(--text-soft); font-style: italic; }
 
 /* how it works, on a front page package card */
 .svc-how { margin: .9rem 0 0; }
@@ -992,7 +1015,8 @@ html.scrolling-fast .reveal { transition: none; transition-delay: 0s; }
 .svc-how[open] summary::after { content: " -"; }
 .svc-how p { margin: .5rem 0 0; font-size: .82rem; line-height: 1.65; color: var(--text-soft); background: var(--paper); border-left: 2px solid var(--line); padding: .65rem .8rem; border-radius: 0 var(--r-sm) var(--r-sm) 0; }
 
-.svc-explain { background: var(--paper); border: 1px solid var(--line); border-radius: var(--r-md); padding: 1rem 1.1rem; margin-bottom: 1.2rem; }
+.svc-explain { background: var(--paper-2); border: 1px solid var(--line); border-radius: var(--r-sm); padding: .8rem .9rem; margin-bottom: 1rem; }
+.svc-explain summary { font-size: .95rem; }
 .svc-explain summary { cursor: pointer; font-family: var(--font-display); font-size: 1.05rem; font-weight: 800; list-style: none; }
 .svc-explain summary::-webkit-details-marker { display: none; }
 .svc-explain summary::after { content: " +"; color: var(--red); }
@@ -1005,9 +1029,6 @@ html.scrolling-fast .reveal { transition: none; transition-delay: 0s; }
 .svc-explain ul.ex-no li::marker { color: var(--red); }
 .svc-explain .ex-why { font-style: italic; border-top: 1px solid var(--line); padding-top: .8rem; margin-top: 1rem; }
 
-.svc-correction .feat li { display: block; }
-.svc-correction .feat li svg { display: none; }
-.svc-correction .corr-price { color: var(--red); font-family: var(--font-display); margin-left: .4rem; }
-.svc-correction .corr-meta { display: block; font-size: .82rem; color: var(--text-soft); margin-top: .15rem; }
+
 
 .svc-explain ul.ex-time li::marker { color: var(--amber); }

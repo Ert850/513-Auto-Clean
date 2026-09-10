@@ -239,8 +239,12 @@ var ADDONS = [
     ]
   }
 ];
+function fromCents(a) {
+  const priced = a.tiers.filter((t) => t.priceCents !== null).map((t) => t.priceCents);
+  return priced.length ? Math.min(...priced) : Number.POSITIVE_INFINITY;
+}
 function addonsFor(scope) {
-  return ADDONS.filter((a) => a.scope === scope);
+  return ADDONS.filter((a) => a.scope === scope).sort((x, y) => fromCents(x) - fromCents(y));
 }
 function findAddon(id) {
   return ADDONS.find((a) => a.id === id);
@@ -467,7 +471,7 @@ var PACKAGES = [
     name: "Basic Interior",
     category: "interior",
     tagline: "A solid clean that gets the everyday grime out.",
-    note: "A blowout and thorough vacuum through the seats, carpet and trunk, mats cleaned, every surface wiped down, and the visible grime taken off. The car looks and feels clean when you get back in it. It does NOT shampoo or extract the upholstery, treat set-in stains, condition leather, or brush out every seam and crevice. Stains that are already in the fabric will still be there. If the carpet is marked or the car smells, you want Full, or Basic with a stain treatment added.",
+    note: "A blowout and thorough vacuum through the seats, carpet and trunk, mats cleaned, surfaces wiped down, and the visible grime taken off. The car looks and feels clean when you get back in it. It does NOT shampoo or extract the upholstery, treat set-in stains, condition leather, or brush out every seam and crevice. A vacuum does not lift what has worked its way down into the weave, so engrained fibers, pet hair and grit in the carpet will not all come out, and stains already in the fabric will still be there. If the carpet is marked or the car smells, you want Full, or Basic with a stain treatment added.",
     priceCents: 12500,
     durationMin: 120,
     componentIds: [...BASIC_INT_IDS],
@@ -570,7 +574,7 @@ var PACKAGES = [
     // Everything in Full Exterior, then a required correction or coating
     // tier on top. The base here is the Full Exterior work; the tier adds its
     // own price and hours. See CORRECTION_TIERS in ./addons.ts.
-    tagline: "Everything in Full Exterior, then corrected and ceramic coated.",
+    tagline: "Everything in Full Exterior, then the swirls come out and a real ceramic coating goes on. Pick how far to take it below.",
     note: "Everything in Full Exterior, then the paint is machine corrected and a durable ceramic coating goes on the paint, wheels, plastic trim and glass. How much correction depends on the tier you pick below. It does NOT repair physical damage. Dents, rock chips and any scratch deep enough to have gone through the clear coat cannot be polished out, because correction removes a little clear coat, it does not add any. We will tell you what will and will not come out before we start.",
     priceCents: 24500,
     durationMin: 240,

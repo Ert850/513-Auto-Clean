@@ -354,8 +354,22 @@ export const ADDONS: Addon[] = [
   },
 ];
 
+/** Lowest priced tier, used to order the list. Unpriced sorts to the end. */
+function fromCents(a: Addon): number {
+  const priced = a.tiers.filter((t) => t.priceCents !== null).map((t) => t.priceCents as number);
+  return priced.length ? Math.min(...priced) : Number.POSITIVE_INFINITY;
+}
+
+/**
+ * Cheapest first, always.
+ *
+ * Sorting here rather than in each renderer means the front page, the funnel
+ * and anything built later cannot disagree about the order, and a new add-on
+ * lands in the right place the moment it is priced. Ties keep their declared
+ * order, which groups the two $50s sensibly rather than alphabetically.
+ */
 export function addonsFor(scope: AddonScope): Addon[] {
-  return ADDONS.filter((a) => a.scope === scope);
+  return ADDONS.filter((a) => a.scope === scope).sort((x, y) => fromCents(x) - fromCents(y));
 }
 
 export function findAddon(id: string): Addon | undefined {
