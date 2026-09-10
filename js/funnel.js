@@ -50,7 +50,7 @@
       // server, so this is never a discount amount.
       // Measured drive time, once the address is complete enough to route
       // from. Until then the ZIP band estimate stands in.
-      travel: { minutes: null, source: 'none', pending: false, tooFar: false, forKey: '' },
+      travel: blankTravel(),
       promoCode: '',
       promoOpen: false,
       notes: '',
@@ -818,6 +818,26 @@
   }
 
   /** Live travel figure, shown as soon as the ZIP is complete. */
+  /**
+   * An unmeasured travel state.
+   *
+   * One definition, because this literal used to be written out in three
+   * places, which is exactly how a new field gets added to two of them.
+   */
+  function blankTravel() {
+    return {
+      minutes: null,   // averaged, the figure the fee is built on
+      out: null,       // the drive there, leaving in time to arrive
+      back: null,      // the drive home, leaving when the job ends
+      heavy: false,    // measurably worse than this area's normal
+      typical: null,   // what this area usually costs, for comparison
+      source: 'none',  // none | routes | estimate | toofar
+      pending: false,
+      tooFar: false,
+      forKey: ''
+    };
+  }
+
   /** The address as one line, and the key we cache the measurement against. */
   function addressLine() {
     var a = state.address;
@@ -847,14 +867,14 @@
     clearTimeout(travelTimer);
     if (!addressComplete()) {
       if (state.travel.source !== 'none') {
-        state.travel = { minutes: null, source: 'none', pending: false, tooFar: false, forKey: '' };
+        state.travel = blankTravel();
       }
       return;
     }
 
     // The slot is part of the key: the same address at 8am and at 5pm is a
     // different drive, and that is the whole point of measuring it.
-    var key = addressLine().toUpperCase() + '@' + (state.slot || 0);
+    var key = addressLine().toUpperCase() + '@' + (state.slot || 0) + '+' + totalDurationMin();
     if (state.travel.forKey === key && !state.travel.pending) return;
 
     state.travel.pending = true;
@@ -863,15 +883,27 @@
 
     travelTimer = setTimeout(function () {
       fetch('/api/travel?address=' + encodeURIComponent(addressLine()) +
-            (state.slot ? '&at=' + encodeURIComponent(state.slot) : ''), { cache: 'default' })
+            (state.slot ? '&at=' + encodeURIComponent(state.slot) : '') +
+            '&service=' + encodeURIComponent(totalDurationMin()) +
+            '&zip=' + encodeURIComponent(state.address.zip || ''), { cache: 'default' })
         .then(function (r) { return r.ok ? r.json() : Promise.reject(new Error(String(r.status))); })
         .then(function (d) {
           if (state.travel.forKey !== key) return; // they kept typing
+          var t = blankTravel();
+          t.forKey = key;
           if (d.reachable === false || d.tooFar) {
-            state.travel = { minutes: d.minutes || null, source: 'toofar', pending: false, tooFar: true, forKey: key };
+            t.minutes = d.minutes || null;
+            t.source = 'toofar';
+            t.tooFar = true;
           } else {
-            state.travel = { minutes: d.minutes, source: 'routes', pending: false, tooFar: false, forKey: key };
+            t.minutes = d.minutes;
+            t.out = d.outboundMin != null ? d.outboundMin : d.minutes;
+            t.back = d.returnMin != null ? d.returnMin : d.minutes;
+            t.heavy = Boolean(d.heavyTraffic);
+            t.typical = d.typicalMin != null ? d.typicalMin : null;
+            t.source = 'routes';
           }
+          state.travel = t;
           repaintTravel();
           renderTotal();
         })
@@ -879,7 +911,10 @@
           if (state.travel.forKey !== key) return;
           // No key configured, or the API is having a moment. The estimate
           // stands and says so.
-          state.travel = { minutes: null, source: 'estimate', pending: false, tooFar: false, forKey: key };
+          var fallback = blankTravel();
+          fallback.source = 'estimate';
+          fallback.forKey = key;
+          state.travel = fallback;
           repaintTravel();
           renderTotal();
         });
@@ -923,11 +958,26 @@
 
     if (measured) {
       // Measured, so it says so and stops hedging. This is the number that
-      // gets charged: the server measures the same address before billing.
+      // gets charged: the server measures the same round trip before billing.
+      //
+      // Both legs are named when they differ, because the average is the
+      // honest figure and showing only it looks like a rounded guess.
+      var legs = (t.out !== null && t.back !== null && t.out !== t.back)
+        ? ' That is ' + t.out + ' out and ' + t.back + ' back, averaged.'
+        : '';
+
+      // A fee above normal for the area deserves a reason. Without one, a
+      // customer comparing notes with a neighbour assumes the worse
+      // explanation, and they are told how to lower it.
+      var why = t.heavy
+        ? '<i class="bk-travel-why">Higher than usual for your area, because of the traffic ' +
+          'at the time you picked. An earlier or later slot would bring it down.</i>'
+        : '';
+
       return '<div class="bk-travel exact bk-travel-slot"><b>' + $(fee) + ' travel</b>' +
         '<span>' + mins + ' minutes each way from us, measured from your address' +
-        (state.slot ? ' at the time you picked, traffic included' : '') +
-        ', and already in your total. This is the figure you pay.</span></div>';
+        (state.slot ? ' for the time you picked' : '') + ', and already in your total.' +
+        legs + ' This is the figure you pay.</span>' + why + '</div>';
     }
 
     return '<div class="bk-travel bk-travel-slot"><b>' + $(fee) + ' travel</b>' +
@@ -1690,7 +1740,7 @@
     }
     if (t.dataset.slot) {
       // A new time means a new drive, so the measured figure is stale.
-      state.travel = { minutes: null, source: 'none', pending: false, tooFar: false, forKey: '' }; state.slot = Number(t.dataset.slot); return advance(); }
+      state.travel = blankTravel(); state.slot = Number(t.dataset.slot); return advance(); }
     if (t.id === 'bkMoreDays') {
       // More DAYS at the same six times, never more times within a day.
       state.daysShown = (state.daysShown || 3) + 4;

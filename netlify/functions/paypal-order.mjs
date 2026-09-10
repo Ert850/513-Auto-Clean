@@ -1,5 +1,5 @@
 import { priceFromWire } from "./_pricing.mjs";
-import { addressLine, measureDrive } from "./_routes.mjs";
+import { addressLine, measureRoundTrip } from "./_routes.mjs";
 
 /**
  * PayPal and Venmo.
@@ -58,9 +58,14 @@ async function measuredMinutes(cart) {
   const line = addressLine(cart?.address);
   if (!line) return null;
   try {
-    // Same address AND same departure time the funnel quoted from, so the
-    // charge matches the number the customer agreed to.
-    const drive = await measureDrive({ address: line, departureMs: cart?.slot ?? null });
+    // The SAME round trip the funnel quoted from: both legs, at the same
+    // times, averaged the same way. Anything else and the charge drifts from
+    // the number the customer agreed to.
+    const drive = await measureRoundTrip({
+      dest: { address: line },
+      slotMs: cart?.slot ?? null,
+      serviceMin: cart?.serviceDurationMin ?? 0,
+    });
     return drive?.reachable ? drive.minutes : null;
   } catch {
     return null;

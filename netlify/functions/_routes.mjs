@@ -23,7 +23,7 @@ function keyFor(dest) {
   // 8am and at 5pm is not the same journey, and caching them together would
   // throw away the traffic awareness we are paying for.
   const when = dest.departureMs ? "@" + new Date(dest.departureMs).toISOString().slice(0, 13) : "";
-  return where + when;
+  return where + when + (dest.reverse ? "|back" : "");
 }
 
 const memo = new Map();
@@ -58,9 +58,16 @@ export async function measureDrive(dest) {
   const originPlaceId = process.env.SHOP_ORIGIN_PLACE_ID;
   const originAddress = process.env.SHOP_ORIGIN_ADDRESS;
 
-  const destination = dest.address
+  const customer = dest.address
     ? { address: dest.address }
     : { location: { latLng: { latitude: dest.lat, longitude: dest.lng } } };
+
+  const base = originPlaceId ? { placeId: originPlaceId } : { address: originAddress };
+
+  // The drive home is a different journey from the drive out, at a different
+  // time of day and often on the other side of a rush hour.
+  const origin = dest.reverse ? customer : base;
+  const destination = dest.reverse ? base : customer;
 
   const res = await fetch("https://routes.googleapis.com/directions/v2:computeRoutes", {
     method: "POST",
@@ -71,7 +78,7 @@ export async function measureDrive(dest) {
       "X-Goog-FieldMask": "routes.duration,routes.distanceMeters",
     },
     body: JSON.stringify({
-      origin: originPlaceId ? { placeId: originPlaceId } : { address: originAddress },
+      origin,
       destination,
       travelMode: "DRIVE",
       routingPreference: "TRAFFIC_AWARE",
@@ -111,4 +118,57 @@ export function addressLine(a) {
     .map((s) => String(s ?? "").trim())
     .filter(Boolean)
     .join(", ");
+}
+
+/**
+ * The round trip, which is what the fee is actually built on.
+ *
+ * Two legs, each measured at the time it will really be driven:
+ *
+ *   out    leave in time to ARRIVE at the slot
+ *   back   leave when the job actually finishes
+ *
+ * Then average them, per averageOneWayMinutes in lib/pricing/mileage.ts. One
+ * leg would be a lie in either direction: a job that starts at 7am and ends
+ * at 11am is measured against an empty road out and a clear road back, while
+ * a 2pm start comes home through rush hour.
+ *
+ * The outbound leg needs an iteration, because the Routes API takes a
+ * DEPARTURE time and we know the ARRIVAL time. Estimate with a departure at
+ * the slot, then re-measure departing that long before it. Only worth doing
+ * past twenty minutes; below that the traffic picture does not move enough to
+ * pay for another call.
+ */
+export async function measureRoundTrip({ dest, slotMs, serviceMin }) {
+  if (!routesConfigured()) return null;
+
+  // No slot yet means no times to measure against, so it is one plain drive.
+  if (!slotMs || slotMs <= Date.now()) {
+    const one = await measureDrive(dest);
+    if (!one || !one.reachable) return one;
+    return { ...one, outboundMin: one.minutes, returnMin: one.minutes, legs: 1 };
+  }
+
+  const rough = await measureDrive({ ...dest, departureMs: slotMs });
+  if (!rough || !rough.reachable) return rough;
+
+  const out =
+    rough.minutes > 20
+      ? (await measureDrive({ ...dest, departureMs: slotMs - rough.minutes * 60_000 })) ?? rough
+      : rough;
+
+  const outboundMin = out.reachable ? out.minutes : rough.minutes;
+
+  const finishMs = slotMs + Math.max(0, Number(serviceMin) || 0) * 60_000;
+  const back = await measureDrive({ ...dest, departureMs: finishMs, reverse: true });
+  const returnMin = back && back.reachable ? back.minutes : outboundMin;
+
+  return {
+    reachable: true,
+    minutes: Math.round((outboundMin + returnMin) / 2),
+    outboundMin,
+    returnMin,
+    miles: out.miles ?? rough.miles ?? null,
+    legs: back && back.reachable ? (out === rough ? 2 : 3) : 2,
+  };
 }

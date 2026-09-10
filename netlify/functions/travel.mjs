@@ -45,10 +45,17 @@ export async function handler(event) {
   if (!address && !hasCoords) return json(400, { error: "no_destination" }, false);
   if (!routesConfigured()) return json(503, { error: "unconfigured" }, false);
 
+  // The band midpoint for this ZIP is our stand-in for a typical drive,
+  // so a figure that came out high can be explained rather than just
+  // presented.
+  const typical = zip ? estimateOneWayMinutes(zip) : null;
+
   try {
-    const drive = await measureDrive(
-      address ? { address, departureMs } : { lat, lng, departureMs },
-    );
+    const drive = await measureRoundTrip({
+      dest: address ? { address } : { lat, lng },
+      slotMs: departureMs,
+      serviceMin,
+    });
 
     if (!drive || !drive.reachable || drive.minutes === null) {
       return json(200, { reachable: false, tooFar: true, source: "routes" }, true);
@@ -68,10 +75,15 @@ export async function handler(event) {
         reachable: true,
         tooFar: false,
         minutes: drive.minutes,
+        outboundMin: drive.outboundMin ?? drive.minutes,
+        returnMin: drive.returnMin ?? drive.minutes,
         miles: drive.miles,
         feeCents: mileageFeeCents(drive.minutes, DEFAULT_RULES.mileage),
         source: "routes",
         trafficAt: departureMs,
+        typicalMin: typical,
+        heavyTraffic:
+          typical !== null && drive.minutes >= typical + 5 && drive.minutes >= typical * 1.25,
       },
       true,
     );

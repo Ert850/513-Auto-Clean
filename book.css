@@ -170,6 +170,11 @@ body.bk-open { overflow: hidden; }
 .bk-clear:hover { color: var(--red); }
 
 .bk-travel.exact b { color: #1a8a3f; }
+.bk-travel-why {
+  display: block; font-style: normal; margin-top: .45rem;
+  font-size: .78rem; line-height: 1.5; color: #7a5209;
+  background: rgba(240,169,63,.13); border-radius: var(--r-sm); padding: .5rem .65rem;
+}
 .bk-travel.pending { opacity: .75; }
 .bk-travel.pending b::after {
   content: "..."; display: inline-block; width: 1.2em; overflow: hidden;
