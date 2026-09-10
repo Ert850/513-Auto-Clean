@@ -81,6 +81,16 @@ export interface Package {
    */
   requiresCorrectionTier?: boolean;
   /**
+   * Listed, explained and priced, but not bookable yet.
+   *
+   * Shown with a way to register interest rather than hidden, because hiding
+   * a service hides the demand for it. A customer ticks it, books whatever
+   * they came for, and Elijah learns how many people wanted the thing he has
+   * not launched.
+   */
+  comingSoon?: boolean;
+  comingSoonNote?: string;
+  /**
    * Minutes to reserve on the calendar, when that differs from the quoted
    * duration. Correction work runs across several days, so only the first is
    * scheduled and the rest is arranged directly; booking 30 hours as one

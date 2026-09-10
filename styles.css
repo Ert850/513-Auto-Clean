@@ -297,6 +297,18 @@ section { padding-block: clamp(40px, 5vw, 72px); position: relative; }
 }
 .svc-card:hover { transform: translateY(-6px); box-shadow: var(--shadow-lg); border-color: transparent; }
 .svc-card.featured { border-color: var(--red); box-shadow: 0 0 0 1px var(--red), var(--shadow-md); }
+/* Coming soon sits where "Most Popular" sits, in the site's amber rather
+   than its red, because it is information and not a recommendation. */
+.svc-tag.soon { background: var(--amber); color: var(--ink); }
+.svc-soon {
+  font-size: .84rem; color: #7a5209; background: rgba(240,169,63,.14);
+  border-radius: var(--r-sm); padding: .5rem .65rem; margin-bottom: .85rem; line-height: 1.5;
+}
+.corr-soon {
+  font-size: .66rem; font-weight: 800; letter-spacing: .09em; text-transform: uppercase;
+  color: #7a5209; background: rgba(240,169,63,.2); border-radius: 4px;
+  padding: .2rem .45rem; vertical-align: middle; margin-left: .45rem;
+}
 .svc-tag {
   position: absolute; top: -12px; right: 1.5rem; background: linear-gradient(135deg, var(--red), var(--red-deep));
   color: #ffffff; font-size: .72rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase;
@@ -951,20 +963,43 @@ html.scrolling-fast .reveal { transition: none; transition-delay: 0s; }
   .rv-arrow.prev { left: 0; }
   .rv-arrow.next { right: 0; }
 }
+/* FIXED height, like the ticker. Paging six cards at a time was resizing the
+   whole grid on every click, which reads as the page glitching. The card is a
+   constant size and the text clamps inside it; opening one scrolls its own
+   text rather than growing the row. */
 .rv-card {
+  height: 15.5rem;
+  overflow: hidden;
+  display: flex; flex-direction: column;
   margin: 0; background: var(--paper-2); border: 1px solid var(--line);
   border-radius: var(--r-md); padding: 1.1rem; box-shadow: var(--shadow-sm);
 }
-.rv-top { display: flex; align-items: center; gap: .65rem; margin-bottom: .6rem; }
+.rv-top { display: flex; align-items: center; gap: .65rem; margin-bottom: .6rem; flex: none; }
 .rv-av { width: 36px; height: 36px; border-radius: 50%; flex: none; object-fit: cover; }
 .rv-av-x { display: grid; place-items: center; background: var(--red-ghost); color: var(--red); font-weight: 800; }
 .rv-top b { display: block; font-size: .93rem; }
-.rv-card blockquote { margin: 0; font-size: .9rem; line-height: 1.6; color: var(--text-soft); }
+.rv-card blockquote {
+  margin: 0; font-size: .9rem; line-height: 1.6; color: var(--text-soft);
+  flex: 1; min-height: 0;
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 5;
+  overflow: hidden;
+}
+/* Opened: the same box, now scrollable. The card never changes size. */
+.rv-card blockquote.open {
+  display: block; overflow-y: auto; -webkit-line-clamp: unset;
+  scrollbar-width: thin;
+}
+.rv-more {
+  display: block; margin-top: .3rem; padding: 0; font: inherit; font-size: .8rem;
+  font-weight: 700; color: var(--red); background: none; border: 0; cursor: pointer;
+  text-decoration: underline; text-underline-offset: 2px;
+}
 .rv-more { border: 0; background: none; color: var(--red); font: inherit; font-size: .85rem; font-weight: 700; cursor: pointer; padding: 0 0 0 .3rem; }
 /* The date and the "read in full" link ran together into "2 days agoRead in
    full". Two items with a separator, not two strings jammed end to end. */
 .rv-card figcaption {
-  margin-top: .6rem; font-size: .78rem; color: var(--text-soft);
+  margin-top: auto; flex: none;
+  padding-top: .6rem; font-size: .78rem; color: var(--text-soft);
   display: flex; align-items: center; gap: .5rem; flex-wrap: wrap;
 }
 .rv-card figcaption a { color: var(--red); font-weight: 700; }

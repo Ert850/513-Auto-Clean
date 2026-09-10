@@ -115,15 +115,11 @@
 
   /* ---------- the grid ---------- */
 
-  function trim(text, max) {
-    if (text.length <= max) return { short: text, long: null };
-    var cut = text.slice(0, max);
-    var at = cut.lastIndexOf(' ');
-    return { short: cut.slice(0, at > 0 ? at : max) + '…', long: text };
-  }
+  /** Roughly what fits in five clamped lines. Only decides the button. */
+  var CLAMP_CHARS = 190;
 
   function card(r) {
-    var t = trim(r.text, 240);
+    var long = r.text.length > CLAMP_CHARS;
     return '<figure class="rv-card">' +
       '<div class="rv-top">' +
         (r.photo
@@ -131,10 +127,10 @@
           : '<span class="rv-av rv-av-x">' + esc((r.author || '?').charAt(0)) + '</span>') +
         '<div><b>' + esc(r.author) + '</b>' + stars(r.rating) + '</div>' +
       '</div>' +
-      '<blockquote>' + esc(t.short) +
-        (r.truncated && !t.long ? '…' : '') +
-        (t.long ? '<button type="button" class="rv-more" data-full="' + esc(t.long) + '">Read more</button>' : '') +
-      '</blockquote>' +
+      '<blockquote>' + esc(r.text) + (r.truncated ? '…' : '') + '</blockquote>' +
+      (long || r.truncated
+        ? '<button type="button" class="rv-more">Read more</button>'
+        : '') +
       '<figcaption><time datetime="' + esc(r.iso) + '">' + esc(r.relative) + '</time>' +
         (r.truncated ? '<a href="' + esc(MAPS_URL) + '" target="_blank" rel="noopener">Read in full</a>' : '') +
       '</figcaption>' +
@@ -294,7 +290,11 @@
     mount.addEventListener('click', function (e) {
       var b = e.target.closest ? e.target.closest('.rv-more') : null;
       if (!b) return;
-      b.closest('blockquote').textContent = b.dataset.full;
+      // Unclamp in place. The card keeps its height and the text scrolls, so
+      // opening one review never moves the five around it.
+      var quote = b.parentNode.querySelector('blockquote');
+      var open = quote.classList.toggle('open');
+      b.textContent = open ? 'Show less' : 'Read more';
     });
   }
 

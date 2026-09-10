@@ -76,7 +76,7 @@ function correctionBlock() {
   ).join("\n              ");
 
   return `<div class="svc-corr">
-            <h4>Paint correction and ceramic coating</h4>
+            <h4>Paint correction and ceramic coating <span class="corr-soon">Coming soon</span></h4>
             <details class="svc-explain">
               <summary>How it Works: ${esc(COATING_EXPLAINER.heading)}</summary>
               <p>${esc(COATING_EXPLAINER.body)}</p>
@@ -130,6 +130,7 @@ function packageCard(p) {
             <span class="dur"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v4l3 2"/></svg> ${time}</span>
           </div>
           <p class="svc-desc">${esc(p.tagline)}</p>
+          ${p.comingSoon ? `<p class="svc-soon">${esc(p.comingSoonNote ?? "Not bookable yet.")}</p>` : ""}
           <ul class="feat">
 ${feats}
           </ul>
@@ -138,7 +139,11 @@ ${feats}
               ? `<details class="svc-how"><summary>How it works</summary><p>${esc(p.note)}</p></details>`
               : ""
           }
-          <div class="svc-foot"><a class="btn ${p.featured ? "btn-primary" : "btn-ghost"} btn-block" href="book.html" data-book-package="${esc(p.id)}">Book ${esc(bookLabel)}</a></div>`;
+          <div class="svc-foot">${
+            p.comingSoon
+              ? `<a class="btn btn-ghost btn-block" href="book.html" data-book-interest="${esc(p.id)}">Register interest</a>`
+              : `<a class="btn ${p.featured ? "btn-primary" : "btn-ghost"} btn-block" href="book.html" data-book-package="${esc(p.id)}">Book ${esc(bookLabel)}</a>`
+          }</div>`;
 
   // The wide card splits in two: the package on the left, the correction
   // tiers on the right. Wrapping the left half keeps that a two-child grid
@@ -148,7 +153,9 @@ ${feats}
     : body;
 
   return `        <article class="svc-card${p.featured ? " featured" : ""}${wide} reveal">
-${p.featured ? '          <span class="svc-tag">Most Popular</span>\n' : ""}${inner}
+${p.featured ? '          <span class="svc-tag">Most Popular</span>\n' : ""}${
+    p.comingSoon ? '          <span class="svc-tag soon">Coming soon</span>\n' : ""
+  }${inner}
         </article>`;
 }
 
@@ -263,6 +270,10 @@ function offersHtml() {
       description: p.tagline,
       price: (p.priceCents / 100).toFixed(2),
       priceCurrency: "USD",
+      // Do not let a search result advertise something nobody can book.
+      availability: p.comingSoon
+        ? "https://schema.org/PreOrder"
+        : "https://schema.org/InStock",
       category: p.category,
       url: "https://513autoclean.com/book.html",
     }));
