@@ -156,9 +156,10 @@
           correction: correctionRef(v)
         };
       }),
-      // Travel needs a Maps key and a chosen time. Until then it reads as
-      // pending rather than being guessed at.
-      oneWayMinutes: null,
+      // Priced from the ZIP band via the SAME estimator the payment function
+      // uses, so what is shown is what gets charged. A real address lookup
+      // replaces this at confirmation.
+      oneWayMinutes: state.address.zip ? P.estimateOneWayMinutes(state.address.zip) : null,
       surchargeContext: surchargeCtx(),
       zip: state.address.zip || null,
       payInFull: state.payInFull
@@ -750,7 +751,26 @@
       (state.noGoodLocation
         ? '<div class="bk-panel"><p>No problem, this is usually easy to solve. Local spots like retail parking lots often work well, especially for interior details. Tell us roughly where you are and we will sort somewhere out with you. If we cannot find somewhere near you, we can work out a location closer to us as well.</p>' +
           '<textarea data-note="loc" rows="3" placeholder="e.g. I live in an apartment with no driveway, but there is a big lot behind the Kroger on Ludlow">' + esc(state.locationNote) + '</textarea></div>'
-        : '');
+        : '') +
+      travelLine();
+  }
+
+  /** Live travel figure, shown as soon as the ZIP is complete. */
+  function travelLine() {
+    var hit = state.address.zip ? P.lookupZip(state.address.zip) : null;
+    if (!hit) {
+      return '<p class="bk-hint bk-travel-slot">Add your ZIP and the travel fee appears here. ' +
+        'The first 10 minutes of drive time are free.</p>';
+    }
+    var mins = P.estimateOneWayMinutes(state.address.zip);
+    var fee = P.mileageFeeCents(mins, RULES.mileage);
+    if (fee === 0) {
+      return '<div class="bk-travel free bk-travel-slot"><b>No travel fee</b>' +
+        '<span>' + esc(hit.area) + ' is inside our free radius.</span></div>';
+    }
+    return '<div class="bk-travel bk-travel-slot"><b>' + $(fee) + ' travel</b>' +
+      '<span>' + esc(hit.area) + ', about ' + mins + ' minutes each way, already in your total. ' +
+      'We confirm it from your exact address and it can move a little either way.</span></div>';
   }
 
   function vLoc() {
@@ -886,8 +906,11 @@
 
     var html = '';
     if (win.mode === 'unconfigured') {
-      html += '<p class="bk-warn">These are our usual hours. We will confirm the exact time with you' +
-        (errMsg ? ' (calendar unavailable right now)' : '') + '.</p>';
+      // TEMPORARY. Delete this branch once the calendar key is live: with a
+      // real feed these are genuine openings and need no caveat.
+      html += '<p class="bk-warn">We could not reach our calendar just now, so these are our standard times. ' +
+        'Pick whichever suits and we will confirm it, usually within a few hours. ' +
+        'Occasionally a time needs adjusting, and we will text you if so.</p>';
     }
 
     var byDay = {};
@@ -1436,7 +1459,12 @@
     var t = e.target;
     if (t.dataset.addr) {
       state.address[t.dataset.addr] = t.value;
-      if (t.dataset.addr === 'zip' && /^\d{5}$/.test(t.value)) renderTotal();
+      if (t.dataset.addr === 'zip') {
+        // Repaint only the travel figure, so the field keeps focus mid-typing.
+        var box = el('bkBody').querySelector('.bk-travel-slot');
+        if (box) box.outerHTML = travelLine();
+        renderTotal();
+      }
       if (t.dataset.addr === 'line1') maybeAutocomplete(t.value);
       return;
     }

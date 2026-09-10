@@ -68,7 +68,7 @@ import {
   requiresPriorityBooking,
 } from "./pricing/surcharge.js";
 import { quote } from "./pricing/quote.js";
-import { ZIP_RANGES, lookupZip } from "./travel/zipRanges.js";
+import { ZIP_RANGES, estimateOneWayMinutes, lookupZip } from "./travel/zipRanges.js";
 
 /** Format integer cents as $1,234.50, or $1,234 when it lands on the dollar. */
 export function formatCents(cents: number): string {
@@ -123,6 +123,7 @@ const api = {
   subtractIntervals,
   quote,
   ZIP_RANGES,
+  estimateOneWayMinutes,
   lookupZip,
   mileageFeeCents,
   averageOneWayMinutes,

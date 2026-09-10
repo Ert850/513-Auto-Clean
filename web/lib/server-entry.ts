@@ -35,6 +35,7 @@ import { DEFAULT_RULES } from "./pricing/rules.js";
 import { SEED_TAX_TABLE } from "./pricing/tax.js";
 import { minutesOfDay } from "./pricing/surcharge.js";
 import { localMinutesOfDay } from "./availability/slots.js";
+import { estimateOneWayMinutes } from "./travel/zipRanges.js";
 import { quote, type AddonRef, type CartInput, type PackageRef } from "./pricing/quote.js";
 
 /** What the browser is allowed to send: ids and quantities, never money. */
@@ -133,7 +134,10 @@ export function priceFromWire(wire: WireCart): PricedCart {
 
   const cart: CartInput = {
     vehicles,
-    oneWayMinutes: null,
+    // Same estimator the funnel used, so the amount charged matches the
+    // amount shown. A ZIP we do not cover prices as no travel rather than
+    // guessing, and gets picked up at confirmation.
+    oneWayMinutes: wire.zip ? estimateOneWayMinutes(wire.zip) : null,
     surchargeContext: wire.slot
       ? { startMinutesLocal: localMinutesOfDay(wire.slot), priorityBooking: Boolean(wire.priority) }
       : wire.priority

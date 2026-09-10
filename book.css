@@ -542,3 +542,15 @@ body.bk-open { overflow: hidden; }
 /* how it works, on a package card */
 .bk-how-pkg { margin: -.2rem 0 .55rem .2rem; }
 .bk-how-pkg summary { font-size: .79rem; }
+
+.bk-travel { background: var(--red-ghost); border-left: 3px solid var(--red); border-radius: 0 var(--r-sm) var(--r-sm) 0; padding: .8rem .95rem; margin-top: .4rem; }
+.bk-travel.free { background: rgba(26,138,63,.1); border-left-color: #1a8a3f; }
+.bk-travel b { display: block; font-family: var(--font-display); font-size: 1.15rem; color: var(--red); }
+.bk-travel.free b { color: #14682f; }
+.bk-travel span { display: block; font-size: .84rem; color: var(--text-soft); line-height: 1.55; margin-top: .2rem; }
+
+.bk-travel { background: var(--red-ghost); border-left: 3px solid var(--red); border-radius: 0 var(--r-sm) var(--r-sm) 0; padding: .8rem .95rem; margin-top: .4rem; }
+.bk-travel.free { background: rgba(26,138,63,.1); border-left-color: #1a8a3f; }
+.bk-travel b { display: block; font-family: var(--font-display); font-size: 1.15rem; color: var(--red); }
+.bk-travel.free b { color: #14682f; }
+.bk-travel span { display: block; font-size: .84rem; color: var(--text-soft); line-height: 1.55; margin-top: .2rem; }
