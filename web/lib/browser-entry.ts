@@ -7,15 +7,41 @@
  * browser JS, which is exactly how the old site ended up with prices in three
  * places that drifted apart.
  */
-import { SEED_CATALOG } from "./catalog/seed.js";
+import {
+  findPackage,
+  packagesFor,
+  SEED_CATALOG,
+  VEHICLE_SIZES,
+  vehicleSize,
+} from "./catalog/seed.js";
 import {
   ADDONS,
+  addonBlockedReason,
+  addonsFor,
+  findAddon,
+  isUnpriced,
   MAINTENANCE_PLAN,
   PAINT_CORRECTION,
   SERVICE_LEVELS,
-  SHOWROOM_READY,
+  SHOWROOM_EXTERIOR,
 } from "./catalog/addons.js";
 import { SEED_TAX_TABLE, computeTax, lookupRate } from "./pricing/tax.js";
+import {
+  DEFAULT_HOURS,
+  businessHoursWindows,
+  isConfigured as calendarConfigured,
+  loadWindow,
+  resolveWindow,
+  unconfiguredWindow,
+} from "./google/publicCalendar.js";
+import {
+  TIME_WINDOWS,
+  computeSlots,
+  localMinutesOfDay,
+  matchWindows,
+  mergeIntervals,
+  subtractIntervals,
+} from "./availability/slots.js";
 import {
   addableComponents,
   componentsOf,
@@ -47,13 +73,33 @@ const api = {
   RULES: DEFAULT_RULES,
   CATALOG: SEED_CATALOG,
   ADDONS,
-  SHOWROOM_READY,
+  SHOWROOM_EXTERIOR,
+  VEHICLE_SIZES,
+  vehicleSize,
+  packagesFor,
+  findPackage,
+  addonsFor,
+  findAddon,
+  isUnpriced,
+  addonBlockedReason,
   PAINT_CORRECTION,
   MAINTENANCE_PLAN,
   SERVICE_LEVELS,
   TAX_TABLE: SEED_TAX_TABLE,
   computeTax,
   lookupRate,
+  DEFAULT_HOURS,
+  businessHoursWindows,
+  calendarConfigured,
+  loadWindow,
+  resolveWindow,
+  unconfiguredWindow,
+  TIME_WINDOWS,
+  computeSlots,
+  localMinutesOfDay,
+  matchWindows,
+  mergeIntervals,
+  subtractIntervals,
   quote,
   mileageFeeCents,
   averageOneWayMinutes,

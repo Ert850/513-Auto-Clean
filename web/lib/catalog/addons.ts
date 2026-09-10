@@ -1,15 +1,13 @@
 /**
  * Add-ons.
  *
- * Most are fixed-price with a small set of severity tiers rather than an
- * open-ended hourly rate, because "how many hours of pet hair is this?" is a
- * question a customer cannot answer and Elijah can only judge on site. Tiers
- * let someone self-select honestly and still land on a real number.
+ * Severity tiers rather than an hourly rate, because "how many hours of pet
+ * hair is this?" is a question a customer cannot answer honestly and Elijah can
+ * only judge on site.
  *
- * `priceCents: null` means Elijah has not priced it yet. Those render as
- * "price on request" and cannot be selected, for the same reason unpriced
- * components cannot be added: a guessed number either overcharges the
- * customer or erodes the margin.
+ * `priceCents: null` means not priced yet. Those render as "price on request"
+ * and cannot be selected, for the same reason unpriced components cannot be
+ * added: a guessed number either overcharges the customer or erodes margin.
  */
 
 export type AddonScope = "interior" | "exterior";
@@ -20,6 +18,8 @@ export interface AddonTier {
   priceCents: number | null;
   description?: string;
   durationMin: number;
+  /** Renders an asterisk against the price. */
+  asterisk?: string;
 }
 
 export interface Addon {
@@ -27,13 +27,23 @@ export interface Addon {
   name: string;
   scope: AddonScope;
   description: string;
-  /** Extra caveat shown under the tiers. */
   note?: string;
+  /**
+   * Tiers are mutually exclusive by construction: choosing one replaces any
+   * other tier of the same add-on. Stain work relies on this, since a customer
+   * should never be able to buy both the reduction and the removal.
+   */
   tiers: AddonTier[];
-  /** Add-ons this one cannot be bought without. */
-  requiresAddonIds?: string[];
-  /** Minimum package required, by package id. */
-  requiresPackageIds?: string[];
+  /**
+   * At least one of these packages must be in the cart for the same vehicle.
+   * Used by Ozone, which cannot do its job on a vehicle that has not had the
+   * organic material removed first.
+   */
+  requiresAnyPackageId?: string[];
+  /** Alternatively satisfied by holding any of these add-on tiers. */
+  requiresAnyAddonTier?: { addonId: string; tierIds: string[] }[];
+  /** Shown when the requirement is unmet, in place of a bare disabled state. */
+  requirementMessage?: string;
 }
 
 export const ADDONS: Addon[] = [
@@ -43,30 +53,35 @@ export const ADDONS: Addon[] = [
     name: "Pet Hair Removal",
     scope: "interior",
     description: "Seats, carpets, and every crevice it has worked its way into.",
-    note: "Shorter, coarser fibers weave into fabric and take far longer to lift, so a small dog can be more work than a big one.",
     tiers: [
-      { id: "minor", label: "Minor", priceCents: 5000, description: "A light dusting, mostly on one surface", durationMin: 60 },
-      { id: "moderate", label: "Moderate", priceCents: 7500, description: "Noticeable through the seats and carpet", durationMin: 90 },
-      { id: "heavy", label: "Heavy", priceCents: 10000, description: "Woven in throughout, visible everywhere", durationMin: 120 },
+      {
+        id: "std",
+        label: "Pet hair removal",
+        priceCents: 5000,
+        durationMin: 60,
+        asterisk: "Quote may change upon inspection. Shorter, coarser fibers weave into fabric and take considerably longer to lift.",
+      },
     ],
   },
   {
-    id: "stain-treatment",
+    id: "stain",
     name: "Stain Treatment",
     scope: "interior",
-    description: "A Full Interior includes stain reduction. These go further.",
+    description: "Two levels. Pick the one that matches what you are dealing with.",
     tiers: [
       {
-        id: "reduction", label: "Stain reduction", priceCents: 5000, durationMin: 60,
-        description: "Treatment, scrub, steam, and wipe removal. Typically 75 to 90% reduction. Already included with Full Interior.",
+        id: "minor",
+        label: "Minor to moderate treatment",
+        priceCents: 5000,
+        durationMin: 60,
+        description: "Stain treatment, scrubbing and reduction. Removes 70 to 90% of the stain.",
       },
       {
-        id: "extraction", label: "Stain extraction", priceCents: 10000, durationMin: 120,
-        description: "Everything in reduction, but double treated with heavy soaking and triple extraction. For vomit, heavy set stains, and smells.",
-      },
-      {
-        id: "intensive", label: "Full vehicle intensive", priceCents: 20000, durationMin: 240,
-        description: "Stains across the whole vehicle. Four hours of extraction and steaming on every surface.",
+        id: "major",
+        label: "Moderate to major removal",
+        priceCents: 10000,
+        durationMin: 120,
+        description: "Three stage treatment: scrubbing, steam scrub, extraction. Removes 90 to 100% of the stain.",
       },
     ],
   },
@@ -74,15 +89,22 @@ export const ADDONS: Addon[] = [
     id: "steam",
     name: "Full Vehicle Steam Treatment",
     scope: "interior",
-    description: "Useful for sanitization and decontamination.",
-    tiers: [{ id: "std", label: "Full vehicle", priceCents: 5000, durationMin: 60 }],
+    description: "All safe portions of the vehicle sanitized and scrubbed with a steamer.",
+    tiers: [{ id: "std", label: "Full vehicle", priceCents: 7500, durationMin: 90 }],
   },
   {
     id: "ozone",
     name: "Ozone Odor Reset",
     scope: "interior",
-    description: "An ozone machine runs in the vehicle for an hour, pulling smells out of the plastics, seats, trim, and ventilation.",
-    tiers: [{ id: "std", label: "One hour treatment", priceCents: 5000, durationMin: 60 }],
+    description: "60 to 80% reduction of organic odors.",
+    tiers: [{ id: "std", label: "Ozone treatment", priceCents: 5000, durationMin: 60 }],
+    // Ozone attacks what is left in the air and the plastics. Running it over
+    // material that has not been extracted first mostly wastes the customer's
+    // money, so it is gated rather than merely discouraged.
+    requiresAnyPackageId: ["full-interior", "showroom-interior"],
+    requiresAnyAddonTier: [{ addonId: "stain", tierIds: ["minor", "major"] }],
+    requirementMessage:
+      "Ozone needs the source removed first. Add it to a Full Interior or Showroom Ready, or pair it with a stain treatment.",
   },
   {
     id: "seat-removal",
@@ -102,7 +124,7 @@ export const ADDONS: Addon[] = [
   },
   {
     id: "tire-rim-shine",
-    name: "Tire & Rim Shine",
+    name: "Tire and Rim Shine",
     scope: "exterior",
     description: "Deep clean and dress the tires and rims.",
     tiers: [{ id: "std", label: "All four", priceCents: null, durationMin: 30 }],
@@ -132,10 +154,50 @@ export const ADDONS: Addon[] = [
     id: "engine-bay",
     name: "Engine Bay Detail",
     scope: "exterior",
-    description: "Cleaned, dressed, and protected.",
+    description: "Cleaned, dressed and protected.",
     tiers: [{ id: "std", label: "Engine bay", priceCents: null, durationMin: 30 }],
   },
 ];
+
+export function addonsFor(scope: AddonScope): Addon[] {
+  return ADDONS.filter((a) => a.scope === scope);
+}
+
+export function findAddon(id: string): Addon | undefined {
+  return ADDONS.find((a) => a.id === id);
+}
+
+/** True when every tier of an add-on is still unpriced, so it cannot be sold. */
+export function isUnpriced(a: Addon): boolean {
+  return a.tiers.every((t) => t.priceCents === null);
+}
+
+/**
+ * Is an add-on's requirement satisfied by what is already in this vehicle?
+ * Returns null when it is, or the message explaining what is missing.
+ */
+export function addonBlockedReason(
+  a: Addon,
+  ctx: { packageIds: string[]; addonTiers: { addonId: string; tierId: string }[] },
+): string | null {
+  const needsPackage = a.requiresAnyPackageId?.length ? a.requiresAnyPackageId : null;
+  const needsAddon = a.requiresAnyAddonTier?.length ? a.requiresAnyAddonTier : null;
+  if (!needsPackage && !needsAddon) return null;
+
+  const packageOk = needsPackage
+    ? needsPackage.some((id) => ctx.packageIds.includes(id))
+    : false;
+
+  const addonOk = needsAddon
+    ? needsAddon.some((req) =>
+        ctx.addonTiers.some((t) => t.addonId === req.addonId && req.tierIds.includes(t.tierId)),
+      )
+    : false;
+
+  // Either route satisfies it, which is what "Full tier OR basic plus stain
+  // treatment" means.
+  return packageOk || addonOk ? null : (a.requirementMessage ?? "Not available with this package.");
+}
 
 /* ================= paint correction ================= */
 
@@ -143,7 +205,6 @@ export interface CorrectionTier {
   id: string;
   label: string;
   priceCents: number;
-  /** Plain-language promise, with the maintenance asterisk where it applies. */
   result: string;
   asterisk: boolean;
   durationMin: number;
@@ -158,9 +219,8 @@ export interface CoatingUpgrade {
 
 export const PAINT_CORRECTION = {
   id: "paint-correction",
-  name: "Paint Correction & Ceramic Coating",
+  name: "Paint Correction and Ceramic Coating",
   scope: "exterior" as const,
-  /** Cannot be sold without decon, and not on an Express wash. */
   requiresAddonIds: ["paint-decon"],
   minimumPackageId: "basic-exterior",
   includedCoating: "1 year ceramic coating",
@@ -188,12 +248,10 @@ export const PAINT_CORRECTION = {
     "With proper maintenance: washing the vehicle monthly at minimum, and refreshing the coating with a sacrificial sealant annually.",
 };
 
-/** Optional plan that keeps a coating inside its warranty conditions. */
 export const MAINTENANCE_PLAN = {
   id: "maintenance-plan",
   name: "Coating Maintenance Plan",
   monthlyCents: 14900,
-  /** Pay for a year up front and one month is free, so 11 months buys 12. */
   monthsFreeOnAnnual: 1,
   annualCents: 14900 * 11,
   includes: [
@@ -209,10 +267,9 @@ export const MAINTENANCE_PLAN = {
 
 /**
  * Quality tiers Elijah assigns per service, per part of the vehicle.
- *
  * Deliberately NOT derived from the package: an Express is not automatically
- * "all Good", and a Basic is not automatically "all Better". He sets each one,
- * so the ladder reflects what actually differs rather than an assumption.
+ * "all Good", so he sets each one and the ladder reflects what actually
+ * differs rather than an assumption.
  */
 export const SERVICE_LEVELS = [
   { level: 1, id: "good", label: "Good", asterisk: false },
@@ -223,17 +280,22 @@ export const SERVICE_LEVELS = [
 
 export type ServiceLevel = 1 | 2 | 3 | 4;
 
-/* ================= showroom ready ================= */
+/* ================= exterior showroom ================= */
 
-export const SHOWROOM_READY = {
-  id: "showroom-ready",
-  name: "Showroom Ready",
-  tagline: "Extreme attention to detail, priced by the hour on condition.",
+/**
+ * Exterior Showroom Ready stays hourly.
+ *
+ * NOTE FOR ELIJAH: interior Showroom Ready is now a fixed $395, but no fixed
+ * exterior price was given, so this keeps the earlier $100/hour with a 6 hour
+ * minimum. Worth making these consistent one way or the other.
+ */
+export const SHOWROOM_EXTERIOR = {
+  id: "showroom-exterior",
+  name: "Showroom Ready Exterior",
+  tagline: "Extreme attention to detail. Not a paint correction.",
   hourlyCents: 10000,
   minimumHours: 6,
   get minimumCents() { return this.hourlyCents * this.minimumHours; },
-  /** Flat deposit rather than a percentage, because the total is open ended. */
-  depositCents: 60000,
   level: 4 as ServiceLevel,
-  note: "Priced at $100/hour with a 6 hour minimum. Final price depends on the vehicle's starting condition and the time it takes. Exterior Showroom Ready is extreme detail work, not a paint correction.",
+  note: "Priced at $100/hour with a 6 hour minimum. Final price depends on the vehicle's starting condition.",
 };

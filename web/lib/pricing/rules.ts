@@ -94,8 +94,17 @@ export interface PricingRules {
   addonRateCents: number;
   /** Add-ons are quoted at a minimum of this many hours. */
   addonMinHours: number;
-  /** Deposit as a share of the total. */
+  /**
+   * Deposit as a share of the total.
+   *
+   * ZERO by design. Deposits were removed to cut booking friction: a card on
+   * file is what confirms the slot, not money taken up front. Kept as a rule
+   * rather than deleted so it can be reintroduced without a schema change if
+   * no-shows become a problem.
+   */
   depositBp: number;
+  /** Taken off the total when the customer chooses to pay in full now. */
+  payInFullDiscountBp: number;
   /** "Pay after service" is offered only when the TOTAL is at or below this. */
   payAfterMaxCents: number;
   /** Non-refundable booking fee kept from the deposit on a >=72hr cancellation. */
@@ -138,7 +147,8 @@ export const DEFAULT_RULES: PricingRules = {
   additionalVehicleDiscountBp: 1000, // 10% off the 2nd vehicle onward
   addonRateCents: 5000, // $50/hr
   addonMinHours: 1,
-  depositBp: 5000, // 50%
+  depositBp: 0, // no deposit; a card on file confirms the slot
+  payInFullDiscountBp: 500, // 5% for paying in full at booking
   payAfterMaxCents: 19500, // $195
   cancellationFlatFeeCents: 2500, // $25
   refundMidWindowBp: 5000, // 50% of deposit

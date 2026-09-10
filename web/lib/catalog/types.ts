@@ -49,6 +49,18 @@ export interface Package {
   componentIds: string[];
   featured: boolean;
   sortOrder: number;
+  /** Upper bound where a package is quoted as a range, e.g. 6 to 8 hours. */
+  durationMaxMin?: number;
+  /**
+   * Set when this package contains every component of another, so the UI can
+   * say "everything in Full, plus" rather than repeating the whole list.
+   */
+  supersetOf?: string;
+  /**
+   * Gate for returning-customer pricing. The Maintenance package is only
+   * offered when the customer's previous detail falls inside this window.
+   */
+  requiresPriorDetail?: { minMonths: number; maxMonths: number };
 }
 
 export interface Catalog {

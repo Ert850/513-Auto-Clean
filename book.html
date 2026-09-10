@@ -2,83 +2,23 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Book Your Detail | 513 Auto Clean</title>
-<meta name="description" content="Book mobile car detailing in Cincinnati with 513 Auto Clean. Pick your package, add options, and request your time in under two minutes." />
+<meta name="description" content="Book mobile car detailing in Cincinnati with 513 Auto Clean. Pick your package, choose a time, and book in under a minute." />
 <meta name="theme-color" content="#0b0e13" />
-<meta name="robots" content="index, follow" />
-<link rel="canonical" href="https://513autoclean.com/book.html" />
+<link rel="canonical" href="https://513autoclean.com/" />
+<meta http-equiv="refresh" content="0; url=index.html#book" />
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230b0e13'/%3E%3Ctext x='32' y='42' font-family='Arial' font-weight='800' font-size='24' fill='%23ff3b3b' text-anchor='middle'%3E513%3C/text%3E%3C/svg%3E" />
-<link rel="preconnect" href="https://fonts.googleapis.com" />
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link rel="stylesheet" href="styles.css" />
-<link rel="stylesheet" href="book.css" />
 </head>
-<body class="book-body">
-
-<header class="book-head">
-  <div class="wrap">
-    <a class="book-brand" href="index.html">
-      <img src="images/logo-mark.png" alt="513 Auto Clean" width="34" height="34" />
-      <span>513 Auto Clean</span>
-    </a>
-    <a class="book-help" href="index.html#inquiry">Have a question?</a>
+<body>
+<section class="legal">
+  <div class="wrap" style="padding-block:4rem;text-align:center">
+    <h1 style="font-family:var(--font-display)">Opening your booking</h1>
+    <p>If nothing happens, <a href="index.html#book">tap here to start booking</a>,
+       or call <a href="tel:+15132792915">(513) 279-2915</a>.</p>
   </div>
-</header>
-
-<div class="book-progress" id="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="Booking progress">
-  <div class="bar" id="progressBar"></div>
-</div>
-
-<main class="book-main">
-  <div class="wrap book-layout">
-
-    <div class="book-flow">
-      <!-- steps are rendered here -->
-      <section class="step" id="step" aria-live="polite"></section>
-
-      <nav class="step-nav">
-        <button type="button" class="btn btn-ghost" id="backBtn">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M19 12H5M11 18l-6-6 6-6"/></svg>
-          Back
-        </button>
-        <button type="button" class="btn btn-primary btn-lg" id="nextBtn">
-          <span id="nextLabel">Continue</span>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
-        </button>
-      </nav>
-    </div>
-
-    <aside class="book-summary" id="summary" aria-label="Your booking summary">
-      <h2>Your booking</h2>
-      <div id="summaryBody"></div>
-    </aside>
-
-  </div>
-</main>
-
-<!-- Sticky total on mobile -->
-<div class="book-bar" id="bookBar">
-  <button type="button" class="bb-toggle" id="bbToggle" aria-expanded="false" aria-controls="bbDetail">
-    <span class="bb-label">Estimated total</span>
-    <span class="bb-total" id="bbTotal">$0</span>
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 15l6-6 6 6"/></svg>
-  </button>
-  <div class="bb-detail" id="bbDetail" hidden></div>
-</div>
-
-<noscript>
-  <div class="wrap" style="padding:3rem 0">
-    <div class="ns-note">
-      <h2>Booking needs JavaScript</h2>
-      <p>Our booking tool needs JavaScript to calculate your price. You can still
-         <a href="index.html#inquiry">send us a question</a> or call
-         <a href="tel:+15132792915">(513) 279-2915</a> and we&rsquo;ll book you in directly.</p>
-    </div>
-  </div>
-</noscript>
-
-<script src="js/pricing.bundle.js"></script>
-<script src="js/funnel.js"></script>
+</section>
+<script>location.replace('index.html#book');</script>
 </body>
 </html>

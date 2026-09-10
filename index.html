@@ -31,6 +31,22 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link rel="preload" as="image" href="images/hero-exterior.webp" type="image/webp" fetchpriority="high" />
 <link rel="stylesheet" href="styles.css" />
+<!-- Booking funnel configuration.
+     googleApiKey: browser key restricted by HTTP referrer. Reads the PUBLIC
+     availability calendar and powers address autocomplete. Leave empty and the
+     funnel falls back to business hours, clearly labelled as needing
+     confirmation, rather than pretending a time is open.
+     stripePublishableKey: pk_test_... or pk_live_.... Publishable keys are
+     designed to be public; the SECRET key must never appear here. -->
+<script>
+  window.AC_CONFIG = {
+    googleCalendarId: '75726fed82aa92a27201386beda7b3a15f550a3a5691e5e6cfc51382f0f0b9cf@group.calendar.google.com',
+    googleApiKey: '',
+    stripePublishableKey: ''
+  };
+</script>
+<link rel="stylesheet" href="book.css" />
+
 
 <!-- Local Business structured data (SEO) -->
 <script type="application/ld+json">
@@ -809,6 +825,10 @@
   </div>
 </section>
 
+
+<!-- Booking funnel mounts here, over the page rather than navigating away -->
+<div id="bookFunnel" hidden></div>
+
 <!-- ============ FOOTER ============ -->
 <footer class="footer">
   <div class="wrap">
@@ -872,6 +892,8 @@
 <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@fullcalendar/google-calendar@6.1.15/index.global.min.js"></script>
 -->
+<script src="js/pricing.bundle.js"></script>
+<script src="js/funnel.js"></script>
 <script src="script.js"></script>
 </body>
 </html>
