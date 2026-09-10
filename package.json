@@ -1,0 +1,13 @@
+{
+  "name": "513-auto-clean-site",
+  "private": true,
+  "type": "module",
+  "description": "Static site plus Netlify functions. The app source lives in web/.",
+  "scripts": {
+    "build": "cd web && npm ci && npm run build:funnel && npm run build:server",
+    "test": "cd web && npm test"
+  },
+  "dependencies": {
+    "stripe": "^20.0.0"
+  }
+}

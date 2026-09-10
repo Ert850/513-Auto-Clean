@@ -1,9 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { blockedReason, displaceableBookings, evaluateSlot } from "./provisional.js";
+import { DEFAULT_RULES as R } from "../pricing/rules.js";
+import { computeSurcharge } from "../pricing/surcharge.js";
 import {
+  IGNORE_RETURN_AFTER_MIN,
   PREFERRED_STARTS,
   computeSlots,
   computeSlotsTiered,
+  localMinutesOfDay,
   matchWindows,
   mergeIntervals,
   subtractIntervals,
@@ -128,7 +132,9 @@ describe("slot fitting", () => {
 describe("preferred start times", () => {
   // Mon 14 Sep 2026 is a weekday; Sat 19 Sep is not.
   const req = (day: number) => ({
-    openBlocks: [iv(new Date(2026, 8, day, 6).getTime(), new Date(2026, 8, day, 22).getTime())],
+    // 5am to 1am next day, mirroring DEFAULT_HOURS: wide enough for the drive
+    // out before a 6am arrival and the drive home after a late finish.
+    openBlocks: [iv(new Date(2026, 8, day, 5).getTime(), new Date(2026, 8, day + 1, 1).getTime())],
     busy: [],
     serviceDurationMin: 120,
     travelBeforeMin: 30,
@@ -141,31 +147,38 @@ describe("preferred start times", () => {
   const hours = (list: number[]) =>
     list.map((ms) => new Date(ms).getHours() + ":" + String(new Date(ms).getMinutes()).padStart(2, "0"));
 
-  it("offers only Elijah's usual weekday starts", () => {
+  it("offers exactly the six canonical times", () => {
     const slots = computeSlots({ ...req(14), preferredStartsMin: PREFERRED_STARTS });
-    expect(hours(slots)).toEqual(["8:00", "10:00", "16:00", "18:00"]);
+    expect(hours(slots)).toEqual(["6:00", "8:00", "10:00", "16:00", "18:00", "20:00"]);
   });
 
-  it("drops to two starts at the weekend", () => {
+  it("offers the same six at the weekend", () => {
     const slots = computeSlots({ ...req(19), preferredStartsMin: PREFERRED_STARTS });
-    expect(hours(slots)).toEqual(["10:00", "16:00"]);
+    expect(hours(slots)).toEqual(["6:00", "8:00", "10:00", "16:00", "18:00", "20:00"]);
   });
 
-  it("still returns everything else that fits, separately", () => {
-    const { preferred, other } = computeSlotsTiered(req(14));
-    expect(preferred).toHaveLength(4);
-    expect(other.length).toBeGreaterThan(10);
-    // The two lists never overlap, so nothing is offered twice.
-    expect(other.filter((t) => preferred.includes(t))).toEqual([]);
+  it("never fills in the gaps between them", () => {
+    const slots = computeSlots({ ...req(14), preferredStartsMin: PREFERRED_STARTS });
+    // 9am and 2pm both fit comfortably, and are deliberately not offered.
+    expect(hours(slots)).not.toContain("9:00");
+    expect(hours(slots)).not.toContain("14:00");
   });
 
-  it("skips a usual start that no longer fits around a booking", () => {
+  it("leaves 10am and 4pm as the only standard-price options", () => {
+    const slots = computeSlots({ ...req(14), preferredStartsMin: PREFERRED_STARTS });
+    const standard = slots.filter(
+      (ms) => computeSurcharge({ startMinutesLocal: localMinutesOfDay(ms), priorityBooking: false }, R.surcharge).appliedBp === 0,
+    );
+    expect(hours(standard)).toEqual(["10:00", "16:00"]);
+  });
+
+  it("skips a canonical start that no longer fits around a booking", () => {
     const busyMorning = {
       ...req(14),
-      busy: [iv(new Date(2026, 8, 14, 7).getTime(), new Date(2026, 8, 14, 13).getTime())],
+      busy: [iv(new Date(2026, 8, 14, 5).getTime(), new Date(2026, 8, 14, 13).getTime())],
     };
     const slots = computeSlots({ ...busyMorning, preferredStartsMin: PREFERRED_STARTS });
-    expect(hours(slots)).toEqual(["16:00", "18:00"]);
+    expect(hours(slots)).toEqual(["16:00", "18:00", "20:00"]);
   });
 });
 
@@ -206,6 +219,44 @@ describe("bookable window, 6am to 8pm ending by midnight", () => {
 
   it("never offers a start past 8pm however short the job", () => {
     expect(Math.max(...hrs(computeSlots(req(30))))).toBe(20);
+  });
+});
+
+describe("last job of the day", () => {
+  const day = (h: number, m = 0) => new Date(2026, 8, 14, h, m).getTime();
+  // Closes at midnight, with no room for a drive home afterwards.
+  const req = (durationMin: number) => ({
+    openBlocks: [iv(day(5), new Date(2026, 8, 15, 0).getTime())],
+    busy: [],
+    serviceDurationMin: durationMin,
+    travelBeforeMin: 30,
+    travelAfterMin: 30,
+    granularityMin: 60,
+    notBefore: day(0),
+    notAfter: day(23),
+    preferredStartsMin: PREFERRED_STARTS,
+  });
+  const hrs = (l: number[]) => l.map((ms) => new Date(ms).getHours());
+
+  it("cannot reach 8pm while the drive home still has to fit", () => {
+    expect(hrs(computeSlots(req(240)))).not.toContain(20);
+  });
+
+  it("reaches 8pm once the return drive is ignored from 6pm", () => {
+    const slots = computeSlots({ ...req(240), ignoreReturnAfterMin: IGNORE_RETURN_AFTER_MIN });
+    expect(hrs(slots)).toContain(20);
+  });
+
+  it("still bounds the service itself by midnight", () => {
+    // 6 hours from 8pm would run to 2am, drive home or not.
+    const slots = computeSlots({ ...req(360), ignoreReturnAfterMin: IGNORE_RETURN_AFTER_MIN });
+    expect(Math.max(...hrs(slots))).toBe(18);
+  });
+
+  it("keeps counting the return drive for daytime bookings", () => {
+    const noReturn = computeSlots({ ...req(240), ignoreReturnAfterMin: IGNORE_RETURN_AFTER_MIN });
+    // 10am is unaffected either way: the rule only lifts from 6pm.
+    expect(hrs(noReturn)).toContain(10);
   });
 });
 

@@ -457,3 +457,40 @@ body.bk-open { overflow: hidden; }
   font-style: normal; font-size: .66rem; font-weight: 800; color: #7a5209;
   background: rgba(240,169,63,.18); padding: .05rem .28rem; border-radius: 4px; margin-left: .3rem;
 }
+
+/* ---------- time buckets ---------- */
+.bk-bucket { border: 1.5px solid var(--line); border-radius: var(--r-sm); margin-bottom: .45rem; overflow: hidden; }
+.bk-bucket.open { border-color: var(--red); }
+.bk-bucket-h {
+  display: flex; align-items: center; gap: .6rem; width: 100%;
+  background: var(--paper-2); border: 0; padding: .6rem .8rem;
+  font: inherit; font-size: .88rem; font-weight: 700; cursor: pointer; color: var(--text);
+}
+.bk-bucket-h:hover { background: var(--red-ghost); }
+.bk-bucket-h span { flex: 1; text-align: left; }
+.bk-bucket-h em {
+  font-style: normal; font-size: .78rem; font-weight: 700; color: var(--text-soft);
+}
+.bk-bucket-h svg { width: 15px; height: 15px; color: var(--text-soft); transition: transform .2s; }
+.bk-bucket.open .bk-bucket-h svg { transform: rotate(180deg); }
+.bk-bucket .bk-times { padding: .55rem; }
+
+/* slot tone: a price, never a warning */
+.bk-time .bk-t { display: block; font-weight: 800; }
+.bk-time em {
+  display: block; font-style: normal; font-size: .74rem; font-weight: 700; margin-top: .1rem;
+}
+.bk-time.std em.inc { color: #1a8a3f; }
+.bk-time.mid em { color: var(--text-soft); }
+.bk-time.hi em { color: var(--text-soft); }
+.bk-time.std { border-color: rgba(26,138,63,.35); }
+
+/* ---------- payment ---------- */
+.bk-methods { display: flex; gap: .5rem; margin: .8rem 0; }
+.bk-method {
+  flex: 1; border: 1.5px solid var(--line); background: var(--paper);
+  border-radius: var(--r-sm); padding: .55rem; font: inherit; font-size: .85rem;
+  font-weight: 700; cursor: pointer; color: var(--text-soft);
+}
+.bk-method:hover { border-color: var(--red); }
+.bk-method.on { border-color: var(--red); background: var(--red-ghost); color: var(--red-deep); }

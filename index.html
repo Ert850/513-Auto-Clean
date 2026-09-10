@@ -42,8 +42,22 @@
   window.AC_CONFIG = {
     googleCalendarId: '75726fed82aa92a27201386beda7b3a15f550a3a5691e5e6cfc51382f0f0b9cf@group.calendar.google.com',
     googleApiKey: '',
-    stripePublishableKey: ''
+    stripePublishableKey: '',
+    paypalClientId: ''
   };
+</script>
+<script>
+  // Payment SDKs load only once their key exists, so an unconfigured site
+  // makes no third-party requests and the cookie banner stays honest.
+  (function () {
+    var c = window.AC_CONFIG;
+    function load(src) { var s = document.createElement('script'); s.src = src; s.async = true; document.head.appendChild(s); }
+    if (c.stripePublishableKey) load('https://js.stripe.com/v3/');
+    if (c.paypalClientId) {
+      load('https://www.paypal.com/sdk/js?client-id=' + encodeURIComponent(c.paypalClientId) +
+           '&currency=USD&components=buttons&enable-funding=venmo,paylater');
+    }
+  })();
 </script>
 <link rel="stylesheet" href="book.css" />
 
