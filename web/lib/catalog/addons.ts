@@ -74,14 +74,14 @@ export const ADDONS: Addon[] = [
         label: "Minor to moderate treatment",
         priceCents: 5000,
         durationMin: 60,
-        description: "Stain treatment, scrubbing and reduction. Removes 70 to 90% of the stain.",
+        description: "Treatment, scrubbing and wipe reduction. Removes 70 to 90% of the stain.",
       },
       {
         id: "major",
         label: "Moderate to major removal",
         priceCents: 10000,
         durationMin: 120,
-        description: "Three stage treatment: scrubbing, steam scrub, extraction. Removes 90 to 100% of the stain.",
+        description: "Treatment, scrubbing, upholstery extraction, 250 degree steaming and wipe removal. Removes 90 to 100% of the stain.",
       },
     ],
   },
@@ -96,7 +96,8 @@ export const ADDONS: Addon[] = [
     id: "ozone",
     name: "Ozone Odor Reset",
     scope: "interior",
-    description: "60 to 80% reduction of organic odors.",
+    description:
+      "Pure oxygen (O2) kills the smell causing compounds and pulls them out of the vehicle. 60 to 90% reduction of organic odors. Must be paired with a stain treatment, or Full Interior and above.",
     tiers: [{ id: "std", label: "Ozone treatment", priceCents: 5000, durationMin: 60 }],
     // Ozone attacks what is left in the air and the plastics. Running it over
     // material that has not been extracted first mostly wastes the customer's
@@ -104,7 +105,7 @@ export const ADDONS: Addon[] = [
     requiresAnyPackageId: ["full-interior", "showroom-interior"],
     requiresAnyAddonTier: [{ addonId: "stain", tierIds: ["minor", "major"] }],
     requirementMessage:
-      "Ozone needs the source removed first. Add it to a Full Interior or Showroom Ready, or pair it with a stain treatment.",
+      "Ozone needs the source removed first. Pair it with a stain treatment, or add it to a Full Interior or Showroom Ready.",
   },
   {
     id: "seat-removal",
