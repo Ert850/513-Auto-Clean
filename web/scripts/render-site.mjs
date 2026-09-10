@@ -19,6 +19,7 @@ import {
   ADDONS,
   CORRECTION_RULES,
   COATING_COVERAGE,
+  COATING_EXPLAINER,
   CORRECTION_TIERS,
   DEFAULT_RULES,
   SEED_CATALOG,
@@ -121,6 +122,15 @@ ${panel("exterior")}
     </div>
 
     <div class="svc-correction reveal">
+      <details class="svc-explain">
+        <summary>${esc(COATING_EXPLAINER.heading)}</summary>
+        <p>${esc(COATING_EXPLAINER.body)}</p>
+        <p class="ex-h">What it does</p>
+        <ul class="ex-yes">${COATING_EXPLAINER.does.map((d) => `<li>${esc(d)}</li>`).join("")}</ul>
+        <p class="ex-h">What it does not do</p>
+        <ul class="ex-no">${COATING_EXPLAINER.doesNot.map((d) => `<li>${esc(d)}</li>`).join("")}</ul>
+        <p class="ex-why">${esc(COATING_EXPLAINER.why)}</p>
+      </details>
       <h3>Paint correction and ceramic coating</h3>
       <p>Showroom Ready Exterior is everything in Full Exterior, then one of these. Booked at least ${CORRECTION_RULES.minLeadDays} days out, weekend mornings.</p>
       <ul class="feat">

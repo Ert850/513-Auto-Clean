@@ -324,6 +324,35 @@ export function addonBlockedReason(
 export const COATING_COVERAGE =
   "Every coating covers the whole vehicle: paint, wheels, plastic trim and glass.";
 
+/**
+ * Plain explanation shown above the correction tiers.
+ *
+ * The "does not" half matters most. A coating gets sold as armour far too
+ * often, and a customer who paid four figures expecting rock chip protection
+ * has a fair complaint. Saying it up front costs one sentence and prevents
+ * that conversation entirely.
+ */
+export const COATING_EXPLAINER = {
+  heading: "What is a ceramic coating?",
+  body:
+    "A liquid polymer that chemically bonds to your clear coat and cures into a hard, glass-like layer. It is not a wax sitting on top that washes away in a few months, it becomes part of the surface and stays there for years.",
+  does: [
+    "Makes the paint strongly hydrophobic, so water beads up and rolls off instead of sheeting and drying into spots",
+    "Keeps dirt, brake dust and road film from keying into the surface, so the car stays cleaner between washes and washes far faster",
+    "Blocks UV, which is what oxidises and fades paint over time",
+    "Resists the things that actually etch paint: bird droppings, bug guts, tree sap, road salt",
+    "Adds real depth and gloss, and holds it rather than dulling after a month",
+  ],
+  doesNot: [
+    "Stop rock chips. Nothing you can apply to paint does; a coating is microns thick and a stone at highway speed is not going to notice it",
+    "Prevent dents, door dings or scratches deep enough to reach the clear coat",
+    "Remove defects that are already there. Whatever the paint looks like when it goes on is what gets sealed in, which is why correction comes first",
+    "Mean you never wash the car again. It means washing is quicker and the results last",
+  ],
+  why:
+    "Worth it if you keep your vehicles a while, park outside, or are tired of the paint looking tired. If you are about to sell, or the car lives in a garage and rarely gets dirty, a sealant is usually the better value.",
+};
+
 export interface CorrectionTier {
   id: string;
   label: string;

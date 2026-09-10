@@ -55,6 +55,7 @@
       browseFilters: {},
       browseSort: 'price',
       openBucket: null,
+      separateTimes: false,
       payMethod: 'card',
       payState: null
     };
@@ -162,7 +163,8 @@
       oneWayMinutes: state.address.zip ? P.estimateOneWayMinutes(state.address.zip) : null,
       surchargeContext: surchargeCtx(),
       zip: state.address.zip || null,
-      payInFull: state.payInFull
+      payInFull: state.payInFull,
+      visits: state.separateTimes ? state.vehicles.length : 1
     };
   }
 
@@ -319,8 +321,17 @@
     box.hidden = false;
     box.querySelector('.bk-total-amt').textContent = $(quote.totalCents);
     var dur = quote.serviceDurationMin;
-    box.querySelector('.bk-total-sub').textContent =
-      dur ? 'about ' + fmtDur(dur) + ' on site' : '';
+    var sub = box.querySelector('.bk-total-sub');
+    if (quote.multiVehicleDiscountCents > 0) {
+      // Lead with the saving, not the duration: this is the moment the second
+      // vehicle has to look like a good idea.
+      // Quote the visible gap, not the pre-tax discount, so the two numbers
+      // on screen actually subtract to the figure beside them.
+      sub.innerHTML = '<s>' + $(quote.grossBeforeMultiCents) + '</s> saving ' +
+        $(quote.grossBeforeMultiCents - quote.totalCents);
+    } else {
+      sub.textContent = dur ? 'about ' + fmtDur(dur) + ' on site' : '';
+    }
   }
 
   function fmtDur(min) {
@@ -616,7 +627,17 @@
    */
   function rCorrection(v) {
     var R2 = P.CORRECTION_RULES;
-    var html = '<div class="bk-correction"><h3 class="bk-grp">Choose your correction level</h3>' +
+    var X = P.COATING_EXPLAINER;
+    var html = '<div class="bk-correction">' +
+      '<details class="bk-explain" open><summary>' + esc(X.heading) + '</summary>' +
+        '<p>' + esc(X.body) + '</p>' +
+        '<p class="bk-explain-h">What it does</p><ul class="yes">' +
+        X.does.map(function (d) { return '<li>' + esc(d) + '</li>'; }).join('') + '</ul>' +
+        '<p class="bk-explain-h">What it does not do</p><ul class="no">' +
+        X.doesNot.map(function (d) { return '<li>' + esc(d) + '</li>'; }).join('') + '</ul>' +
+        '<p class="bk-explain-why">' + esc(X.why) + '</p>' +
+      '</details>' +
+      '<h3 class="bk-grp">Choose your correction level</h3>' +
       '<p class="bk-coverage">' + esc(P.COATING_COVERAGE) + '</p>';
 
     html += P.CORRECTION_TIERS.map(function (t) {
@@ -797,8 +818,25 @@
         '</div>';
     }).join('');
 
-    return '<div class="bk-upsell"><b>Get ' + pct + '% off when you book 2 or more vehicles</b>' +
-      '<span>Same visit, same time slot. We only charge travel once.</span></div>' +
+    var now = q();
+    var head;
+    if (state.vehicles.length > 1) {
+      head = '<div class="bk-upsell saving"><b>' + pct + '% off everything, saving ' +
+        $(now.grossBeforeMultiCents - now.totalCents) + '</b>' +
+        '<span>The discount came off your first vehicle too, not just the second.</span></div>';
+    } else {
+      // Show the actual number they would save, not just the percentage.
+      var withTwo = P.quote(
+        Object.assign({}, cart(), { vehicles: cart().vehicles.concat(cart().vehicles) }),
+        RULES
+      );
+      head = '<div class="bk-upsell"><b>Add a second vehicle and take ' + pct + '% off both</b>' +
+        '<span>The discount applies to what you have already picked, not just the new one. ' +
+        'On a second vehicle like this one that is ' +
+        $(withTwo.grossBeforeMultiCents - withTwo.totalCents) +
+        ' off, and we only drive out once.</span></div>';
+    }
+    return head +
       '<div class="bk-vehs">' + list + '</div>' +
       '<button type="button" class="bk-addveh" id="bkAddVeh">Add another vehicle</button>' +
       '<div class="bk-field" style="margin-top:1.2rem"><label for="bkLabel">What are we detailing? <i>(optional)</i></label>' +
@@ -810,6 +848,17 @@
   function rTime() {
     var earliest = P.earliestBookableDate(startOfToday(), RULES.window);
     var html = '<p class="bk-sub">Pick a time that works. Nothing is charged until the next step.</p>';
+
+    if (state.vehicles.length > 1) {
+      html += '<label class="bk-check bk-split' + (state.separateTimes ? ' on' : '') + '">' +
+        '<input type="checkbox" id="bkSplit"' + (state.separateTimes ? ' checked' : '') + ' />' +
+        '<span><b>My vehicles need separate times</b>' +
+        '<i>Only if they cannot be done in one visit. It means driving out twice, so travel is charged ' +
+        'twice and you would pay ' + $(P.mileageFeeCents(
+          state.address.zip ? P.estimateOneWayMinutes(state.address.zip) || 0 : 0, RULES.mileage
+        )) + ' extra. Same day back to back is usually easier for everyone, and keeps the ' +
+        (RULES.additionalVehicleDiscountBp / 100) + '% either way.</i></span></label>';
+    }
 
     html += hasCorrection() ? '' :
       '<label class="bk-check bk-prio' + (state.priority ? ' on' : '') + '">' +
@@ -1272,8 +1321,12 @@
         '</td></tr>'
       : '';
 
+    var saved = quote.multiVehicleDiscountCents > 0
+      ? '<tr class="saved"><td>You saved</td><td>' +
+        $(quote.grossBeforeMultiCents - quote.totalCents) + '</td></tr>'
+      : '';
     return '<table class="bk-lines">' + rows + travel + tax +
-      '<tr class="tot"><td>Total</td><td>' + $(quote.totalCents) + '</td></tr>' + when + '</table>';
+      '<tr class="tot"><td>Total</td><td>' + $(quote.totalCents) + '</td></tr>' + saved + when + '</table>';
   }
 
   /* ================= interactions ================= */
@@ -1446,6 +1499,11 @@
   function onChange(e) {
     var t = e.target;
     if (t.id === 'bkNoLoc') { state.noGoodLocation = t.checked; return render(); }
+    if (t.id === 'bkSplit') {
+      state.separateTimes = t.checked;
+      state.slot = null;
+      return render();
+    }
     if (t.id === 'bkPrio') {
       state.priority = t.checked;
       state.slot = null;
