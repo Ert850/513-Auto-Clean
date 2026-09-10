@@ -896,3 +896,16 @@ html.scrolling-fast .reveal { transition: none; transition-delay: 0s; }
 .svc-how summary::after { content: " +"; font-weight: 800; }
 .svc-how[open] summary::after { content: " -"; }
 .svc-how p { margin: .5rem 0 0; font-size: .82rem; line-height: 1.65; color: var(--text-soft); background: var(--paper); border-left: 2px solid var(--line); padding: .65rem .8rem; border-radius: 0 var(--r-sm) var(--r-sm) 0; }
+
+.svc-explain { background: var(--paper); border: 1px solid var(--line); border-radius: var(--r-md); padding: 1rem 1.1rem; margin-bottom: 1.2rem; }
+.svc-explain summary { cursor: pointer; font-family: var(--font-display); font-size: 1.05rem; font-weight: 800; list-style: none; }
+.svc-explain summary::-webkit-details-marker { display: none; }
+.svc-explain summary::after { content: " +"; color: var(--red); }
+.svc-explain[open] summary::after { content: " -"; color: var(--red); }
+.svc-explain p { font-size: .88rem; line-height: 1.65; color: var(--text-soft); margin: .7rem 0 0; }
+.svc-explain .ex-h { font-weight: 800; color: var(--text); font-size: .78rem; letter-spacing: .05em; text-transform: uppercase; margin-top: 1rem; }
+.svc-explain ul { margin: .4rem 0 0; padding-left: 1.2rem; }
+.svc-explain li { font-size: .86rem; line-height: 1.6; color: var(--text-soft); margin-bottom: .35rem; }
+.svc-explain ul.ex-yes li::marker { color: #1a8a3f; }
+.svc-explain ul.ex-no li::marker { color: var(--red); }
+.svc-explain .ex-why { font-style: italic; border-top: 1px solid var(--line); padding-top: .8rem; margin-top: 1rem; }

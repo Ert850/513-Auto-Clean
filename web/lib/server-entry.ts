@@ -11,6 +11,7 @@
 import {
   ADDONS,
   COATING_COVERAGE,
+  COATING_EXPLAINER,
   COATING_TERMS,
   CORRECTION_RULES,
   CORRECTION_TIERS,
@@ -53,6 +54,8 @@ export interface WireCart {
   /** Epoch ms of the chosen slot, or null. */
   slot?: number | null;
   priority?: boolean;
+  /** Separate trips, when two vehicles could not share a slot. */
+  visits?: number;
   payInFull?: boolean;
 }
 
@@ -145,6 +148,7 @@ export function priceFromWire(wire: WireCart): PricedCart {
         : null,
     zip: wire.zip ?? null,
     ...(wire.payInFull ? { payInFull: true } : {}),
+    ...(wire.visits ? { visits: Math.max(1, Math.min(wire.visits, wire.vehicles.length || 1)) } : {}),
   };
 
   const q = quote(cart, DEFAULT_RULES, SEED_TAX_TABLE);
@@ -162,6 +166,7 @@ export function priceFromWire(wire: WireCart): PricedCart {
 export {
   ADDONS,
   COATING_COVERAGE,
+  COATING_EXPLAINER,
   COATING_TERMS,
   CORRECTION_RULES,
   CORRECTION_TIERS,

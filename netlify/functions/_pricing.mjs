@@ -176,6 +176,24 @@ function unavailableReason(a) {
   return null;
 }
 var COATING_COVERAGE = "Every coating covers the whole vehicle: paint, wheels, plastic trim and glass.";
+var COATING_EXPLAINER = {
+  heading: "What is a ceramic coating?",
+  body: "A liquid polymer that chemically bonds to your clear coat and cures into a hard, glass-like layer. It is not a wax sitting on top that washes away in a few months, it becomes part of the surface and stays there for years.",
+  does: [
+    "Makes the paint strongly hydrophobic, so water beads up and rolls off instead of sheeting and drying into spots",
+    "Keeps dirt, brake dust and road film from keying into the surface, so the car stays cleaner between washes and washes far faster",
+    "Blocks UV, which is what oxidises and fades paint over time",
+    "Resists the things that actually etch paint: bird droppings, bug guts, tree sap, road salt",
+    "Adds real depth and gloss, and holds it rather than dulling after a month"
+  ],
+  doesNot: [
+    "Stop rock chips. Nothing you can apply to paint does; a coating is microns thick and a stone at highway speed is not going to notice it",
+    "Prevent dents, door dings or scratches deep enough to reach the clear coat",
+    "Remove defects that are already there. Whatever the paint looks like when it goes on is what gets sealed in, which is why correction comes first",
+    "Mean you never wash the car again. It means washing is quicker and the results last"
+  ],
+  why: "Worth it if you keep your vehicles a while, park outside, or are tired of the paint looking tired. If you are about to sell, or the car lives in a garage and rarely gets dirty, a sealant is usually the better value."
+};
 var CORRECTION_TIERS = [
   {
     id: "coating-only",
@@ -533,7 +551,7 @@ var DEFAULT_RULES = {
   // $25 for interior and exterior together
   comboPerVehicle: true,
   additionalVehicleDiscountBp: 1e3,
-  // 10% off the 2nd vehicle onward
+  // 10% off everything at 2+ vehicles
   addonRateCents: 5e3,
   // $50/hr
   addonMinHours: 1,
@@ -849,22 +867,23 @@ function quote(cart, r, taxTable = SEED_TAX_TABLE, year = (/* @__PURE__ */ new D
       });
     }
     lines.push(...vLines);
-    if (vi > 0 && r.additionalVehicleDiscountBp > 0) {
-      const sub = vLines.reduce((s, l) => s + l.amountCents, 0);
-      const d = Math.round(sub * r.additionalVehicleDiscountBp / 1e4);
-      if (d > 0) {
-        lines.push({
-          kind: "additional_vehicle_discount",
-          label: "Bulk discount, " + r.additionalVehicleDiscountBp / 100 + "% off vehicle " + (vi + 1),
-          vehicleIndex: vi,
-          amountCents: -d,
-          durationMin: 0
-        });
-      }
-    }
   });
+  if (cart.vehicles.length > 1 && r.additionalVehicleDiscountBp > 0) {
+    const gross = lines.reduce((s, l) => s + l.amountCents, 0);
+    const d = Math.round(gross * r.additionalVehicleDiscountBp / 1e4);
+    if (d > 0) {
+      lines.push({
+        kind: "additional_vehicle_discount",
+        label: r.additionalVehicleDiscountBp / 100 + "% off, " + cart.vehicles.length + " vehicles",
+        vehicleIndex: null,
+        amountCents: -d,
+        durationMin: 0
+      });
+    }
+  }
   const serviceSubtotalCents = lines.reduce((s, l) => s + l.amountCents, 0);
   const serviceDurationMin = lines.reduce((s, l) => s + l.durationMin, 0);
+  const multiVehicleDiscountCents = -lines.filter((l) => l.kind === "additional_vehicle_discount").reduce((s, l) => s + l.amountCents, 0);
   const bd = cart.surchargeContext ? computeSurcharge(cart.surchargeContext, r.surcharge) : { timeOfDayBp: 0, priorityBp: 0, appliedBp: 0, capped: false };
   const surchargeCents = applySurchargeCents(serviceSubtotalCents, bd.appliedBp);
   if (surchargeCents > 0) {
@@ -877,9 +896,17 @@ function quote(cart, r, taxTable = SEED_TAX_TABLE, year = (/* @__PURE__ */ new D
     });
   }
   const travelIsEstimate = cart.oneWayMinutes === null;
-  const travelCents = travelIsEstimate ? 0 : mileageFeeCents(cart.oneWayMinutes, r.mileage);
+  const visits = Math.max(1, cart.visits ?? 1);
+  const perVisit = travelIsEstimate ? 0 : mileageFeeCents(cart.oneWayMinutes, r.mileage);
+  const travelCents = perVisit * visits;
   if (travelCents > 0) {
-    lines.push({ kind: "travel", label: "Travel", vehicleIndex: null, amountCents: travelCents, durationMin: 0 });
+    lines.push({
+      kind: "travel",
+      label: visits > 1 ? "Travel, " + visits + " separate visits" : "Travel",
+      vehicleIndex: null,
+      amountCents: travelCents,
+      durationMin: 0
+    });
   }
   const taxableBase = serviceSubtotalCents + surchargeCents + travelCents;
   const taxIsEstimate = !cart.zip;
@@ -906,6 +933,7 @@ function quote(cart, r, taxTable = SEED_TAX_TABLE, year = (/* @__PURE__ */ new D
     });
   }
   const totalCents = grossTotalCents - payInFullDiscountCents;
+  const grossBeforeMultiCents = multiVehicleDiscountCents > 0 ? quote(cart, { ...r, additionalVehicleDiscountBp: 0 }, taxTable, year).totalCents : totalCents;
   const depositCents = Math.round(totalCents * r.depositBp / 1e4);
   return {
     lines,
@@ -925,7 +953,9 @@ function quote(cart, r, taxTable = SEED_TAX_TABLE, year = (/* @__PURE__ */ new D
     payInFullDiscountCents,
     payInFullSavingsCents,
     payAfterEligible: totalCents <= r.payAfterMaxCents,
-    serviceDurationMin
+    serviceDurationMin,
+    grossBeforeMultiCents,
+    multiVehicleDiscountCents
   };
 }
 
@@ -1003,7 +1033,8 @@ function priceFromWire(wire) {
     oneWayMinutes: wire.zip ? estimateOneWayMinutes(wire.zip) : null,
     surchargeContext: wire.slot ? { startMinutesLocal: localMinutesOfDay(wire.slot), priorityBooking: Boolean(wire.priority) } : wire.priority ? { startMinutesLocal: minutesOfDay(12), priorityBooking: true } : null,
     zip: wire.zip ?? null,
-    ...wire.payInFull ? { payInFull: true } : {}
+    ...wire.payInFull ? { payInFull: true } : {},
+    ...wire.visits ? { visits: Math.max(1, Math.min(wire.visits, wire.vehicles.length || 1)) } : {}
   };
   const q = quote(cart, DEFAULT_RULES, SEED_TAX_TABLE);
   return {
@@ -1018,6 +1049,7 @@ function priceFromWire(wire) {
 export {
   ADDONS,
   COATING_COVERAGE,
+  COATING_EXPLAINER,
   COATING_TERMS,
   CORRECTION_RULES,
   CORRECTION_TIERS,

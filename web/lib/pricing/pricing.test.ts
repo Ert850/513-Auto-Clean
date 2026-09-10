@@ -203,8 +203,8 @@ describe("quote engine", () => {
       R,
     );
     expect(q.lines.filter((l) => l.kind === "size_upcharge")).toHaveLength(1);
-    // Vehicle B: (125 + 25) less the 10% bulk discount.
-    expect(q.serviceSubtotalCents).toBe(12500 + Math.round(15000 * 0.9));
+    // 125 + (125 + 25), then 10% off the lot.
+    expect(q.serviceSubtotalCents).toBe(Math.round(27500 * 0.9));
   });
 
   it("applies the combo discount per vehicle", () => {
@@ -212,9 +212,9 @@ describe("quote engine", () => {
     const one = quote(cart({ vehicles: [both] }), R);
     expect(one.serviceSubtotalCents).toBe(21500 + 21000 - 2500); // $400
 
-    // Second vehicle earns the combo again, then 10% off its own subtotal.
+    // Second vehicle earns the combo again, then 10% comes off the lot.
     const two = quote(cart({ vehicles: [both, { ...both, label: "B" }] }), R);
-    expect(two.serviceSubtotalCents).toBe(40000 + Math.round(40000 * 0.9));
+    expect(two.serviceSubtotalCents).toBe(Math.round(80000 * 0.9));
   });
 
   it("does not give the combo across different vehicles", () => {
@@ -227,8 +227,8 @@ describe("quote engine", () => {
       }),
       R,
     );
-    // No combo (different vehicles), but the 2nd vehicle still gets 10% off.
-    expect(q.serviceSubtotalCents).toBe(21500 + Math.round(21000 * 0.9));
+    // No combo (different vehicles), but the whole booking still gets 10% off.
+    expect(q.serviceSubtotalCents).toBe(Math.round(42500 * 0.9));
   });
 
   it("prices add-ons from their chosen severity tier", () => {
@@ -292,24 +292,56 @@ describe("quote engine", () => {
     expect(three.travelCents).toBe(6500);
   });
 
-  it("gives 10% off EVERY vehicle after the first", () => {
+  it("takes 10% off the WHOLE booking once there are two vehicles", () => {
     const v = { label: "x", packages: [FULL_INT], addons: [] }; // $215 each
-    const discounted = Math.round(21500 * 0.9); // $193.50
 
+    // One vehicle: no discount at all.
     expect(quote(cart({ vehicles: [v] }), R).serviceSubtotalCents).toBe(21500);
-    expect(quote(cart({ vehicles: [v, v] }), R).serviceSubtotalCents).toBe(21500 + discounted);
-    expect(quote(cart({ vehicles: [v, v, v] }), R).serviceSubtotalCents).toBe(21500 + 2 * discounted);
-    expect(quote(cart({ vehicles: [v, v, v, v] }), R).serviceSubtotalCents).toBe(21500 + 3 * discounted);
+
+    // Two: the first vehicle's price comes down as well, which is the point.
+    const two = quote(cart({ vehicles: [v, v] }), R);
+    expect(two.serviceSubtotalCents).toBe(Math.round(43000 * 0.9));
+    expect(two.multiVehicleDiscountCents).toBe(4300);
+    // The struck-through figure must be a like-for-like total, so the saving
+    // between them equals the discount exactly.
+    expect(two.grossBeforeMultiCents - two.totalCents).toBe(4300);
+
+    const three = quote(cart({ vehicles: [v, v, v] }), R);
+    expect(three.serviceSubtotalCents).toBe(Math.round(64500 * 0.9));
   });
 
-  it("discounts each extra vehicle on its OWN subtotal, not the first vehicle's", () => {
+  it("keeps the struck-through total comparable once tax and travel apply", () => {
+    const v = { label: "x", packages: [FULL_INT], addons: [] };
+    const q = quote(cart({ vehicles: [v, v], oneWayMinutes: 60, zip: "45220" }), R);
+    // Never show a "was" price lower than the price being paid.
+    expect(q.grossBeforeMultiCents).toBeGreaterThan(q.totalCents);
+    // And the gap is the discount plus the tax that would have been charged on it.
+    const taxOnDiscount = Math.round(q.multiVehicleDiscountCents * (q.taxRateBp / 10000));
+    expect(q.grossBeforeMultiCents - q.totalCents).toBe(q.multiVehicleDiscountCents + taxOnDiscount);
+  });
+
+  it("makes adding a second vehicle cheaper than it looks", () => {
     const big = { label: "big", packages: [FULL_INT], addons: [] }; // $215
     const small = { label: "small", packages: [EXPRESS_EXT], addons: [] }; // $65
-    // Second vehicle is the cheap one, so the discount is 10% of $65, not of $195.
-    const q = quote(cart({ vehicles: [big, small] }), R);
-    expect(q.serviceSubtotalCents).toBe(21500 + Math.round(6500 * 0.9));
-    const line = q.lines.find((l) => l.kind === "additional_vehicle_discount");
-    expect(line?.amountCents).toBe(-650);
+    const alone = quote(cart({ vehicles: [big] }), R);
+    const both = quote(cart({ vehicles: [big, small] }), R);
+
+    // The $65 car adds less than $65, because the $215 one drops 10% too.
+    expect(both.totalCents - alone.totalCents).toBeLessThan(6500);
+    expect(both.multiVehicleDiscountCents).toBe(Math.round(28000 * 0.1));
+    // One discount line covering the booking, not one per vehicle.
+    expect(both.lines.filter((l) => l.kind === "additional_vehicle_discount")).toHaveLength(1);
+  });
+
+  it("charges travel once per visit, so split times cost twice", () => {
+    const v = { label: "x", packages: [FULL_INT], addons: [] };
+    const together = quote(cart({ vehicles: [v, v], oneWayMinutes: 60 }), R);
+    const apart = quote(cart({ vehicles: [v, v], oneWayMinutes: 60, visits: 2 }), R);
+    expect(together.travelCents).toBe(6500);
+    expect(apart.travelCents).toBe(13000);
+    expect(apart.totalCents - together.totalCents).toBe(6500);
+    // The service discount is unaffected by how many trips it takes.
+    expect(apart.multiVehicleDiscountCents).toBe(together.multiVehicleDiscountCents);
   });
 
   it("applies the surcharge to service only, never to travel", () => {

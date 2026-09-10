@@ -64,6 +64,12 @@ export interface CartInput {
   zip: string | null;
   /** Customer chose to settle the whole thing now, which earns a discount. */
   payInFull?: boolean;
+  /**
+   * Separate trips. Normally 1, because every vehicle is done in one visit.
+   * Two vehicles booked at different times means driving out twice, so travel
+   * is charged twice.
+   */
+  visits?: number;
 }
 
 export type LineKind =
@@ -109,6 +115,13 @@ export interface Quote {
   payInFullSavingsCents: number;
   payAfterEligible: boolean;
   serviceDurationMin: number;
+  /**
+   * The COMPARABLE total without the multi-vehicle discount: same travel,
+   * same tax, discount removed. Anything less than a like-for-like figure
+   * makes the struck-through price look wrong next to the real one.
+   */
+  grossBeforeMultiCents: number;
+  multiVehicleDiscountCents: number;
 }
 
 /**
@@ -201,23 +214,30 @@ export function quote(
     }
 
     lines.push(...vLines);
-
-    // Every vehicle after the first takes 10% off ITS OWN subtotal.
-    if (vi > 0 && r.additionalVehicleDiscountBp > 0) {
-      const sub = vLines.reduce((s, l) => s + l.amountCents, 0);
-      const d = Math.round((sub * r.additionalVehicleDiscountBp) / 10_000);
-      if (d > 0) {
-        lines.push({
-          kind: "additional_vehicle_discount",
-          label: "Bulk discount, " + r.additionalVehicleDiscountBp / 100 + "% off vehicle " + (vi + 1),
-          vehicleIndex: vi, amountCents: -d, durationMin: 0,
-        });
-      }
-    }
   });
+
+  // Two or more vehicles takes the discount off EVERYTHING, first one
+  // included, so adding a car visibly lowers a price already accepted.
+  if (cart.vehicles.length > 1 && r.additionalVehicleDiscountBp > 0) {
+    const gross = lines.reduce((s, l) => s + l.amountCents, 0);
+    const d = Math.round((gross * r.additionalVehicleDiscountBp) / 10_000);
+    if (d > 0) {
+      lines.push({
+        kind: "additional_vehicle_discount",
+        label:
+          r.additionalVehicleDiscountBp / 100 + "% off, " + cart.vehicles.length + " vehicles",
+        vehicleIndex: null,
+        amountCents: -d,
+        durationMin: 0,
+      });
+    }
+  }
 
   const serviceSubtotalCents = lines.reduce((s, l) => s + l.amountCents, 0);
   const serviceDurationMin = lines.reduce((s, l) => s + l.durationMin, 0);
+  const multiVehicleDiscountCents = -lines
+    .filter((l) => l.kind === "additional_vehicle_discount")
+    .reduce((s, l) => s + l.amountCents, 0);
 
   const bd = cart.surchargeContext
     ? computeSurcharge(cart.surchargeContext, r.surcharge)
@@ -232,9 +252,17 @@ export function quote(
   }
 
   const travelIsEstimate = cart.oneWayMinutes === null;
-  const travelCents = travelIsEstimate ? 0 : mileageFeeCents(cart.oneWayMinutes as number, r.mileage);
+  const visits = Math.max(1, cart.visits ?? 1);
+  const perVisit = travelIsEstimate ? 0 : mileageFeeCents(cart.oneWayMinutes as number, r.mileage);
+  const travelCents = perVisit * visits;
   if (travelCents > 0) {
-    lines.push({ kind: "travel", label: "Travel", vehicleIndex: null, amountCents: travelCents, durationMin: 0 });
+    lines.push({
+      kind: "travel",
+      label: visits > 1 ? "Travel, " + visits + " separate visits" : "Travel",
+      vehicleIndex: null,
+      amountCents: travelCents,
+      durationMin: 0,
+    });
   }
 
   const taxableBase = serviceSubtotalCents + surchargeCents + travelCents;
@@ -268,6 +296,14 @@ export function quote(
 
   const totalCents = grossTotalCents - payInFullDiscountCents;
 
+  // Price the same booking again with the discount switched off, so the
+  // struck-through figure is a true like-for-like comparison rather than a
+  // service subtotal sitting next to a total that includes travel and tax.
+  const grossBeforeMultiCents =
+    multiVehicleDiscountCents > 0
+      ? quote(cart, { ...r, additionalVehicleDiscountBp: 0 }, taxTable, year).totalCents
+      : totalCents;
+
   // Normally zero: deposits were removed to cut booking friction, and a card
   // on file is what confirms the slot. Kept as a rule so reintroducing them
   // stays a config change rather than a rewrite.
@@ -282,5 +318,7 @@ export function quote(
     payInFullDiscountCents, payInFullSavingsCents,
     payAfterEligible: totalCents <= r.payAfterMaxCents,
     serviceDurationMin,
+    grossBeforeMultiCents,
+    multiVehicleDiscountCents,
   };
 }

@@ -74,8 +74,12 @@ export interface PricingRules {
   /** Discount when one vehicle gets both an interior and an exterior package. */
   comboDiscountCents: number;
   /**
-   * Off each vehicle after the first. The 2nd, 3rd, 4th ... each get this,
-   * applied to that vehicle's own subtotal (packages + add-ons - combo).
+   * Off the WHOLE booking once there are two or more vehicles, including the
+   * first one.
+   *
+   * Deliberately not "off the extra vehicle only". A customer adding a second
+   * car should watch the price they had already accepted come down, which is
+   * what makes the upsell feel like a saving rather than an addition.
    */
   additionalVehicleDiscountBp: number;
   /** Applied per vehicle rather than once per booking. See quote.ts. */
@@ -129,7 +133,7 @@ export const DEFAULT_RULES: PricingRules = {
   },
   comboDiscountCents: 2500, // $25 for interior and exterior together
   comboPerVehicle: true,
-  additionalVehicleDiscountBp: 1000, // 10% off the 2nd vehicle onward
+  additionalVehicleDiscountBp: 1000, // 10% off everything at 2+ vehicles
   addonRateCents: 5000, // $50/hr
   addonMinHours: 1,
   depositBp: 0, // no deposit; a card on file confirms the slot
