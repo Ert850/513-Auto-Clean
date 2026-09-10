@@ -120,6 +120,23 @@ export interface ZipLookup {
   maxMin: number;
 }
 
+/**
+ * The single one-way figure to price a booking from, before the exact address
+ * is known.
+ *
+ * The midpoint of the ZIP band, rounded, rather than the far edge: charging
+ * everyone in a ZIP for its worst case overcharges most of them, and the fee
+ * is reconciled from the real address at confirmation anyway.
+ *
+ * BOTH the funnel and the payment function call this. If they computed travel
+ * separately the customer would be shown one number and charged another.
+ */
+export function estimateOneWayMinutes(zip: string): number | null {
+  const hit = lookupZip(zip);
+  if (!hit) return null;
+  return Math.round((hit.minMin + hit.maxMin) / 2);
+}
+
 export function lookupZip(zip: string): ZipLookup | null {
   const clean = (zip || "").trim().slice(0, 5);
   if (!/^\d{5}$/.test(clean)) return null;

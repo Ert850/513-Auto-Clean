@@ -894,5 +894,5 @@ html.scrolling-fast .reveal { transition: none; transition-delay: 0s; }
 .svc-how summary { cursor: pointer; font-size: .8rem; font-weight: 700; color: var(--red); list-style: none; }
 .svc-how summary::-webkit-details-marker { display: none; }
 .svc-how summary::after { content: " +"; font-weight: 800; }
-.svc-how[open] summary::after { content: " ‘2"; }
+.svc-how[open] summary::after { content: " -"; }
 .svc-how p { margin: .5rem 0 0; font-size: .82rem; line-height: 1.65; color: var(--text-soft); background: var(--paper); border-left: 2px solid var(--line); padding: .65rem .8rem; border-radius: 0 var(--r-sm) var(--r-sm) 0; }
