@@ -78,10 +78,10 @@ h1, h2, h3, h4 { font-family: var(--font-display); font-weight: 700; line-height
 
 /* ---------- Layout helpers ---------- */
 .wrap { width: 100%; max-width: var(--maxw); margin-inline: auto; padding-inline: var(--pad); }
-section { padding-block: clamp(64px, 9vw, 120px); position: relative; }
-.section-head { max-width: 660px; margin-bottom: clamp(36px, 5vw, 60px); }
-.section-head h2 { font-size: clamp(2rem, 5vw, 3.25rem); margin: .5rem 0 .9rem; }
-.section-head p { color: var(--text-soft); font-size: 1.08rem; }
+section { padding-block: clamp(46px, 6vw, 84px); position: relative; }
+.section-head { max-width: 660px; margin-bottom: clamp(26px, 3.4vw, 40px); }
+.section-head h2 { font-size: clamp(1.85rem, 4vw, 2.7rem); margin: .45rem 0 .7rem; }
+.section-head p { color: var(--text-soft); font-size: 1.02rem; line-height: 1.6; }
 .center { text-align: center; margin-inline: auto; }
 .center .eyebrow { justify-content: center; }
 
@@ -107,6 +107,9 @@ section { padding-block: clamp(64px, 9vw, 120px); position: relative; }
 .btn-ghost.on-dark:hover { box-shadow: inset 0 0 0 1.5px rgba(255,255,255,.6); background: rgba(255,255,255,.06); }
 .btn-lg { padding: 1.15rem 2rem; font-size: 1.05rem; }
 .btn-block { width: 100%; }
+/* A package name can be long. Let a full width button wrap rather than let
+   the label run past its own edge. */
+.btn-block { white-space: normal; text-align: center; line-height: 1.25; }
 
 /* ============================================================
    TOP BAR
@@ -285,11 +288,11 @@ section { padding-block: clamp(64px, 9vw, 120px); position: relative; }
 
 .svc-panel { display: none; }
 .svc-panel.active { display: block; animation: fadeUp .5s var(--ease); }
-.svc-grid { display: grid; gap: 1.5rem; }
+.svc-grid { display: grid; gap: 1.15rem; }
 
 .svc-card {
   background: var(--paper-2); border: 1px solid var(--line); border-radius: var(--r-lg);
-  padding: 1.9rem 1.7rem; position: relative; transition: transform .3s var(--ease), box-shadow .3s var(--ease), border-color .3s;
+  padding: 1.5rem 1.4rem; position: relative; transition: transform .3s var(--ease), box-shadow .3s var(--ease), border-color .3s;
   display: flex; flex-direction: column;
 }
 .svc-card:hover { transform: translateY(-6px); box-shadow: var(--shadow-lg); border-color: transparent; }
@@ -299,15 +302,15 @@ section { padding-block: clamp(64px, 9vw, 120px); position: relative; }
   color: #ffffff; font-size: .72rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase;
   padding: .35rem .8rem; border-radius: 999px; box-shadow: var(--shadow-sm);
 }
-.svc-card h3 { font-size: 1.5rem; margin-bottom: .2rem; }
-.svc-card .svc-meta { display: flex; align-items: baseline; gap: .6rem; margin-bottom: 1.1rem; flex-wrap: wrap; }
-.svc-card .price { font-family: var(--font-display); font-weight: 800; font-size: 2.1rem; color: var(--ink); letter-spacing: -.03em; }
+.svc-card h3 { font-size: 1.35rem; margin-bottom: .2rem; }
+.svc-card .svc-meta { display: flex; align-items: baseline; gap: .6rem; margin-bottom: .75rem; flex-wrap: wrap; }
+.svc-card .price { font-family: var(--font-display); font-weight: 800; font-size: 1.85rem; color: var(--ink); letter-spacing: -.03em; }
 .svc-card .price s { color: var(--text-soft); font-size: 1.1rem; font-weight: 500; opacity: .7; }
 .svc-card .dur { font-size: .85rem; color: var(--text-soft); font-weight: 600; display: inline-flex; align-items: center; gap: .35rem; }
 .svc-card .dur svg { width: 14px; height: 14px; }
-.svc-card .svc-desc { color: var(--text-soft); font-size: .97rem; margin-bottom: 1.2rem; }
-.svc-card ul.feat { display: grid; gap: .5rem; margin-bottom: 1.6rem; }
-.svc-card ul.feat li { display: flex; gap: .6rem; font-size: .93rem; color: var(--text); align-items: flex-start; }
+.svc-card .svc-desc { color: var(--text-soft); font-size: .92rem; margin-bottom: .85rem; }
+.svc-card ul.feat { display: grid; gap: .38rem; margin-bottom: 1.05rem; }
+.svc-card ul.feat li { display: flex; gap: .55rem; font-size: .88rem; color: var(--text); align-items: flex-start; line-height: 1.4; }
 .svc-card ul.feat li svg { width: 17px; height: 17px; color: var(--red-deep); flex-shrink: 0; margin-top: .18rem; }
 .svc-card .svc-foot { margin-top: auto; }
 
@@ -319,9 +322,11 @@ section { padding-block: clamp(64px, 9vw, 120px); position: relative; }
 .svc-note svg { width: 20px; height: 20px; flex-shrink: 0; }
 
 /* add-ons */
-.addons { margin-top: 2.5rem; }
+.addons { margin-top: 2rem; }
 .addons h3 { font-size: 1.3rem; margin-bottom: 1.1rem; }
-.addon-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: .8rem; }
+/* auto-fill against a minimum width rather than a fixed column count: six
+   columns of a paragraph plus a price gave one word per line. */
+.addon-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: .7rem; align-items: start; }
 .addon {
   background: var(--paper-2); border: 1px solid var(--line); border-radius: var(--r-md); padding: 1rem 1.1rem;
   display: flex; align-items: center; gap: .8rem; transition: border-color .25s, transform .25s;
@@ -329,8 +334,8 @@ section { padding-block: clamp(64px, 9vw, 120px); position: relative; }
 .addon:hover { border-color: var(--red); transform: translateY(-2px); }
 .addon .ad-ic { width: 38px; height: 38px; border-radius: 10px; background: var(--ink); color: var(--red-bright); display: grid; place-items: center; flex-shrink: 0; }
 .addon .ad-ic svg { width: 19px; height: 19px; }
-.addon b { font-size: .96rem; display: block; line-height: 1.2; }
-.addon span { font-size: .8rem; color: var(--text-soft); }
+.addon b { font-size: .93rem; display: block; line-height: 1.25; }
+.addon span { font-size: .79rem; color: var(--text-soft); line-height: 1.45; display: block; margin-top: .15rem; }
 
 /* ============================================================
    PROCESS
@@ -638,7 +643,6 @@ html.scrolling-fast .reveal { transition: none; transition-delay: 0s; }
    ============================================================ */
 @media (min-width: 560px) {
   .tb-hide { display: inline; }
-  .addon-grid { grid-template-columns: repeat(3, 1fr); }
   .field-row { grid-template-columns: 1fr 1fr; }
   .gal-grid { grid-template-columns: repeat(3, 1fr); }
 }
@@ -662,7 +666,6 @@ html.scrolling-fast .reveal { transition: none; transition-delay: 0s; }
 @media (min-width: 960px) {
   .about-grid { grid-template-columns: .9fr 1.1fr; }
   .contact-grid { grid-template-columns: 1fr 1.1fr; }
-  .addon-grid { grid-template-columns: repeat(3, 1fr); }
   .hero-scroll { display: block; }
 }
 /* Full top nav only appears once there is room for all links + CTAs */
@@ -671,9 +674,6 @@ html.scrolling-fast .reveal { transition: none; transition-delay: 0s; }
   .nav-cta { display: flex; }
   .nav-toggle { display: none; }
   .mobile-bar { display: none !important; }
-}
-@media (min-width: 1100px) {
-  .addon-grid { grid-template-columns: repeat(6, 1fr); }
 }
 
 /* ============================================================
@@ -856,7 +856,57 @@ html.scrolling-fast .reveal { transition: none; transition-delay: 0s; }
    TRAVEL ESTIMATOR
    ============================================================ */
 .travel { background: var(--paper-2); padding-block: clamp(48px, 8vh, 84px); }
-.travel-box { max-width: 540px; margin: 2rem auto 0; }
+.travel-box { max-width: 900px; margin: 1.4rem auto 0; }
+
+/* ---------- travel map ----------
+   A schematic, not a street map: dots at approximate ZIP centres, coloured by
+   fee band, over faint rings at 15, 30 and 45 minutes out. Built and revealed
+   by js/travel.js, so it is never an empty box when the script does not run. */
+.travel-map { margin-bottom: 1.4rem; }
+.tmap-canvas {
+  background: var(--paper-2); border: 1px solid var(--line); border-radius: var(--r-md);
+  padding: .4rem; overflow: hidden;
+}
+.tmap-canvas svg { width: 100%; height: auto; display: block; }
+
+.tmap-ring { fill: none; stroke: var(--line); stroke-width: 1.4; stroke-dasharray: 5 7; }
+.tmap-ringlab {
+  fill: var(--text-soft); font-family: var(--font-body); font-size: 15px; font-weight: 700;
+  text-anchor: middle; opacity: .65;
+}
+.tmap-dot { stroke: var(--paper-2); stroke-width: 2; cursor: pointer; transition: r .12s var(--ease); }
+.tmap-dot:hover { r: 11; }
+.tmap-dot.on { stroke: var(--ink); stroke-width: 3; r: 12; }
+.tmap-lab {
+  fill: var(--text); font-family: var(--font-body); font-size: 16px; font-weight: 700;
+  paint-order: stroke; stroke: var(--paper-2); stroke-width: 4px; stroke-linejoin: round;
+  pointer-events: none;
+}
+.tmap-basering { fill: none; stroke: var(--ink); stroke-width: 2.5; }
+.tmap-basedot { fill: var(--ink); }
+.tmap-baselab {
+  fill: var(--ink); font-family: var(--font-display); font-size: 17px; font-weight: 800;
+  paint-order: stroke; stroke: var(--paper-2); stroke-width: 4px; stroke-linejoin: round;
+}
+
+/* Bands run cool to warm so distance reads as cost without needing the key. */
+.tz-0 { fill: #2f9e5e; }
+.tz-1 { fill: #7cb342; }
+.tz-2 { fill: #f0a93f; }
+.tz-3 { fill: #ec6d2a; }
+.tz-4 { fill: #c62828; }
+
+.tmap-legend { display: flex; flex-wrap: wrap; gap: .5rem 1.1rem; margin-top: .85rem; }
+.tmap-key { display: inline-flex; align-items: center; gap: .4rem; font-size: .8rem; color: var(--text-soft); font-weight: 600; }
+.tmap-key i { width: 11px; height: 11px; border-radius: 50%; flex: none; }
+.tmap-key i.tz-0 { background: #2f9e5e; }
+.tmap-key i.tz-1 { background: #7cb342; }
+.tmap-key i.tz-2 { background: #f0a93f; }
+.tmap-key i.tz-3 { background: #ec6d2a; }
+.tmap-key i.tz-4 { background: #c62828; }
+.tmap-hint { margin-top: .5rem; font-size: .78rem; color: var(--text-soft); }
+
+.travel-find { max-width: 460px; }
 .travel-box label { display: block; font-size: .85rem; font-weight: 700; margin-bottom: .4rem; }
 .travel-row { display: flex; gap: .6rem; }
 .travel-row input {
@@ -875,7 +925,7 @@ html.scrolling-fast .reveal { transition: none; transition-delay: 0s; }
    CATALOG-RENDERED EXTRAS
    ============================================================ */
 .addon-grp { font-size: .78rem; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; color: var(--text-soft); margin: 1.6rem 0 .7rem; }
-.addon .ad-price { display: block; font-style: normal; font-weight: 800; color: var(--red); font-size: .88rem; margin-top: .2rem; }
+.addon .ad-price { display: block; font-style: normal; font-weight: 800; color: var(--red); font-size: .88rem; margin-top: .35rem; }
 .svc-correction { margin-top: 2.4rem; background: var(--paper-2); border: 1px solid var(--line); border-radius: var(--r-lg); padding: clamp(1.2rem, 3vw, 1.8rem); }
 .svc-correction h3 { font-family: var(--font-display); font-size: 1.25rem; margin: 0 0 .4rem; }
 .svc-correction p { color: var(--text-soft); font-size: .92rem; margin: 0 0 1rem; }
@@ -887,7 +937,10 @@ html.scrolling-fast .reveal { transition: none; transition-delay: 0s; }
 /* add-ons that are listed but not bookable yet */
 .addon.ad-off { opacity: .78; }
 .addon.ad-off b sup { color: var(--amber); }
-.ad-price.ad-soon { color: var(--amber) !important; font-weight: 700; font-size: .8rem; }
+.addon .ad-soon {
+  display: block; font-style: normal; color: var(--amber);
+  font-weight: 700; font-size: .76rem; line-height: 1.4; margin-top: .2rem;
+}
 .ad-how { margin-top: .5rem; }
 .ad-how summary { cursor: pointer; font-size: .78rem; font-weight: 700; color: var(--red); list-style: none; }
 .ad-how summary::-webkit-details-marker { display: none; }

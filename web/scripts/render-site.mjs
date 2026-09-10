@@ -74,6 +74,12 @@ function packageCard(p) {
   // rather than orphaning itself as a fourth column.
   const wide = p.requiresCorrectionTier ? " wide" : "";
 
+  // "Showroom Ready (Paint Correction and Protection)" runs past the edge of
+  // its button. The parenthetical clarifies the heading, where there is room
+  // for it; on the CTA the name alone is unambiguous because the card it sits
+  // in has just spelled the rest out.
+  const bookLabel = p.name.replace(/\s*\([^)]*\)\s*$/, "");
+
   return `        <article class="svc-card${p.featured ? " featured" : ""}${wide} reveal">
 ${p.featured ? '          <span class="svc-tag">Most Popular</span>\n' : ""}          <h3>${esc(p.name)}</h3>
           <div class="svc-meta">
@@ -89,7 +95,7 @@ ${feats}
               ? `<details class="svc-how"><summary>How it works</summary><p>${esc(p.note)}</p></details>`
               : ""
           }
-          <div class="svc-foot"><a class="btn ${p.featured ? "btn-primary" : "btn-ghost"} btn-block" href="book.html" data-book-package="${esc(p.id)}">Book ${esc(p.name)}</a></div>
+          <div class="svc-foot"><a class="btn ${p.featured ? "btn-primary" : "btn-ghost"} btn-block" href="book.html" data-book-package="${esc(p.id)}">Book ${esc(bookLabel)}</a></div>
         </article>`;
 }
 
@@ -154,13 +160,19 @@ function addonsHtml() {
   const card = (a) => {
     const why = unavailableReason(a);
     const priced = a.tiers.filter((t) => t.priceCents !== null);
-    const price = why
-      ? `<i class="ad-price ad-soon">${esc(why)}</i>`
-      : `<i class="ad-price">${
-          priced.length > 1
-            ? `${money(priced[0].priceCents)} to ${money(priced[priced.length - 1].priceCents)}`
-            : money(priced[0].priceCents)
-        }</i>`;
+    const range =
+      priced.length > 1
+        ? `${money(priced[0].priceCents)} to ${money(priced[priced.length - 1].priceCents)}`
+        : priced.length === 1
+          ? money(priced[0].priceCents)
+          : null;
+    // Price AND reason, not one or the other. Something Elijah is not taking
+    // bookings for yet is still something a customer is deciding about, and
+    // hiding the number only means they have to ask to find out whether it is
+    // anywhere near their budget.
+    const price =
+      (range ? `<i class="ad-price">${range}</i>` : "") +
+      (why ? `<i class="ad-soon">${esc(why)}</i>` : "");
     // NOTE: the (i) marker and an autoplaying clip belong here, from
     // addon.videoUrl. Neither renders yet.
     const how = a.note
