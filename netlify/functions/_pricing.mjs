@@ -970,6 +970,9 @@ function mileageFeeCents(oneWayMinutes, r) {
   if (t < r.roundNearestBelowMin) return Math.round(raw / step) * step;
   return Math.ceil(raw / step) * step;
 }
+function averageOneWayMinutes(outboundMinutes, returnMinutes) {
+  return (outboundMinutes + returnMinutes) / 2;
+}
 
 // lib/pricing/quote.ts
 function quote(cart, r, taxTable = SEED_TAX_TABLE, year = (/* @__PURE__ */ new Date()).getFullYear()) {
@@ -1582,7 +1585,9 @@ export {
   VEHICLE_SIZES,
   addonIcon,
   addonsFor,
+  averageOneWayMinutes,
   componentsOf,
+  estimateOneWayMinutes,
   findAddon,
   findPackage,
   findPromo,

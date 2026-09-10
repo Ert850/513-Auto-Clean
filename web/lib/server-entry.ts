@@ -212,7 +212,8 @@ import { addonIcon } from "./catalog/icons.js";
 export { MAX_ONE_WAY_MINUTES } from "./travel/zipRanges.js";
 export { PROMOS, findPromo, normalisePromo, promoDiscountCents, promoMessage } from "./pricing/promos.js";
 export { parseIcsBusy, mergeBusy } from "./booking/ics.js";
-export { mileageFeeCents } from "./pricing/mileage.js";
+export { averageOneWayMinutes, mileageFeeCents } from "./pricing/mileage.js";
+export { estimateOneWayMinutes } from "./travel/zipRanges.js";
 
 export {
   ADDONS,
