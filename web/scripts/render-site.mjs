@@ -17,6 +17,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   ADDONS,
+  addonIcon,
   CORRECTION_RULES,
   COATING_COVERAGE,
   COATING_EXPLAINER,
@@ -133,8 +134,9 @@ ${panel("exterior")}
     </div>
 
     <div class="svc-correction reveal">
+      <h3>Paint correction and ceramic coating</h3>
       <details class="svc-explain">
-        <summary>${esc(COATING_EXPLAINER.heading)}</summary>
+        <summary>How it Works: ${esc(COATING_EXPLAINER.heading)}</summary>
         <p>${esc(COATING_EXPLAINER.body)}</p>
         <p class="ex-h">What it does</p>
         <ul class="ex-yes">${COATING_EXPLAINER.does.map((d) => `<li>${esc(d)}</li>`).join("")}</ul>
@@ -144,13 +146,14 @@ ${panel("exterior")}
         <ul class="ex-time">${COATING_EXPLAINER.timing.map((d) => `<li>${esc(d)}</li>`).join("")}</ul>
         <p>${esc(COATING_EXPLAINER.timingNote)}</p>
         <p class="ex-why">${esc(COATING_EXPLAINER.why)}</p>
+        <p class="ex-h">What is covered</p>
+        <p>${esc(COATING_COVERAGE)}</p>
+        <p class="ex-h">Booking one</p>
+        <p>Showroom Ready Exterior is everything in Full Exterior, then one of the tiers below. Booked at least ${CORRECTION_RULES.minLeadDays} days out, on weekend mornings, because the work runs across days.</p>
       </details>
-      <h3>Paint correction and ceramic coating</h3>
-      <p>Showroom Ready Exterior is everything in Full Exterior, then one of these. Booked at least ${CORRECTION_RULES.minLeadDays} days out, weekend mornings.</p>
       <ul class="feat">
         ${corr}
       </ul>
-      <p class="svc-coverage">${esc(COATING_COVERAGE)}</p>
     </div>`;
 }
 
@@ -178,9 +181,11 @@ function addonsHtml() {
     const how = a.note
       ? `<details class="ad-how"><summary>How it works</summary><p>${esc(a.note)}</p></details>`
       : "";
+    // The icon says what the service IS at a glance. Fifteen identical
+    // clocks said only that all fifteen take time.
     return `        <div class="addon${why ? " ad-off" : ""} reveal">
-          <span class="ad-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v4l3 2"/></svg></span>
-          <div><b>${esc(a.name)}${why ? "<sup>*</sup>" : ""}</b><span>${esc(a.description)}</span>${price}${how}</div>
+          <span class="ad-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${addonIcon(a.icon)}</svg></span>
+          <div class="ad-body"><b>${esc(a.name)}${why ? "<sup>*</sup>" : ""}</b><span>${esc(a.description)}</span>${price}${how}</div>
         </div>`;
   };
 
@@ -195,6 +200,27 @@ ${list.map(card).join("\n")}
 
   return `      <h3 class="reveal">Add-ons</h3>
 ${groups.join("\n")}`;
+}
+
+/* ---------------- FAQ price sentence ---------------- */
+
+/**
+ * One sentence, two places: the visible FAQ answer and the FAQPage JSON-LD.
+ * It quoted $65 and a $15 combo discount long after both had changed, which
+ * is exactly the drift the catalog markers exist to stop.
+ */
+function faqPriceText() {
+  const cheapest = packagesFor("interior")
+    .concat(packagesFor("exterior"))
+    .filter((p) => !p.requiresPriorDetail)
+    .reduce((lo, p) => (p.priceCents < lo ? p.priceCents : lo), Infinity);
+
+  return (
+    `Packages start at ${money(cheapest)}. Pricing depends on the package, add-ons, ` +
+    `and travel distance, all confirmed before we book, with no surprise upsells. ` +
+    `Book interior and exterior together and you save ${money(DEFAULT_RULES.comboDiscountCents)} automatically, ` +
+    `and booking two or more vehicles at once takes ${DEFAULT_RULES.additionalVehicleDiscountBp / 100}% off everything.`
+  );
 }
 
 /* ---------------- structured data ---------------- */
@@ -224,7 +250,7 @@ function offersHtml() {
 
 /* ---------------- splice ---------------- */
 
-function splice(html, name, body) {
+function splice(html, name, body, { inline = false } = {}) {
   const start = `<!-- CATALOG:${name}:START -->`;
   const end = `<!-- CATALOG:${name}:END -->`;
   const i = html.indexOf(start);
@@ -232,12 +258,16 @@ function splice(html, name, body) {
   if (i < 0 || j < 0) {
     throw new Error(`Markers for ${name} not found in index.html`);
   }
-  return html.slice(0, i + start.length) + "\n" + body + "\n    " + html.slice(j);
+  const wrapped = inline ? body : `\n${body}\n    `;
+  return html.slice(0, i + start.length) + wrapped + html.slice(j);
 }
 
 let html = fs.readFileSync(INDEX, "utf8");
 html = splice(html, "SERVICES", servicesHtml());
 html = splice(html, "ADDONS", addonsHtml());
+html = splice(html, "FAQPRICE", faqPriceText(), { inline: true });
+// The JSON-LD copy has to survive JSON.stringify, so quotes are escaped.
+html = splice(html, "FAQPRICE_JSON", JSON.stringify(faqPriceText()).slice(1, -1), { inline: true });
 html = splice(html, "OFFERS", offersHtml());
 fs.writeFileSync(INDEX, html);
 

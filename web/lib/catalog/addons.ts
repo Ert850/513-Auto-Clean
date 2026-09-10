@@ -28,7 +28,14 @@ export interface Addon {
   id: string;
   name: string;
   scope: AddonScope;
+  /**
+   * Kept to roughly one line, around 60 to 70 characters. The add-on cards
+   * sit in a grid, and a description three times the length of its neighbour
+   * is what made that grid ragged. Anything longer belongs in `note`.
+   */
   description: string;
+  /** Key into ADDON_ICONS in ./icons.ts. */
+  icon: string;
   /**
    * Plain explanation of what actually happens, shown behind a "How it works"
    * toggle on every add-on. Customers buy what they understand, and half of
@@ -100,6 +107,7 @@ export const ADDONS: Addon[] = [
     id: "pet-hair",
     name: "Pet Hair Removal",
     scope: "interior",
+    icon: "paw",
     description: "Seats, carpets, and every crevice it has worked its way into.",
     note:
       "Pet hair does not vacuum out once it has woven into fabric. It gets lifted mechanically first, with rubber tools and a horsehair brush that drag the fibers back out of the weave, then vacuumed and gone over again. The second pass is where most of it actually comes out.",
@@ -117,6 +125,7 @@ export const ADDONS: Addon[] = [
     id: "stain",
     name: "Stain Treatment",
     scope: "interior",
+    icon: "droplet",
     description: "Two levels. Pick the one that matches what you are dealing with.",
     note:
       "A stain is either sitting on the fibers or has soaked into them. Treatment breaks the bond so it can be agitated loose and wiped away, which handles anything on the surface. Removal goes further: heat and moisture pull what has soaked in back up out of the padding, and an extractor takes it away rather than pushing it deeper. That is why the deeper option costs more time, not just more product.",
@@ -141,7 +150,8 @@ export const ADDONS: Addon[] = [
     id: "steam",
     name: "Full Vehicle Steam Treatment",
     scope: "interior",
-    description: "All safe portions of the vehicle sanitized and scrubbed with a steamer.",
+    icon: "steam",
+    description: "Every safe surface sanitized and scrubbed with a steamer.",
     note:
       "Steam cleans with heat rather than chemicals. It softens grease and grime so it wipes off instead of being scrubbed at, gets into vents, seams and seat rails that no cloth reaches, and the heat kills bacteria on contact. Everything dries in minutes because there is very little water involved.",
     tiers: [{ id: "std", label: "Full vehicle", priceCents: 7500, durationMin: 90 }],
@@ -150,10 +160,10 @@ export const ADDONS: Addon[] = [
     id: "ozone",
     name: "Ozone Odor Reset",
     scope: "interior",
-    description:
-      "Ozone (O3) destroys the compounds causing the smell instead of covering them. 60 to 90% reduction of organic odors. Must be paired with a stain treatment, or Full Interior and above.",
+    icon: "molecule",
+    description: "Ozone (O3) destroys the compounds causing the smell, not just the smell.",
     note:
-      "A generator converts the oxygen in the air (O2) into ozone (O3). That extra atom is unstable, so it breaks away and oxidises odor molecules, bacteria and smoke residue on contact. Because it works as a gas it reaches the vents, headliner and seat foam that wiping cannot. It then reverts to ordinary oxygen and leaves nothing behind. The vehicle is sealed while it runs and aired out afterwards.",
+      "A generator converts the oxygen in the air (O2) into ozone (O3). That extra atom is unstable, so it breaks away and oxidises odor molecules, bacteria and smoke residue on contact. Because it works as a gas it reaches the vents, headliner and seat foam that wiping cannot. It then reverts to ordinary oxygen and leaves nothing behind. The vehicle is sealed while it runs and aired out afterwards. Expect a 60 to 90% reduction in organic odors. It has to be paired with a stain treatment, or with a Full Interior or above, because ozone cannot remove what is still soaked into the fabric.",
     tiers: [{ id: "std", label: "Ozone treatment", priceCents: 5000, durationMin: 60 }],
     // Ozone attacks what is left in the air and the plastics. Running it over
     // material that has not been extracted first mostly wastes the customer's
@@ -167,7 +177,8 @@ export const ADDONS: Addon[] = [
     id: "seat-removal",
     name: "Seat Removal",
     scope: "interior",
-    description: "Electronic disconnect, full seat removal, and a full clean under and around the seats.",
+    icon: "seat",
+    description: "Front seats out, the floor underneath cleaned properly, then refitted.",
     note:
       "The worst of an interior collects under the seats, where a vacuum wand cannot reach past the rails. The battery is disconnected first so the airbag sensors in the seat are safe to unplug, the seats come out on their bolts, and the whole floor is cleaned properly before they go back in and get torqued to spec.",
     tiers: [{ id: "std", label: "Front seats out", priceCents: 10000, durationMin: 120 }],
@@ -178,7 +189,8 @@ export const ADDONS: Addon[] = [
     id: "headlight",
     name: "Headlight Restoration",
     scope: "exterior",
-    description: "Oxidation removal, 2000 grit wet sand, 3000 grit wet sand, dry, then ceramic coated.",
+    icon: "headlight",
+    description: "Yellowing sanded off, clarity polished back, then ceramic coated.",
     note:
       "Headlights yellow because UV breaks down the factory coating on the outside of the plastic. Polishing alone buffs the haze off but leaves the plastic bare, so it clouds again within months. Sanding takes the damaged layer off properly, progressively finer grits bring the clarity back, and a ceramic coating replaces the UV protection that failed in the first place.",
     tiers: [{ id: "std", label: "Both headlights", priceCents: 7500, durationMin: 90 }],
@@ -187,7 +199,8 @@ export const ADDONS: Addon[] = [
     id: "tire-rim-shine",
     name: "Tire and Rim Shine",
     scope: "exterior",
-    description: "Deep clean and dress the tires and rims.",
+    icon: "wheel",
+    description: "Brake dust dissolved off the rims, tires cleaned and dressed.",
     note:
       "Brake dust is not dirt, it is hot metal particles that embed themselves into the wheel finish. A dedicated cleaner dissolves the iron so it rinses off instead of being scrubbed in, then the tire gets a dressing that blocks UV, which is what causes the browning and cracking on sidewalls.",
     includedIn: {
@@ -200,6 +213,7 @@ export const ADDONS: Addon[] = [
     id: "paint-decon",
     name: "Paint Decontamination",
     scope: "exterior",
+    icon: "spray",
     description: "Chemical decontamination to strip embedded iron and fallout.",
     note:
       "Paint that still feels rough after a wash is holding contamination the soap cannot lift: rail dust, industrial fallout and brake particles that have bonded to the clear coat. An iron remover dissolves them chemically. Skipping this before any polish or coating means grinding those particles into the paint.",
@@ -213,7 +227,8 @@ export const ADDONS: Addon[] = [
     id: "clay-bar",
     name: "Clay Bar or Clay Towel",
     scope: "exterior",
-    description: "Mechanically lifts anything decontamination leaves behind, all panels.",
+    icon: "bar",
+    description: "Lifts what chemical decon leaves behind, across every panel.",
     note:
       "Chemical decon handles metal particles; clay handles everything else, like overspray, tree sap residue and road film. It shears the bonded contamination off the surface as it glides, always on a wet panel so nothing gets dragged. The paint goes from feeling like fine sandpaper to feeling like glass.",
     includedIn: {
@@ -232,6 +247,7 @@ export const ADDONS: Addon[] = [
     id: "hard-water",
     name: "Hard Water Spot Removal",
     scope: "exterior",
+    icon: "spots",
     description: "For etched sprinkler and well water spotting on paint and glass.",
     note:
       "Hard water leaves dissolved minerals behind when it dries, and in sun those minerals etch a ring into the clear coat. Caught early a mild acid dissolves them off. Left long enough the etching is physical damage in the paint and needs polishing out, which is a correction job rather than this one.",
@@ -245,7 +261,8 @@ export const ADDONS: Addon[] = [
     id: "engine-bay",
     name: "Engine Bay Detail",
     scope: "exterior",
-    description: "Cleaned, dressed and protected.",
+    icon: "engine",
+    description: "Degreased by hand, blown dry, then dressed and protected.",
     note:
       "Sensitive electronics get covered first, then a degreaser is left to dwell and agitated by hand rather than blasted with a pressure washer, which is how water finds its way into connectors. Everything is blown dry and the plastics and hoses get a dressing that stops them fading and cracking under engine heat.",
     includedIn: {
@@ -261,8 +278,8 @@ export const ADDONS: Addon[] = [
     // blurs the two constantly.
     name: "Ceramic Wax Sealant",
     scope: "exterior",
-    description:
-      "Six months or so of gloss and beading, applied over clean paint. A wax sealant, not a ceramic coating.",
+    icon: "shield",
+    description: "Six months of gloss and beading. A sealant, not a ceramic coating.",
     note:
       "A sprayable ceramic infused wax that bonds to the clear coat and leaves a slick, hydrophobic layer. Water beads and rolls off instead of sheeting and drying into spots, and dirt struggles to key onto the surface, so the car stays cleaner between washes. This is not a ceramic coating: a coating cures hard, lasts years, and needs the paint corrected first. This goes on in under an hour, lasts about six months, and can be topped up whenever you like.",
     includedIn: {
@@ -275,7 +292,8 @@ export const ADDONS: Addon[] = [
     id: "ceramic-coating",
     name: "Ceramic Coating",
     scope: "exterior",
-    description: "Years of protection rather than months. Booked as Showroom Ready Exterior.",
+    icon: "gem",
+    description: "Years of protection rather than months, bonded to the clear coat.",
     note:
       "A real coating cures into a hard glass-like layer chemically bonded to the clear coat, which is why it lasts years rather than months. It also locks in whatever the paint looks like at the time, so any swirls underneath are sealed in with it. That is why coatings are sold with correction rather than on their own, and why this one lives inside Showroom Ready Exterior.",
     unavailable: true,
@@ -294,7 +312,8 @@ export const ADDONS: Addon[] = [
     id: "paint-polish",
     name: "Paint Polish",
     scope: "exterior",
-    description: "A single machine pass to lift light swirling and bring the gloss back.",
+    icon: "polisher",
+    description: "One machine pass to lift light swirling and bring the gloss back.",
     note:
       "Swirl marks are thousands of fine scratches in the clear coat, usually from washing. A polish uses an abrasive on a machine pad to level a microscopic amount of clear coat down to the base of those scratches, so they stop catching light. It is removing material, which is why it is done sparingly and by someone who knows how much is there.",
     unavailable: true,
@@ -312,7 +331,8 @@ export const ADDONS: Addon[] = [
     id: "paint-correction",
     name: "Paint Correction",
     scope: "exterior",
-    description: "Multi stage cutting and refining for deeper defects.",
+    icon: "correct",
+    description: "Multi stage cutting and refining for deeper defects and etching.",
     note:
       "Correction is polishing taken further: a cutting compound removes the defect, then progressively finer passes remove the haze the cutting itself leaves behind. Two and three stage work is how you get a finish that holds up under direct light rather than only looking right in the shade.",
     unavailable: true,

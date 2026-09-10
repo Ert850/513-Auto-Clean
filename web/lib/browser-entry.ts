@@ -69,6 +69,7 @@ import {
   requiresPriorityBooking,
 } from "./pricing/surcharge.js";
 import { quote } from "./pricing/quote.js";
+import { ADDON_ICONS, addonIcon } from "./catalog/icons.js";
 import { popularityOf } from "./catalog/popularity.js";
 import { ZIP_GEO, zipGeo } from "./travel/zipGeo.js";
 import { ZIP_RANGES, estimateOneWayMinutes, lookupZip } from "./travel/zipRanges.js";
@@ -132,6 +133,8 @@ const api = {
   estimateOneWayMinutes,
   lookupZip,
   popularityOf,
+  ADDON_ICONS,
+  addonIcon,
   mileageFeeCents,
   averageOneWayMinutes,
   travelCommitmentMinutes,

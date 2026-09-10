@@ -78,7 +78,7 @@ h1, h2, h3, h4 { font-family: var(--font-display); font-weight: 700; line-height
 
 /* ---------- Layout helpers ---------- */
 .wrap { width: 100%; max-width: var(--maxw); margin-inline: auto; padding-inline: var(--pad); }
-section { padding-block: clamp(46px, 6vw, 84px); position: relative; }
+section { padding-block: clamp(40px, 5vw, 72px); position: relative; }
 .section-head { max-width: 660px; margin-bottom: clamp(26px, 3.4vw, 40px); }
 .section-head h2 { font-size: clamp(1.85rem, 4vw, 2.7rem); margin: .45rem 0 .7rem; }
 .section-head p { color: var(--text-soft); font-size: 1.02rem; line-height: 1.6; }
@@ -213,7 +213,7 @@ section { padding-block: clamp(46px, 6vw, 84px); position: relative; }
   position: relative; color: #fff; overflow: hidden; isolation: isolate;
   /* Sized so the badge, headline, sub, all three buttons and the rating fit
      one screen without scrolling, allowing for the top bar and header. */
-  min-height: min(76vh, 660px); display: flex; align-items: center;
+  min-height: min(66vh, 560px); display: flex; align-items: center;
   padding-block: clamp(48px, 8vh, 84px);
 }
 .hero-bg { position: absolute; inset: 0; z-index: -2; }
@@ -244,8 +244,8 @@ section { padding-block: clamp(46px, 6vw, 84px); position: relative; }
   background: linear-gradient(105deg, #fff 0%, var(--red-bright) 55%, var(--red) 100%);
   -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
 }
-.hero-sub { font-size: clamp(1rem, 2vw, 1.18rem); color: rgba(255,255,255,.9); max-width: 560px; margin-bottom: 1.4rem; text-shadow: 0 1px 16px rgba(0,0,0,.4); }
-.hero-cta { display: flex; flex-wrap: wrap; gap: .65rem; margin-bottom: 1.5rem; }
+.hero-sub { font-size: clamp(.98rem, 1.8vw, 1.1rem); color: rgba(255,255,255,.9); max-width: 560px; margin-bottom: 1.1rem; text-shadow: 0 1px 16px rgba(0,0,0,.4); }
+.hero-cta { display: flex; flex-wrap: wrap; gap: .65rem; margin-bottom: 1.1rem; }
 
 /* Google reviews badge */
 .g-badge {
@@ -322,18 +322,25 @@ section { padding-block: clamp(46px, 6vw, 84px); position: relative; }
 .svc-note svg { width: 20px; height: 20px; flex-shrink: 0; }
 
 /* add-ons */
-.addons { margin-top: 2rem; }
-.addons h3 { font-size: 1.3rem; margin-bottom: 1.1rem; }
+.addons { margin-top: 1.6rem; }
+.addons h3 { font-size: 1.2rem; margin-bottom: .8rem; }
 /* auto-fill against a minimum width rather than a fixed column count: six
    columns of a paragraph plus a price gave one word per line. */
-.addon-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: .7rem; align-items: start; }
+.addon-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(245px, 1fr)); gap: .7rem; }
+/* Cards stretch to the tallest in their row and the price pins to the bottom,
+   so a one-line description and a two-line one still line up. */
 .addon {
-  background: var(--paper-2); border: 1px solid var(--line); border-radius: var(--r-md); padding: 1rem 1.1rem;
-  display: flex; align-items: center; gap: .8rem; transition: border-color .25s, transform .25s;
+  background: var(--paper-2); border: 1px solid var(--line); border-radius: var(--r-md); padding: .95rem 1.05rem;
+  display: flex; align-items: flex-start; gap: .75rem; height: 100%;
+  transition: border-color .25s, transform .25s;
 }
+.addon .ad-body { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+.addon .ad-price, .addon .ad-soon { margin-top: auto; }
+.addon .ad-soon + .ad-how, .addon .ad-price + .ad-how { margin-top: .35rem; }
 .addon:hover { border-color: var(--red); transform: translateY(-2px); }
-.addon .ad-ic { width: 38px; height: 38px; border-radius: 10px; background: var(--ink); color: var(--red-bright); display: grid; place-items: center; flex-shrink: 0; }
+.addon .ad-ic { width: 36px; height: 36px; border-radius: 10px; background: var(--ink); color: var(--red-bright); display: grid; place-items: center; flex-shrink: 0; }
 .addon .ad-ic svg { width: 19px; height: 19px; }
+.addon .ad-price { margin-top: auto; padding-top: .4rem; }
 .addon b { font-size: .93rem; display: block; line-height: 1.25; }
 .addon span { font-size: .79rem; color: var(--text-soft); line-height: 1.45; display: block; margin-top: .15rem; }
 
@@ -343,7 +350,7 @@ section { padding-block: clamp(46px, 6vw, 84px); position: relative; }
 .process { background: var(--ink); color: var(--text-inv); }
 .process .section-head h2 { color: #fff; }
 .process .section-head p { color: var(--text-inv-soft); }
-.steps { display: grid; gap: 1.3rem; counter-reset: step; }
+.steps { display: grid; gap: 1rem; counter-reset: step; }
 .step {
   position: relative; background: var(--ink-2); border: 1px solid var(--line-dark); border-radius: var(--r-lg);
   padding: 2rem 1.7rem; transition: transform .3s var(--ease), border-color .3s;
@@ -354,8 +361,8 @@ section { padding-block: clamp(46px, 6vw, 84px); position: relative; }
   width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; margin-bottom: 1.2rem;
   background: linear-gradient(135deg, var(--red-bright), var(--red-deep));
 }
-.step h3 { font-size: 1.35rem; color: #fff; margin-bottom: .5rem; }
-.step p { color: var(--text-inv-soft); font-size: .98rem; }
+.step h3 { font-size: 1.2rem; color: #fff; margin-bottom: .4rem; }
+.step p { color: var(--text-inv-soft); font-size: .92rem; line-height: 1.55; }
 .step .step-ic { position: absolute; top: 1.9rem; right: 1.7rem; color: rgba(255,255,255,.14); }
 .step .step-ic svg { width: 40px; height: 40px; }
 
@@ -464,16 +471,64 @@ section { padding-block: clamp(46px, 6vw, 84px); position: relative; }
 .areas { background: var(--ink); color: var(--text-inv); }
 .areas .section-head h2 { color: #fff; }
 .areas .section-head p { color: var(--text-inv-soft); }
-.area-grid { display: grid; gap: 1.2rem; }
-.area-col {
-  background: var(--ink-2); border: 1px solid var(--line-dark); border-radius: var(--r-lg); padding: 1.7rem;
+/* ---------- combined service area + travel ---------- */
+/* Offset so the #travel anchor does not land under the sticky header. */
+.anchor-alias { position: absolute; margin-top: -80px; }
+
+.areas-tool { display: grid; gap: 1.1rem; }
+.at-label { display: block; font-size: .85rem; font-weight: 700; color: #fff; margin-bottom: .45rem; }
+.at-side { position: relative; }
+.at-row { display: flex; gap: .55rem; }
+.at-row input {
+  flex: 1; min-width: 0; font: inherit; font-size: .95rem;
+  background: rgba(255,255,255,.06); color: #fff;
+  border: 1.5px solid var(--line-dark); border-radius: var(--r-sm); padding: .8rem .9rem;
 }
-.area-col h3 { color: #fff; font-size: 1.2rem; display: flex; align-items: center; gap: .6rem; margin-bottom: 1rem; }
-.area-col h3 svg { width: 20px; height: 20px; color: var(--red-bright); }
-.area-col .codes { font-size: .8rem; color: var(--red-bright); font-weight: 700; letter-spacing: .05em; margin-bottom: .9rem; }
-.area-col ul { display: flex; flex-wrap: wrap; gap: .4rem; }
-.area-col li { font-size: .86rem; color: var(--text-inv-soft); background: rgba(255,255,255,.04); border: 1px solid var(--line-dark); padding: .3rem .7rem; border-radius: 999px; }
-.areas .area-note { margin-top: 1.8rem; text-align: center; color: var(--text-inv-soft); font-size: 1rem; }
+.at-row input::placeholder { color: var(--text-inv-soft); }
+.at-row input:focus { outline: 2px solid var(--red-bright); outline-offset: 1px; border-color: transparent; }
+
+/* Suggestions float rather than pushing the map down the page as you type. */
+.at-suggest {
+  position: absolute; z-index: 5; left: 0; right: 0; margin-top: .35rem;
+  background: var(--ink-3); border: 1px solid var(--line-dark);
+  border-radius: var(--r-sm); overflow: hidden; box-shadow: var(--shadow-lg);
+}
+.at-sg {
+  display: flex; align-items: center; gap: .6rem; width: 100%; text-align: left;
+  padding: .55rem .75rem; color: var(--text-inv); font: inherit; font-size: .88rem;
+  border-bottom: 1px solid var(--line-dark);
+}
+.at-sg:last-child { border-bottom: 0; }
+.at-sg:hover { background: rgba(255,255,255,.07); }
+.sg-dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+.sg-name { flex: 1; font-weight: 700; }
+.sg-name i { font-style: normal; font-weight: 400; color: var(--text-inv-soft); margin-left: .4rem; }
+.sg-fee { color: var(--red-bright); font-weight: 700; font-size: .84rem; flex: none; }
+.at-sg-note { padding: .6rem .75rem; margin: 0; font-size: .85rem; color: var(--text-inv-soft); }
+
+.at-map { min-width: 0; }
+.at-canvas {
+  height: 340px; border-radius: var(--r-md); overflow: hidden;
+  border: 1px solid var(--line-dark); background: var(--ink-3);
+}
+.leaflet-container { font-family: var(--font-body); background: var(--ink-3); }
+.leaflet-popup-content { margin: .6rem .8rem; font-size: .85rem; line-height: 1.5; }
+.leaflet-popup-content .lp-fee { color: var(--red-deep); font-weight: 800; }
+.leaflet-popup-content .lp-min { color: var(--text-soft); font-size: .78rem; }
+
+/* The town lists stay in the HTML: this is the text that actually ranks for
+   "mobile detailing in <town>". Set as prose rather than ninety pills. */
+.area-lists { display: grid; gap: 1rem; margin-top: 1.6rem; }
+.area-col {
+  background: rgba(255,255,255,.03); border: 1px solid var(--line-dark);
+  border-radius: var(--r-md); padding: 1rem 1.1rem;
+}
+.area-col h3 { color: #fff; font-size: 1.02rem; display: flex; align-items: center; gap: .5rem; margin-bottom: .35rem; }
+.area-col h3 svg { width: 17px; height: 17px; color: var(--red-bright); }
+.area-col .codes { font-size: .74rem; color: var(--red-bright); font-weight: 700; letter-spacing: .05em; margin-bottom: .5rem; }
+.area-col p { font-size: .82rem; color: var(--text-inv-soft); line-height: 1.6; margin: 0; }
+
+.areas .area-note { margin-top: 1.2rem; text-align: center; color: var(--text-inv-soft); font-size: .95rem; }
 .areas .area-note b { color: var(--red-bright); }
 
 /* ============================================================
@@ -648,6 +703,9 @@ html.scrolling-fast .reveal { transition: none; transition-delay: 0s; }
 }
 @media (min-width: 820px) {
   .svc-grid { grid-template-columns: repeat(3, 1fr); }
+  .areas-tool { grid-template-columns: 22rem 1fr; gap: 1.6rem; align-items: start; }
+  .at-canvas { height: 430px; }
+  .area-lists { grid-template-columns: repeat(3, 1fr); }
   /* The correction package spans the row underneath, laid out sideways so a
      full width card does not become a tall empty box. */
   .svc-card.wide { grid-column: 1 / -1; }
@@ -803,12 +861,21 @@ html.scrolling-fast .reveal { transition: none; transition-delay: 0s; }
   color: var(--red-bright); white-space: nowrap;
 }
 .rv-tick-badge svg { width: 13px; height: 13px; }
-.rv-tick-stage { min-height: 4.6rem; }
+/* FIXED height, not min-height. The stage used to grow and shrink as it
+   rotated between a one line review and a four line one, which jolted the
+   whole page every nine seconds. Sized for the longest review and held
+   there; the text clamps rather than the box moving. */
+.rv-tick-stage { height: 8.4rem; overflow: hidden; }
+.rv-tick { height: 100%; display: flex; flex-direction: column; }
 .rv-tick header { display: flex; flex-wrap: wrap; align-items: baseline; gap: .5rem; margin-bottom: .35rem; }
 .rv-tick header b { font-family: var(--font-display); font-size: 1rem; }
 .rv-tick-stars { color: var(--amber); font-size: .8rem; letter-spacing: .05em; }
 .rv-tick time { color: var(--text-inv-soft); font-size: .78rem; }
-.rv-tick p { margin: 0; color: rgba(255,255,255,.88); font-size: .93rem; line-height: 1.6; }
+.rv-tick p {
+  margin: 0; color: rgba(255,255,255,.88); font-size: .93rem; line-height: 1.6;
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 4;
+  overflow: hidden;
+}
 .rv-tick.in-right { animation: rvIn .35s var(--ease); }
 .rv-tick.in-left { animation: rvInL .35s var(--ease); }
 @keyframes rvIn { from { opacity: 0; transform: translateX(14px) } to { opacity: 1; transform: none } }
@@ -822,7 +889,8 @@ html.scrolling-fast .reveal { transition: none; transition-delay: 0s; }
 .rv-tick-count { font-size: .75rem; color: var(--text-inv-soft); font-variant-numeric: tabular-nums; }
 @media (min-width: 860px) {
   .rv-tick-inner { grid-template-columns: auto 1fr auto; gap: 1.4rem; align-items: center; }
-  .rv-tick-stage { min-height: 3.4rem; }
+  .rv-tick-stage { height: 5.2rem; }
+  .rv-tick p { -webkit-line-clamp: 2; }
 }
 
 /* ============================================================
@@ -853,78 +921,44 @@ html.scrolling-fast .reveal { transition: none; transition-delay: 0s; }
 .rv-note a { color: var(--red); font-weight: 700; }
 
 /* ============================================================
-   TRAVEL ESTIMATOR
+   TRAVEL FEE READOUT AND SCHEMATIC MAP
+   Lives inside the dark Service Area section. The schematic only renders
+   when Leaflet fails to load; colours come from the band data in
+   js/travel.js rather than from classes here, so there is one list of
+   thresholds rather than two.
    ============================================================ */
-.travel { background: var(--paper-2); padding-block: clamp(48px, 8vh, 84px); }
-.travel-box { max-width: 900px; margin: 1.4rem auto 0; }
-
-/* ---------- travel map ----------
-   A schematic, not a street map: dots at approximate ZIP centres, coloured by
-   fee band, over faint rings at 15, 30 and 45 minutes out. Built and revealed
-   by js/travel.js, so it is never an empty box when the script does not run. */
-.travel-map { margin-bottom: 1.4rem; }
 .tmap-canvas {
-  background: var(--paper-2); border: 1px solid var(--line); border-radius: var(--r-md);
+  background: var(--ink-3); border: 1px solid var(--line-dark); border-radius: var(--r-md);
   padding: .4rem; overflow: hidden;
 }
+.tmap-canvas[hidden] { display: none; }
 .tmap-canvas svg { width: 100%; height: auto; display: block; }
-
-.tmap-ring { fill: none; stroke: var(--line); stroke-width: 1.4; stroke-dasharray: 5 7; }
+.tmap-ring { fill: none; stroke: rgba(255,255,255,.16); stroke-width: 1.4; stroke-dasharray: 5 7; }
 .tmap-ringlab {
-  fill: var(--text-soft); font-family: var(--font-body); font-size: 15px; font-weight: 700;
-  text-anchor: middle; opacity: .65;
+  fill: var(--text-inv-soft); font-family: var(--font-body); font-size: 15px; font-weight: 700;
+  text-anchor: middle;
 }
-.tmap-dot { stroke: var(--paper-2); stroke-width: 2; cursor: pointer; transition: r .12s var(--ease); }
+.tmap-dot { stroke: var(--ink-3); stroke-width: 2; cursor: pointer; transition: r .12s var(--ease); }
 .tmap-dot:hover { r: 11; }
-.tmap-dot.on { stroke: var(--ink); stroke-width: 3; r: 12; }
-.tmap-lab {
-  fill: var(--text); font-family: var(--font-body); font-size: 16px; font-weight: 700;
-  paint-order: stroke; stroke: var(--paper-2); stroke-width: 4px; stroke-linejoin: round;
-  pointer-events: none;
-}
-.tmap-basering { fill: none; stroke: var(--ink); stroke-width: 2.5; }
-.tmap-basedot { fill: var(--ink); }
-.tmap-baselab {
-  fill: var(--ink); font-family: var(--font-display); font-size: 17px; font-weight: 800;
-  paint-order: stroke; stroke: var(--paper-2); stroke-width: 4px; stroke-linejoin: round;
-}
+.tmap-basering { fill: none; stroke: #fff; stroke-width: 2.5; }
+.tmap-basedot { fill: #fff; }
+.tmap-baselab { fill: #fff; font-family: var(--font-display); font-size: 17px; font-weight: 800; }
 
-/* Bands run cool to warm so distance reads as cost without needing the key. */
-.tz-0 { fill: #2f9e5e; }
-.tz-1 { fill: #7cb342; }
-.tz-2 { fill: #f0a93f; }
-.tz-3 { fill: #ec6d2a; }
-.tz-4 { fill: #c62828; }
-
-.tmap-legend { display: flex; flex-wrap: wrap; gap: .5rem 1.1rem; margin-top: .85rem; }
-.tmap-key { display: inline-flex; align-items: center; gap: .4rem; font-size: .8rem; color: var(--text-soft); font-weight: 600; }
+.tmap-legend { display: flex; flex-wrap: wrap; gap: .5rem 1.1rem; margin-top: .9rem; }
+.tmap-key { display: inline-flex; align-items: center; gap: .4rem; font-size: .8rem; color: var(--text-inv-soft); font-weight: 600; }
 .tmap-key i { width: 11px; height: 11px; border-radius: 50%; flex: none; }
-.tmap-key i.tz-0 { background: #2f9e5e; }
-.tmap-key i.tz-1 { background: #7cb342; }
-.tmap-key i.tz-2 { background: #f0a93f; }
-.tmap-key i.tz-3 { background: #ec6d2a; }
-.tmap-key i.tz-4 { background: #c62828; }
-.tmap-hint { margin-top: .5rem; font-size: .78rem; color: var(--text-soft); }
 
-.travel-find { max-width: 460px; }
-.travel-box label { display: block; font-size: .85rem; font-weight: 700; margin-bottom: .4rem; }
-.travel-row { display: flex; gap: .6rem; }
-.travel-row input {
-  flex: 1; padding: .8rem .95rem; font: inherit; font-size: 1rem;
-  border: 1.5px solid var(--line); border-radius: var(--r-sm); background: var(--paper); color: var(--text);
-}
-.travel-row input:focus { outline: 2px solid var(--red); outline-offset: 1px; border-color: transparent; }
-.travel-out { margin-top: 1rem; min-height: 1.5rem; }
-.travel-out.ok b { display: block; font-family: var(--font-display); font-size: 1.7rem; color: var(--red); }
-.travel-out.ok span { display: block; font-size: .89rem; color: var(--text-soft); line-height: 1.55; margin-top: .2rem; }
-.travel-out .travel-approx { font-style: italic; margin-top: .4rem; }
-.travel-out.err { color: var(--red-deep); font-size: .9rem; }
-.travel-fine { margin-top: 1rem; font-size: .8rem; color: var(--text-soft); line-height: 1.55; }
+.travel-out { margin-top: .9rem; min-height: 1.5rem; }
+.travel-out.ok b { display: block; font-family: var(--font-display); font-size: 1.7rem; color: var(--red-bright); }
+.travel-out.ok span { display: block; font-size: .86rem; color: var(--text-inv-soft); line-height: 1.55; margin-top: .2rem; }
+.travel-out .travel-approx { font-style: italic; margin-top: .35rem; }
+.travel-out.err { color: var(--red-bright); font-size: .88rem; }
+.travel-fine { margin: .9rem 0; font-size: .78rem; color: var(--text-inv-soft); line-height: 1.55; }
 
 /* ============================================================
    CATALOG-RENDERED EXTRAS
    ============================================================ */
-.addon-grp { font-size: .78rem; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; color: var(--text-soft); margin: 1.6rem 0 .7rem; }
+.addon-grp { font-size: .74rem; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; color: var(--text-soft); margin: 1.15rem 0 .55rem; }
 .addon .ad-price { display: block; font-style: normal; font-weight: 800; color: var(--red); font-size: .88rem; margin-top: .35rem; }
 .svc-correction { margin-top: 2.4rem; background: var(--paper-2); border: 1px solid var(--line); border-radius: var(--r-lg); padding: clamp(1.2rem, 3vw, 1.8rem); }
 .svc-correction h3 { font-family: var(--font-display); font-size: 1.25rem; margin: 0 0 .4rem; }
