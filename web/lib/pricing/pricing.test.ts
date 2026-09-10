@@ -107,12 +107,12 @@ describe("premium surcharges", () => {
     expect(s(16, 0, false).appliedBp).toBe(0);
   });
 
-  it("never stacks: early/late AND priority is still one flat 20%", () => {
-    expect(s(12, 0, true).appliedBp).toBe(2000); // priority only
-    expect(s(7, 0, false).appliedBp).toBe(2000); // early only
+  it("stacks to +30%, not +40%, when a slot is both early and inside 3 days", () => {
+    expect(s(12, 0, true).appliedBp).toBe(2000); // inside 3 days, standard time
+    expect(s(7, 0, false).appliedBp).toBe(2000); // early, further out
     const both = s(7, 0, true);
-    expect(both.timeOfDayBp + both.priorityBp).toBe(4000); // would be 40%
-    expect(both.appliedBp).toBe(2000); // charged once
+    expect(both.timeOfDayBp + both.priorityBp).toBe(4000); // uncapped would be 40%
+    expect(both.appliedBp).toBe(3000); // capped
     expect(both.capped).toBe(true);
   });
 });
@@ -313,14 +313,14 @@ describe("quote engine", () => {
     expect(q.totalCents).toBe(21500 + 4300 + 6500);
   });
 
-  it("charges one flat 20% for a 7am priority booking, not 40%", () => {
+  it("charges +30% for a 7am booking inside 3 days, not +40%", () => {
     const q = quote(
       cart({ surchargeContext: { startMinutesLocal: minutesOfDay(7), priorityBooking: true } }),
       R,
     );
-    expect(q.surchargeBp).toBe(2000);
-    expect(q.surchargeCents).toBe(4300); // 20% of $215
-    expect($(q.totalCents)).toBe(258);
+    expect(q.surchargeBp).toBe(3000);
+    expect(q.surchargeCents).toBe(6450); // 30% of $215
+    expect($(q.totalCents)).toBe(279.5);
   });
 
   it("keeps every line item reconciling to the total", () => {

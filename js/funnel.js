@@ -39,7 +39,7 @@
       priority: false,
       preferredWindows: [],
       slot: null,
-      slotCache: null,
+      daysShown: 3,
       contact: { name: '', phone: '', email: '' },
       consent: { terms: null, sms: null, media: null },
       payInFull: false,
@@ -49,7 +49,11 @@
       browse: false,
       browseQ: '',
       browseMax: null,
-      browseSort: 'price'
+      browseKind: 'all',
+      browseSort: 'price',
+      openBucket: null,
+      payMethod: 'card',
+      payState: null
     };
   }
   reset();
@@ -138,10 +142,42 @@
       : fmtDur(p.durationMin);
   }
 
-  /** Every bookable package, both categories, for the browse view. */
-  function allPackages() {
-    return P.packagesFor('interior').concat(P.packagesFor('exterior'))
-      .filter(function (p) { return !p.requiresPriorDetail; });
+  /**
+   * Everything browsable, packages and add-ons together, flattened to one
+   * shape so search and filters do not need two code paths.
+   */
+  function browseItems() {
+    var out = [];
+    P.packagesFor('interior').concat(P.packagesFor('exterior')).forEach(function (p) {
+      if (p.requiresPriorDetail) return;
+      out.push({
+        kind: 'package', id: p.id, name: p.name, category: p.category,
+        priceCents: p.priceCents, pricePlus: Boolean(p.pricePlus),
+        durationMin: p.durationMin, tagline: p.tagline, featured: p.featured,
+        detail: p.supersetOf
+          ? 'Everything in ' + (P.findPackage(p.supersetOf) || {}).name + ', plus ' +
+            P.componentsOf(p, P.CATALOG).map(function (c) { return c.name; })
+              .slice(P.componentsOf(P.findPackage(p.supersetOf), P.CATALOG).length).join(', ')
+          : P.componentsOf(p, P.CATALOG).map(function (c) { return c.name; }).join(', '),
+        search: p.name + ' ' + p.tagline + ' ' + p.category + ' ' +
+          P.componentsOf(p, P.CATALOG).map(function (c) { return c.name; }).join(' ')
+      });
+    });
+    P.ADDONS.forEach(function (a) {
+      if (P.isUnpriced(a)) return;
+      a.tiers.forEach(function (t) {
+        if (t.priceCents === null) return;
+        out.push({
+          kind: 'addon', id: a.id, tierId: t.id,
+          name: a.tiers.length > 1 ? a.name + ': ' + t.label : a.name,
+          category: a.scope, priceCents: t.priceCents, pricePlus: false,
+          durationMin: t.durationMin, tagline: a.description, featured: false,
+          detail: t.description || '',
+          search: a.name + ' ' + t.label + ' ' + a.description + ' ' + (t.description || '') + ' ' + a.scope
+        });
+      });
+    });
+    return out;
   }
 
   function totalDurationMin() { return q().serviceDurationMin; }
@@ -266,20 +302,19 @@
   /* ---- browse everything, with search and a price cap ---- */
 
   function rBrowse() {
-    var list = allPackages();
+    var list = browseItems();
     var qs = state.browseQ.trim().toLowerCase();
 
     if (qs) {
-      // Match the name, the tagline, and what is actually included, so
-      // searching "leather" or "ceramic" finds the package that does it.
-      list = list.filter(function (p) {
-        var hay = (p.name + ' ' + p.tagline + ' ' + p.category + ' ' +
-          P.componentsOf(p, P.CATALOG).map(function (c) { return c.name; }).join(' ')).toLowerCase();
-        return hay.indexOf(qs) > -1;
-      });
+      list = list.filter(function (i) { return i.search.toLowerCase().indexOf(qs) > -1; });
     }
+    if (state.browseKind === 'interior') list = list.filter(function (i) { return i.kind === 'package' && i.category === 'interior'; });
+    else if (state.browseKind === 'exterior') list = list.filter(function (i) { return i.kind === 'package' && i.category === 'exterior'; });
+    else if (state.browseKind === 'addon') list = list.filter(function (i) { return i.kind === 'addon'; });
+    else if (state.browseKind === 'package') list = list.filter(function (i) { return i.kind === 'package'; });
+
     if (state.browseMax !== null) {
-      list = list.filter(function (p) { return p.priceCents <= state.browseMax; });
+      list = list.filter(function (i) { return i.priceCents <= state.browseMax; });
     }
     list = list.slice().sort(function (a, b) {
       if (state.browseSort === 'price') return a.priceCents - b.priceCents;
@@ -287,12 +322,22 @@
       return a.durationMin - b.durationMin;
     });
 
-    var caps = [12500, 21500, 39500];
+    var kinds = [
+      ['all', 'Everything'], ['interior', 'Interior'], ['exterior', 'Exterior'],
+      ['package', 'Packages'], ['addon', 'Add-ons']
+    ];
+    var caps = [5000, 12500, 21500, 39500];
     var html = '<div class="bk-browsehead">' +
       '<div class="bk-search">' +
         '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>' +
         '<input type="search" id="bkQ" data-browseq value="' + esc(state.browseQ) + '" placeholder="Search: leather, ceramic, pet hair, wash..." data-focus />' +
         (state.browseQ ? '<button type="button" class="bk-qclear" id="bkQClear" aria-label="Clear search">&times;</button>' : '') +
+      '</div>' +
+      '<div class="bk-filters">' +
+        kinds.map(function (k) {
+          return '<button type="button" class="bk-chip' + (state.browseKind === k[0] ? ' on' : '') +
+            '" data-kind="' + k[0] + '">' + k[1] + '</button>';
+        }).join('') +
       '</div>' +
       '<div class="bk-filters">' +
         '<span class="bk-filtlab">Under</span>' +
@@ -312,24 +357,21 @@
     if (!list.length) {
       html += '<p class="bk-empty">Nothing matches that. <button type="button" class="bk-morelink" id="bkReset">Clear filters</button></p>';
     } else {
-      html += '<p class="bk-count">' + list.length + ' package' + (list.length > 1 ? 's' : '') + '</p><div class="bk-pkgs">';
-      list.forEach(function (p) {
-        var comps = P.componentsOf(p, P.CATALOG).map(function (c) { return esc(c.name); });
-        var base = p.supersetOf ? P.findPackage(p.supersetOf) : null;
-        html += '<button type="button" class="bk-pkg" data-browsepick="' + p.id + '">' +
+      html += '<p class="bk-count">' + list.length + ' option' + (list.length > 1 ? 's' : '') + '</p><div class="bk-pkgs">';
+      list.forEach(function (i) {
+        var dur = i.durationMin ? fmtDur(i.durationMin) : '';
+        html += '<button type="button" class="bk-pkg" data-browsepick="' + esc(i.id) + '"' +
+          (i.kind === 'addon' ? ' data-browsekind="addon" data-browsetier="' + esc(i.tierId) + '"' : '') + '>' +
           '<span class="bk-pkg-l">' +
-            '<b>' + esc(p.name) + '</b>' +
-            '<i class="bk-cat">' + (p.category === 'interior' ? 'Interior' : 'Exterior') + '</i>' +
-            (p.featured ? '<i class="bk-flag">Most popular</i>' : '') +
-            '<span class="bk-pkg-tag">' + esc(p.tagline) + '</span>' +
-            '<span class="bk-pkg-feat">' +
-              (base
-                ? '<em>Everything in ' + esc(base.name) + '</em>, plus ' +
-                  comps.slice(P.componentsOf(base, P.CATALOG).length).join(', ')
-                : comps.join(', ')) +
-            '</span>' +
+            '<b>' + esc(i.name) + '</b>' +
+            '<i class="bk-cat">' + (i.category === 'interior' ? 'Interior' : 'Exterior') +
+              (i.kind === 'addon' ? ' add-on' : '') + '</i>' +
+            (i.featured ? '<i class="bk-flag">Most popular</i>' : '') +
+            '<span class="bk-pkg-tag">' + esc(i.tagline) + '</span>' +
+            (i.detail ? '<span class="bk-pkg-feat">' + esc(i.detail) + '</span>' : '') +
           '</span>' +
-          '<span class="bk-pkg-r"><b>' + pkgPrice(p) + '</b><i>' + pkgDuration(p) + '</i></span>' +
+          '<span class="bk-pkg-r"><b>' + $(i.priceCents) + (i.pricePlus ? '+' : '') + '</b>' +
+          (dur ? '<i>' + dur + '</i>' : '') + '</span>' +
           '</button>';
       });
       html += '</div>';
@@ -515,21 +557,10 @@
     var earliest = P.earliestBookableDate(startOfToday(), RULES.window);
     var html = '<p class="bk-sub">Pick a time that works. Nothing is charged until the next step.</p>';
 
-    html += '<p class="bk-note" style="margin:0 0 .8rem">We usually start at 8, 10, 4 or 6 on a weekday, and 10 or 4 at the weekend. ' +
-      'Anything from 6am to 8pm is bookable if that is what makes a day work, and those carry the ' +
-      RULES.surcharge.timeOfDayBp / 100 + '% premium.</p>';
-
-    html += '<div class="bk-windows">' +
-      P.TIME_WINDOWS.map(function (w) {
-        var on = state.preferredWindows.indexOf(w.id) > -1;
-        return '<button type="button" class="bk-win' + (on ? ' on' : '') + '" data-win="' + w.id + '">' +
-          esc(w.label) + (w.premium ? ' <i>+' + RULES.surcharge.timeOfDayBp / 100 + '%</i>' : '') + '</button>';
-      }).join('') + '</div>';
-
     html += '<label class="bk-check bk-prio' + (state.priority ? ' on' : '') + '">' +
       '<input type="checkbox" id="bkPrio"' + (state.priority ? ' checked' : '') + ' />' +
       '<span><b>I need it within the next 3 days</b>' +
-      '<i>Opens our soonest slots. Adds ' + RULES.surcharge.priorityBp / 100 + '% to the service total, and never stacks with the early or late charge.</i></span></label>';
+      '<i>Opens our soonest slots.</i></span></label>';
 
     if (!state.priority) {
       html += '<p class="bk-note">Standard bookings start from <b>' +
@@ -578,31 +609,18 @@
       travelAfterMin: 30,
       granularityMin: 30,
       notBefore: from,
-      notAfter: to
+      notAfter: to,
+      // A 6pm or later job is the last of the day, so the drive home does not
+      // need to fit inside the calendar and should not shorten what is offered.
+      ignoreReturnAfterMin: P.IGNORE_RETURN_AFTER_MIN
     };
-    // Lead with the times Elijah actually works. Everything else that fits
-    // stays available behind "show other times".
-    var tiered = P.computeSlotsTiered(req);
-    var slots = tiered.preferred;
-    var otherSlots = tiered.other;
+    // Only the six canonical times, ever. Extending the search means more
+    // DAYS at these same times, never filling in the gaps between them.
+    var slots = P.computeSlots(
+      Object.assign({}, req, { preferredStartsMin: P.PREFERRED_STARTS })
+    );
 
-    var split = state.preferredWindows.length
-      ? P.matchWindows(slots, state.preferredWindows)
-      : { inPreferred: slots, outsidePreferred: [] };
-
-    var primary = split.inPreferred;
-    var fellBack = false;
-    if (!primary.length && split.outsidePreferred.length) {
-      primary = split.outsidePreferred;
-      fellBack = true;
-    }
-
-    if (!primary.length && otherSlots.length) {
-      // No usual start times fit, so fall straight through to the rest.
-      primary = otherSlots;
-      otherSlots = [];
-      fellBack = true;
-    }
+    var primary = slots;
 
     if (!primary.length) {
       box.innerHTML = '<p class="bk-empty">Nothing open in that range for a ' + fmtDur(dur) +
@@ -614,51 +632,100 @@
     if (win.mode === 'unconfigured') {
       html += '<p class="bk-warn">These are our usual hours. We will confirm the exact time with you' +
         (errMsg ? ' (calendar unavailable right now)' : '') + '.</p>';
-    } else if (fellBack) {
-      html += '<p class="bk-warn">Nothing in the times you picked, so here is what else is open.</p>';
     }
 
     var byDay = {};
-    primary.slice(0, 60).forEach(function (ms) {
+    primary.forEach(function (ms) {
       var k = new Date(ms).toDateString();
       (byDay[k] = byDay[k] || []).push(ms);
     });
 
+    var days = Object.keys(byDay);
+    var shown = state.daysShown || 3;
+
     html += '<div class="bk-days">';
-    Object.keys(byDay).slice(0, 10).forEach(function (k, di) {
+    days.slice(0, shown).forEach(function (k, di) {
       var d = new Date(k);
-      html += '<div class="bk-day' + (di > 2 ? ' more' : '') + '"><h4>' +
-        d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) + '</h4><div class="bk-times">' +
-        byDay[k].slice(0, 8).map(function (ms) {
-          var t = new Date(ms);
-          var label = t.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-          var end = new Date(ms + 60 * 60000).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-          var prem = P.computeSurcharge(
-            { startMinutesLocal: P.localMinutesOfDay(ms), priorityBooking: false },
-            RULES.surcharge
-          ).appliedBp > 0;
-          return '<button type="button" class="bk-time' + (state.slot === ms ? ' on' : '') +
-            (prem ? ' prem' : '') + '" data-slot="' + ms + '">' +
-            label + (prem ? '<em>+' + RULES.surcharge.timeOfDayBp / 100 + '%</em>' : '') +
-            '<i>arrive ' + label + ' to ' + end + '</i></button>';
-        }).join('') + '</div></div>';
+      var all = byDay[k];
+      // Standard-price times lead. The premium ones sit inside an Earlier and
+      // a Later bucket, so the default view is the two times most people want
+      // without hiding the others.
+      var early = all.filter(function (ms) { return P.localMinutesOfDay(ms) < 10 * 60; });
+      var mid = all.filter(function (ms) {
+        var m = P.localMinutesOfDay(ms);
+        return m >= 10 * 60 && m < 18 * 60;
+      });
+      var late = all.filter(function (ms) { return P.localMinutesOfDay(ms) >= 18 * 60; });
+
+      html += '<div class="bk-day"><h4>' +
+        d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) + '</h4>';
+
+      if (early.length) html += bucket('early-' + di, 'Earlier', early);
+      if (mid.length) html += '<div class="bk-times">' + mid.map(slotButton).join('') + '</div>';
+      if (late.length) html += bucket('late-' + di, 'Later', late);
+      if (!mid.length && !early.length && !late.length) html += '<p class="bk-empty">Nothing open.</p>';
+      html += '</div>';
     });
     html += '</div>';
 
-    if (Object.keys(byDay).length > 3) {
-      html += '<button type="button" class="bk-morelink" id="bkMoreDays">Show more dates</button>';
-    }
-    if (otherSlots.length) {
-      html += '<button type="button" class="bk-morelink" id="bkOther">Show other times (' + otherSlots.length + ')</button>' +
-        '<div class="bk-otherslots" hidden><h4>Other times that fit</h4><div class="bk-times">' +
-        otherSlots.slice(0, 24).map(function (ms) {
-          var d = new Date(ms);
-          return '<button type="button" class="bk-time" data-slot="' + ms + '">' +
-            d.toLocaleDateString('en-US', { weekday: 'short', month: 'numeric', day: 'numeric' }) +
-            '<i>' + d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) + '</i></button>';
-        }).join('') + '</div></div>';
+    if (days.length > shown) {
+      html += '<button type="button" class="bk-morelink" id="bkMoreDays">Show more options</button>';
     }
     box.innerHTML = html;
+  }
+
+  /**
+   * One slot. Shows the price effect on the slot itself rather than
+   * explaining the rules anywhere: a customer only needs to know what THIS
+   * choice costs. Sooner slots are never framed as a penalty, they just
+   * carry a number like any other option.
+   */
+  function slotButton(ms) {
+    var t = new Date(ms);
+    var label = t.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+    var end = new Date(ms + 60 * 60000).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+
+    var bp = P.computeSurcharge(
+      { startMinutesLocal: P.localMinutesOfDay(ms), priorityBooking: state.priority },
+      RULES.surcharge
+    ).appliedBp;
+
+    // The actual dollar difference, not a percentage to work out.
+    var delta = deltaFor(ms);
+    var tone = bp === 0 ? 'std' : (bp >= 3000 ? 'hi' : 'mid');
+
+    return '<button type="button" class="bk-time ' + tone + (state.slot === ms ? ' on' : '') +
+      '" data-slot="' + ms + '">' +
+      '<span class="bk-t">' + label + '</span>' +
+      (delta > 0 ? '<em>+' + $(delta) + '</em>' : '<em class="inc">included</em>') +
+      '<i>arrive ' + label + ' to ' + end + '</i></button>';
+  }
+
+  /**
+   * Earlier and Later collapse into one tappable row showing the cheapest
+   * price change inside them, so the premium is visible before expanding and
+   * the row never reads as a warning.
+   */
+  function bucket(key, label, list) {
+    var open = state.openBucket === key || list.indexOf(state.slot) > -1;
+    var cheapest = Math.min.apply(null, list.map(deltaFor));
+    return '<div class="bk-bucket' + (open ? ' open' : '') + '">' +
+      '<button type="button" class="bk-bucket-h" data-bucket="' + key + '">' +
+        '<span>' + label + '</span>' +
+        '<em>' + (cheapest > 0 ? 'from +' + $(cheapest) : 'included') + '</em>' +
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 9l6 6 6-6"/></svg>' +
+      '</button>' +
+      (open ? '<div class="bk-times">' + list.map(slotButton).join('') + '</div>' : '') +
+      '</div>';
+  }
+
+  /** Dollar difference this start time makes to the service subtotal. */
+  function deltaFor(ms) {
+    var bp = P.computeSurcharge(
+      { startMinutesLocal: P.localMinutesOfDay(ms), priorityBooking: state.priority },
+      RULES.surcharge
+    ).appliedBp;
+    return Math.round((q().serviceSubtotalCents * bp) / 10000);
   }
 
   function vTime() { return state.slot ? null : 'Pick a time to continue.'; }
@@ -667,7 +734,7 @@
 
   function yesNo(name, label, help, link) {
     var v = state.consent[name];
-    return '<div class="bk-consent">' +
+    return '<div class="bk-consent' + (v === null ? '' : ' answered') + '">' +
       '<p class="bk-consent-q">' + label + (link || '') + '</p>' +
       (help ? '<p class="bk-consent-h">' + help + '</p>' : '') +
       '<div class="bk-yn">' +
@@ -720,31 +787,41 @@
 
   function rPay() {
     var quote = q();
-    var stripeReady = Boolean(CFG.stripePublishableKey);
+    var now = state.payInFull;
 
     var html = '<div class="bk-review">' + lineTable(quote) + '</div>';
 
     html += '<div class="bk-payopts">' +
-      '<button type="button" class="bk-pay' + (!state.payInFull ? ' on' : '') + '" data-pay="later">' +
+      '<button type="button" class="bk-pay' + (!now ? ' on' : '') + '" data-pay="later">' +
         '<b>Pay after the detail</b>' +
-        '<span>Card on file now, charged when the work is done.</span>' +
+        '<span>Settle up once the work is finished. We may still need a card on file in case of cancellations or payment issues.</span>' +
         '<i>' + $(quote.totalCents) + '</i>' +
       '</button>' +
-      '<button type="button" class="bk-pay' + (state.payInFull ? ' on' : '') + '" data-pay="now">' +
+      '<button type="button" class="bk-pay' + (now ? ' on' : '') + '" data-pay="now">' +
         '<b>Pay now and save ' + RULES.payInFullDiscountBp / 100 + '%</b>' +
         '<span>Settle the whole thing today.</span>' +
-        '<i>' + $(state.payInFull ? quote.totalCents : quote.totalCents - quote.payInFullSavingsCents) + '</i>' +
+        '<i>' + $(now ? quote.totalCents : quote.totalCents - quote.payInFullSavingsCents) + '</i>' +
       '</button>' +
       '</div>';
 
     html += '<div class="bk-cardbox">' +
-      '<h4>Card details</h4>' +
-      '<p class="bk-hint">Your card confirms the time slot. ' +
-      (state.payInFull ? 'You are paying in full today.' : 'Nothing is charged until the detail is finished.') +
-      '</p>' +
-      (stripeReady
-        ? '<div id="bkStripe" class="bk-stripe"></div>'
-        : '<p class="bk-warn">Card payments are not switched on yet, so we will confirm your time and send a secure payment link instead. Everything else about your booking goes through now.</p>') +
+      '<h4>' + (now ? 'How would you like to pay?' : 'Card on file') + '</h4>' +
+      '<p class="bk-hint">' +
+        (now
+          ? 'Card, Apple Pay, Google Pay, bank transfer, PayPal or Venmo.'
+          : 'Nothing is charged now. Your card holds the time slot and covers a late cancellation.') +
+      '</p>';
+
+    if (now) {
+      html += '<div class="bk-methods">' +
+        '<button type="button" class="bk-method' + (state.payMethod === 'card' ? ' on' : '') + '" data-paymethod="card">' +
+          'Card, Apple Pay, bank</button>' +
+        '<button type="button" class="bk-method' + (state.payMethod === 'paypal' ? ' on' : '') + '" data-paymethod="paypal">' +
+          'PayPal or Venmo</button>' +
+        '</div>';
+    }
+
+    html += '<div id="bkPayMount" class="bk-stripe"><p class="bk-loading">Loading payment options...</p></div>' +
       '</div>';
 
     html += '<p class="bk-fine">Travel is worked out from your address and added when we confirm. ' +
@@ -752,27 +829,150 @@
 
     html += '<div class="bk-msg" id="bkMsg" role="status" aria-live="polite"></div>';
 
-    if (stripeReady) setTimeout(mountStripe, 0);
+    setTimeout(mountPayment, 0);
     return html;
   }
 
-  function vPay() { return null; }
-
-  function mountStripe() {
-    var mount = root.querySelector('#bkStripe');
-    if (!mount || !window.Stripe) return;
-    try {
-      var stripe = window.Stripe(CFG.stripePublishableKey);
-      var elements = stripe.elements({
-        mode: 'setup',
-        currency: 'usd',
-        paymentMethodCreation: 'manual'
-      });
-      elements.create('payment').mount(mount);
-      root._stripe = { stripe: stripe, elements: elements };
-    } catch (e) {
-      mount.innerHTML = '<p class="bk-warn">Could not load the card form. We will send you a secure payment link instead.</p>';
+  function vPay() {
+    if (state.payState === 'paid') return null;
+    if (state.payMethod === 'paypal' && state.payInFull) {
+      return 'Use the PayPal button above to finish paying.';
     }
+    if (!root._stripe) {
+      // No processor configured. The booking still goes through and a payment
+      // link follows, which is better than blocking the customer entirely.
+      return null;
+    }
+    return null;
+  }
+
+  /* ---- the wire cart: ids only, never prices ---- */
+  function wireCart() {
+    return {
+      vehicles: state.vehicles.map(function (v) {
+        return {
+          label: v.label || '',
+          sizeId: v.size,
+          packageIds: v.packageIds,
+          addons: v.addons.map(function (a) { return { addonId: a.addonId, tierId: a.tierId }; })
+        };
+      }),
+      zip: state.address.zip || null,
+      slot: state.slot,
+      priority: state.priority,
+      payInFull: state.payInFull
+    };
+  }
+
+  function mountPayment() {
+    var mount = root.querySelector('#bkPayMount');
+    if (!mount) return;
+
+    if (state.payInFull && state.payMethod === 'paypal') return mountPayPal(mount);
+    return mountStripe(mount);
+  }
+
+  /**
+   * Stripe Payment Element. Covers card, Apple Pay, Google Pay, Link, bank
+   * transfer and Cash App from one component, and which of those appear is a
+   * dashboard toggle rather than a code change.
+   */
+  function mountStripe(mount) {
+    if (!CFG.stripePublishableKey || !window.Stripe) {
+      mount.innerHTML = '<p class="bk-warn">Online payment is not switched on yet. ' +
+        'Your booking still goes through and we will send a secure payment link to confirm it.</p>';
+      return;
+    }
+
+    fetch('/api/create-payment', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        cart: wireCart(),
+        contact: state.contact,
+        mode: state.payInFull ? 'pay_now' : 'card_only',
+        idempotencyKey: bookingKey()
+      })
+    })
+      .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+      .then(function (r) {
+        if (!r.ok || !r.j.clientSecret) {
+          mount.innerHTML = '<p class="bk-warn">' +
+            (r.j && r.j.error === 'unconfigured'
+              ? 'Online payment is not switched on yet. Your booking still goes through and we will send a secure payment link to confirm it.'
+              : 'We could not load the payment form. Your booking still goes through and we will send a secure payment link.') +
+            '</p>';
+          return;
+        }
+        // The server priced this, not the browser. If they disagree, trust the
+        // server and show its number.
+        if (typeof r.j.totalCents === 'number' && r.j.totalCents !== q().totalCents) {
+          state.serverTotalCents = r.j.totalCents;
+        }
+        var stripe = window.Stripe(CFG.stripePublishableKey);
+        var elements = stripe.elements({
+          clientSecret: r.j.clientSecret,
+          appearance: { theme: 'flat', variables: { colorPrimary: '#e01a1a', borderRadius: '10px' } }
+        });
+        mount.innerHTML = '';
+        elements.create('payment', { layout: 'tabs' }).mount(mount);
+        root._stripe = { stripe: stripe, elements: elements, kind: r.j.kind };
+      })
+      .catch(function () {
+        mount.innerHTML = '<p class="bk-warn">We could not reach the payment service. ' +
+          'Your booking still goes through and we will send a secure payment link.</p>';
+      });
+  }
+
+  /** PayPal and Venmo. Stripe does not carry Venmo, so PayPal's SDK does. */
+  function mountPayPal(mount) {
+    if (!CFG.paypalClientId || !window.paypal) {
+      mount.innerHTML = '<p class="bk-warn">PayPal is not switched on yet. ' +
+        'Choose card instead, or we will send you a payment link.</p>';
+      return;
+    }
+    mount.innerHTML = '<div id="bkPaypalBtns"></div>';
+    try {
+      window.paypal.Buttons({
+        style: { layout: 'vertical', shape: 'rect', label: 'pay' },
+        createOrder: function () {
+          return fetch('/api/paypal-order', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'create', cart: wireCart(), contact: state.contact })
+          }).then(function (r) { return r.json(); }).then(function (j) {
+            if (!j.id) throw new Error(j.message || 'PayPal could not start');
+            return j.id;
+          });
+        },
+        onApprove: function (data) {
+          return fetch('/api/paypal-order', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'capture', orderId: data.orderID })
+          }).then(function (r) { return r.json(); }).then(function (j) {
+            if (j.status === 'COMPLETED') {
+              state.payState = 'paid';
+              submit();
+            } else {
+              flash('PayPal did not complete that payment. Try again or choose card.');
+            }
+          });
+        },
+        onError: function () {
+          flash('PayPal ran into a problem. Try again or choose card.');
+        }
+      }).render('#bkPaypalBtns');
+    } catch (e) {
+      mount.innerHTML = '<p class="bk-warn">PayPal could not load. Choose card instead.</p>';
+    }
+  }
+
+  /** Stable per-attempt key, so a double tap cannot create two charges. */
+  var _key = null;
+  function bookingKey() {
+    if (!_key) _key = 'bk_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+    return _key;
   }
 
   /* ================= summary table ================= */
@@ -803,6 +1003,7 @@
     var t = e.target.closest(
       '[data-size],[data-intent],[data-pkg],[data-addon],[data-clear],[data-win],[data-slot],' +
       '[data-consent],[data-pay],[data-delveh],[data-browsepick],[data-max],[data-sort],' +
+      '[data-kind],[data-bucket],[data-paymethod],' +
       '#bkAddVeh,#bkMoreDays,#bkNext,#bkBack,#bkClose,#bkScrim,#bkBrowse,#bkBrowseBack,' +
       '#bkQClear,#bkReset,#bkOther'
     );
@@ -818,11 +1019,26 @@
       return render();
     }
     if (t.dataset.sort) { state.browseSort = t.dataset.sort; return render(); }
+    if (t.dataset.kind) { state.browseKind = t.dataset.kind; return render(); }
+    if (t.dataset.bucket) {
+      state.openBucket = state.openBucket === t.dataset.bucket ? null : t.dataset.bucket;
+      return loadSlots();
+    }
+    if (t.dataset.paymethod) { state.payMethod = t.dataset.paymethod; return render(); }
 
     // Picking from browse sets intent AND package in one go, then drops the
     // customer straight into add-ons rather than replaying the two screens
     // they just skipped.
     if (t.dataset.browsepick) {
+      if (t.dataset.browsekind === 'addon') {
+        // An add-on needs a package under it, so route to the picker for that
+        // category with the add-on already selected.
+        var def = P.findAddon(t.dataset.browsepick);
+        v.intent = def.scope;
+        v.addons = [{ addonId: def.id, tierId: t.dataset.browsetier }];
+        state.browse = false;
+        return go(2);
+      }
       var picked = P.findPackage(t.dataset.browsepick);
       v.intent = picked.category;
       v.packageIds = [picked.id];
@@ -878,14 +1094,31 @@
     }
     if (t.dataset.slot) { state.slot = Number(t.dataset.slot); return advance(); }
     if (t.id === 'bkMoreDays') {
-      root.querySelectorAll('.bk-day.more').forEach(function (d) { d.classList.remove('more'); });
-      t.remove();
-      return;
+      // More DAYS at the same six times, never more times within a day.
+      state.daysShown = (state.daysShown || 3) + 4;
+      return loadSlots();
     }
 
     if (t.dataset.consent) {
       state.consent[t.dataset.consent] = t.dataset.val === '1';
-      return render();
+      // Update in place. A full re-render would refocus the name field and
+      // yank the page back to the top, which felt like a glitch.
+      var group = t.closest('.bk-consent');
+      group.querySelectorAll('[data-consent]').forEach(function (b) {
+        var yes = b.dataset.val === '1';
+        b.classList.toggle('yes', yes && t.dataset.val === '1');
+        b.classList.toggle('no', !yes && t.dataset.val === '0');
+      });
+      group.classList.add('answered');
+      // Then ease down to whatever still needs an answer.
+      var next = null;
+      root.querySelectorAll('.bk-consent').forEach(function (g) {
+        if (!next && !g.classList.contains('answered')) next = g;
+      });
+      var target = next || el('bkNext');
+      if (target) target.scrollIntoView({ behavior: 'smooth', block: next ? 'center' : 'nearest' });
+      renderTotal();
+      return;
     }
     if (t.dataset.pay) { state.payInFull = t.dataset.pay === 'now'; return render(); }
 
@@ -919,7 +1152,12 @@
   function onChange(e) {
     var t = e.target;
     if (t.id === 'bkNoLoc') { state.noGoodLocation = t.checked; return render(); }
-    if (t.id === 'bkPrio') { state.priority = t.checked; state.slot = null; return render(); }
+    if (t.id === 'bkPrio') {
+      state.priority = t.checked;
+      state.slot = null;
+      state.daysShown = 3;
+      return render();
+    }
     if (t.dataset.addr === 'region') { state.address.region = t.value; return renderTotal(); }
   }
 
@@ -993,11 +1231,47 @@
 
   function submit() {
     if (state.sending) return;
-    var quote = q();
     var msg = root.querySelector('#bkMsg');
     state.sending = true;
     if (msg) { msg.className = 'bk-msg ok'; msg.textContent = 'Confirming...'; }
     el('bkNext').disabled = true;
+
+    // Take the payment or save the card first. Recording a booking we could
+    // not collect for is worse than failing here with the funnel still open.
+    if (root._stripe && state.payState !== 'paid') {
+      var sp = root._stripe;
+      sp.elements.submit()
+        .then(function (r) {
+          if (r.error) throw r.error;
+          var fn = sp.kind === 'setup' ? sp.stripe.confirmSetup : sp.stripe.confirmPayment;
+          return fn.call(sp.stripe, {
+            elements: sp.elements,
+            redirect: 'if_required',
+            confirmParams: { return_url: location.origin + '/index.html#book' }
+          });
+        })
+        .then(function (r) {
+          if (r && r.error) throw r.error;
+          state.payState = 'paid';
+          record();
+        })
+        .catch(function (err) {
+          state.sending = false;
+          el('bkNext').disabled = false;
+          if (msg) {
+            msg.className = 'bk-msg err';
+            msg.textContent = (err && err.message) ||
+              'That payment did not go through. Check the details and try again.';
+          }
+        });
+      return;
+    }
+    record();
+  }
+
+  function record() {
+    var quote = q();
+    var msg = root.querySelector('#bkMsg');
 
     var body = buildSummary(quote);
     var fd = new FormData();

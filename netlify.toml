@@ -1,0 +1,39 @@
+# Netlify configuration.
+#
+# The static site is the repo root. `npm run build` produces the browser
+# pricing bundle and the Node pricing bundle the payment functions import, so
+# a deploy can never ship a funnel and a server that disagree about price.
+
+[build]
+  publish = "."
+  functions = "netlify/functions"
+  command = "npm run build"
+
+[build.environment]
+  NODE_VERSION = "22"
+
+[functions]
+  node_bundler = "esbuild"
+
+# Friendlier URLs for the payment endpoints.
+[[redirects]]
+  from = "/api/create-payment"
+  to = "/.netlify/functions/create-payment"
+  status = 200
+
+[[redirects]]
+  from = "/api/paypal-order"
+  to = "/.netlify/functions/paypal-order"
+  status = 200
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    X-Frame-Options = "SAMEORIGIN"
+
+[[headers]]
+  for = "/js/*"
+  [headers.values]
+    Cache-Control = "public, max-age=3600"

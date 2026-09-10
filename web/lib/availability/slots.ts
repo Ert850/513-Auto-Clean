@@ -50,6 +50,15 @@ export interface SlotRequest {
    * premium, but they are genuinely bookable rather than hidden.
    */
   bookingWindow?: BookingWindow;
+  /**
+   * Local start minute at and after which the return drive stops counting.
+   *
+   * A late booking is the last job of the day, so the drive home does not
+   * block anything and should not shorten what can be booked. Without this a
+   * 4 hour job at 8pm needs the calendar open until half past midnight for a
+   * drive nobody is waiting on.
+   */
+  ignoreReturnAfterMin?: number;
 }
 
 export interface BookingWindow {
@@ -72,6 +81,9 @@ export const DEFAULT_BOOKING_WINDOW: BookingWindow = {
   latestStartMin: 20 * 60,
   serviceEndByMin: 24 * 60,
 };
+
+/** From 6pm on, a booking is the last of the day. */
+export const IGNORE_RETURN_AFTER_MIN = 18 * 60;
 
 const MIN = 60_000;
 
@@ -135,7 +147,14 @@ export function computeSlots(req: SlotRequest): number[] {
 
     while (true) {
       const commitmentStart = t - req.travelBeforeMin * MIN;
-      const commitmentEnd = t + (req.serviceDurationMin + req.travelAfterMin) * MIN;
+      // Last job of the day: nobody is waiting on the drive home, so it does
+      // not need to fit inside the availability block.
+      const returnMin =
+        req.ignoreReturnAfterMin !== undefined &&
+        localMinutesOfDay(t, req.timeZone) >= req.ignoreReturnAfterMin
+          ? 0
+          : req.travelAfterMin;
+      const commitmentEnd = t + (req.serviceDurationMin + returnMin) * MIN;
       if (commitmentEnd > f.end) break;
       if (t > req.notAfter) break;
       if (
@@ -155,10 +174,18 @@ function ceilTo(ms: number, step: number): number {
   return Math.ceil(ms / step) * step;
 }
 
-/** Elijah's usual start times. Weekends are quieter, so fewer of them. */
+/**
+ * The only start times a customer is offered.
+ *
+ * Six clean options rather than a wall of half-hour slots. 10am and 4pm sit
+ * at standard price and are what most people should take; the outer four
+ * carry the premium and exist for someone who needs a particular day to work.
+ * Extending the search means MORE DAYS at these same times, never filling in
+ * the gaps between them.
+ */
 export const PREFERRED_STARTS = {
-  weekday: [8 * 60, 10 * 60, 16 * 60, 18 * 60],
-  weekend: [10 * 60, 16 * 60],
+  weekday: [6 * 60, 8 * 60, 10 * 60, 16 * 60, 18 * 60, 20 * 60],
+  weekend: [6 * 60, 8 * 60, 10 * 60, 16 * 60, 18 * 60, 20 * 60],
 };
 
 /**

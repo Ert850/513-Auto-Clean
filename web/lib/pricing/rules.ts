@@ -49,9 +49,11 @@ export interface SurchargeRules {
   /** Added when the customer opts into Priority Booking. */
   priorityBp: number;
   /**
-   * Hard ceiling once the above are added together. Set to the same value as
-   * a single surcharge so early/late AND priority never compound: the
-   * customer pays one 20%, not two.
+   * Hard ceiling once the above are added together.
+   *
+   * At 3000 the two surcharges DO compound: a standard-time booking inside
+   * three days is +20%, an early or late slot further out is +20%, and an
+   * early or late slot inside three days is +30% rather than +40%.
    */
   maxTotalBp: number;
 }
@@ -120,7 +122,7 @@ export const DEFAULT_RULES: PricingRules = {
     lateFromMinutes: 18 * 60, // 18:00 onward, so a 6:00 PM start IS premium
     timeOfDayBp: 2000, // +20%
     priorityBp: 2000, // +20%
-    maxTotalBp: 2000, // one flat 20% total, never stacked
+    maxTotalBp: 3000, // 20% each, +30% when both apply
   },
   window: {
     minLeadDays: 3,
