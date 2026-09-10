@@ -452,7 +452,9 @@ section { padding-block: clamp(40px, 5vw, 72px); position: relative; }
    REVIEWS
    ============================================================ */
 .reviews { background: var(--paper); }
-.reviews-widget { max-width: 720px; margin-inline: auto; }
+.reviews-widget { margin-inline: auto; }
+/* The score header still reads better narrow than stretched across the row. */
+.rv-head { max-width: 720px; margin-inline: auto; }
 .rev-fallback {
   background: var(--paper-2); border: 1px solid var(--line); border-radius: var(--r-xl);
   padding: clamp(2rem, 5vw, 3rem); box-shadow: var(--shadow-md); text-align: center;
@@ -966,7 +968,10 @@ html.scrolling-fast .reveal { transition: none; transition-delay: 0s; }
   display: flex; align-items: center; gap: .5rem; flex-wrap: wrap;
 }
 .rv-card figcaption a { color: var(--red); font-weight: 700; }
-.rv-card figcaption a::before { content: " b7"; margin-right: .5rem; color: var(--text-soft); font-weight: 400; }
+.rv-card figcaption a::before {
+  content: ""; display: inline-block; width: 3px; height: 3px; border-radius: 50%;
+  background: currentColor; vertical-align: middle; margin-right: .55rem; opacity: .45;
+}
 .rv-note { text-align: center; margin-top: 1.4rem; font-size: .88rem; color: var(--text-soft); }
 .rv-note a { color: var(--red); font-weight: 700; }
 

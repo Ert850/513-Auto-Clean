@@ -169,6 +169,16 @@ body.bk-open { overflow: hidden; }
 }
 .bk-clear:hover { color: var(--red); }
 
+.bk-travel.exact b { color: #1a8a3f; }
+.bk-travel.pending { opacity: .75; }
+.bk-travel.pending b::after {
+  content: "..."; display: inline-block; width: 1.2em; overflow: hidden;
+  vertical-align: bottom; animation: bkDots 1.2s steps(4, end) infinite;
+}
+@keyframes bkDots { from { width: 0; } to { width: 1.2em; } }
+.bk-travel.far { border-color: var(--red); }
+.bk-travel.far b { color: var(--red-deep); }
+
 /* ---------- promo code ---------- */
 /* Collapsed to a link until asked for. A visible empty discount box is an
    invitation to abandon checkout and go looking for a code. */

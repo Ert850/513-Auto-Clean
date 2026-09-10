@@ -5,15 +5,16 @@
    quote marked and coloured by fee band. Search a ZIP, a town, or a full
    street address, or drop a pin anywhere at all, and the fee appears.
 
-   TWO SOURCES FOR A NUMBER, in order of preference:
-     1. /api/travel, which measures the real drive with the Routes API from
-        an origin that never leaves the server. Needs a key.
-     2. A local estimate. Inside the mapped area that is a blend of the three
-        nearest ZIP bands; outside it, great circle distance with a road
-        factor. Always available, always labelled as an estimate.
+   EVERY FIGURE HERE IS A RANGE, deliberately. Nobody browsing has picked a
+   time yet, and the same address costs a little more at five in the evening
+   than at eight in the morning, so a single number would be a false promise.
+   Inside the mapped area the range comes from a blend of the three nearest
+   ZIP bands; outside it, from great circle distance with a road factor.
 
-   Both run the SAME mileage ladder as the booking funnel and the payment
-   functions, so nothing shown here can drift from what gets charged.
+   The EXACT figure is measured in the booking funnel, where a slot has been
+   chosen and the Routes API can price that hour's traffic. Both run the same
+   mileage ladder, so the range shown here always contains the figure charged
+   there.
 
    Degrades in two steps:
      1. Leaflet missing or blocked -> a schematic SVG map from the same data.
@@ -162,7 +163,7 @@
     return {
       minMin: minMin, maxMin: maxMin, area: area,
       loCents: lo, hiCents: hi, range: rangeText(lo, hi),
-      approx: true, coarse: coarse, measured: false,
+      approx: true, coarse: coarse,
       tooFar: mid > MAX_MIN
     };
   }
@@ -206,9 +207,7 @@
     out.className = 'travel-out ok';
     var where = esc(label || (d.area + ' (' + d.zip + ')'));
 
-    var time = d.measured
-      ? 'a measured ' + (d.minMin >= 90 ? hours(d.minMin) + ' hour' : d.minMin + ' minute') + ' drive from us'
-      : 'roughly ' + d.minMin + ' to ' + d.maxMin + ' minutes from us';
+    var time = 'roughly ' + d.minMin + ' to ' + d.maxMin + ' minutes from us';
 
     out.innerHTML =
       '<b>' + esc(d.range) + '</b>' +
@@ -216,15 +215,11 @@
       (d.hiCents === 0
         ? 'That is inside our free radius.'
         : (d.loCents === 0 ? 'Closer parts of this area fall inside the free radius. ' : '') +
-          (d.measured
-            ? 'Confirmed against your exact address when you book.'
-            : 'Your exact fee comes from your address when you book.')) +
+          'Your exact fee is measured from your address when you book.') +
       '</span>' +
       (d.coarse
         ? '<span class="travel-approx">Well outside our usual area, so this is a distance estimate rather than a real route.</span>'
-        : d.approx && !d.measured
-          ? '<span class="travel-approx">An estimate from typical drive times nearby.</span>'
-          : '');
+        : '<span class="travel-approx">A range, because the same address costs a little more in traffic. Start a booking and we measure the exact drive for the time you pick.</span>');
   }
 
   function clearOut() {
@@ -233,41 +228,15 @@
     selected = '';
   }
 
-  /* ---------------- measuring, when the key exists ----------------
-     The estimate paints immediately so nothing ever waits on a network
-     call, then the measured figure replaces it if the server can produce
-     one. A token guards against a slow reply for an old pin landing after
-     a new one. */
-
-  var quoteToken = 0;
+  /* ---------------- quoting a point ----------------
+     Always the local estimate, always a range. See the note in showFee:
+     an exact figure needs a departure time, and the front page has none.
+     The funnel measures it once a slot is chosen. */
 
   function quoteAt(lat, lon, label, onDone) {
-    var mine = ++quoteToken;
-    var local = estimateAt(lat, lon);
-    showFee(local, label);
-    if (onDone) onDone(local);
-
-    fetch('/api/travel?lat=' + encodeURIComponent(lat.toFixed(6)) +
-          '&lng=' + encodeURIComponent(lon.toFixed(6)), { cache: 'default' })
-      .then(function (r) { return r.ok ? r.json() : Promise.reject(new Error(String(r.status))); })
-      .then(function (d) {
-        if (mine !== quoteToken) return;
-        if (d.reachable === false || d.tooFar) {
-          var far = { minMin: d.minutes || MAX_MIN + 1, maxMin: d.minutes || MAX_MIN + 1, tooFar: true };
-          showFee(far, label);
-          if (onDone) onDone(far);
-          return;
-        }
-        var m = {
-          minMin: d.minutes, maxMin: d.minutes, area: local.area,
-          loCents: d.feeCents, hiCents: d.feeCents,
-          range: rangeText(d.feeCents, d.feeCents),
-          measured: true, approx: false, coarse: false, tooFar: false
-        };
-        showFee(m, label);
-        if (onDone) onDone(m);
-      })
-      .catch(function () { /* the estimate is already on screen */ });
+    var d = estimateAt(lat, lon);
+    showFee(d, label);
+    if (onDone) onDone(d);
   }
 
   /* ---------------- legend ---------------- */
@@ -287,8 +256,6 @@
   var pinHint = document.getElementById('pinHint');
   var zoomHint = document.getElementById('mapZoomHint');
 
-  var isTouch = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
-
   function initLeaflet() {
     var host = document.getElementById('areaMap');
     if (!host || !window.L) return false;
@@ -296,12 +263,19 @@
     map = L.map(host, {
       center: [39.14, -84.5],
       zoom: 9,
-      // Both off at the start. A map that eats the page scroll the moment
-      // your cursor crosses it is the most hated widget on the internet.
+      // Off at the start. A map that eats the page scroll the moment your
+      // cursor crosses it is the most hated widget on the internet. Clicking
+      // the map arms it.
       scrollWheelZoom: false,
-      // One finger has to keep scrolling the page, so panning is off until a
-      // second finger arrives. Pinch to zoom stays on throughout.
-      dragging: !isTouch,
+      // ON, always. Dragging is only ever suspended for the duration of a
+      // ONE finger touch, below, so a mouse can always drag.
+      //
+      // This used to be `!isTouch`, which broke every touchscreen laptop:
+      // they report maxTouchPoints > 0 whether or not anyone is touching the
+      // screen, so a plain mouse user got a map that could not be dragged,
+      // zoomed, or right clicked. Never branch on what a device might be
+      // capable of. Branch on the event that actually happened.
+      dragging: true,
       touchZoom: true,
       zoomControl: true
     });
@@ -329,25 +303,33 @@
     }
 
     function idleZoomHint() {
-      return isTouch
-        ? 'Pinch with two fingers to zoom, two fingers to pan.'
-        : 'Click the map, then scroll to zoom.';
+      // One line covering both, since the same laptop can be either.
+      return 'Click the map then scroll to zoom, and drag to move it. ' +
+        'On a phone use two fingers to pan and pinch to zoom. ' +
+        'Right click, or long press, to drop a pin anywhere.';
     }
 
-    if (!isTouch) {
-      host.addEventListener('click', armWheel);
-      host.addEventListener('mouseleave', disarmWheel);
-      // Focusing a control inside the map counts as choosing it too.
-      host.addEventListener('focusin', armWheel);
-    } else {
-      host.addEventListener('touchstart', function (e) {
-        if (e.touches.length > 1) map.dragging.enable();
-        else map.dragging.disable();
-      }, { passive: true });
-      host.addEventListener('touchend', function (e) {
-        if (!e.touches || e.touches.length === 0) map.dragging.disable();
-      }, { passive: true });
-    }
+    // Mouse: click to arm the wheel, leave to disarm. Wired unconditionally,
+    // because a touchscreen laptop is still a mouse.
+    host.addEventListener('click', armWheel);
+    host.addEventListener('mouseleave', disarmWheel);
+    host.addEventListener('focusin', armWheel);
+
+    // Touch: one finger scrolls the PAGE, so dragging is suspended for the
+    // length of that gesture and restored the moment the finger lifts. Two
+    // fingers pan the map. Pinch zoom is never disabled.
+    host.addEventListener('touchstart', function (e) {
+      if (e.touches.length > 1) map.dragging.enable();
+      else map.dragging.disable();
+    }, { passive: true });
+
+    host.addEventListener('touchend', function (e) {
+      // Back on for the mouse the instant the touch is over.
+      if (!e.touches || e.touches.length === 0) map.dragging.enable();
+    }, { passive: true });
+
+    host.addEventListener('touchcancel', function () { map.dragging.enable(); }, { passive: true });
+
     if (zoomHint) zoomHint.textContent = idleZoomHint();
 
     /* ---- the ZIP markers ---- */
@@ -429,7 +411,7 @@
     return '<b>' + esc(label || 'Your pin') + '</b>' +
       '<br><span class="lp-fee">' + esc(d.range) + '</span>' +
       '<br><span class="lp-min">' +
-      (d.measured ? d.minMin + ' min, measured' : d.minMin + ' to ' + d.maxMin + ' min, estimated') +
+      d.minMin + ' to ' + d.maxMin + ' min, estimated' +
       '</span>';
   }
 

@@ -64,6 +64,25 @@ export interface WireCart {
    * actually says, or at nothing.
    */
   promoCode?: string | null;
+  /**
+   * The address, so the server can measure the drive itself.
+   *
+   * NOT a number of minutes. If the browser could name its own drive time it
+   * could name zero, and travel would be free for anyone who read the
+   * request. The payment function measures from this and passes the result
+   * in as `measuredOneWayMinutes` below.
+   */
+  address?: { line1?: string; city?: string; region?: string; zip?: string } | null;
+}
+
+export interface PriceOptions {
+  /**
+   * A drive time the SERVER measured. Overrides the ZIP band estimate.
+   *
+   * Only ever set by a Netlify function that has just called the Routes API.
+   * Never populated from a request body.
+   */
+  measuredOneWayMinutes?: number | null;
 }
 
 export interface PricedCart {
@@ -71,6 +90,10 @@ export interface PricedCart {
   serviceSubtotalCents: number;
   surchargeBp: number;
   serviceDurationMin: number;
+  /** Minutes each way actually used to price travel. */
+  oneWayMinutes: number | null;
+  /** "routes" when measured from the address, "estimate" when from ZIP bands. */
+  travelSource: "routes" | "estimate" | "none";
   /** The code that survived server side lookup. Null when none did. */
   promoCode: string | null;
   promoDiscountCents: number;
@@ -84,7 +107,7 @@ export interface PricedCart {
  * so a tampered request cannot change what is charged: at worst it names a
  * package that does not exist, which lands in `rejected`.
  */
-export function priceFromWire(wire: WireCart): PricedCart {
+export function priceFromWire(wire: WireCart, opts: PriceOptions = {}): PricedCart {
   const rejected: string[] = [];
 
   const vehicles = (wire.vehicles ?? []).map((wv) => {
@@ -147,10 +170,11 @@ export function priceFromWire(wire: WireCart): PricedCart {
 
   const cart: CartInput = {
     vehicles,
-    // Same estimator the funnel used, so the amount charged matches the
-    // amount shown. A ZIP we do not cover prices as no travel rather than
-    // guessing, and gets picked up at confirmation.
-    oneWayMinutes: wire.zip ? estimateOneWayMinutes(wire.zip) : null,
+    // A measured drive wins. The ZIP band estimate is the fallback for a
+    // site without a Maps key, and prices an uncovered ZIP as no travel
+    // rather than guessing.
+    oneWayMinutes:
+      opts.measuredOneWayMinutes ?? (wire.zip ? estimateOneWayMinutes(wire.zip) : null),
     surchargeContext: wire.slot
       ? { startMinutesLocal: localMinutesOfDay(wire.slot), priorityBooking: Boolean(wire.priority) }
       : wire.priority
@@ -169,6 +193,13 @@ export function priceFromWire(wire: WireCart): PricedCart {
     serviceSubtotalCents: q.serviceSubtotalCents,
     surchargeBp: q.surchargeBp,
     serviceDurationMin: q.serviceDurationMin,
+    oneWayMinutes: cart.oneWayMinutes,
+    travelSource:
+      opts.measuredOneWayMinutes != null
+        ? "routes"
+        : cart.oneWayMinutes != null
+          ? "estimate"
+          : "none",
     promoCode: q.promoCode,
     promoDiscountCents: q.promoDiscountCents,
     lines: q.lines.map((l) => ({ label: l.label, amountCents: l.amountCents })),

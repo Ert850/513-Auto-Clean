@@ -48,6 +48,9 @@
       payInFull: false,
       // As typed. The engine decides what it is worth, here and again on the
       // server, so this is never a discount amount.
+      // Measured drive time, once the address is complete enough to route
+      // from. Until then the ZIP band estimate stands in.
+      travel: { minutes: null, source: 'none', pending: false, tooFar: false, forKey: '' },
       promoCode: '',
       promoOpen: false,
       notes: '',
@@ -75,9 +78,9 @@
     { id: 'intent',   tab: 'Service',  title: 'What does it need?',        auto: true,  render: rIntent,  valid: vIntent,  sum: sIntent },
     { id: 'package',  tab: 'Package',  title: 'Choose your package',       auto: true,  render: rPackage, valid: vPackage, sum: sPackage },
     { id: 'addons',   tab: 'Extras',   title: 'Anything extra?',           auto: false, render: rAddons,  valid: vAddons,  sum: sAddons },
-    { id: 'location', tab: 'Where',    title: 'Where are we detailing?',   auto: false, render: rLoc,     valid: vLoc,     sum: sLoc },
     { id: 'more',     tab: 'Vehicles', title: 'Add another vehicle?',      auto: false, render: rMore,    valid: ok,       sum: sMore },
     { id: 'time',     tab: 'Time',     title: 'Pick your time',            auto: true,  render: rTime,    valid: vTime,    sum: sTime },
+    { id: 'location', tab: 'Where',    title: 'Where are we detailing?',   auto: false, render: rLoc,     valid: vLoc,     sum: sLoc },
     { id: 'contact',  tab: 'You',      title: 'How do we reach you?',      auto: false, render: rContact, valid: vContact, sum: sContact },
     { id: 'pay',      tab: 'Confirm',  title: 'Confirm your booking',      auto: false, render: rPay,     valid: vPay,     sum: sPay }
   ];
@@ -164,7 +167,11 @@
       // Priced from the ZIP band via the SAME estimator the payment function
       // uses, so what is shown is what gets charged. A real address lookup
       // replaces this at confirmation.
-      oneWayMinutes: state.address.zip ? P.estimateOneWayMinutes(state.address.zip) : null,
+      // Measured beats estimated. The server measures the same address again
+      // before charging, so what is shown here is what gets billed.
+      oneWayMinutes: state.travel.source === 'routes'
+        ? state.travel.minutes
+        : (state.address.zip ? P.estimateOneWayMinutes(state.address.zip) : null),
       surchargeContext: surchargeCtx(),
       zip: state.address.zip || null,
       payInFull: state.payInFull,
@@ -811,21 +818,121 @@
   }
 
   /** Live travel figure, shown as soon as the ZIP is complete. */
+  /** The address as one line, and the key we cache the measurement against. */
+  function addressLine() {
+    var a = state.address;
+    return [a.line1, a.city, a.region, a.zip]
+      .map(function (x) { return String(x || '').trim(); })
+      .filter(Boolean)
+      .join(', ');
+  }
+
+  function addressComplete() {
+    var a = state.address;
+    return Boolean(a.line1.trim() && a.city.trim() && /^\d{5}$/.test(a.zip.trim()));
+  }
+
+  /**
+   * Measure the real drive to the typed address.
+   *
+   * Debounced, and keyed on the address itself so re-rendering or tabbing
+   * around does not re-measure. A failure leaves the ZIP band estimate in
+   * place rather than blocking the booking: the customer still gets a number,
+   * and it is still the number the server will charge, because the server
+   * falls back the same way.
+   */
+  var travelTimer = null;
+
+  function measureTravel() {
+    clearTimeout(travelTimer);
+    if (!addressComplete()) {
+      if (state.travel.source !== 'none') {
+        state.travel = { minutes: null, source: 'none', pending: false, tooFar: false, forKey: '' };
+      }
+      return;
+    }
+
+    // The slot is part of the key: the same address at 8am and at 5pm is a
+    // different drive, and that is the whole point of measuring it.
+    var key = addressLine().toUpperCase() + '@' + (state.slot || 0);
+    if (state.travel.forKey === key && !state.travel.pending) return;
+
+    state.travel.pending = true;
+    state.travel.forKey = key;
+    repaintTravel();
+
+    travelTimer = setTimeout(function () {
+      fetch('/api/travel?address=' + encodeURIComponent(addressLine()) +
+            (state.slot ? '&at=' + encodeURIComponent(state.slot) : ''), { cache: 'default' })
+        .then(function (r) { return r.ok ? r.json() : Promise.reject(new Error(String(r.status))); })
+        .then(function (d) {
+          if (state.travel.forKey !== key) return; // they kept typing
+          if (d.reachable === false || d.tooFar) {
+            state.travel = { minutes: d.minutes || null, source: 'toofar', pending: false, tooFar: true, forKey: key };
+          } else {
+            state.travel = { minutes: d.minutes, source: 'routes', pending: false, tooFar: false, forKey: key };
+          }
+          repaintTravel();
+          renderTotal();
+        })
+        .catch(function () {
+          if (state.travel.forKey !== key) return;
+          // No key configured, or the API is having a moment. The estimate
+          // stands and says so.
+          state.travel = { minutes: null, source: 'estimate', pending: false, tooFar: false, forKey: key };
+          repaintTravel();
+          renderTotal();
+        });
+    }, 500);
+  }
+
+  function repaintTravel() {
+    if (!root) return;
+    var box = root.querySelector('.bk-travel-slot');
+    if (box) box.outerHTML = travelLine();
+  }
+
   function travelLine() {
     var hit = state.address.zip ? P.lookupZip(state.address.zip) : null;
     if (!hit) {
       return '<p class="bk-hint bk-travel-slot">Add your ZIP and the travel fee appears here. ' +
         'The first 10 minutes of drive time are free.</p>';
     }
-    var mins = P.estimateOneWayMinutes(state.address.zip);
+    var t = state.travel;
+
+    if (t.pending) {
+      return '<div class="bk-travel pending bk-travel-slot"><b>Measuring the drive</b>' +
+        '<span>Working out the exact time from your address.</span></div>';
+    }
+
+    if (t.tooFar) {
+      return '<div class="bk-travel far bk-travel-slot"><b>Too far for a mobile detail</b>' +
+        '<span>That is about ' + Math.round((t.minutes || 0) / 60) + ' hours of driving each way. ' +
+        'Give us a call and we will see what we can suggest.</span></div>';
+    }
+
+    var measured = t.source === 'routes' && t.minutes !== null;
+    var mins = measured ? t.minutes : P.estimateOneWayMinutes(state.address.zip);
     var fee = P.mileageFeeCents(mins, RULES.mileage);
+
     if (fee === 0) {
       return '<div class="bk-travel free bk-travel-slot"><b>No travel fee</b>' +
-        '<span>' + esc(hit.area) + ' is inside our free radius.</span></div>';
+        '<span>' + esc(measured ? 'Your address is' : hit.area + ' is') +
+        ' inside our free radius.</span></div>';
     }
+
+    if (measured) {
+      // Measured, so it says so and stops hedging. This is the number that
+      // gets charged: the server measures the same address before billing.
+      return '<div class="bk-travel exact bk-travel-slot"><b>' + $(fee) + ' travel</b>' +
+        '<span>' + mins + ' minutes each way from us, measured from your address' +
+        (state.slot ? ' at the time you picked, traffic included' : '') +
+        ', and already in your total. This is the figure you pay.</span></div>';
+    }
+
     return '<div class="bk-travel bk-travel-slot"><b>' + $(fee) + ' travel</b>' +
       '<span>' + esc(hit.area) + ', about ' + mins + ' minutes each way, already in your total. ' +
-      'We confirm it from your exact address and it can move a little either way.</span></div>';
+      'We confirm it from your exact address before charging anything.</span></div>';
   }
 
   function vLoc() {
@@ -958,14 +1065,33 @@
       .then(function (d) { return (d && d.busy) || []; })
       .catch(function () { return []; });
 
+    // NOTHING may leave the spinner spinning. A calendar that is slow, a
+    // function that is missing, a network that hangs: any of them used to
+    // mean "Checking the calendar..." forever, which reads as a broken site
+    // and loses the booking. Whatever happens, slots paint within 8 seconds.
+    var settled = false;
+    var giveUp = setTimeout(function () {
+      if (settled) return;
+      settled = true;
+      paintSlots(box, P.unconfiguredWindow(from, to), from, to, dur, 'timeout');
+    }, 8000);
+
     Promise.all([load, personal])
       .then(function (both) {
         var win = both[0];
         var extra = both[1].filter(function (b) { return b.end > from && b.start < to; });
         return { open: win.open, busy: (win.busy || []).concat(extra), source: win.source };
       })
-      .then(function (win) { paintSlots(box, win, from, to, dur); })
+      .then(function (win) {
+        if (settled) return;
+        settled = true;
+        clearTimeout(giveUp);
+        paintSlots(box, win, from, to, dur);
+      })
       .catch(function (err) {
+        if (settled) return;
+        settled = true;
+        clearTimeout(giveUp);
         // A calendar outage must not block a booking: fall back to business
         // hours and say plainly that the time still needs confirming.
         paintSlots(box, P.unconfiguredWindow(from, to), from, to, dur, String(err && err.message || err));
@@ -973,6 +1099,19 @@
   }
 
   function paintSlots(box, win, from, to, dur, errMsg) {
+    try {
+      paintSlotsInner(box, win, from, to, dur, errMsg);
+    } catch (err) {
+      // Last line of defence. A customer sees a way forward rather than a
+      // spinner, and the console carries the real reason.
+      if (window.console) console.error('[513] slot painting failed', err);
+      box.innerHTML = '<p class="bk-empty">We could not load times just now. ' +
+        '<a href="index.html#inquiry">Send us a message</a> or call ' +
+        '<a href="tel:+15132792915">(513) 279-2915</a> and we will book you in directly.</p>';
+    }
+  }
+
+  function paintSlotsInner(box, win, from, to, dur, errMsg) {
     // Flat 30 minute travel allowance until a Maps key gives us real drive
     // time. Deliberately generous so a slot we offer is one we can keep.
     var req = {
@@ -1283,8 +1422,17 @@
         };
       }),
       zip: state.address.zip || null,
+      // The address, not a number of minutes. A browser that could name its
+      // own drive time could name zero.
+      address: {
+        line1: state.address.line1 || '',
+        city: state.address.city || '',
+        region: state.address.region || '',
+        zip: state.address.zip || ''
+      },
       slot: state.slot,
       priority: state.priority,
+      promoCode: state.promoCode || null,
       payInFull: state.payInFull
     };
   }
@@ -1540,7 +1688,9 @@
       state.slot = null;
       return render();
     }
-    if (t.dataset.slot) { state.slot = Number(t.dataset.slot); return advance(); }
+    if (t.dataset.slot) {
+      // A new time means a new drive, so the measured figure is stale.
+      state.travel = { minutes: null, source: 'none', pending: false, tooFar: false, forKey: '' }; state.slot = Number(t.dataset.slot); return advance(); }
     if (t.id === 'bkMoreDays') {
       // More DAYS at the same six times, never more times within a day.
       state.daysShown = (state.daysShown || 3) + 4;
@@ -1630,6 +1780,9 @@
         renderTotal();
       }
       if (t.dataset.addr === 'line1') maybeAutocomplete(t.value);
+      // Any address field can complete the address, so any of them can start
+      // the measurement.
+      measureTravel();
       return;
     }
     if (t.dataset.promo !== undefined) {
