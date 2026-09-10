@@ -315,7 +315,14 @@ export function addonBlockedReason(
  * hours of labour, a 2 step 10 to 16, a 3 step 20 to 40 plus. Prep and the
  * coating itself add roughly 3 hours, and there is extra padding here because
  * he is new to it. Hard paint can add another 20 to 30% on top.
+ *
+ * EVERY tier coats the whole vehicle, not just the paint: wheels, plastic
+ * trim and glass are included throughout. Stated once here and surfaced in
+ * the UI, rather than repeated on each tier.
  */
+
+export const COATING_COVERAGE =
+  "Every coating covers the whole vehicle: paint, wheels, plastic trim and glass.";
 
 export interface CorrectionTier {
   id: string;
@@ -337,7 +344,7 @@ export const CORRECTION_TIERS: CorrectionTier[] = [
     addMin: 5 * 60,
     result: "3 to 5 years of protection, no correction",
     detail:
-      "Panel wipe, coating applied and levelled by hand, then left to cure. Existing swirls and scratches stay as they are, sealed under the coating.",
+      "Panel wipe, then coating applied and levelled by hand across paint, wheels, plastic trim and glass, and left to cure. Existing swirls and scratches stay as they are, sealed under the coating.",
     asterisk: true,
   },
   {
@@ -353,7 +360,7 @@ export const CORRECTION_TIERS: CorrectionTier[] = [
   {
     id: "two-step",
     label: "2 step paint correction, then coating",
-    addCents: 150000,
+    addCents: 149500,
     addMin: 18 * 60,
     result: "Looks perfect from about 2 feet away",
     detail:
@@ -362,12 +369,12 @@ export const CORRECTION_TIERS: CorrectionTier[] = [
   },
   {
     id: "three-step",
-    label: "3 step paint correction, then coating",
-    addCents: 260000,
+    label: "3 to 4 step paint correction, then coating",
+    addCents: 225000,
     addMin: 30 * 60,
-    result: "Removes 90%+ of all defects",
+    result: "Removes 90%+ of all defects, reflective trim included",
     detail:
-      "Heavy cut, refine, then a final jewelling pass under inspection lighting before coating. This is show car work and runs across several days.",
+      "Heavy cut, refine, then a final jewelling pass under inspection lighting before coating, with a fourth pass where the paint needs it. Reflective trim is corrected and coated alongside the paint. This is show car work and runs across several days.",
     asterisk: false,
   },
 ];

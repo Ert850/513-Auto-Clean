@@ -225,7 +225,10 @@ const PACKAGES: Package[] = [
   {
     id: "showroom-exterior",
     slug: "showroom-exterior",
-    name: "Showroom Ready",
+    // Spelled out because "Showroom Ready" alone reads as a deeper wash next
+    // to the interior package of the same name, and this is neither the same
+    // work nor the same order of price.
+    name: "Showroom Ready (Paint Correction and Protection)",
     category: "exterior",
     // Everything in Full Exterior, then a required correction or coating
     // tier on top. The base here is the Full Exterior work; the tier adds its

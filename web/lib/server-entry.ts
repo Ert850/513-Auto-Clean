@@ -10,6 +10,7 @@
  */
 import {
   ADDONS,
+  COATING_COVERAGE,
   COATING_TERMS,
   CORRECTION_RULES,
   CORRECTION_TIERS,
@@ -156,6 +157,7 @@ export function priceFromWire(wire: WireCart): PricedCart {
 
 export {
   ADDONS,
+  COATING_COVERAGE,
   COATING_TERMS,
   CORRECTION_RULES,
   CORRECTION_TIERS,

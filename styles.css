@@ -886,3 +886,5 @@ html.scrolling-fast .reveal { transition: none; transition-delay: 0s; }
 .ad-how summary::after { content: " +"; font-weight: 800; }
 .ad-how[open] summary::after { content: " \2212"; }
 .ad-how p { margin: .45rem 0 0; font-size: .8rem; line-height: 1.6; color: var(--text-soft); }
+
+.svc-coverage { margin-top: 1rem; font-size: .85rem; color: var(--text-soft); font-style: italic; }

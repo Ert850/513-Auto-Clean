@@ -536,3 +536,5 @@ body.bk-open { overflow: hidden; }
 .bk-soon { color: var(--amber); font-size: .85rem; }
 .bk-pkg.off { opacity: .72; cursor: default; }
 .bk-pkg.off:hover { border-color: var(--line); }
+
+.bk-coverage { font-size: .82rem; color: var(--text-soft); line-height: 1.55; margin: 0 0 .9rem; }

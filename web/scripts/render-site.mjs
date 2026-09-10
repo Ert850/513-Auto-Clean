@@ -18,6 +18,7 @@ import { fileURLToPath } from "node:url";
 import {
   ADDONS,
   CORRECTION_RULES,
+  COATING_COVERAGE,
   CORRECTION_TIERS,
   DEFAULT_RULES,
   SEED_CATALOG,
@@ -120,6 +121,7 @@ ${panel("exterior")}
       <ul class="feat">
         ${corr}
       </ul>
+      <p class="svc-coverage">${esc(COATING_COVERAGE)}</p>
     </div>`;
 }
 
