@@ -24,6 +24,11 @@
   status = 200
 
 [[redirects]]
+  from = "/api/personal-busy"
+  to = "/.netlify/functions/personal-busy"
+  status = 200
+
+[[redirects]]
   from = "/api/travel"
   to = "/.netlify/functions/travel"
   status = 200

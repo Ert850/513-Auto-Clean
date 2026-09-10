@@ -940,7 +940,26 @@
       ? P.loadWindow(cfg, from, to)
       : Promise.resolve(P.unconfiguredWindow(from, to));
 
-    load.then(function (win) { paintSlots(box, win, from, to, dur); })
+    // TWO sources of busy time, both authoritative in their own way. The
+    // Google calendar holds detailing jobs. Elijah's personal calendar holds
+    // everything else in his life, and a slot he cannot make is not a slot,
+    // whichever calendar the conflict came from.
+    //
+    // The personal feed failing must never block a booking, so it resolves to
+    // an empty list rather than rejecting: worst case we offer a time he has
+    // to move, which is the same position we are in today.
+    var personal = fetch('/api/personal-busy', { cache: 'default' })
+      .then(function (r) { return r.ok ? r.json() : { busy: [] }; })
+      .then(function (d) { return (d && d.busy) || []; })
+      .catch(function () { return []; });
+
+    Promise.all([load, personal])
+      .then(function (both) {
+        var win = both[0];
+        var extra = both[1].filter(function (b) { return b.end > from && b.start < to; });
+        return { open: win.open, busy: (win.busy || []).concat(extra), source: win.source };
+      })
+      .then(function (win) { paintSlots(box, win, from, to, dur); })
       .catch(function (err) {
         // A calendar outage must not block a booking: fall back to business
         // hours and say plainly that the time still needs confirming.

@@ -147,6 +147,39 @@ GOOGLE_CALENDAR_BOOKED_ID=...@group.calendar.google.com
 
 ---
 
+## 4b. Your personal calendar, as a conflict source
+
+The booking funnel reads TWO calendars. `513 Availability` says when you are
+open for work. Your personal iCloud calendar says when you are not available
+at all, and a slot you cannot make is not a slot regardless of which calendar
+the conflict is in.
+
+In iCloud Calendar, right click the calendar, **Share Calendar**, tick
+**Public Calendar**, and copy the link. It starts `webcal://`.
+
+```
+PERSONAL_CALENDAR_ICS=webcal://p138-caldav.icloud.com/published/2/...
+```
+
+**Treat that link as a password.** Anyone holding it can read the entire
+calendar: every title, location, attendee and note. It goes in `.env.local`
+and in Netlify, and nowhere else. It is never sent to a browser, and the
+function that reads it returns only start and end times, never a title. If
+the link is ever pasted anywhere it should not be, turn Public Calendar off
+and back on to mint a new one; the old link dies immediately.
+
+**All-day events are ignored on purpose.** A personal calendar is full of
+birthdays and holidays, and treating those as busy would quietly close whole
+days of bookings. On your real calendar the difference is 618 blocked hours
+against 230 over four months. Put genuine conflicts in as timed events.
+
+**Freshness.** iCloud regenerates a published feed on its own schedule, so a
+change can take up to about fifteen minutes to appear. Do not add something
+half an hour out and expect the site to know. For anything urgent, block the
+time on `513 Availability` instead, which is read live.
+
+---
+
 ## 5. Neon Postgres
 
 1. <https://console.neon.tech/> and create a project in **AWS us-east-2 (Ohio)**,
@@ -212,6 +245,7 @@ Nothing secret. Once you have finished a step, just tell me which one, and paste
 back only these non-sensitive values so I can wire them up:
 
 - The two **Calendar IDs** (safe to share)
+- That the **personal calendar URL** is set in Netlify. Do not paste the URL itself
 - The **service account email address** (safe, it is not the key)
 - Which **Stripe mode** you are in
 - Confirmation that the **A2P campaign** is submitted, and its status
