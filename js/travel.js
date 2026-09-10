@@ -133,6 +133,8 @@
   /* ---------------- the real map ---------------- */
 
   var map = null, markers = {}, pin = null;
+  var pinBtn = document.getElementById('pinDrop');
+  var pinHint = document.getElementById('pinHint');
 
   function initLeaflet() {
     var host = document.getElementById('areaMap');
@@ -184,6 +186,24 @@
     }).addTo(map).bindTooltip('Roughly the free travel radius');
 
     map.fitBounds(POINTS.map(function (p) { return [p.lat, p.lon]; }), { padding: [24, 24] });
+
+    // Right click drops the pin where you clicked. Long press does the same
+    // on touch, which is what Leaflet fires contextmenu for there.
+    map.on('contextmenu', function (e) {
+      placePin(e.latlng.lat, e.latlng.lng);
+    });
+
+    if (pinBtn) {
+      pinBtn.hidden = false;
+      pinBtn.addEventListener('click', function () {
+        var c = map.getCenter();
+        placePin(c.lat, c.lng);
+        map.panTo(c);
+      });
+    }
+    if (pinHint) {
+      pinHint.textContent = 'Or right click anywhere on the map to drop the pin there.';
+    }
     return true;
   }
 
@@ -194,10 +214,78 @@
     });
   }
 
-  function dropPin(lat, lon, label) {
+  /**
+   * The pin.
+   *
+   * Most people are not going to type a ZIP; they are going to want to point
+   * at their street. Drag it, or right click anywhere on the map, and the fee
+   * updates from where it lands.
+   *
+   * A divIcon rather than Leaflet's default marker: the default pulls PNGs
+   * from a path derived from wherever the stylesheet loaded, which is exactly
+   * the kind of thing that silently 404s behind a CDN.
+   */
+  function pinIcon() {
+    return L.divIcon({
+      className: 'ac-pin',
+      html: '<span class="ac-pin-body"></span>',
+      iconSize: [26, 34],
+      iconAnchor: [13, 33],
+      popupAnchor: [0, -30]
+    });
+  }
+
+  function pinLabel(d) {
+    return 'Your pin, nearest ' + d.area;
+  }
+
+  function priceAtPin() {
+    if (!pin) return;
+    var ll = pin.getLatLng();
+    var d = bandFromLatLon(ll.lat, ll.lng);
+    selected = '';
+    highlight('');
+    showFee(d, pinLabel(d));
+    pin.setPopupContent(
+      '<b>Your pin</b><br><span class="lp-fee">' + esc(d.range) + '</span>' +
+      '<br><span class="lp-min">' + d.minMin + ' to ' + d.maxMin + ' min from us, estimated</span>'
+    );
+    if (pinHint) pinHint.textContent = 'Drag the pin to move it. Right click the map to send it somewhere else.';
+  }
+
+  function placePin(lat, lon, opts) {
     if (!map) return;
-    if (pin) map.removeLayer(pin);
-    pin = L.marker([lat, lon]).addTo(map).bindPopup(esc(label)).openPopup();
+    if (!pin) {
+      pin = L.marker([lat, lon], { draggable: true, autoPan: true, icon: pinIcon() })
+        .addTo(map)
+        .bindPopup('');
+      pin.on('dragend', priceAtPin);
+      pin.on('drag', function () {
+        // Live while dragging, so the number moves under your thumb.
+        var ll = pin.getLatLng();
+        var d = bandFromLatLon(ll.lat, ll.lng);
+        showFee(d, pinLabel(d));
+      });
+    } else {
+      pin.setLatLng([lat, lon]);
+    }
+    priceAtPin();
+    if (!opts || opts.open !== false) pin.openPopup();
+    if (pinBtn) pinBtn.textContent = 'Move the pin to the middle';
+  }
+
+  function clearPin() {
+    if (pin && map) map.removeLayer(pin);
+    pin = null;
+    if (pinBtn) pinBtn.textContent = 'Drop a pin on the map';
+    if (pinHint) pinHint.textContent = '';
+  }
+
+  function dropPin(lat, lon, label) {
+    placePin(lat, lon, { open: false });
+    if (!pin) return;
+    pin.setPopupContent(esc(label));
+    pin.openPopup();
     map.setView([lat, lon], 12);
   }
 
@@ -287,7 +375,7 @@
       map.setView(markers[zip].getLatLng(), 12);
       markers[zip].openPopup();
     }
-    if (pin && map) { map.removeLayer(pin); pin = null; }
+    clearPin();
   }
 
   function hideSuggest() {

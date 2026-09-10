@@ -88,6 +88,17 @@ describe("add-on presentation", () => {
     expect(bad).toEqual([]);
   });
 
+  it("returns add-ons cheapest first, in both scopes", () => {
+    for (const scope of ["interior", "exterior"] as const) {
+      const prices = addonsFor(scope).map((a) => {
+        const priced = a.tiers.filter((t) => t.priceCents !== null).map((t) => t.priceCents!);
+        return priced.length ? Math.min(...priced) : Number.POSITIVE_INFINITY;
+      });
+      const sorted = prices.slice().sort((x, y) => x - y);
+      expect(prices, scope).toEqual(sorted);
+    }
+  });
+
   it("gives every add-on its own icon, not a shared default", () => {
     const missing = ADDONS.filter((a) => !ADDON_ICONS[a.icon]).map((a) => a.id);
     expect(missing).toEqual([]);

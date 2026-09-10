@@ -18,6 +18,7 @@ import { fileURLToPath } from "node:url";
 import {
   ADDONS,
   addonIcon,
+  addonsFor,
   CORRECTION_RULES,
   COATING_COVERAGE,
   COATING_EXPLAINER,
@@ -55,6 +56,48 @@ const TICK =
 
 /* ---------------- services ---------------- */
 
+/**
+ * The correction and coating block.
+ *
+ * It used to sit on its own below both service panels, which meant someone
+ * reading the exterior tiers had to scroll past the whole interior grid to
+ * find out what the "+" on Showroom Ready meant. It now lives inside that
+ * card, beside the package it belongs to.
+ */
+function correctionBlock() {
+  const baseMin = findPackage("showroom-exterior")?.durationMin ?? 0;
+
+  // Hours are shown because the price only makes sense beside them: this is
+  // days of labour, not a product with a markup.
+  const tiers = CORRECTION_TIERS.map(
+    (t) =>
+      `<li><strong>${esc(t.label)}</strong> <b class="corr-price">+${money(t.addCents)}</b>` +
+      `<span class="corr-meta">${esc(t.result)} &middot; about ${dur(baseMin + t.addMin)} of work</span></li>`,
+  ).join("\n              ");
+
+  return `<div class="svc-corr">
+            <h4>Paint correction and ceramic coating</h4>
+            <details class="svc-explain">
+              <summary>How it Works: ${esc(COATING_EXPLAINER.heading)}</summary>
+              <p>${esc(COATING_EXPLAINER.body)}</p>
+              <p class="ex-h">What it does</p>
+              <ul class="ex-yes">${COATING_EXPLAINER.does.map((d) => `<li>${esc(d)}</li>`).join("")}</ul>
+              <p class="ex-h">What it does not do</p>
+              <ul class="ex-no">${COATING_EXPLAINER.doesNot.map((d) => `<li>${esc(d)}</li>`).join("")}</ul>
+              <p class="ex-h">How long it takes</p>
+              <ul class="ex-time">${COATING_EXPLAINER.timing.map((d) => `<li>${esc(d)}</li>`).join("")}</ul>
+              <p>${esc(COATING_EXPLAINER.timingNote)}</p>
+              <p class="ex-why">${esc(COATING_EXPLAINER.why)}</p>
+              <p class="ex-h">What is covered</p>
+              <p>${esc(COATING_COVERAGE)}</p>
+            </details>
+            <ul class="feat corr-tiers">
+              ${tiers}
+            </ul>
+            <p class="svc-coverage">Booked at least ${CORRECTION_RULES.minLeadDays} days out, on weekend mornings, because the work runs across days.</p>
+          </div>`;
+}
+
 function packageCard(p) {
   const comps = componentsOf(p, SEED_CATALOG);
   const base = p.supersetOf ? findPackage(p.supersetOf) : null;
@@ -81,8 +124,7 @@ function packageCard(p) {
   // in has just spelled the rest out.
   const bookLabel = p.name.replace(/\s*\([^)]*\)\s*$/, "");
 
-  return `        <article class="svc-card${p.featured ? " featured" : ""}${wide} reveal">
-${p.featured ? '          <span class="svc-tag">Most Popular</span>\n' : ""}          <h3>${esc(p.name)}</h3>
+  const body = `          <h3>${esc(p.name)}</h3>
           <div class="svc-meta">
             <span class="price">${price}</span>
             <span class="dur"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v4l3 2"/></svg> ${time}</span>
@@ -96,7 +138,17 @@ ${feats}
               ? `<details class="svc-how"><summary>How it works</summary><p>${esc(p.note)}</p></details>`
               : ""
           }
-          <div class="svc-foot"><a class="btn ${p.featured ? "btn-primary" : "btn-ghost"} btn-block" href="book.html" data-book-package="${esc(p.id)}">Book ${esc(bookLabel)}</a></div>
+          <div class="svc-foot"><a class="btn ${p.featured ? "btn-primary" : "btn-ghost"} btn-block" href="book.html" data-book-package="${esc(p.id)}">Book ${esc(bookLabel)}</a></div>`;
+
+  // The wide card splits in two: the package on the left, the correction
+  // tiers on the right. Wrapping the left half keeps that a two-child grid
+  // rather than a pile of items each needing its own placement rule.
+  const inner = wide
+    ? `          <div class="swide-main">\n${body}\n          </div>\n          ${correctionBlock()}`
+    : body;
+
+  return `        <article class="svc-card${p.featured ? " featured" : ""}${wide} reveal">
+${p.featured ? '          <span class="svc-tag">Most Popular</span>\n' : ""}${inner}
         </article>`;
 }
 
@@ -114,15 +166,6 @@ ${cards}
     </div>`;
   };
 
-  const CORR_BASE_MIN = findPackage("showroom-exterior")?.durationMin ?? 0;
-  const corr = CORRECTION_TIERS.map(
-    // Hours are shown because the price only makes sense beside them: this
-    // is days of labour, not a product with a markup.
-    (t) =>
-      `<li><strong>${esc(t.label)}</strong> <b class="corr-price">+${money(t.addCents)}</b>` +
-      `<span class="corr-meta">${esc(t.result)} &middot; about ${dur(CORR_BASE_MIN + t.addMin)} of work</span></li>`,
-  ).join("\n        ");
-
   return `${panel("interior")}
 
 ${panel("exterior")}
@@ -131,29 +174,6 @@ ${panel("exterior")}
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
       <span>Booking interior <em>and</em> exterior together? Take <strong>${money(DEFAULT_RULES.comboDiscountCents)} off automatically when you book together.</strong>
       Have multiple vehicles? <strong>Get ${DEFAULT_RULES.additionalVehicleDiscountBp / 100}% off everything</strong> when you book them together!</span>
-    </div>
-
-    <div class="svc-correction reveal">
-      <h3>Paint correction and ceramic coating</h3>
-      <details class="svc-explain">
-        <summary>How it Works: ${esc(COATING_EXPLAINER.heading)}</summary>
-        <p>${esc(COATING_EXPLAINER.body)}</p>
-        <p class="ex-h">What it does</p>
-        <ul class="ex-yes">${COATING_EXPLAINER.does.map((d) => `<li>${esc(d)}</li>`).join("")}</ul>
-        <p class="ex-h">What it does not do</p>
-        <ul class="ex-no">${COATING_EXPLAINER.doesNot.map((d) => `<li>${esc(d)}</li>`).join("")}</ul>
-        <p class="ex-h">How long it takes</p>
-        <ul class="ex-time">${COATING_EXPLAINER.timing.map((d) => `<li>${esc(d)}</li>`).join("")}</ul>
-        <p>${esc(COATING_EXPLAINER.timingNote)}</p>
-        <p class="ex-why">${esc(COATING_EXPLAINER.why)}</p>
-        <p class="ex-h">What is covered</p>
-        <p>${esc(COATING_COVERAGE)}</p>
-        <p class="ex-h">Booking one</p>
-        <p>Showroom Ready Exterior is everything in Full Exterior, then one of the tiers below. Booked at least ${CORRECTION_RULES.minLeadDays} days out, on weekend mornings, because the work runs across days.</p>
-      </details>
-      <ul class="feat">
-        ${corr}
-      </ul>
     </div>`;
 }
 
@@ -190,7 +210,9 @@ function addonsHtml() {
   };
 
   const groups = ["interior", "exterior"].map((scope) => {
-    const list = ADDONS.filter((a) => a.scope === scope);
+    // addonsFor sorts cheapest first. Going through it rather than filtering
+    // ADDONS directly is what keeps this page in the same order as the funnel.
+    const list = addonsFor(scope);
     if (!list.length) return "";
     return `      <h4 class="addon-grp">${scope === "interior" ? "Interior" : "Exterior"}</h4>
       <div class="addon-grid">
