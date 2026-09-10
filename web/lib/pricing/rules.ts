@@ -127,7 +127,7 @@ export const DEFAULT_RULES: PricingRules = {
   window: {
     minLeadDays: 3,
   },
-  comboDiscountCents: 1500, // $15
+  comboDiscountCents: 2500, // $25 for interior and exterior together
   comboPerVehicle: true,
   additionalVehicleDiscountBp: 1000, // 10% off the 2nd vehicle onward
   addonRateCents: 5000, // $50/hr

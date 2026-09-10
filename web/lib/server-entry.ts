@@ -8,7 +8,13 @@
  *
  * Same code the unit tests cover, same code the browser bundle uses.
  */
-import { ADDONS, findAddon } from "./catalog/addons.js";
+import {
+  ADDONS,
+  CORRECTION_RULES,
+  findAddon,
+  findCoatingTerm,
+  findCorrectionTier,
+} from "./catalog/addons.js";
 import { findPackage, vehicleSize } from "./catalog/seed.js";
 import { DEFAULT_RULES } from "./pricing/rules.js";
 import { SEED_TAX_TABLE } from "./pricing/tax.js";
@@ -22,6 +28,7 @@ export interface WireVehicle {
   sizeId?: string;
   packageIds?: string[];
   addons?: { addonId: string; tierId: string }[];
+  correction?: { tierId: string; coatingId: string; noGarage?: boolean };
 }
 
 export interface WireCart {
@@ -79,12 +86,33 @@ export function priceFromWire(wire: WireCart): PricedCart {
       });
     }
 
+    let correction;
+    if (wv.correction) {
+      const tier = findCorrectionTier(wv.correction.tierId);
+      const term = findCoatingTerm(wv.correction.coatingId);
+      if (!tier || !term) {
+        rejected.push(`unknown correction ${wv.correction.tierId}/${wv.correction.coatingId}`);
+      } else {
+        correction = {
+          tierId: tier.id,
+          tierLabel: tier.label,
+          addCents: tier.addCents,
+          addMin: tier.addMin,
+          coatingId: term.id,
+          coatingLabel: term.label,
+          coatingAddCents: term.addCents,
+          ...(wv.correction.noGarage ? { canopyCents: CORRECTION_RULES.canopyCents } : {}),
+        };
+      }
+    }
+
     return {
       label: wv.label ?? "Vehicle",
       sizeUpchargeCents: size?.upchargeCents ?? 0,
       sizeLabel: size?.label ?? "",
       packages,
       addons,
+      ...(correction ? { correction } : {}),
     };
   });
 
