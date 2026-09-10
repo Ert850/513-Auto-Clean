@@ -573,3 +573,5 @@ body.bk-open { overflow: hidden; }
 .bk-explain ul.yes li::marker { color: #1a8a3f; }
 .bk-explain ul.no li::marker { color: var(--red); }
 .bk-explain-why { font-style: italic; border-top: 1px solid var(--line); padding-top: .7rem; margin-top: .9rem !important; }
+
+.bk-explain ul.time li::marker { color: var(--amber); }

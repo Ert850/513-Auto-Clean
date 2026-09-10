@@ -23,7 +23,6 @@ import {
   CORRECTION_TIERS,
   DEFAULT_RULES,
   SEED_CATALOG,
-  VEHICLE_SIZES,
   componentsOf,
   findPackage,
   packagesFor,
@@ -70,7 +69,12 @@ function packageCard(p) {
     .map((label) => `            <li>${TICK} ${label}</li>`)
     .join("\n");
 
-  return `        <article class="svc-card${p.featured ? " featured" : ""} reveal">
+  // The correction package is a different kind of product and a different
+  // order of price, so it gets a full width card underneath the tier row
+  // rather than orphaning itself as a fourth column.
+  const wide = p.requiresCorrectionTier ? " wide" : "";
+
+  return `        <article class="svc-card${p.featured ? " featured" : ""}${wide} reveal">
 ${p.featured ? '          <span class="svc-tag">Most Popular</span>\n' : ""}          <h3>${esc(p.name)}</h3>
           <div class="svc-meta">
             <span class="price">${price}</span>
@@ -85,7 +89,7 @@ ${feats}
               ? `<details class="svc-how"><summary>How it works</summary><p>${esc(p.note)}</p></details>`
               : ""
           }
-          <div class="svc-foot"><a class="btn ${p.featured ? "btn-primary" : "btn-ghost"} btn-block" href="book.html">Book ${esc(p.name)}</a></div>
+          <div class="svc-foot"><a class="btn ${p.featured ? "btn-primary" : "btn-ghost"} btn-block" href="book.html" data-book-package="${esc(p.id)}">Book ${esc(p.name)}</a></div>
         </article>`;
 }
 
@@ -103,12 +107,13 @@ ${cards}
     </div>`;
   };
 
-  const sizes = VEHICLE_SIZES.map(
-    (v) => `${esc(v.label)} ${v.upchargeCents ? "+" + money(v.upchargeCents) : "no extra charge"}`,
-  ).join(", ");
-
+  const CORR_BASE_MIN = findPackage("showroom-exterior")?.durationMin ?? 0;
   const corr = CORRECTION_TIERS.map(
-    (t) => `<li>${TICK} ${esc(t.label)} <strong>+${money(t.addCents)}</strong>, ${esc(t.result)}</li>`,
+    // Hours are shown because the price only makes sense beside them: this
+    // is days of labour, not a product with a markup.
+    (t) =>
+      `<li><strong>${esc(t.label)}</strong> <b class="corr-price">+${money(t.addCents)}</b>` +
+      `<span class="corr-meta">${esc(t.result)} &middot; about ${dur(CORR_BASE_MIN + t.addMin)} of work</span></li>`,
   ).join("\n        ");
 
   return `${panel("interior")}
@@ -117,8 +122,8 @@ ${panel("exterior")}
 
     <div class="svc-note reveal">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
-      <span>Booking interior <em>and</em> exterior together? Take <strong>${money(DEFAULT_RULES.comboDiscountCents)} off automatically.</strong>
-      Vehicle size: ${sizes}. Travel is worked out from your address, and the first 10 minutes of drive time are free.</span>
+      <span>Booking interior <em>and</em> exterior together? Take <strong>${money(DEFAULT_RULES.comboDiscountCents)} off automatically when you book together.</strong>
+      Have multiple vehicles? <strong>Get ${DEFAULT_RULES.additionalVehicleDiscountBp / 100}% off everything</strong> when you book them together!</span>
     </div>
 
     <div class="svc-correction reveal">
@@ -129,6 +134,9 @@ ${panel("exterior")}
         <ul class="ex-yes">${COATING_EXPLAINER.does.map((d) => `<li>${esc(d)}</li>`).join("")}</ul>
         <p class="ex-h">What it does not do</p>
         <ul class="ex-no">${COATING_EXPLAINER.doesNot.map((d) => `<li>${esc(d)}</li>`).join("")}</ul>
+        <p class="ex-h">How long it takes</p>
+        <ul class="ex-time">${COATING_EXPLAINER.timing.map((d) => `<li>${esc(d)}</li>`).join("")}</ul>
+        <p>${esc(COATING_EXPLAINER.timingNote)}</p>
         <p class="ex-why">${esc(COATING_EXPLAINER.why)}</p>
       </details>
       <h3>Paint correction and ceramic coating</h3>
