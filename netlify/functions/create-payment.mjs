@@ -1,5 +1,6 @@
 import Stripe from "stripe";
 import { priceFromWire } from "./_pricing.mjs";
+import { addressLine, measureDrive } from "./_routes.mjs";
 
 /**
  * Creates the Stripe intent the funnel's payment step confirms against.
@@ -22,6 +23,26 @@ const json = (status, body) => ({
   headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
   body: JSON.stringify(body),
 });
+
+/**
+ * Measure the drive before pricing, so the customer is charged the same
+ * travel fee the funnel showed them rather than a ZIP band approximation.
+ *
+ * Failure is not fatal: it falls back to the estimate, because refusing a
+ * booking over a routing hiccup costs more than a few dollars of drive time.
+ */
+async function measuredMinutes(cart) {
+  const line = addressLine(cart?.address);
+  if (!line) return null;
+  try {
+    // Same address AND same departure time the funnel quoted from, so the
+    // charge matches the number the customer agreed to.
+    const drive = await measureDrive({ address: line, departureMs: cart?.slot ?? null });
+    return drive?.reachable ? drive.minutes : null;
+  } catch {
+    return null;
+  }
+}
 
 export async function handler(event) {
   if (event.httpMethod !== "POST") return json(405, { error: "POST only" });
@@ -48,7 +69,9 @@ export async function handler(event) {
     return json(400, { error: "missing_contact" });
   }
 
-  const priced = priceFromWire(cart);
+  const priced = priceFromWire(cart, {
+    measuredOneWayMinutes: await measuredMinutes(cart),
+  });
   if (priced.rejected.length) {
     return json(400, { error: "unknown_items", rejected: priced.rejected });
   }

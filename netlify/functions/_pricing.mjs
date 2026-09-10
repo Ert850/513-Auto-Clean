@@ -1476,7 +1476,7 @@ function mergeBusy(list) {
 }
 
 // lib/server-entry.ts
-function priceFromWire(wire) {
+function priceFromWire(wire, opts = {}) {
   const rejected = [];
   const vehicles = (wire.vehicles ?? []).map((wv) => {
     const size = wv.sizeId ? vehicleSize(wv.sizeId) : void 0;
@@ -1543,10 +1543,10 @@ function priceFromWire(wire) {
   });
   const cart = {
     vehicles,
-    // Same estimator the funnel used, so the amount charged matches the
-    // amount shown. A ZIP we do not cover prices as no travel rather than
-    // guessing, and gets picked up at confirmation.
-    oneWayMinutes: wire.zip ? estimateOneWayMinutes(wire.zip) : null,
+    // A measured drive wins. The ZIP band estimate is the fallback for a
+    // site without a Maps key, and prices an uncovered ZIP as no travel
+    // rather than guessing.
+    oneWayMinutes: opts.measuredOneWayMinutes ?? (wire.zip ? estimateOneWayMinutes(wire.zip) : null),
     surchargeContext: wire.slot ? { startMinutesLocal: localMinutesOfDay(wire.slot), priorityBooking: Boolean(wire.priority) } : wire.priority ? { startMinutesLocal: minutesOfDay(12), priorityBooking: true } : null,
     zip: wire.zip ?? null,
     ...wire.payInFull ? { payInFull: true } : {},
@@ -1559,6 +1559,8 @@ function priceFromWire(wire) {
     serviceSubtotalCents: q.serviceSubtotalCents,
     surchargeBp: q.surchargeBp,
     serviceDurationMin: q.serviceDurationMin,
+    oneWayMinutes: cart.oneWayMinutes,
+    travelSource: opts.measuredOneWayMinutes != null ? "routes" : cart.oneWayMinutes != null ? "estimate" : "none",
     promoCode: q.promoCode,
     promoDiscountCents: q.promoDiscountCents,
     lines: q.lines.map((l) => ({ label: l.label, amountCents: l.amountCents })),
