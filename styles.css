@@ -341,6 +341,7 @@ section { padding-block: clamp(40px, 5vw, 72px); position: relative; }
 .addon .ad-ic { width: 36px; height: 36px; border-radius: 10px; background: var(--ink); color: var(--red-bright); display: grid; place-items: center; flex-shrink: 0; }
 .addon .ad-ic svg { width: 19px; height: 19px; }
 .addon .ad-price { margin-top: auto; padding-top: .4rem; }
+.addon .ad-ast { display: block; font-style: normal; font-size: .72rem; color: var(--text-soft); line-height: 1.45; margin-top: .3rem; }
 .addon b { font-size: .93rem; display: block; line-height: 1.25; }
 .addon span { font-size: .79rem; color: var(--text-soft); line-height: 1.45; display: block; margin-top: .15rem; }
 

@@ -93,6 +93,8 @@ export interface Addon {
  */
 export const CORRECTION_ADD_CENTS = {
   coatingOnly: 55000,
+  /** Upgrade from the standard 3 to 5 year coating to a 7 year one. */
+  sevenYear: 15000,
   oneStep: 85000,
   twoStep: 149500,
   threeStep: 225000,
@@ -185,6 +187,31 @@ export const ADDONS: Addon[] = [
   },
 
   /* ---------------- exterior ---------------- */
+  {
+    id: "scratch-reduction",
+    name: "Scratch and Ding Reduction",
+    scope: "exterior",
+    icon: "scratch",
+    description: "Small nicks, dings and scratches reduced, not a full correction.",
+    note:
+      "Spot work on the places you point out, rather than a panel by panel correction of the whole vehicle. The area is cleaned and decontaminated, then the paint immediately around the mark is levelled with a compound and refined back to gloss so the scratch stops catching light. How much comes out depends entirely on depth. If you can catch a fingernail in it, it has gone through the clear coat, and nothing brings that back, because correction removes a little clear coat and cannot add any. Anything shallower usually disappears or drops to almost invisible. We will walk the car with you and tell you which of yours is which before we start.",
+    // A full correction tier already levels the whole vehicle, so charging
+    // for spot work on top of it is charging twice for the same pass.
+    includedIn: {
+      packageIds: ["showroom-exterior"],
+      message: "Already covered by the correction tier on Showroom Ready Exterior.",
+    },
+    tiers: [
+      {
+        id: "std",
+        label: "Spot correction",
+        priceCents: 15000,
+        durationMin: 120,
+        asterisk:
+          "Starting quote. It covers a handful of marks. More scratches and dings around the paint raise it, and we agree the number with you before any work starts.",
+      },
+    ],
+  },
   {
     id: "headlight",
     name: "Headlight Restoration",
@@ -293,7 +320,7 @@ export const ADDONS: Addon[] = [
     name: "Ceramic Coating",
     scope: "exterior",
     icon: "gem",
-    description: "Years of protection rather than months, bonded to the clear coat.",
+    description: "3 to 5 years of protection with proper maintenance, bonded to the clear coat.",
     note:
       "A real coating cures into a hard glass-like layer chemically bonded to the clear coat, which is why it lasts years rather than months. It also locks in whatever the paint looks like at the time, so any swirls underneath are sealed in with it. That is why coatings are sold with correction rather than on their own, and why this one lives inside Showroom Ready Exterior.",
     unavailable: true,
@@ -302,9 +329,17 @@ export const ADDONS: Addon[] = [
     tiers: [
       {
         id: "std",
-        label: "Coating only, no correction",
+        label: "3 to 5 year coating, no correction",
         priceCents: CORRECTION_ADD_CENTS.coatingOnly,
         durationMin: 300,
+      },
+      {
+        id: "7yr",
+        label: "7 year coating, no correction",
+        priceCents: CORRECTION_ADD_CENTS.coatingOnly + CORRECTION_ADD_CENTS.sevenYear,
+        // A longer life coating is a thicker, harder product with a longer
+        // cure, not the same bottle sold twice.
+        durationMin: 360,
       },
     ],
   },
@@ -552,9 +587,15 @@ export const CORRECTION_TIERS: CorrectionTier[] = [
   },
 ];
 
+/**
+ * How long the coating is warranted for, chosen inside Showroom Ready.
+ *
+ * The id "3yr" is kept rather than renamed: the funnel defaults a new booking
+ * to it, and a rename would silently drop that default on the floor.
+ */
 export const COATING_TERMS = [
-  { id: "3yr", label: "3 year", addCents: 0, asterisk: true },
-  { id: "5yr", label: "5 year", addCents: 15000, asterisk: true },
+  { id: "3yr", label: "3 to 5 year", addCents: 0, asterisk: true },
+  { id: "7yr", label: "7 year", addCents: CORRECTION_ADD_CENTS.sevenYear, asterisk: true },
   { id: "10yr", label: "10 year", addCents: 30000, asterisk: true },
 ];
 

@@ -31,6 +31,7 @@ export const POPULARITY_SEED: Record<string, number> = {
   "pet-hair": 62,
   stain: 56,
   headlight: 40,
+  "scratch-reduction": 39,
   "tire-rim-shine": 38,
   ozone: 34,
   "ceramic-sealant": 32,

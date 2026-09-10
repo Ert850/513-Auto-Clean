@@ -193,9 +193,15 @@ function addonsHtml() {
     // bookings for yet is still something a customer is deciding about, and
     // hiding the number only means they have to ask to find out whether it is
     // anywhere near their budget.
+    // A tier asterisk is the "this could change on inspection" caveat. The
+    // funnel showed it and the front page did not, which meant the first
+    // place a customer saw a price was the one place it looked unconditional.
+    const caveat = a.tiers.find((t) => t.asterisk)?.asterisk ?? null;
+
     const price =
-      (range ? `<i class="ad-price">${range}</i>` : "") +
-      (why ? `<i class="ad-soon">${esc(why)}</i>` : "");
+      (range ? `<i class="ad-price">${range}${caveat ? "*" : ""}</i>` : "") +
+      (why ? `<i class="ad-soon">${esc(why)}</i>` : "") +
+      (caveat ? `<i class="ad-ast">*${esc(caveat)}</i>` : "");
     // NOTE: the (i) marker and an autoplaying clip belong here, from
     // addon.videoUrl. Neither renders yet.
     const how = a.note
