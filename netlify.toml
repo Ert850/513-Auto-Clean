@@ -16,6 +16,18 @@
   node_bundler = "esbuild"
 
 # Friendlier URLs for the payment endpoints.
+# The reviews proxy had no redirect, so js/reviews.js was always falling
+# through to the local snapshot even once a key was set.
+[[redirects]]
+  from = "/api/reviews"
+  to = "/.netlify/functions/reviews"
+  status = 200
+
+[[redirects]]
+  from = "/api/travel"
+  to = "/.netlify/functions/travel"
+  status = 200
+
 [[redirects]]
   from = "/api/create-payment"
   to = "/.netlify/functions/create-payment"

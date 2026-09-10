@@ -808,6 +808,7 @@ function localMinutesOfDay(ms, timeZone = "America/New_York") {
 }
 
 // lib/travel/zipRanges.ts
+var MAX_ONE_WAY_MINUTES = 12 * 60;
 var ZIP_RANGES = [
   // Cincinnati core
   { zip: "45220", area: "Clifton", minMin: 2, maxMin: 8 },
@@ -1224,6 +1225,7 @@ export {
   CORRECTION_TIERS,
   DEFAULT_RULES,
   MAINTENANCE_PLAN,
+  MAX_ONE_WAY_MINUTES,
   SEED_CATALOG,
   VEHICLE_SIZES,
   addonIcon,
@@ -1233,6 +1235,7 @@ export {
   findPackage,
   isSelectable,
   isUnpriced,
+  mileageFeeCents,
   packagesFor,
   priceFromWire,
   quote,

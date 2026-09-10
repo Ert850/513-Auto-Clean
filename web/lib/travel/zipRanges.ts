@@ -10,6 +10,15 @@
  * Ordered roughly by distance from 45220.
  */
 
+/**
+ * The furthest one-way drive we will quote at all.
+ *
+ * Twelve hours. Past that it is not a mobile detail, it is a road trip, and
+ * quoting a number would be worse than saying so. Shared by the map, the
+ * booking funnel and the server, so all three refuse at the same point.
+ */
+export const MAX_ONE_WAY_MINUTES = 12 * 60;
+
 export interface ZipRange {
   zip: string;
   area: string;

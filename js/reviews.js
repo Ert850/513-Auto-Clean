@@ -141,10 +141,22 @@
       '</figure>';
   }
 
+  var PER_PAGE = 6;
+
+  /**
+   * Every review with something written in it, newest first, six to a page.
+   *
+   * `feature` still decides what the ticker rotates and which page you land
+   * on first, but nothing is hidden here: someone who wants to read all
+   * thirty of them can page through all thirty.
+   */
   function renderGrid(d) {
     if (!mount) return;
-    var shown = d.reviews.filter(function (r) { return r.feature && r.text; }).slice(0, 6);
-    if (!shown.length) { if (fallback) fallback.hidden = false; return; }
+    var all = d.reviews.filter(function (r) { return r.text; });
+    if (!all.length) { if (fallback) fallback.hidden = false; return; }
+
+    var pages = Math.ceil(all.length / PER_PAGE);
+    var page = 0;
 
     var head = '<div class="rv-head">' +
       '<svg class="g-logo" viewBox="0 0 24 24" aria-hidden="true"><path fill="#4285F4" d="M22 12c0-.6-.1-1.2-.2-1.8H12v3.6h5.6a4.8 4.8 0 0 1-2 3.1v2.6h3.2A9.6 9.6 0 0 0 22 12z"/><path fill="#34A853" d="M12 22c2.7 0 5-.9 6.6-2.4l-3.2-2.6c-.9.6-2 .9-3.4.9-2.6 0-4.8-1.7-5.6-4.1H3.1v2.6A10 10 0 0 0 12 22z"/><path fill="#FBBC05" d="M6.4 13.8a6 6 0 0 1 0-3.6V7.6H3.1a10 10 0 0 0 0 8.8z"/><path fill="#EA4335" d="M12 6.4c1.5 0 2.8.5 3.8 1.5l2.8-2.8A10 10 0 0 0 3.1 7.6l3.3 2.6C7.2 8 9.4 6.4 12 6.4z"/></svg>' +
@@ -158,7 +170,43 @@
     var note = '<p class="rv-note">' +
       '<a href="' + esc(MAPS_URL) + '" target="_blank" rel="noopener">Read every review on Google</a></p>';
 
-    mount.innerHTML = head + '<div class="rv-grid">' + shown.map(card).join('') + '</div>' + note;
+    var nav = pages > 1
+      ? '<button type="button" class="rv-arrow prev" data-rv="-1" aria-label="Previous reviews" aria-controls="rvGrid">' +
+          '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M15 5l-7 7 7 7"/></svg>' +
+        '</button>' +
+        '<button type="button" class="rv-arrow next" data-rv="1" aria-label="More reviews" aria-controls="rvGrid">' +
+          '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M9 5l7 7-7 7"/></svg>' +
+        '</button>'
+      : '';
+
+    mount.innerHTML = head +
+      '<div class="rv-stage">' + nav +
+        '<div class="rv-grid" id="rvGrid" aria-live="polite"></div>' +
+      '</div>' +
+      (pages > 1 ? '<p class="rv-page" id="rvPage"></p>' : '') +
+      note;
+
+    var grid = document.getElementById('rvGrid');
+    var counter = document.getElementById('rvPage');
+
+    function paint() {
+      var slice = all.slice(page * PER_PAGE, page * PER_PAGE + PER_PAGE);
+      grid.innerHTML = slice.map(card).join('');
+      if (counter) counter.textContent = (page + 1) + ' of ' + pages;
+    }
+
+    if (pages > 1) {
+      mount.addEventListener('click', function (e) {
+        var b = e.target.closest ? e.target.closest('.rv-arrow') : null;
+        if (!b) return;
+        // Wraps both ways, so the last page rolls straight back to the first
+        // rather than dead-ending on a disabled button.
+        page = (page + Number(b.dataset.rv) + pages) % pages;
+        paint();
+      });
+    }
+
+    paint();
     syncSchema(d.rating, d.total);
   }
 
