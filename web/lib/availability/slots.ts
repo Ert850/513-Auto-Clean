@@ -28,6 +28,20 @@ export interface SlotRequest {
   notBefore: number;
   /** Nothing later than this. Epoch ms. */
   notAfter: number;
+  /**
+   * When set, only these local start times are offered.
+   *
+   * Elijah books almost everything at a handful of times: 8, 10, 4 and 6 on a
+   * weekday, 10 and 4 at the weekend. Offering a wall of half-hour slots is
+   * both harder to choose from and worse for his routing, since a 9:30 start
+   * strands the rest of the morning. Presenting the times he actually works
+   * makes the customer's decision easier AND the day pack better.
+   *
+   * Not a hard rule: computeSlots can be called again without this to surface
+   * everything else that genuinely fits.
+   */
+  preferredStartsMin?: { weekday: number[]; weekend: number[] };
+  timeZone?: string;
 }
 
 const MIN = 60_000;
@@ -82,6 +96,7 @@ export function computeSlots(req: SlotRequest): number[] {
   const free = subtractIntervals(req.openBlocks, req.busy);
   const step = Math.max(1, req.granularityMin) * MIN;
   const out: number[] = [];
+  const wanted = req.preferredStartsMin;
 
   for (const f of free) {
     // Earliest the CUSTOMER-FACING start can be: the drive out has to fit
@@ -93,7 +108,7 @@ export function computeSlots(req: SlotRequest): number[] {
       const commitmentEnd = t + (req.serviceDurationMin + req.travelAfterMin) * MIN;
       if (commitmentEnd > f.end) break;
       if (t > req.notAfter) break;
-      if (commitmentStart >= f.start) out.push(t);
+      if (commitmentStart >= f.start && matchesPreferred(t, wanted, req.timeZone)) out.push(t);
       t += step;
     }
   }
@@ -102,6 +117,41 @@ export function computeSlots(req: SlotRequest): number[] {
 
 function ceilTo(ms: number, step: number): number {
   return Math.ceil(ms / step) * step;
+}
+
+/** Elijah's usual start times. Weekends are quieter, so fewer of them. */
+export const PREFERRED_STARTS = {
+  weekday: [8 * 60, 10 * 60, 16 * 60, 18 * 60],
+  weekend: [10 * 60, 16 * 60],
+};
+
+function matchesPreferred(
+  ms: number,
+  wanted: { weekday: number[]; weekend: number[] } | undefined,
+  timeZone?: string,
+): boolean {
+  if (!wanted) return true;
+  const mins = localMinutesOfDay(ms, timeZone);
+  const day = new Date(ms).getDay();
+  const list = day === 0 || day === 6 ? wanted.weekend : wanted.weekday;
+  return list.includes(mins);
+}
+
+/**
+ * Preferred starts first, then anything else that fits.
+ *
+ * Returning them separately lets the funnel lead with the two or three times
+ * Elijah actually wants, and keep the rest behind a "more times" affordance
+ * rather than dumping everything at once.
+ */
+export function computeSlotsTiered(req: SlotRequest): { preferred: number[]; other: number[] } {
+  const preferred = computeSlots({ ...req, preferredStartsMin: PREFERRED_STARTS });
+  // Omit the key rather than setting it undefined: exactOptionalPropertyTypes
+  // treats an explicit undefined as a distinct, disallowed value.
+  const { preferredStartsMin: _ignored, ...unrestricted } = req;
+  const all = computeSlots(unrestricted);
+  const set = new Set(preferred);
+  return { preferred, other: all.filter((t) => !set.has(t)) };
 }
 
 /**

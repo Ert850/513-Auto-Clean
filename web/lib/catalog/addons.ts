@@ -279,23 +279,3 @@ export const SERVICE_LEVELS = [
 ] as const;
 
 export type ServiceLevel = 1 | 2 | 3 | 4;
-
-/* ================= exterior showroom ================= */
-
-/**
- * Exterior Showroom Ready stays hourly.
- *
- * NOTE FOR ELIJAH: interior Showroom Ready is now a fixed $395, but no fixed
- * exterior price was given, so this keeps the earlier $100/hour with a 6 hour
- * minimum. Worth making these consistent one way or the other.
- */
-export const SHOWROOM_EXTERIOR = {
-  id: "showroom-exterior",
-  name: "Showroom Ready Exterior",
-  tagline: "Extreme attention to detail. Not a paint correction.",
-  hourlyCents: 10000,
-  minimumHours: 6,
-  get minimumCents() { return this.hourlyCents * this.minimumHours; },
-  level: 4 as ServiceLevel,
-  note: "Priced at $100/hour with a 6 hour minimum. Final price depends on the vehicle's starting condition.",
-};

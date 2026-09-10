@@ -23,7 +23,6 @@ import {
   MAINTENANCE_PLAN,
   PAINT_CORRECTION,
   SERVICE_LEVELS,
-  SHOWROOM_EXTERIOR,
 } from "./catalog/addons.js";
 import { SEED_TAX_TABLE, computeTax, lookupRate } from "./pricing/tax.js";
 import {
@@ -35,8 +34,10 @@ import {
   unconfiguredWindow,
 } from "./google/publicCalendar.js";
 import {
+  PREFERRED_STARTS,
   TIME_WINDOWS,
   computeSlots,
+  computeSlotsTiered,
   localMinutesOfDay,
   matchWindows,
   mergeIntervals,
@@ -73,7 +74,6 @@ const api = {
   RULES: DEFAULT_RULES,
   CATALOG: SEED_CATALOG,
   ADDONS,
-  SHOWROOM_EXTERIOR,
   VEHICLE_SIZES,
   vehicleSize,
   packagesFor,
@@ -94,8 +94,10 @@ const api = {
   loadWindow,
   resolveWindow,
   unconfiguredWindow,
+  PREFERRED_STARTS,
   TIME_WINDOWS,
   computeSlots,
+  computeSlotsTiered,
   localMinutesOfDay,
   matchWindows,
   mergeIntervals,
