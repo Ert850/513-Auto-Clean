@@ -69,6 +69,7 @@ import {
   requiresPriorityBooking,
 } from "./pricing/surcharge.js";
 import { quote } from "./pricing/quote.js";
+import { PROMOS, findPromo, normalisePromo, promoDiscountCents, promoMessage } from "./pricing/promos.js";
 import { ADDON_ICONS, addonIcon } from "./catalog/icons.js";
 import { popularityOf } from "./catalog/popularity.js";
 import { ZIP_GEO, zipGeo } from "./travel/zipGeo.js";
@@ -132,6 +133,11 @@ const api = {
   mergeIntervals,
   subtractIntervals,
   quote,
+  PROMOS,
+  findPromo,
+  normalisePromo,
+  promoDiscountCents,
+  promoMessage,
   ZIP_RANGES,
   ZIP_GEO,
   MAX_ONE_WAY_MINUTES,

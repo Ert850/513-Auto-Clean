@@ -46,6 +46,10 @@
       contact: { name: '', phone: '', email: '' },
       consent: { terms: null, sms: null, media: null },
       payInFull: false,
+      // As typed. The engine decides what it is worth, here and again on the
+      // server, so this is never a discount amount.
+      promoCode: '',
+      promoOpen: false,
       notes: '',
       sending: false,
       done: false,
@@ -164,6 +168,7 @@
       surchargeContext: surchargeCtx(),
       zip: state.address.zip || null,
       payInFull: state.payInFull,
+      promoCode: state.promoCode || null,
       visits: state.separateTimes ? state.vehicles.length : 1
     };
   }
@@ -1161,11 +1166,55 @@
 
   /* ================= step 9: pay ================= */
 
+  /**
+   * Promo code entry.
+   *
+   * Collapsed behind a link by default. An open "discount code" field is an
+   * invitation to go and hunt for one, and most people do not have a code.
+   * The ones who do will look for it.
+   */
+  function promoBox(quote) {
+    var applied = quote.promoCode && quote.promoDiscountCents > 0;
+
+    if (!state.promoOpen && !applied) {
+      return '<button type="button" class="bk-promolink" id="bkPromoOpen">Have a promo code?</button>';
+    }
+
+    if (applied) {
+      return '<div class="bk-promo on">' +
+        '<span class="bk-promo-tag">' + esc(quote.promoCode) + '</span>' +
+        '<span class="bk-promo-msg">' + esc(promoBlurb(quote.promoCode)) +
+          ' You saved ' + $(quote.promoDiscountCents) + '.</span>' +
+        '<button type="button" class="bk-promo-clear" id="bkPromoClear">Remove</button>' +
+        '</div>';
+    }
+
+    var typed = state.promoCode || '';
+    var bad = typed && quote.promoRejected ? P.promoMessage(quote.promoRejected) : '';
+
+    return '<div class="bk-promo">' +
+      '<label for="bkPromo">Promo code</label>' +
+      '<div class="bk-promo-row">' +
+        '<input type="text" id="bkPromo" data-promo value="' + esc(typed) +
+          '" placeholder="Enter a code" autocomplete="off" autocapitalize="characters" spellcheck="false" />' +
+        '<button type="button" class="bk-promo-go" id="bkPromoApply">Apply</button>' +
+      '</div>' +
+      (bad ? '<p class="bk-promo-err">' + esc(bad) + '</p>' : '') +
+      '</div>';
+  }
+
+  function promoBlurb(code) {
+    var hit = P.findPromo(code);
+    return (hit.promo && hit.promo.blurb) || 'Discount applied.';
+  }
+
   function rPay() {
     var quote = q();
     var now = state.payInFull;
 
     var html = '<div class="bk-review">' + lineTable(quote) + '</div>';
+
+    html += promoBox(quote);
 
     html += '<div class="bk-payopts">' +
       '<button type="button" class="bk-pay' + (!now ? ' on' : '') + '" data-pay="later">' +
@@ -1385,11 +1434,20 @@
       '[data-consent],[data-pay],[data-delveh],[data-browsepick],[data-max],[data-sort],' +
       '[data-kind],[data-bucket],[data-paymethod],[data-corr],[data-coating],[data-garage],[data-step],' +
       '#bkAddVeh,#bkMoreDays,#bkNext,#bkBack,#bkClose,#bkScrim,#bkBrowse,#bkBrowseBack,' +
+      '#bkPromoOpen,#bkPromoApply,#bkPromoClear,' +
       '#bkQClear,#bkReset,#bkOther'
     );
     if (!t) return;
     var v = veh();
 
+    if (t.id === 'bkPromoOpen') { state.promoOpen = true; return render(); }
+    if (t.id === 'bkPromoClear') { state.promoCode = ''; state.promoOpen = false; return render(); }
+    if (t.id === 'bkPromoApply') {
+      var pbox = el('bkPromo');
+      // Normalised on the way in, so "  likenew " and "LIKENEW" are one code.
+      state.promoCode = pbox ? P.normalisePromo(pbox.value) : '';
+      return render();
+    }
     if (t.id === 'bkBrowse') { state.browse = true; return render(); }
     if (t.id === 'bkBrowseBack') { state.browse = false; return render(); }
     if (t.id === 'bkQClear') { state.browseQ = ''; return render(); }
@@ -1572,6 +1630,12 @@
         renderTotal();
       }
       if (t.dataset.addr === 'line1') maybeAutocomplete(t.value);
+      return;
+    }
+    if (t.dataset.promo !== undefined) {
+      // Held raw while typing so the field keeps focus and the caret. It is
+      // normalised and re-rendered on Apply or Enter, not on every keystroke.
+      state.promoCode = t.value;
       return;
     }
     if (t.dataset.c) { state.contact[t.dataset.c] = t.value; return; }
@@ -1844,6 +1908,14 @@
     });
     host.addEventListener('change', onChange);
     host.addEventListener('input', onInput);
+
+    host.addEventListener('keydown', function (e) {
+      if (e.key !== 'Enter') return;
+      if (!e.target || !e.target.dataset || e.target.dataset.promo === undefined) return;
+      e.preventDefault();
+      state.promoCode = P.normalisePromo(e.target.value);
+      render();
+    });
 
     document.addEventListener('keydown', function (e) {
       if (e.key === 'Escape' && !host.hidden) close();

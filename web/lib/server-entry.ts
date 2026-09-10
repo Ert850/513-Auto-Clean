@@ -57,6 +57,13 @@ export interface WireCart {
   /** Separate trips, when two vehicles could not share a slot. */
   visits?: number;
   payInFull?: boolean;
+  /**
+   * The code as the customer typed it. NOT an amount. The engine looks it
+   * up in the same table the funnel used and decides what it is worth, so
+   * a request claiming a 90% discount gets repriced at whatever the table
+   * actually says, or at nothing.
+   */
+  promoCode?: string | null;
 }
 
 export interface PricedCart {
@@ -64,6 +71,9 @@ export interface PricedCart {
   serviceSubtotalCents: number;
   surchargeBp: number;
   serviceDurationMin: number;
+  /** The code that survived server side lookup. Null when none did. */
+  promoCode: string | null;
+  promoDiscountCents: number;
   lines: { label: string; amountCents: number }[];
   /** Anything the browser asked for that we refused to price. */
   rejected: string[];
@@ -148,6 +158,7 @@ export function priceFromWire(wire: WireCart): PricedCart {
         : null,
     zip: wire.zip ?? null,
     ...(wire.payInFull ? { payInFull: true } : {}),
+    ...(wire.promoCode ? { promoCode: wire.promoCode } : {}),
     ...(wire.visits ? { visits: Math.max(1, Math.min(wire.visits, wire.vehicles.length || 1)) } : {}),
   };
 
@@ -158,6 +169,8 @@ export function priceFromWire(wire: WireCart): PricedCart {
     serviceSubtotalCents: q.serviceSubtotalCents,
     surchargeBp: q.surchargeBp,
     serviceDurationMin: q.serviceDurationMin,
+    promoCode: q.promoCode,
+    promoDiscountCents: q.promoDiscountCents,
     lines: q.lines.map((l) => ({ label: l.label, amountCents: l.amountCents })),
     rejected,
   };
@@ -166,6 +179,7 @@ export function priceFromWire(wire: WireCart): PricedCart {
 import { addonIcon } from "./catalog/icons.js";
 
 export { MAX_ONE_WAY_MINUTES } from "./travel/zipRanges.js";
+export { PROMOS, findPromo, normalisePromo, promoDiscountCents, promoMessage } from "./pricing/promos.js";
 export { parseIcsBusy, mergeBusy } from "./booking/ics.js";
 export { mileageFeeCents } from "./pricing/mileage.js";
 
