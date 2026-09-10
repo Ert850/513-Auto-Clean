@@ -254,6 +254,11 @@ const PACKAGES: Package[] = [
     priceCents: 24500,
     durationMin: 240,
     requiresCorrectionTier: true,
+    // Not taking these yet. Listed with a price and an explanation so people
+    // can see it is coming and say they want it.
+    comingSoon: true,
+    comingSoonNote:
+      "We are building up to correction work. Register your interest and we will come to you first when it opens.",
     schedulingDurationMin: 480,
     componentIds: [
       ...BASIC_EXT_IDS,

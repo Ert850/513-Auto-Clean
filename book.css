@@ -184,6 +184,89 @@ body.bk-open { overflow: hidden; }
 .bk-travel.far { border-color: var(--red); }
 .bk-travel.far b { color: var(--red-deep); }
 
+/* ---------- coming soon, and registering interest ---------- */
+/* Shown rather than hidden, because hiding a service hides the demand for
+   it. Amber not red: this is information, not a call to action. */
+.bk-pkg.soon { border-style: dashed; }
+.bk-pkg.soon:hover { border-color: var(--amber); }
+.bk-pkg.soon.want { border-style: solid; border-color: var(--amber); background: rgba(240,169,63,.09); }
+.bk-flag.soon { background: rgba(240,169,63,.2); color: #7a5209; }
+.bk-want {
+  display: block; font-style: normal; font-size: .74rem; font-weight: 800;
+  letter-spacing: .04em; color: #7a5209; margin-top: .3rem;
+}
+.bk-pkg.soon.want .bk-want { color: #1a8a3f; }
+
+.bk-wantbtn {
+  display: block; width: 100%; margin-top: .5rem; font: inherit; font-size: .82rem;
+  font-weight: 700; cursor: pointer; padding: .5rem .7rem; border-radius: var(--r-sm);
+  background: transparent; color: #7a5209;
+  border: 1.5px dashed rgba(240,169,63,.6);
+  transition: background .16s, border-color .16s, color .16s;
+}
+.bk-wantbtn:hover { border-color: var(--amber); background: rgba(240,169,63,.1); }
+.bk-wantbtn.on {
+  border-style: solid; border-color: #2f9e5e; color: #1a8a3f;
+  background: rgba(47,158,94,.1);
+}
+
+.bk-interest {
+  background: rgba(240,169,63,.13); border: 1px solid rgba(240,169,63,.4);
+  border-radius: var(--r-md); padding: .8rem .95rem; margin-bottom: .9rem;
+}
+.bk-interest b { display: block; font-size: .92rem; color: #7a5209; }
+.bk-interest span { display: block; font-size: .82rem; color: var(--text-soft); line-height: 1.55; margin-top: .2rem; }
+
+/* ---------- when we cannot offer a time ---------- */
+/* A dead end here loses a customer who has already chosen a package, given
+   an address and reached the last step. So it becomes a request instead. */
+.bk-noslots {
+  background: rgba(240,169,63,.13); border: 1px solid rgba(240,169,63,.4);
+  border-radius: var(--r-md); padding: .85rem 1rem; margin-bottom: .9rem;
+}
+.bk-noslots b { display: block; font-size: .95rem; color: #7a5209; }
+.bk-noslots span { display: block; font-size: .84rem; color: var(--text-soft); line-height: 1.55; margin-top: .25rem; }
+
+.bk-pref h4 { font-size: .85rem; font-weight: 800; margin: .9rem 0 .5rem; }
+.bk-pref-days { display: flex; gap: .4rem; overflow-x: auto; padding-bottom: .3rem; }
+.bk-pref-day {
+  flex: none; min-width: 62px; font: inherit; cursor: pointer; text-align: center;
+  background: var(--paper); border: 1.5px solid var(--line); border-radius: var(--r-sm);
+  padding: .5rem .3rem; transition: border-color .16s, background .16s;
+}
+.bk-pref-day:hover { border-color: var(--red); }
+.bk-pref-day.on { border-color: var(--red); background: var(--red-ghost); }
+.bk-pref-day b { display: block; font-size: .82rem; font-weight: 800; }
+.bk-pref-day span { display: block; font-size: .72rem; color: var(--text-soft); margin-top: .1rem; }
+
+.bk-pref-parts { display: grid; grid-template-columns: repeat(3, 1fr); gap: .4rem; }
+.bk-pref-part {
+  font: inherit; cursor: pointer; text-align: left;
+  background: var(--paper); border: 1.5px solid var(--line); border-radius: var(--r-sm);
+  padding: .55rem .7rem; transition: border-color .16s, background .16s;
+}
+.bk-pref-part:hover { border-color: var(--red); }
+.bk-pref-part.on { border-color: var(--red); background: var(--red-ghost); }
+.bk-pref-part b { display: block; font-size: .85rem; font-weight: 700; }
+.bk-pref-part span { display: block; font-size: .72rem; color: var(--text-soft); margin-top: .1rem; }
+
+.bk-pref-ok { margin: .7rem 0 0; font-size: .84rem; color: #1a8a3f; font-weight: 700; }
+.bk-pref-hint { margin: .7rem 0 0; font-size: .82rem; color: var(--text-soft); }
+.bk-pref-call { margin: .9rem 0 0; font-size: .84rem; color: var(--text-soft); }
+.bk-pref-call a { color: var(--red); font-weight: 700; }
+
+.bk-asknote {
+  background: var(--ink); color: #fff; border-radius: var(--r-md);
+  padding: .9rem 1.05rem; margin-bottom: .9rem;
+}
+.bk-asknote b { display: block; font-family: var(--font-display); font-size: 1.02rem; }
+.bk-asknote span { display: block; font-size: .84rem; color: rgba(255,255,255,.8); line-height: 1.55; margin-top: .25rem; }
+.bk-asknote strong { color: #fff; }
+
+/* The single pay option on a request is a statement, not a choice. */
+.bk-pay.static { cursor: default; }
+.bk-pay.static:hover { transform: none; }
+
 /* ---------- multi day jobs ---------- */
 /* A job across several days is a different kind of commitment from a slot,
    so it does not get dressed up as one. */

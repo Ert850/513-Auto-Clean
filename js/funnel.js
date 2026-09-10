@@ -51,6 +51,13 @@
       // Measured drive time, once the address is complete enough to route
       // from. Until then the ZIP band estimate stands in.
       travel: blankTravel(),
+      // When no slot can be offered, the customer says roughly when suits
+      // and this becomes a request rather than a confirmed booking.
+      // Services someone wants but cannot book yet. Rides along with
+      // whatever they DO book, so Elijah learns the demand for the things he
+      // has not launched instead of guessing at it.
+      interest: [],
+      prefer: { parts: [], days: [] },
       promoCode: '',
       promoOpen: false,
       notes: '',
@@ -100,6 +107,7 @@
   function sLoc() { return state.address.city || state.address.zip || ''; }
   function sMore() { var n = state.vehicles.length; return n > 1 ? n + ' vehicles' : '1 vehicle'; }
   function sTime() {
+    if (!state.slot && isInquiry()) return 'Times requested';
     return state.slot
       ? new Date(state.slot).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ', ' +
         new Date(state.slot).toLocaleTimeString('en-US', { hour: 'numeric' })
@@ -322,7 +330,9 @@
     var next = el('bkNext');
     next.hidden = s.auto;
     next.querySelector('span').textContent =
-      s.id === 'pay' ? (state.payInFull ? 'Pay and confirm' : 'Confirm booking') : 'Continue';
+      s.id === 'pay'
+        ? (isInquiry() ? 'Send request' : state.payInFull ? 'Pay and confirm' : 'Confirm booking')
+        : 'Continue';
 
     renderTotal();
     var focusable = el('bkBody').querySelector('[data-focus]');
@@ -606,6 +616,24 @@
         var comps = P.componentsOf(p, P.CATALOG).map(function (c) { return esc(c.name); });
         var dur = pkgDuration(p);
 
+        // Not bookable yet, but still worth showing: hiding a service hides
+        // the demand for it. Ticking this does not select the package, so
+        // someone can register interest AND book what they came for.
+        if (p.comingSoon) {
+          var want = state.interest.indexOf(p.id) > -1;
+          html += '<button type="button" class="bk-pkg soon' + (want ? ' want' : '') +
+            '" data-interest="' + p.id + '">' +
+            '<span class="bk-pkg-l">' +
+              '<b>' + esc(p.name) + '<i class="bk-flag soon">Coming soon</i></b>' +
+              '<span class="bk-pkg-tag">' + esc(p.tagline) + '</span>' +
+              '<span class="bk-pkg-feat">' + esc(p.comingSoonNote || 'Not bookable yet.') + '</span>' +
+            '</span>' +
+            '<span class="bk-pkg-r"><b>' + pkgPrice(p) + '</b>' +
+              '<i class="bk-want">' + (want ? 'Interested' : 'Tell me when') + '</i></span>' +
+            '</button>';
+          return;
+        }
+
         html += '<button type="button" class="bk-pkg' + (on ? ' on' : '') + '" data-pkg="' + p.id + '" data-cat="' + cat + '">' +
           '<span class="bk-pkg-l">' +
             '<b>' + esc(p.name) + '</b>' +
@@ -750,6 +778,8 @@
             ? '<details class="bk-how"><summary>How it works</summary><p>' + esc(a.note) + '</p></details>'
             : '');
 
+        var wants = state.interest.indexOf(a.id) > -1;
+
         if (unavailable) {
           // Same reasoning as the browse list: show what it costs, then say
           // why it cannot be booked today.
@@ -762,7 +792,10 @@
                   '<span class="bk-tier-p">' + $(t.priceCents) + '</span></span>';
               }).join('') + '</div>';
           }
-          html += '<p class="bk-addon-block">*' + esc(unavailable) + '</p>';
+          html += '<p class="bk-addon-block">*' + esc(unavailable) + '</p>' +
+            '<button type="button" class="bk-wantbtn' + (wants ? ' on' : '') +
+            '" data-interest="' + a.id + '">' +
+            (wants ? 'You are on the list' : 'Tell me when this opens') + '</button>';
         } else if (blocked) {
           html += '<p class="bk-addon-block">' + esc(blocked) + '</p>';
         } else {
@@ -1072,6 +1105,45 @@
     return html;
   }
 
+  /** Readable names for whatever they ticked, packages and add-ons alike. */
+  function interestNames() {
+    return state.interest.map(function (id) {
+      var pkg = P.findPackage(id);
+      if (pkg) return pkg.name;
+      var add = P.findAddon(id);
+      return add ? add.name : id;
+    });
+  }
+
+  /** "Tuesday or Wednesday, mornings" in the customer's own terms. */
+  function preferenceSummary() {
+    var days = state.prefer.days.map(function (k) {
+      var b = k.split('-');
+      return new Date(Number(b[0]), Number(b[1]) - 1, Number(b[2]))
+        .toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+    });
+    var parts = state.prefer.parts.map(function (id) {
+      var w = DAY_PARTS.filter(function (x) { return x.id === id; })[0];
+      return w ? w.label.toLowerCase() : id;
+    });
+
+    var out = [];
+    if (days.length) out.push('You asked for ' + list(days) + '.');
+    if (parts.length) out.push((days.length ? 'Ideally ' : 'You asked for ') + list(parts) + '.');
+    return out.join(' ');
+  }
+
+  function list(items) {
+    if (items.length <= 1) return items[0] || '';
+    return items.slice(0, -1).join(', ') + ' or ' + items[items.length - 1];
+  }
+
+  function toggle(list_, value) {
+    var i = list_.indexOf(value);
+    if (i > -1) list_.splice(i, 1);
+    else list_.push(value);
+  }
+
   function startOfToday() {
     var d = new Date();
     return new Date(d.getFullYear(), d.getMonth(), d.getDate());
@@ -1156,9 +1228,7 @@
       // Last line of defence. A customer sees a way forward rather than a
       // spinner, and the console carries the real reason.
       if (window.console) console.error('[513] slot painting failed', err);
-      box.innerHTML = '<p class="bk-empty">We could not load times just now. ' +
-        '<a href="index.html#inquiry">Send us a message</a> or call ' +
-        '<a href="tel:+15132792915">(513) 279-2915</a> and we will book you in directly.</p>';
+      box.innerHTML = inquiryPanel('We could not load times just now.');
     }
   }
 
@@ -1201,9 +1271,7 @@
 
     if (!found.length) {
       box.innerHTML = head +
-        '<p class="bk-empty">We do not have ' + plan.totalDays +
-        ' clear days in a row in that range. <a href="index.html#inquiry">Send us a message</a>' +
-        ' and we will find a run of days that works.</p>';
+        inquiryPanel('We do not have ' + plan.totalDays + ' clear days in a row in that range.');
       return;
     }
 
@@ -1227,6 +1295,74 @@
     });
 
     box.innerHTML = html + '</div>';
+  }
+
+  /**
+   * True when the customer is asking for a time rather than taking one.
+   *
+   * Everything downstream keys off this: the price is a quote, the button
+   * says request, and paying in full is off the table.
+   */
+  function isInquiry() {
+    return !state.slot && (state.prefer.parts.length > 0 || state.prefer.days.length > 0);
+  }
+
+  var DAY_PARTS = [
+    { id: 'morning',   label: 'Morning',   hint: '8am to 12pm' },
+    { id: 'afternoon', label: 'Afternoon', hint: '12pm to 4pm' },
+    { id: 'evening',   label: 'Evening',   hint: '4pm to 8pm' }
+  ];
+
+  /**
+   * What to do when we cannot offer a single time.
+   *
+   * The worst possible answer here is a dead end. Someone has picked a
+   * package, given an address and reached the last step: sending them away to
+   * a contact form loses most of them. So they tell us roughly when suits and
+   * carry on through the same flow, and we come back with a time.
+   *
+   * They CANNOT pay in full on this path. We would be holding money against a
+   * time nobody has agreed to, and the first thing that happens when the
+   * times do not work is a refund.
+   */
+  function inquiryPanel(why) {
+    var today = startOfToday();
+
+    var days = '';
+    for (var i = 1; i <= 10; i++) {
+      var d = new Date(today.getTime() + i * DAY);
+      var key = d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate();
+      var on = state.prefer.days.indexOf(key) > -1;
+      days += '<button type="button" class="bk-pref-day' + (on ? ' on' : '') +
+        '" data-prefday="' + key + '">' +
+        '<b>' + d.toLocaleDateString('en-US', { weekday: 'short' }) + '</b>' +
+        '<span>' + d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + '</span>' +
+        '</button>';
+    }
+
+    var parts = DAY_PARTS.map(function (w) {
+      var on = state.prefer.parts.indexOf(w.id) > -1;
+      return '<button type="button" class="bk-pref-part' + (on ? ' on' : '') +
+        '" data-prefpart="' + w.id + '">' +
+        '<b>' + w.label + '</b><span>' + w.hint + '</span></button>';
+    }).join('');
+
+    return '<div class="bk-noslots">' +
+        '<b>' + esc(why) + '</b>' +
+        '<span>Tell us roughly when suits and we will come back with a time, ' +
+        'usually within a few hours. Nothing is charged until you have agreed to it.</span>' +
+      '</div>' +
+      '<div class="bk-pref">' +
+        '<h4>Which days could work?</h4>' +
+        '<div class="bk-pref-days">' + days + '</div>' +
+        '<h4>And what time of day?</h4>' +
+        '<div class="bk-pref-parts">' + parts + '</div>' +
+        (isInquiry()
+          ? '<p class="bk-pref-ok">Good. Carry on and we will confirm a time with you.</p>'
+          : '<p class="bk-pref-hint">Pick at least one day or time of day to carry on.</p>') +
+      '</div>' +
+      '<p class="bk-pref-call">Rather just talk to us? Text or call ' +
+        '<a href="sms:+15132792915">(513) 279-2915</a>.</p>';
   }
 
   function paintSlotsInner(box, win, from, to, dur, errMsg) {
@@ -1276,8 +1412,7 @@
     var primary = slots;
 
     if (!primary.length) {
-      box.innerHTML = '<p class="bk-empty">Nothing open in that range for a ' + fmtDur(dur) +
-        ' job. Try another time of day, or <a href="index.html#inquiry">send us a question</a> and we will find something.</p>';
+      box.innerHTML = inquiryPanel('Nothing open in that range for a ' + fmtDur(dur) + ' job.');
       return;
     }
 
@@ -1384,7 +1519,11 @@
     return Math.round((q().serviceSubtotalCents * bp) / 10000);
   }
 
-  function vTime() { return state.slot ? null : 'Pick a time to continue.'; }
+  function vTime() {
+    if (state.slot) return null;
+    if (isInquiry()) return null;
+    return 'Pick a time, or tell us when suits.';
+  }
 
   /* ================= step 8: contact ================= */
 
@@ -1484,25 +1623,61 @@
   }
 
   function rPay() {
+    var ask = isInquiry();
+
+    // Paying in full for a time nobody has agreed to is how you end up
+    // issuing refunds. Forced off rather than merely hidden, so it cannot
+    // survive from an earlier pass through this step.
+    if (ask) state.payInFull = false;
+
     var quote = q();
     var now = state.payInFull;
 
-    var html = '<div class="bk-review">' + lineTable(quote) + '</div>';
+    var html = '';
+
+    if (ask) {
+      html += '<div class="bk-asknote">' +
+        '<b>This is a request, not a confirmed time</b>' +
+        '<span>' + esc(preferenceSummary()) + ' We will come back with a time that works, ' +
+        'usually within a few hours. <strong>Nothing is charged until you have agreed to it.</strong>' +
+        '</span></div>';
+    }
+
+    html += '<div class="bk-review">' + lineTable(quote) + '</div>';
+
+    if (state.interest.length) {
+      html += '<div class="bk-interest">' +
+        '<b>We will let you know when these open</b>' +
+        '<span>' + esc(interestNames().join(', ')) +
+        '. Nothing to pay for these, and they are not part of today\'s total.</span>' +
+        '</div>';
+    }
 
     html += promoBox(quote);
 
-    html += '<div class="bk-payopts">' +
-      '<button type="button" class="bk-pay' + (!now ? ' on' : '') + '" data-pay="later">' +
-        '<b>Pay after the detail</b>' +
-        '<span>Settle up once the work is finished. We may still need a card on file in case of cancellations or payment issues.</span>' +
-        '<i>' + $(quote.totalCents) + '</i>' +
-      '</button>' +
-      '<button type="button" class="bk-pay' + (now ? ' on' : '') + '" data-pay="now">' +
-        '<b>Pay now and save ' + RULES.payInFullDiscountBp / 100 + '%</b>' +
-        '<span>Settle the whole thing today.</span>' +
-        '<i>' + $(now ? quote.totalCents : quote.totalCents - quote.payInFullSavingsCents) + '</i>' +
-      '</button>' +
-      '</div>';
+    if (ask) {
+      html += '<div class="bk-payopts">' +
+        '<div class="bk-pay on static">' +
+          '<b>Pay after the detail</b>' +
+          '<span>We take a card to hold the request. It is not charged until the time is ' +
+          'agreed and the work is done.</span>' +
+          '<i>' + $(quote.totalCents) + '</i>' +
+        '</div>' +
+        '</div>';
+    } else {
+      html += '<div class="bk-payopts">' +
+        '<button type="button" class="bk-pay' + (!now ? ' on' : '') + '" data-pay="later">' +
+          '<b>Pay after the detail</b>' +
+          '<span>Settle up once the work is finished. We may still need a card on file in case of cancellations or payment issues.</span>' +
+          '<i>' + $(quote.totalCents) + '</i>' +
+        '</button>' +
+        '<button type="button" class="bk-pay' + (now ? ' on' : '') + '" data-pay="now">' +
+          '<b>Pay now and save ' + RULES.payInFullDiscountBp / 100 + '%</b>' +
+          '<span>Settle the whole thing today.</span>' +
+          '<i>' + $(now ? quote.totalCents : quote.totalCents - quote.payInFullSavingsCents) + '</i>' +
+        '</button>' +
+        '</div>';
+    }
 
     html += '<div class="bk-cardbox">' +
       '<h4>' + (now ? 'How would you like to pay?' : 'Card on file') + '</h4>' +
@@ -1569,7 +1744,12 @@
       slot: state.slot,
       priority: state.priority,
       promoCode: state.promoCode || null,
-      payInFull: state.payInFull
+      // A request, not a booking. The server must not take money for a time
+      // that does not exist yet.
+      kind: isInquiry() ? 'inquiry' : 'booking',
+      interest: state.interest.slice(),
+      prefer: isInquiry() ? state.prefer : null,
+      payInFull: isInquiry() ? false : state.payInFull
     };
   }
 
@@ -1717,6 +1897,7 @@
       '[data-size],[data-intent],[data-pkg],[data-addon],[data-clear],[data-win],[data-slot],' +
       '[data-consent],[data-pay],[data-delveh],[data-browsepick],[data-max],[data-sort],' +
       '[data-kind],[data-bucket],[data-paymethod],[data-corr],[data-coating],[data-garage],[data-step],' +
+      '[data-prefday],[data-prefpart],[data-interest],' +
       '#bkAddVeh,#bkMoreDays,#bkNext,#bkBack,#bkClose,#bkScrim,#bkBrowse,#bkBrowseBack,' +
       '#bkPromoOpen,#bkPromoApply,#bkPromoClear,' +
       '#bkQClear,#bkReset,#bkOther'
@@ -1853,6 +2034,21 @@
       if (target) target.scrollIntoView({ behavior: 'smooth', block: next ? 'center' : 'nearest' });
       renderTotal();
       return;
+    }
+    if (t.dataset.interest) {
+      toggle(state.interest, t.dataset.interest);
+      return render();
+    }
+    if (t.dataset.prefday) {
+      toggle(state.prefer.days, t.dataset.prefday);
+      // A preference and a fixed slot are different answers to one question.
+      state.slot = null;
+      return render();
+    }
+    if (t.dataset.prefpart) {
+      toggle(state.prefer.parts, t.dataset.prefpart);
+      state.slot = null;
+      return render();
     }
     if (t.dataset.pay) { state.payInFull = t.dataset.pay === 'now'; return render(); }
 
@@ -2211,7 +2407,7 @@
     });
 
     // Any Book Now link opens the funnel in place rather than navigating.
-    document.querySelectorAll('a[href="book.html"], a[href="./book.html"], [data-book], [data-book-browse]').forEach(function (a) {
+    document.querySelectorAll('a[href="book.html"], a[href="./book.html"], [data-book], [data-book-browse], [data-book-interest]').forEach(function (a) {
       a.addEventListener('click', function (e) {
         e.preventDefault();
         open();
@@ -2226,6 +2422,18 @@
         // "Book Basic Exterior" and friends: treat it exactly as if they had
         // picked that package inside the funnel, so the next thing asked is
         // the size question rather than a category they already chose.
+        // "Register interest" from the services grid: open the funnel with
+        // that box already ticked, so they land on the picker able to carry
+        // on and book something they CAN have.
+        var wanted = a.getAttribute('data-book-interest');
+        if (wanted) {
+          if (state.interest.indexOf(wanted) < 0) state.interest.push(wanted);
+          var wv = veh();
+          var wp = P.findPackage(wanted);
+          if (wp) wv.intent = wp.category;
+          return go(wv.size ? 2 : 0);
+        }
+
         var id = a.getAttribute('data-book-package');
         var picked = id ? P.findPackage(id) : null;
         if (picked) {
