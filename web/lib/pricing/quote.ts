@@ -27,15 +27,18 @@ export interface AddonRef {
   durationMin: number;
 }
 
-/** Paint correction plus its ceramic coating term. */
+/** The correction or coating tier chosen on top of Showroom Ready Exterior. */
 export interface CorrectionRef {
   tierId: string;
   tierLabel: string;
-  priceCents: number;
-  durationMin: number;
+  /** Added on top of the package base, not the whole price. */
+  addCents: number;
+  addMin: number;
   coatingId: string;
   coatingLabel: string;
   coatingAddCents: number;
+  /** Canopy when the customer has no garage. */
+  canopyCents?: number;
 }
 
 export interface CartVehicle {
@@ -68,6 +71,7 @@ export type LineKind =
   | "addon"
   | "correction"
   | "coating"
+  | "canopy"
   | "size_upcharge"
   | "combo_discount"
   | "pay_in_full_discount"
@@ -157,12 +161,18 @@ export function quote(
       const c = vehicle.correction;
       vLines.push({
         kind: "correction", label: c.tierLabel, vehicleIndex: vi,
-        amountCents: c.priceCents, durationMin: c.durationMin,
+        amountCents: c.addCents, durationMin: c.addMin,
       });
       if (c.coatingAddCents > 0) {
         vLines.push({
-          kind: "coating", label: "Ceramic coating, " + c.coatingLabel,
+          kind: "coating", label: c.coatingLabel + " coating",
           vehicleIndex: vi, amountCents: c.coatingAddCents, durationMin: 0,
+        });
+      }
+      if (c.canopyCents && c.canopyCents > 0) {
+        vLines.push({
+          kind: "canopy", label: "Canopy setup, no garage",
+          vehicleIndex: vi, amountCents: c.canopyCents, durationMin: 30,
         });
       }
     }

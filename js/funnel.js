@@ -23,7 +23,10 @@
   /* ================= state ================= */
 
   function newVehicle() {
-    return { size: null, intent: null, packageIds: [], addons: [], label: '' };
+    return {
+      size: null, intent: null, packageIds: [], addons: [], label: '',
+      correctionTier: null, coatingTerm: '3yr', noGarage: false
+    };
   }
 
   var state = null;
@@ -91,6 +94,26 @@
     };
   }
 
+  /** The chosen correction tier, priced from the catalog. */
+  function correctionRef(v) {
+    if (!v.correctionTier) return undefined;
+    var tier = P.findCorrectionTier(v.correctionTier);
+    var term = P.findCoatingTerm(v.coatingTerm) || P.COATING_TERMS[0];
+    if (!tier) return undefined;
+    var ref = {
+      tierId: tier.id, tierLabel: tier.label,
+      addCents: tier.addCents, addMin: tier.addMin,
+      coatingId: term.id, coatingLabel: term.label, coatingAddCents: term.addCents
+    };
+    if (v.noGarage) ref.canopyCents = P.CORRECTION_RULES.canopyCents;
+    return ref;
+  }
+
+  /** True when any vehicle in the booking needs correction scheduling rules. */
+  function hasCorrection() {
+    return state.vehicles.some(function (v) { return Boolean(v.correctionTier); });
+  }
+
   function cart() {
     return {
       vehicles: state.vehicles.map(function (v) {
@@ -106,7 +129,8 @@
               priceCents: p.priceCents, durationMin: p.durationMin
             };
           }),
-          addons: v.addons.map(addonRef).filter(Boolean)
+          addons: v.addons.map(addonRef).filter(Boolean),
+          correction: correctionRef(v)
         };
       }),
       // Travel needs a Maps key and a chosen time. Until then it reads as
@@ -425,12 +449,67 @@
       html += '<p class="bk-note">Pick one from each list. Booking both takes <b>' +
         $(RULES.comboDiscountCents) + ' off</b> automatically.</p>';
     }
+
+    if (needsCorrection(v)) html += rCorrection(v);
     return html;
+  }
+
+  function needsCorrection(v) {
+    return v.packageIds.some(function (id) {
+      var p = P.findPackage(id);
+      return p && p.requiresCorrectionTier;
+    });
+  }
+
+  /**
+   * Showroom Ready Exterior is Full Exterior plus one of these, so the choice
+   * is required rather than optional and appears inline the moment the
+   * package is picked.
+   */
+  function rCorrection(v) {
+    var R2 = P.CORRECTION_RULES;
+    var html = '<div class="bk-correction"><h3 class="bk-grp">Choose your correction level</h3>';
+
+    html += P.CORRECTION_TIERS.map(function (t) {
+      var on = v.correctionTier === t.id;
+      return '<button type="button" class="bk-pkg' + (on ? ' on' : '') + '" data-corr="' + t.id + '">' +
+        '<span class="bk-pkg-l"><b>' + esc(t.label) + (t.asterisk ? '<sup>*</sup>' : '') + '</b>' +
+        '<span class="bk-pkg-tag">' + esc(t.result) + '</span>' +
+        '<span class="bk-pkg-feat">' + esc(t.detail) + '</span></span>' +
+        '<span class="bk-pkg-r"><b>+' + $(t.addCents) + '</b><i>' + fmtDur(t.addMin) + '</i></span>' +
+        '</button>';
+    }).join('');
+
+    if (v.correctionTier) {
+      html += '<h3 class="bk-grp">Coating length</h3><div class="bk-tiers multi">' +
+        P.COATING_TERMS.map(function (c) {
+          return '<button type="button" class="bk-tier' + (v.coatingTerm === c.id ? ' on' : '') +
+            '" data-coating="' + c.id + '">' +
+            '<span class="bk-tier-l">' + esc(c.label) + (c.asterisk ? '*' : '') + '</span>' +
+            '<span class="bk-tier-p">' + (c.addCents ? '+' + $(c.addCents) : 'included') + '</span>' +
+            '</button>';
+        }).join('') + '</div>';
+
+      html += '<div class="bk-garage"><p class="bk-garage-q">Do you have a garage we can work in?</p>' +
+        '<p class="bk-consent-h">' + esc(R2.canopyNote) + '</p>' +
+        '<div class="bk-yn">' +
+        '<button type="button" class="bk-yn-b' + (!v.noGarage ? ' yes' : '') + '" data-garage="0">Yes, I have a garage</button>' +
+        '<button type="button" class="bk-yn-b' + (v.noGarage ? ' no' : '') + '" data-garage="1">No, bring a canopy (+' +
+          $(R2.canopyCents) + ')</button>' +
+        '</div></div>';
+
+      html += '<p class="bk-ast">*' + esc(R2.asteriskNote) + '</p>';
+      html += '<p class="bk-warn" style="margin-top:1rem">Correction work runs across several days and books at least ' +
+        R2.minLeadDays + ' days out, starting on a weekend morning. You are booking the first day here, and we will agree the rest with you directly.</p>';
+    }
+
+    return html + '</div>';
   }
 
   function vPackage() {
     var v = veh();
     if (!v.packageIds.length) return 'Choose a package to continue.';
+    if (needsCorrection(v) && !v.correctionTier) return 'Pick a correction level to continue.';
     if (v.intent === 'both') {
       var cats = v.packageIds.map(function (id) { return P.findPackage(id).category; });
       if (cats.indexOf('interior') < 0) return 'Pick an interior package too.';
@@ -557,12 +636,18 @@
     var earliest = P.earliestBookableDate(startOfToday(), RULES.window);
     var html = '<p class="bk-sub">Pick a time that works. Nothing is charged until the next step.</p>';
 
-    html += '<label class="bk-check bk-prio' + (state.priority ? ' on' : '') + '">' +
+    html += hasCorrection() ? '' :
+      '<label class="bk-check bk-prio' + (state.priority ? ' on' : '') + '">' +
       '<input type="checkbox" id="bkPrio"' + (state.priority ? ' checked' : '') + ' />' +
       '<span><b>I need it within the next 3 days</b>' +
       '<i>Opens our soonest slots.</i></span></label>';
 
-    if (!state.priority) {
+    if (hasCorrection()) {
+      var lead = new Date(startOfToday().getTime() + P.CORRECTION_RULES.minLeadDays * DAY);
+      html += '<p class="bk-note">Correction work starts on a weekend morning from <b>' +
+        lead.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }) +
+        '</b>. This reserves the first day.</p>';
+    } else if (!state.priority) {
       html += '<p class="bk-note">Standard bookings start from <b>' +
         earliest.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }) + '</b>.</p>';
     }
@@ -581,9 +666,21 @@
     var box = root.querySelector('#bkSlots');
     if (!box) return;
 
-    var from = state.priority ? Date.now() : P.earliestBookableDate(startOfToday(), RULES.window).getTime();
-    var to = from + 28 * DAY;
-    var dur = totalDurationMin();
+    var corr = hasCorrection();
+    var CR = P.CORRECTION_RULES;
+
+    var from = state.priority
+      ? Date.now()
+      : P.earliestBookableDate(startOfToday(), RULES.window).getTime();
+    if (corr && CR.minLeadDays > 0) {
+      var lead = startOfToday().getTime() + CR.minLeadDays * DAY;
+      if (lead > from) from = lead;
+    }
+    var to = from + (corr ? 70 : 28) * DAY;
+
+    // Correction runs across days, so only the first is reserved. Booking the
+    // full 30 hours as one block would swallow a fortnight of availability.
+    var dur = corr ? CR.firstDayMin : totalDurationMin();
 
     var cfg = { calendarId: CFG.googleCalendarId, apiKey: CFG.googleApiKey };
     var load = P.calendarConfigured(cfg)
@@ -614,10 +711,14 @@
       // need to fit inside the calendar and should not shorten what is offered.
       ignoreReturnAfterMin: P.IGNORE_RETURN_AFTER_MIN
     };
+    if (corr) {
+      req.preferredStartsMin = { weekday: CR.allowedStartsMin, weekend: CR.allowedStartsMin };
+      req.allowedWeekdays = [0, 6];
+    }
     // Only the six canonical times, ever. Extending the search means more
     // DAYS at these same times, never filling in the gaps between them.
     var slots = P.computeSlots(
-      Object.assign({}, req, { preferredStartsMin: P.PREFERRED_STARTS })
+      corr ? req : Object.assign({}, req, { preferredStartsMin: P.PREFERRED_STARTS })
     );
 
     var primary = slots;
@@ -1003,7 +1104,7 @@
     var t = e.target.closest(
       '[data-size],[data-intent],[data-pkg],[data-addon],[data-clear],[data-win],[data-slot],' +
       '[data-consent],[data-pay],[data-delveh],[data-browsepick],[data-max],[data-sort],' +
-      '[data-kind],[data-bucket],[data-paymethod],' +
+      '[data-kind],[data-bucket],[data-paymethod],[data-corr],[data-coating],[data-garage],' +
       '#bkAddVeh,#bkMoreDays,#bkNext,#bkBack,#bkClose,#bkScrim,#bkBrowse,#bkBrowseBack,' +
       '#bkQClear,#bkReset,#bkOther'
     );
@@ -1025,6 +1126,13 @@
       return loadSlots();
     }
     if (t.dataset.paymethod) { state.payMethod = t.dataset.paymethod; return render(); }
+    if (t.dataset.corr) {
+      v.correctionTier = v.correctionTier === t.dataset.corr ? null : t.dataset.corr;
+      state.slot = null; // scheduling rules change with it
+      return render();
+    }
+    if (t.dataset.coating) { v.coatingTerm = t.dataset.coating; return render(); }
+    if (t.dataset.garage !== undefined) { v.noGarage = t.dataset.garage === '1'; return render(); }
 
     // Picking from browse sets intent AND package in one go, then drops the
     // customer straight into add-ons rather than replaying the two screens
@@ -1066,7 +1174,8 @@
       if (!was) v.packageIds.push(t.dataset.pkg);
       // Dropping a package can invalidate an add-on that depended on it.
       pruneAddons(v);
-      // "Both" needs one from each list, so only auto-advance once it is valid.
+      // Showroom Ready needs a correction level, and "Both" needs one package
+      // from each list, so only auto-advance once the step is actually done.
       if (!vPackage()) return advance();
       return render();
     }

@@ -59,6 +59,11 @@ export interface SlotRequest {
    * drive nobody is waiting on.
    */
   ignoreReturnAfterMin?: number;
+  /**
+   * Restrict to these weekdays, 0 Sun to 6 Sat. Correction work uses it to
+   * offer weekend starts only, since it runs across several days.
+   */
+  allowedWeekdays?: number[];
 }
 
 export interface BookingWindow {
@@ -159,6 +164,7 @@ export function computeSlots(req: SlotRequest): number[] {
       if (t > req.notAfter) break;
       if (
         commitmentStart >= f.start &&
+        (!req.allowedWeekdays || req.allowedWeekdays.includes(new Date(t).getDay())) &&
         withinBookingWindow(t, req.serviceDurationMin, win, req.timeZone) &&
         matchesPreferred(t, wanted, req.timeZone)
       ) {

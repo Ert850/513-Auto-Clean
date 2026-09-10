@@ -69,6 +69,18 @@ export interface Package {
    * offered when the customer's previous detail falls inside this window.
    */
   requiresPriorDetail?: { minMonths: number; maxMonths: number };
+  /**
+   * The customer must pick a correction or coating tier before this package
+   * can be priced. See CORRECTION_TIERS in ./addons.ts.
+   */
+  requiresCorrectionTier?: boolean;
+  /**
+   * Minutes to reserve on the calendar, when that differs from the quoted
+   * duration. Correction work runs across several days, so only the first is
+   * scheduled and the rest is arranged directly; booking 30 hours as one
+   * block would swallow a fortnight of availability.
+   */
+  schedulingDurationMin?: number;
 }
 
 export interface Catalog {

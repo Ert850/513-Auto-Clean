@@ -210,11 +210,11 @@ describe("quote engine", () => {
   it("applies the combo discount per vehicle", () => {
     const both = { label: "A", packages: [FULL_INT, FULL_EXT], addons: [] };
     const one = quote(cart({ vehicles: [both] }), R);
-    expect(one.serviceSubtotalCents).toBe(21500 + 21000 - 1500); // $410
+    expect(one.serviceSubtotalCents).toBe(21500 + 21000 - 2500); // $400
 
     // Second vehicle earns the combo again, then 10% off its own subtotal.
     const two = quote(cart({ vehicles: [both, { ...both, label: "B" }] }), R);
-    expect(two.serviceSubtotalCents).toBe(41000 + Math.round(41000 * 0.9));
+    expect(two.serviceSubtotalCents).toBe(40000 + Math.round(40000 * 0.9));
   });
 
   it("does not give the combo across different vehicles", () => {
@@ -252,22 +252,36 @@ describe("quote engine", () => {
     expect(SHOWROOM_INT.priceCents).toBeGreaterThan(FULL_INT.priceCents * 1.5);
   });
 
-  it("prices paint correction with its ceramic upgrade", () => {
+  it("adds the correction tier on top of the Full Exterior base", () => {
     const q = quote(
       cart({
         vehicles: [{
-          label: "A", packages: [], addons: [],
+          label: "A", packages: [FULL_EXT], addons: [],
           correction: {
-            tierId: "two-step", tierLabel: "2 step paint correction",
-            priceCents: 90000, durationMin: 480,
+            tierId: "two-step", tierLabel: "2 step paint correction, then coating",
+            addCents: 150000, addMin: 18 * 60,
             coatingId: "5yr", coatingLabel: "5 year", coatingAddCents: 15000,
           },
         }],
       }),
       R,
     );
-    expect(q.serviceSubtotalCents).toBe(105000);
-    expect(q.lines.filter((l) => l.kind === "correction" || l.kind === "coating")).toHaveLength(2);
+    expect(q.serviceSubtotalCents).toBe(21000 + 150000 + 15000);
+    expect(q.serviceDurationMin).toBe(240 + 18 * 60);
+  });
+
+  it("charges the canopy only when there is no garage", () => {
+    const base = {
+      tierId: "one-step", tierLabel: "1 step", addCents: 85000, addMin: 720,
+      coatingId: "3yr", coatingLabel: "3 year", coatingAddCents: 0,
+    };
+    const garage = quote(cart({ vehicles: [{ label: "A", packages: [FULL_EXT], addons: [], correction: base }] }), R);
+    const none = quote(cart({
+      vehicles: [{ label: "A", packages: [FULL_EXT], addons: [], correction: { ...base, canopyCents: 5000 } }],
+    }), R);
+    expect(none.serviceSubtotalCents - garage.serviceSubtotalCents).toBe(5000);
+    expect(garage.lines.some((l) => l.kind === "canopy")).toBe(false);
+    expect(none.lines.some((l) => l.kind === "canopy")).toBe(true);
   });
 
   it("charges travel once per appointment, not per vehicle", () => {

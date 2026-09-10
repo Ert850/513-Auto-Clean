@@ -113,6 +113,70 @@ var ADDONS = [
 function findAddon(id) {
   return ADDONS.find((a) => a.id === id);
 }
+var CORRECTION_TIERS = [
+  {
+    id: "coating-only",
+    label: "Ceramic coating only",
+    addCents: 55e3,
+    addMin: 5 * 60,
+    result: "3 to 5 years of protection, no correction",
+    detail: "Panel wipe, coating applied and levelled by hand, then left to cure. Existing swirls and scratches stay as they are, sealed under the coating.",
+    asterisk: true
+  },
+  {
+    id: "one-step",
+    label: "1 step paint correction, then coating",
+    addCents: 85e3,
+    addMin: 12 * 60,
+    result: "Looks perfect from about 5 feet away",
+    detail: "One cutting and finishing pass lifts most light swirling and haze, then the coating goes on. Removes roughly 60 to 70% of visible defects.",
+    asterisk: true
+  },
+  {
+    id: "two-step",
+    label: "2 step paint correction, then coating",
+    addCents: 15e4,
+    addMin: 18 * 60,
+    result: "Looks perfect from about 2 feet away",
+    detail: "A compounding pass to cut deeper defects, then a refining pass to bring the gloss back, then the coating. Removes roughly 80 to 90%.",
+    asterisk: true
+  },
+  {
+    id: "three-step",
+    label: "3 step paint correction, then coating",
+    addCents: 26e4,
+    addMin: 30 * 60,
+    result: "Removes 90%+ of all defects",
+    detail: "Heavy cut, refine, then a final jewelling pass under inspection lighting before coating. This is show car work and runs across several days.",
+    asterisk: false
+  }
+];
+var COATING_TERMS = [
+  { id: "3yr", label: "3 year", addCents: 0, asterisk: true },
+  { id: "5yr", label: "5 year", addCents: 15e3, asterisk: true },
+  { id: "10yr", label: "10 year", addCents: 3e4, asterisk: true }
+];
+var CORRECTION_RULES = {
+  /**
+   * Temporary. Elijah is not ready to take these at short notice, so they sit
+   * two weeks out. Set to 0 to remove the delay entirely without touching
+   * anything else.
+   */
+  minLeadDays: 14,
+  /** Correction runs across days, so it starts on a weekend morning. */
+  weekendOnly: true,
+  allowedStartsMin: [8 * 60, 10 * 60],
+  /**
+   * Only the first day gets scheduled. The rest is arranged directly, because
+   * a 30 hour job cannot sit in one calendar slot and pretending otherwise
+   * would block a fortnight of availability.
+   */
+  firstDayMin: 8 * 60,
+  garageRequired: true,
+  canopyCents: 5e3,
+  canopyNote: "Correction and coating need a controlled space: no direct sun, no wind, no dust settling on wet coating. If you do not have a garage we bring a canopy.",
+  asteriskNote: "With proper maintenance: washing the vehicle monthly at minimum, and refreshing the coating with a sacrificial sealant annually."
+};
 var MAINTENANCE_PLAN = {
   id: "maintenance-plan",
   name: "Coating Maintenance Plan",
@@ -121,12 +185,18 @@ var MAINTENANCE_PLAN = {
   annualCents: 14900 * 11,
   includes: [
     "Monthly pre-wash and hand wash",
-    "Bug and tar remover",
+    "Bug remover",
     "Decontamination",
     "Wheel and tire clean",
     "Sealant application twice a year"
   ]
 };
+function findCorrectionTier(id) {
+  return CORRECTION_TIERS.find((t) => t.id === id);
+}
+function findCoatingTerm(id) {
+  return COATING_TERMS.find((t) => t.id === id);
+}
 
 // lib/catalog/seed.ts
 var VEHICLE_SIZES = [
@@ -167,15 +237,16 @@ var COMPONENTS = [
   /* ---- exterior ---- */
   c("ext-rinse-hubcaps", "Rinse exterior and scrub hubcaps", "exterior", 15, false),
   c("ext-prewash", "Pre-wash", "exterior", 15, false),
-  c("ext-bugtar", "Bug and tar treatment", "exterior", 20),
+  c("ext-bug", "Bug removal", "exterior", 20),
   c("ext-handwash-gentle", "Gentle hand wash", "exterior", 25, false),
   c("ext-handwash", "Hand wash", "exterior", 30, false),
   c("ext-windows", "Clean windows and mirrors", "exterior", 10),
   c("ext-towel-dry", "Towel dry all surfaces", "exterior", 15),
   c("ext-blow-towel", "Blow dry and towel dry", "exterior", 20),
   c("ext-wheels", "Wheels: hubcaps, tires and wheel wells scrubbed", "exterior", 30),
-  c("ext-tire-dress", "Tire dressing and protection", "exterior", 10),
+  c("ext-tire-dress", "Tire dressing", "exterior", 10),
   c("ext-paint-decon", "Paint decontamination", "exterior", 45),
+  c("ext-clay-towel", "Clay towel", "exterior", 30),
   c("ext-water-spot", "Hard water spot treatment", "exterior", 30),
   c("ext-engine-bay", "Engine bay clean and protect", "exterior", 30),
   c("ext-ceramic", "Ceramic sealant applied", "exterior", 45)
@@ -193,7 +264,7 @@ var FULL_INT_IDS = [
 ];
 var BASIC_EXT_IDS = [
   "ext-prewash",
-  "ext-bugtar",
+  "ext-bug",
   "ext-handwash",
   "ext-blow-towel",
   "ext-wheels",
@@ -292,12 +363,13 @@ var PACKAGES = [
     slug: "full-exterior",
     name: "Full Exterior",
     category: "exterior",
-    tagline: "The full restore: decon, protect and seal with ceramic.",
+    tagline: "Strips what a wash cannot reach, then protects the paint underneath. Decontaminated, clayed, engine bay cleaned and sealed with ceramic.",
     priceCents: 21e3,
     durationMin: 240,
     componentIds: [
       ...BASIC_EXT_IDS,
       "ext-paint-decon",
+      "ext-clay-towel",
       "ext-water-spot",
       "ext-engine-bay",
       "ext-ceramic"
@@ -311,16 +383,18 @@ var PACKAGES = [
     slug: "showroom-exterior",
     name: "Showroom Ready",
     category: "exterior",
-    // PRICE TO CONFIRM: mirrors the interior Showroom at $395 because no
-    // separate exterior figure was given. It is an anchor, so the exact
-    // number matters less than that it sits clearly above Full.
-    tagline: "Everything in Full, taken to its limit. Not a paint correction.",
-    priceCents: 39500,
-    durationMin: 420,
-    durationMaxMin: 480,
+    // Everything in Full Exterior, then a required correction or coating
+    // tier on top. The base here is the Full Exterior work; the tier adds its
+    // own price and hours. See CORRECTION_TIERS in ./addons.ts.
+    tagline: "Everything in Full Exterior, then corrected and ceramic coated.",
+    priceCents: 21e3,
+    durationMin: 240,
+    requiresCorrectionTier: true,
+    schedulingDurationMin: 480,
     componentIds: [
       ...BASIC_EXT_IDS,
       "ext-paint-decon",
+      "ext-clay-towel",
       "ext-water-spot",
       "ext-engine-bay",
       "ext-ceramic"
@@ -373,8 +447,8 @@ var DEFAULT_RULES = {
   window: {
     minLeadDays: 3
   },
-  comboDiscountCents: 1500,
-  // $15
+  comboDiscountCents: 2500,
+  // $25 for interior and exterior together
   comboPerVehicle: true,
   additionalVehicleDiscountBp: 1e3,
   // 10% off the 2nd vehicle onward
@@ -543,16 +617,25 @@ function quote(cart, r, taxTable = SEED_TAX_TABLE, year = (/* @__PURE__ */ new D
         kind: "correction",
         label: c2.tierLabel,
         vehicleIndex: vi,
-        amountCents: c2.priceCents,
-        durationMin: c2.durationMin
+        amountCents: c2.addCents,
+        durationMin: c2.addMin
       });
       if (c2.coatingAddCents > 0) {
         vLines.push({
           kind: "coating",
-          label: "Ceramic coating, " + c2.coatingLabel,
+          label: c2.coatingLabel + " coating",
           vehicleIndex: vi,
           amountCents: c2.coatingAddCents,
           durationMin: 0
+        });
+      }
+      if (c2.canopyCents && c2.canopyCents > 0) {
+        vLines.push({
+          kind: "canopy",
+          label: "Canopy setup, no garage",
+          vehicleIndex: vi,
+          amountCents: c2.canopyCents,
+          durationMin: 30
         });
       }
     }
@@ -696,12 +779,32 @@ function priceFromWire(wire) {
         durationMin: tier.durationMin
       });
     }
+    let correction;
+    if (wv.correction) {
+      const tier = findCorrectionTier(wv.correction.tierId);
+      const term = findCoatingTerm(wv.correction.coatingId);
+      if (!tier || !term) {
+        rejected.push(`unknown correction ${wv.correction.tierId}/${wv.correction.coatingId}`);
+      } else {
+        correction = {
+          tierId: tier.id,
+          tierLabel: tier.label,
+          addCents: tier.addCents,
+          addMin: tier.addMin,
+          coatingId: term.id,
+          coatingLabel: term.label,
+          coatingAddCents: term.addCents,
+          ...wv.correction.noGarage ? { canopyCents: CORRECTION_RULES.canopyCents } : {}
+        };
+      }
+    }
     return {
       label: wv.label ?? "Vehicle",
       sizeUpchargeCents: size?.upchargeCents ?? 0,
       sizeLabel: size?.label ?? "",
       packages,
-      addons
+      addons,
+      ...correction ? { correction } : {}
     };
   });
   const cart = {

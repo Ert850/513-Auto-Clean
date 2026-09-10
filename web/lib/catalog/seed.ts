@@ -74,15 +74,16 @@ const COMPONENTS: ServiceComponent[] = [
   /* ---- exterior ---- */
   c("ext-rinse-hubcaps", "Rinse exterior and scrub hubcaps", "exterior", 15, false),
   c("ext-prewash", "Pre-wash", "exterior", 15, false),
-  c("ext-bugtar", "Bug and tar treatment", "exterior", 20),
+  c("ext-bug", "Bug removal", "exterior", 20),
   c("ext-handwash-gentle", "Gentle hand wash", "exterior", 25, false),
   c("ext-handwash", "Hand wash", "exterior", 30, false),
   c("ext-windows", "Clean windows and mirrors", "exterior", 10),
   c("ext-towel-dry", "Towel dry all surfaces", "exterior", 15),
   c("ext-blow-towel", "Blow dry and towel dry", "exterior", 20),
   c("ext-wheels", "Wheels: hubcaps, tires and wheel wells scrubbed", "exterior", 30),
-  c("ext-tire-dress", "Tire dressing and protection", "exterior", 10),
+  c("ext-tire-dress", "Tire dressing", "exterior", 10),
   c("ext-paint-decon", "Paint decontamination", "exterior", 45),
+  c("ext-clay-towel", "Clay towel", "exterior", 30),
   c("ext-water-spot", "Hard water spot treatment", "exterior", 30),
   c("ext-engine-bay", "Engine bay clean and protect", "exterior", 30),
   c("ext-ceramic", "Ceramic sealant applied", "exterior", 45),
@@ -103,7 +104,7 @@ const FULL_INT_IDS = [
 
 const BASIC_EXT_IDS = [
   "ext-prewash",
-  "ext-bugtar",
+  "ext-bug",
   "ext-handwash",
   "ext-blow-towel",
   "ext-wheels",
@@ -205,12 +206,14 @@ const PACKAGES: Package[] = [
     slug: "full-exterior",
     name: "Full Exterior",
     category: "exterior",
-    tagline: "The full restore: decon, protect and seal with ceramic.",
+    tagline:
+      "Strips what a wash cannot reach, then protects the paint underneath. Decontaminated, clayed, engine bay cleaned and sealed with ceramic.",
     priceCents: 21000,
     durationMin: 240,
     componentIds: [
       ...BASIC_EXT_IDS,
       "ext-paint-decon",
+      "ext-clay-towel",
       "ext-water-spot",
       "ext-engine-bay",
       "ext-ceramic",
@@ -224,16 +227,18 @@ const PACKAGES: Package[] = [
     slug: "showroom-exterior",
     name: "Showroom Ready",
     category: "exterior",
-    // PRICE TO CONFIRM: mirrors the interior Showroom at $395 because no
-    // separate exterior figure was given. It is an anchor, so the exact
-    // number matters less than that it sits clearly above Full.
-    tagline: "Everything in Full, taken to its limit. Not a paint correction.",
-    priceCents: 39500,
-    durationMin: 420,
-    durationMaxMin: 480,
+    // Everything in Full Exterior, then a required correction or coating
+    // tier on top. The base here is the Full Exterior work; the tier adds its
+    // own price and hours. See CORRECTION_TIERS in ./addons.ts.
+    tagline: "Everything in Full Exterior, then corrected and ceramic coated.",
+    priceCents: 21000,
+    durationMin: 240,
+    requiresCorrectionTier: true,
+    schedulingDurationMin: 480,
     componentIds: [
       ...BASIC_EXT_IDS,
       "ext-paint-decon",
+      "ext-clay-towel",
       "ext-water-spot",
       "ext-engine-bay",
       "ext-ceramic",

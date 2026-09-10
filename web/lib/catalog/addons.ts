@@ -204,53 +204,107 @@ export function addonBlockedReason(
 
 /* ================= paint correction ================= */
 
+/**
+ * Showroom Ready Exterior is Full Exterior plus one of these. Choosing a tier
+ * is required, which is why they live here rather than as optional add-ons.
+ *
+ * PRICING IS DELIBERATELY HIGH. Elijah is starting out on correction work and
+ * does not want these booked yet, so the numbers discourage without being
+ * absurd. They sit at the top of the local market rather than beyond it.
+ * Lower them as he gets reps in.
+ *
+ * DURATIONS come from published trade figures: a 1 step polish is 4 to 8
+ * hours of labour, a 2 step 10 to 16, a 3 step 20 to 40 plus. Prep and the
+ * coating itself add roughly 3 hours, and there is extra padding here because
+ * he is new to it. Hard paint can add another 20 to 30% on top.
+ */
+
 export interface CorrectionTier {
   id: string;
   label: string;
-  priceCents: number;
-  result: string;
-  asterisk: boolean;
-  durationMin: number;
-}
-
-export interface CoatingUpgrade {
-  id: string;
-  label: string;
+  /** Added on top of the Full Exterior base. */
   addCents: number;
+  /** Added on top of the Full Exterior duration. */
+  addMin: number;
+  result: string;
+  detail: string;
   asterisk: boolean;
 }
 
-export const PAINT_CORRECTION = {
-  id: "paint-correction",
-  name: "Paint Correction and Ceramic Coating",
-  scope: "exterior" as const,
-  requiresAddonIds: ["paint-decon"],
-  minimumPackageId: "basic-exterior",
-  includedCoating: "1 year ceramic coating",
-  tiers: [
-    {
-      id: "one-step", label: "1 step paint polish", priceCents: 40000, durationMin: 240,
-      result: "Looks perfect from about 5 feet away", asterisk: true,
-    },
-    {
-      id: "two-step", label: "2 step paint correction", priceCents: 90000, durationMin: 480,
-      result: "Looks perfect from about 2 feet away", asterisk: true,
-    },
-    {
-      id: "three-step", label: "3 step paint correction", priceCents: 180000, durationMin: 720,
-      result: "Removes 90% of all defects", asterisk: false,
-    },
-  ] as CorrectionTier[],
-  coatingUpgrades: [
-    { id: "1yr", label: "1 year (included)", addCents: 0, asterisk: true },
-    { id: "2yr", label: "2 year", addCents: 10000, asterisk: true },
-    { id: "5yr", label: "5 year", addCents: 15000, asterisk: true },
-    { id: "10yr", label: "10 year", addCents: 25000, asterisk: true },
-  ] as CoatingUpgrade[],
+export const CORRECTION_TIERS: CorrectionTier[] = [
+  {
+    id: "coating-only",
+    label: "Ceramic coating only",
+    addCents: 55000,
+    addMin: 5 * 60,
+    result: "3 to 5 years of protection, no correction",
+    detail:
+      "Panel wipe, coating applied and levelled by hand, then left to cure. Existing swirls and scratches stay as they are, sealed under the coating.",
+    asterisk: true,
+  },
+  {
+    id: "one-step",
+    label: "1 step paint correction, then coating",
+    addCents: 85000,
+    addMin: 12 * 60,
+    result: "Looks perfect from about 5 feet away",
+    detail:
+      "One cutting and finishing pass lifts most light swirling and haze, then the coating goes on. Removes roughly 60 to 70% of visible defects.",
+    asterisk: true,
+  },
+  {
+    id: "two-step",
+    label: "2 step paint correction, then coating",
+    addCents: 150000,
+    addMin: 18 * 60,
+    result: "Looks perfect from about 2 feet away",
+    detail:
+      "A compounding pass to cut deeper defects, then a refining pass to bring the gloss back, then the coating. Removes roughly 80 to 90%.",
+    asterisk: true,
+  },
+  {
+    id: "three-step",
+    label: "3 step paint correction, then coating",
+    addCents: 260000,
+    addMin: 30 * 60,
+    result: "Removes 90%+ of all defects",
+    detail:
+      "Heavy cut, refine, then a final jewelling pass under inspection lighting before coating. This is show car work and runs across several days.",
+    asterisk: false,
+  },
+];
+
+export const COATING_TERMS = [
+  { id: "3yr", label: "3 year", addCents: 0, asterisk: true },
+  { id: "5yr", label: "5 year", addCents: 15000, asterisk: true },
+  { id: "10yr", label: "10 year", addCents: 30000, asterisk: true },
+];
+
+export const CORRECTION_RULES = {
+  /**
+   * Temporary. Elijah is not ready to take these at short notice, so they sit
+   * two weeks out. Set to 0 to remove the delay entirely without touching
+   * anything else.
+   */
+  minLeadDays: 14,
+  /** Correction runs across days, so it starts on a weekend morning. */
+  weekendOnly: true,
+  allowedStartsMin: [8 * 60, 10 * 60],
+  /**
+   * Only the first day gets scheduled. The rest is arranged directly, because
+   * a 30 hour job cannot sit in one calendar slot and pretending otherwise
+   * would block a fortnight of availability.
+   */
+  firstDayMin: 8 * 60,
+  garageRequired: true,
+  canopyCents: 5000,
+  canopyNote:
+    "Correction and coating need a controlled space: no direct sun, no wind, no dust settling on wet coating. If you do not have a garage we bring a canopy.",
   asteriskNote:
     "With proper maintenance: washing the vehicle monthly at minimum, and refreshing the coating with a sacrificial sealant annually.",
 };
 
+/** Optional plan that keeps a coating inside its warranty conditions. */
 export const MAINTENANCE_PLAN = {
   id: "maintenance-plan",
   name: "Coating Maintenance Plan",
@@ -259,12 +313,20 @@ export const MAINTENANCE_PLAN = {
   annualCents: 14900 * 11,
   includes: [
     "Monthly pre-wash and hand wash",
-    "Bug and tar remover",
+    "Bug remover",
     "Decontamination",
     "Wheel and tire clean",
     "Sealant application twice a year",
   ],
 };
+
+export function findCorrectionTier(id: string): CorrectionTier | undefined {
+  return CORRECTION_TIERS.find((t) => t.id === id);
+}
+
+export function findCoatingTerm(id: string) {
+  return COATING_TERMS.find((t) => t.id === id);
+}
 
 /* ================= service levels ================= */
 

@@ -494,3 +494,14 @@ body.bk-open { overflow: hidden; }
 }
 .bk-method:hover { border-color: var(--red); }
 .bk-method.on { border-color: var(--red); background: var(--red-ghost); color: var(--red-deep); }
+
+/* ---------- paint correction ---------- */
+.bk-correction { margin-top: 1.4rem; border-top: 1px solid var(--line); padding-top: .4rem; }
+.bk-correction .bk-pkg { margin-bottom: .55rem; }
+.bk-correction sup { color: var(--red); }
+.bk-garage {
+  border: 1.5px solid var(--line); border-radius: var(--r-md);
+  background: var(--paper-2); padding: .9rem 1rem; margin-top: 1rem;
+}
+.bk-garage-q { margin: 0; font-size: .93rem; font-weight: 700; color: var(--text); }
+.bk-garage .bk-yn { margin-top: .7rem; }
