@@ -13,9 +13,10 @@ import { quote, type CartInput, type PackageRef } from "./quote.js";
 const $ = (cents: number) => cents / 100;
 
 // Canonical catalog, confirmed with Elijah.
-const EXPRESS_INT: PackageRef = { id: "ei", name: "Express Interior", category: "interior", priceCents: 8500, durationMin: 75 };
-const BASIC_INT: PackageRef = { id: "bi", name: "Basic Interior", category: "interior", priceCents: 11500, durationMin: 120 };
-const FULL_INT: PackageRef = { id: "fi", name: "Full Interior", category: "interior", priceCents: 19500, durationMin: 240 };
+const MAINT_INT: PackageRef = { id: "mi", name: "Maintenance", category: "interior", priceCents: 9500, durationMin: 105 };
+const BASIC_INT: PackageRef = { id: "bi", name: "Basic Interior", category: "interior", priceCents: 12500, durationMin: 120 };
+const FULL_INT: PackageRef = { id: "fi", name: "Full Interior", category: "interior", priceCents: 21500, durationMin: 240 };
+const SHOWROOM_INT: PackageRef = { id: "si", name: "Showroom Ready", category: "interior", priceCents: 39500, durationMin: 420 };
 const EXPRESS_EXT: PackageRef = { id: "ee", name: "Express Exterior", category: "exterior", priceCents: 6500, durationMin: 75 };
 const FULL_EXT: PackageRef = { id: "fe", name: "Full Exterior", category: "exterior", priceCents: 21000, durationMin: 240 };
 
@@ -142,29 +143,78 @@ describe("booking window", () => {
 describe("quote engine", () => {
   it("prices a plain Full Interior with no slot chosen yet", () => {
     const q = quote(cart(), R);
-    expect(q.serviceSubtotalCents).toBe(19500);
-    expect(q.totalCents).toBe(19500);
-    expect(q.depositCents).toBe(9750); // 50%
-    expect(q.balanceCents).toBe(9750);
+    expect(q.serviceSubtotalCents).toBe(21500);
+    expect(q.totalCents).toBe(21500);
     expect(q.travelIsEstimate).toBe(true);
-    expect(q.payAfterEligible).toBe(true); // exactly at the $195 ceiling
   });
 
-  it("drops pay-after as soon as travel pushes past $195", () => {
-    const q = quote(cart({ oneWayMinutes: 25 }), R); // $15 travel
-    expect(q.travelCents).toBe(1500);
-    expect(q.totalCents).toBe(21000);
-    expect(q.payAfterEligible).toBe(false);
+  it("takes no deposit: a card on file confirms the slot instead", () => {
+    const q = quote(cart(), R);
+    expect(q.depositCents).toBe(0);
+    expect(q.balanceCents).toBe(q.totalCents);
+  });
+
+  it("offers 5% off for paying in full, and shows the saving either way", () => {
+    const normal = quote(cart(), R);
+    expect(normal.payInFullDiscountCents).toBe(0);
+    expect(normal.payInFullSavingsCents).toBe(Math.round(21500 * 0.05)); // $10.75
+
+    const paid = quote(cart({ payInFull: true }), R);
+    expect(paid.payInFullDiscountCents).toBe(1075);
+    expect(paid.totalCents).toBe(21500 - 1075);
+    expect(paid.lines.some((l) => l.kind === "pay_in_full_discount")).toBe(true);
+  });
+
+  it("discounts the whole total including tax and travel, not just service", () => {
+    const gross = quote(cart({ zip: "45220", oneWayMinutes: 60 }), R);
+    const paid = quote(cart({ zip: "45220", oneWayMinutes: 60, payInFull: true }), R);
+    expect(paid.payInFullDiscountCents).toBe(Math.round(gross.totalCents * 0.05));
+    expect(paid.totalCents).toBe(gross.totalCents - paid.payInFullDiscountCents);
+  });
+
+  it("charges the vehicle size upcharge once per vehicle, not per package", () => {
+    const both = {
+      label: "Tahoe", sizeUpchargeCents: 2500, sizeLabel: "Large",
+      packages: [FULL_INT, FULL_EXT], addons: [],
+    };
+    const q = quote(cart({ vehicles: [both] }), R);
+    const upcharges = q.lines.filter((l) => l.kind === "size_upcharge");
+    expect(upcharges).toHaveLength(1);
+    expect(upcharges[0]?.amountCents).toBe(2500);
+  });
+
+  it("does not add a size upcharge to a vehicle with no work on it", () => {
+    const q = quote(
+      cart({ vehicles: [{ label: "empty", sizeUpchargeCents: 2500, packages: [], addons: [] }] }),
+      R,
+    );
+    expect(q.lines.filter((l) => l.kind === "size_upcharge")).toHaveLength(0);
+    expect(q.totalCents).toBe(0);
+  });
+
+  it("applies size upcharges per vehicle across a multi-vehicle booking", () => {
+    const q = quote(
+      cart({
+        vehicles: [
+          { label: "A", sizeUpchargeCents: 0, packages: [BASIC_INT], addons: [] },
+          { label: "B", sizeUpchargeCents: 2500, sizeLabel: "Large", packages: [BASIC_INT], addons: [] },
+        ],
+      }),
+      R,
+    );
+    expect(q.lines.filter((l) => l.kind === "size_upcharge")).toHaveLength(1);
+    // Vehicle B: (125 + 25) less the 10% bulk discount.
+    expect(q.serviceSubtotalCents).toBe(12500 + Math.round(15000 * 0.9));
   });
 
   it("applies the combo discount per vehicle", () => {
     const both = { label: "A", packages: [FULL_INT, FULL_EXT], addons: [] };
     const one = quote(cart({ vehicles: [both] }), R);
-    expect(one.serviceSubtotalCents).toBe(19500 + 21000 - 1500); // $375
+    expect(one.serviceSubtotalCents).toBe(21500 + 21000 - 1500); // $410
 
     // Second vehicle earns the combo again, then 10% off its own subtotal.
     const two = quote(cart({ vehicles: [both, { ...both, label: "B" }] }), R);
-    expect(two.serviceSubtotalCents).toBe(39000 + Math.round(39000 * 0.9)); // $741
+    expect(two.serviceSubtotalCents).toBe(41000 + Math.round(41000 * 0.9));
   });
 
   it("does not give the combo across different vehicles", () => {
@@ -178,32 +228,33 @@ describe("quote engine", () => {
       R,
     );
     // No combo (different vehicles), but the 2nd vehicle still gets 10% off.
-    expect(q.serviceSubtotalCents).toBe(19500 + Math.round(21000 * 0.9)); // $384
+    expect(q.serviceSubtotalCents).toBe(21500 + Math.round(21000 * 0.9));
   });
 
   it("prices add-ons from their chosen severity tier", () => {
     const q = quote(
       cart({
         vehicles: [
-          { label: "A", packages: [EXPRESS_INT], addons: [addon("pet-hair", "Pet Hair Removal", "Heavy", 10000, 120)] },
+          { label: "A", packages: [BASIC_INT], addons: [addon("stain", "Stain Treatment", "Moderate to major removal", 10000, 120)] },
         ],
       }),
       R,
     );
-    expect(q.serviceSubtotalCents).toBe(8500 + 10000);
-    expect(q.serviceDurationMin).toBe(75 + 120);
-    expect(q.lines.find((l) => l.kind === "addon")?.label).toBe("Pet Hair Removal: Heavy");
+    expect(q.serviceSubtotalCents).toBe(12500 + 10000);
+    expect(q.serviceDurationMin).toBe(120 + 120);
+    expect(q.lines.find((l) => l.kind === "addon")?.label).toBe("Stain Treatment: Moderate to major removal");
   });
 
-  it("prices Showroom Ready by the hour with a 6 hour floor and flat deposit", () => {
+  it("prices interior Showroom Ready as a fixed package, not by the hour", () => {
+    const q = quote(cart({ vehicles: [{ label: "A", packages: [SHOWROOM_INT], addons: [] }] }), R);
+    expect(q.serviceSubtotalCents).toBe(39500);
+    expect(q.hasShowroom).toBe(false); // fixed package, not the hourly path
+  });
+
+  it("still prices exterior Showroom Ready hourly with a 6 hour floor", () => {
     const short = quote(cart({ vehicles: [{ label: "A", packages: [], addons: [], showroomHours: 2 }] }), R);
     expect(short.serviceSubtotalCents).toBe(60000); // floored to 6 hrs
-    expect(short.depositCents).toBe(60000); // flat $600 beats 50%
     expect(short.hasShowroom).toBe(true);
-
-    const long = quote(cart({ vehicles: [{ label: "A", packages: [], addons: [], showroomHours: 20 }] }), R);
-    expect(long.serviceSubtotalCents).toBe(200000);
-    expect(long.depositCents).toBe(100000); // 50% now exceeds the flat floor
   });
 
   it("prices paint correction with its ceramic upgrade", () => {
@@ -233,21 +284,21 @@ describe("quote engine", () => {
   });
 
   it("gives 10% off EVERY vehicle after the first", () => {
-    const v = { label: "x", packages: [FULL_INT], addons: [] }; // $195 each
-    const discounted = Math.round(19500 * 0.9); // $175.50
+    const v = { label: "x", packages: [FULL_INT], addons: [] }; // $215 each
+    const discounted = Math.round(21500 * 0.9); // $193.50
 
-    expect(quote(cart({ vehicles: [v] }), R).serviceSubtotalCents).toBe(19500);
-    expect(quote(cart({ vehicles: [v, v] }), R).serviceSubtotalCents).toBe(19500 + discounted);
-    expect(quote(cart({ vehicles: [v, v, v] }), R).serviceSubtotalCents).toBe(19500 + 2 * discounted);
-    expect(quote(cart({ vehicles: [v, v, v, v] }), R).serviceSubtotalCents).toBe(19500 + 3 * discounted);
+    expect(quote(cart({ vehicles: [v] }), R).serviceSubtotalCents).toBe(21500);
+    expect(quote(cart({ vehicles: [v, v] }), R).serviceSubtotalCents).toBe(21500 + discounted);
+    expect(quote(cart({ vehicles: [v, v, v] }), R).serviceSubtotalCents).toBe(21500 + 2 * discounted);
+    expect(quote(cart({ vehicles: [v, v, v, v] }), R).serviceSubtotalCents).toBe(21500 + 3 * discounted);
   });
 
   it("discounts each extra vehicle on its OWN subtotal, not the first vehicle's", () => {
-    const big = { label: "big", packages: [FULL_INT], addons: [] }; // $195
+    const big = { label: "big", packages: [FULL_INT], addons: [] }; // $215
     const small = { label: "small", packages: [EXPRESS_EXT], addons: [] }; // $65
     // Second vehicle is the cheap one, so the discount is 10% of $65, not of $195.
     const q = quote(cart({ vehicles: [big, small] }), R);
-    expect(q.serviceSubtotalCents).toBe(19500 + Math.round(6500 * 0.9)); // $253.50
+    expect(q.serviceSubtotalCents).toBe(21500 + Math.round(6500 * 0.9));
     const line = q.lines.find((l) => l.kind === "additional_vehicle_discount");
     expect(line?.amountCents).toBe(-650);
   });
@@ -261,10 +312,10 @@ describe("quote engine", () => {
       }),
       R,
     );
-    expect(q.serviceSubtotalCents).toBe(19500);
-    expect(q.surchargeCents).toBe(3900); // 20% of 195, NOT of 260
+    expect(q.serviceSubtotalCents).toBe(21500);
+    expect(q.surchargeCents).toBe(4300); // 20% of 215, NOT of the travel too
     expect(q.travelCents).toBe(6500);
-    expect(q.totalCents).toBe(19500 + 3900 + 6500);
+    expect(q.totalCents).toBe(21500 + 4300 + 6500);
   });
 
   it("charges one flat 20% for a 7am priority booking, not 40%", () => {
@@ -273,8 +324,8 @@ describe("quote engine", () => {
       R,
     );
     expect(q.surchargeBp).toBe(2000);
-    expect(q.surchargeCents).toBe(3900); // 20% of $195
-    expect($(q.totalCents)).toBe(234);
+    expect(q.surchargeCents).toBe(4300); // 20% of $215
+    expect($(q.totalCents)).toBe(258);
   });
 
   it("keeps every line item reconciling to the total", () => {
@@ -307,15 +358,15 @@ describe("sales tax", () => {
     const q = quote(cart({ zip: "45220" }), R);
     expect(q.taxRateBp).toBe(780);
     expect(q.taxCounty).toBe("hamilton");
-    expect(q.taxCents).toBe(Math.round(19500 * 0.078)); // $15.21
-    expect(q.totalCents).toBe(19500 + q.taxCents);
+    expect(q.taxCents).toBe(Math.round(21500 * 0.078));
+    expect(q.totalCents).toBe(21500 + q.taxCents);
   });
 
   it("taxes travel too, since it is part of the price of a taxable service", () => {
     const noTravel = quote(cart({ zip: "45220" }), R);
     const withTravel = quote(cart({ zip: "45220", oneWayMinutes: 60 }), R); // $65
     expect(withTravel.taxCents).toBeGreaterThan(noTravel.taxCents);
-    expect(withTravel.taxCents).toBe(Math.round((19500 + 6500) * 0.078));
+    expect(withTravel.taxCents).toBe(Math.round((21500 + 6500) * 0.078));
   });
 
   it("falls back to the busiest county for an unknown ZIP, and says so", () => {

@@ -40,6 +40,9 @@ export interface CorrectionRef {
 
 export interface CartVehicle {
   label: string;
+  /** Flat upcharge for this vehicle's size, applied ONCE, not per package. */
+  sizeUpchargeCents?: number;
+  sizeLabel?: string;
   packages: PackageRef[];
   addons: AddonRef[];
   /** Set when Showroom Ready is chosen instead of a standard package. */
@@ -58,6 +61,8 @@ export interface CartInput {
   surchargeContext: SurchargeContext | null;
   /** Drives the county sales tax rate. Null until the address is entered. */
   zip: string | null;
+  /** Customer chose to settle the whole thing now, which earns a discount. */
+  payInFull?: boolean;
 }
 
 export type LineKind =
@@ -66,7 +71,9 @@ export type LineKind =
   | "addon"
   | "correction"
   | "coating"
+  | "size_upcharge"
   | "combo_discount"
+  | "pay_in_full_discount"
   | "additional_vehicle_discount"
   | "surcharge"
   | "travel"
@@ -93,8 +100,12 @@ export interface Quote {
   taxIsEstimate: boolean;
   taxCounty: string | null;
   totalCents: number;
+  /** Zero unless deposits are reintroduced via pricingRules. */
   depositCents: number;
   balanceCents: number;
+  payInFullDiscountCents: number;
+  /** What they would save by paying now, for the "or save 5%" prompt. */
+  payInFullSavingsCents: number;
   payAfterEligible: boolean;
   serviceDurationMin: number;
   hasShowroom: boolean;
@@ -175,6 +186,19 @@ export function quote(
       }
     }
 
+    // Size upcharge is per VEHICLE, not per package: a large SUV booked for
+    // interior and exterior pays the $25 once.
+    const anyWork = vLines.length > 0;
+    if (anyWork && vehicle.sizeUpchargeCents && vehicle.sizeUpchargeCents > 0) {
+      vLines.push({
+        kind: "size_upcharge",
+        label: (vehicle.sizeLabel ?? "Vehicle size") + " vehicle",
+        vehicleIndex: vi,
+        amountCents: vehicle.sizeUpchargeCents,
+        durationMin: 0,
+      });
+    }
+
     // Combo applies per vehicle: one car getting both interior and exterior.
     const hasInt = vehicle.packages.some((p) => p.category === "interior");
     const hasExt = vehicle.packages.some((p) => p.category === "exterior");
@@ -234,10 +258,28 @@ export function quote(
     });
   }
 
-  const totalCents = taxableBase + t.taxCents;
+  const grossTotalCents = taxableBase + t.taxCents;
 
-  // Showroom carries a flat deposit because its total is open ended; take
-  // whichever is larger so a big mixed booking is never under-secured.
+  // Paying in full at booking earns a discount off the whole total. Computed
+  // on the gross so the saving matches the headline percentage the customer
+  // was shown, rather than a smaller number they have to reconcile.
+  const payInFullSavingsCents = Math.round((grossTotalCents * r.payInFullDiscountBp) / 10_000);
+  const payInFullDiscountCents = cart.payInFull ? payInFullSavingsCents : 0;
+  if (payInFullDiscountCents > 0) {
+    lines.push({
+      kind: "pay_in_full_discount",
+      label: "Paid in full, " + r.payInFullDiscountBp / 100 + "% off",
+      vehicleIndex: null,
+      amountCents: -payInFullDiscountCents,
+      durationMin: 0,
+    });
+  }
+
+  const totalCents = grossTotalCents - payInFullDiscountCents;
+
+  // Normally zero: deposits were removed to cut booking friction, and a card
+  // on file is what confirms the slot. Showroom keeps a floor only if one is
+  // configured, so reintroducing deposits stays a rules change, not a rewrite.
   const pctDeposit = Math.round((totalCents * r.depositBp) / 10_000);
   const depositCents = Math.max(pctDeposit, showroomDeposit);
 
@@ -247,6 +289,7 @@ export function quote(
     travelCents, travelIsEstimate,
     taxCents: t.taxCents, taxRateBp: t.rateBp, taxIsEstimate, taxCounty: t.county,
     totalCents, depositCents, balanceCents: totalCents - depositCents,
+    payInFullDiscountCents, payInFullSavingsCents,
     payAfterEligible: totalCents <= r.payAfterMaxCents,
     serviceDurationMin, hasShowroom,
   };
