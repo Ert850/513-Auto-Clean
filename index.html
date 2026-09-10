@@ -1115,7 +1115,7 @@
       <div class="at-side">
         <label class="at-label" for="zipEst">Find your travel fee</label>
         <div class="at-row">
-          <input type="text" id="zipEst" placeholder="ZIP, town, or street address" autocomplete="postal-code" spellcheck="false" />
+          <input type="text" id="zipEst" placeholder="ZIP, town, or full street address" autocomplete="street-address" spellcheck="false" />
           <button type="button" class="btn btn-primary" id="zipGo">Check</button>
         </div>
         <div class="at-suggest" id="zipSuggest" hidden></div>
@@ -1131,6 +1131,7 @@
       </div>
       <div class="at-map">
         <div class="at-canvas" id="areaMap" role="application" aria-label="Map of the service area, coloured by travel fee"></div>
+        <p class="at-zoomhint" id="mapZoomHint"></p>
         <!-- Schematic fallback, shown only if the map library does not load. -->
         <div class="tmap-canvas" id="zipMapSvg" hidden></div>
       </div>

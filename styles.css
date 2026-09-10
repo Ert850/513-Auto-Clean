@@ -925,6 +925,30 @@ html.scrolling-fast .reveal { transition: none; transition-delay: 0s; }
 .rv-grid { display: grid; gap: 1rem; grid-template-columns: 1fr; }
 @media (min-width: 700px) { .rv-grid { grid-template-columns: repeat(2, 1fr); } }
 @media (min-width: 1000px) { .rv-grid { grid-template-columns: repeat(3, 1fr); } }
+
+/* Paging through every review, six at a time. On a narrow screen the arrows
+   sit under the cards; from 1000px they move out to the sides, vertically
+   centred, which lands them between the two rows of the 3x2 grid. */
+.rv-stage { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: .7rem; }
+.rv-stage .rv-grid { flex: 1 1 100%; order: 1; }
+.rv-arrow {
+  order: 2; width: 42px; height: 42px; flex: none;
+  display: grid; place-items: center;
+  border-radius: 50%; background: var(--paper-2); color: var(--text);
+  border: 1.5px solid var(--line); transition: border-color .18s, color .18s, transform .18s;
+}
+.rv-arrow.next { order: 3; }
+.rv-arrow svg { width: 19px; height: 19px; }
+.rv-arrow:hover { border-color: var(--red); color: var(--red); transform: scale(1.06); }
+.rv-page { text-align: center; margin-top: .8rem; font-size: .78rem; color: var(--text-soft); font-variant-numeric: tabular-nums; }
+
+@media (min-width: 1000px) {
+  .rv-stage { display: block; position: relative; padding-inline: 3.6rem; }
+  .rv-arrow { position: absolute; top: 50%; transform: translateY(-50%); box-shadow: var(--shadow-sm); }
+  .rv-arrow:hover { transform: translateY(-50%) scale(1.06); }
+  .rv-arrow.prev { left: 0; }
+  .rv-arrow.next { right: 0; }
+}
 .rv-card {
   margin: 0; background: var(--paper-2); border: 1px solid var(--line);
   border-radius: var(--r-md); padding: 1.1rem; box-shadow: var(--shadow-sm);
@@ -935,7 +959,14 @@ html.scrolling-fast .reveal { transition: none; transition-delay: 0s; }
 .rv-top b { display: block; font-size: .93rem; }
 .rv-card blockquote { margin: 0; font-size: .9rem; line-height: 1.6; color: var(--text-soft); }
 .rv-more { border: 0; background: none; color: var(--red); font: inherit; font-size: .85rem; font-weight: 700; cursor: pointer; padding: 0 0 0 .3rem; }
-.rv-card figcaption { margin-top: .6rem; font-size: .78rem; color: var(--text-soft); }
+/* The date and the "read in full" link ran together into "2 days agoRead in
+   full". Two items with a separator, not two strings jammed end to end. */
+.rv-card figcaption {
+  margin-top: .6rem; font-size: .78rem; color: var(--text-soft);
+  display: flex; align-items: center; gap: .5rem; flex-wrap: wrap;
+}
+.rv-card figcaption a { color: var(--red); font-weight: 700; }
+.rv-card figcaption a::before { content: " b7"; margin-right: .5rem; color: var(--text-soft); font-weight: 400; }
 .rv-note { text-align: center; margin-top: 1.4rem; font-size: .88rem; color: var(--text-soft); }
 .rv-note a { color: var(--red); font-weight: 700; }
 
@@ -972,6 +1003,8 @@ html.scrolling-fast .reveal { transition: none; transition-delay: 0s; }
 .travel-out.ok span { display: block; font-size: .86rem; color: var(--text-inv-soft); line-height: 1.55; margin-top: .2rem; }
 .travel-out .travel-approx { font-style: italic; margin-top: .35rem; }
 .travel-out.err { color: var(--red-bright); font-size: .88rem; }
+.travel-out.err b { display: block; font-family: var(--font-display); font-size: 1.25rem; margin-bottom: .25rem; }
+.travel-out.err span { display: block; color: var(--text-inv-soft); font-size: .84rem; line-height: 1.55; }
 .travel-fine { margin: .9rem 0; font-size: .78rem; color: var(--text-inv-soft); line-height: 1.55; }
 
 /* ============================================================

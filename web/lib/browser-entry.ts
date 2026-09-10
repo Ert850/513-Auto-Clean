@@ -72,7 +72,12 @@ import { quote } from "./pricing/quote.js";
 import { ADDON_ICONS, addonIcon } from "./catalog/icons.js";
 import { popularityOf } from "./catalog/popularity.js";
 import { ZIP_GEO, zipGeo } from "./travel/zipGeo.js";
-import { ZIP_RANGES, estimateOneWayMinutes, lookupZip } from "./travel/zipRanges.js";
+import {
+  MAX_ONE_WAY_MINUTES,
+  ZIP_RANGES,
+  estimateOneWayMinutes,
+  lookupZip,
+} from "./travel/zipRanges.js";
 
 /** Format integer cents as $1,234.50, or $1,234 when it lands on the dollar. */
 export function formatCents(cents: number): string {
@@ -129,6 +134,7 @@ const api = {
   quote,
   ZIP_RANGES,
   ZIP_GEO,
+  MAX_ONE_WAY_MINUTES,
   zipGeo,
   estimateOneWayMinutes,
   lookupZip,

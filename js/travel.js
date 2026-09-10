@@ -2,18 +2,23 @@
    Service area map and travel fee estimator.
 
    A real slippy map (Leaflet over OpenStreetMap tiles) with every ZIP we
-   quote marked and coloured by fee band. Click a marker, search a ZIP, a
-   town, or a street address, and the fee appears.
+   quote marked and coloured by fee band. Search a ZIP, a town, or a full
+   street address, or drop a pin anywhere at all, and the fee appears.
 
-   Every figure comes from the SAME mileage ladder as the booking funnel and
-   the payment functions, so nothing shown here can drift from what actually
-   gets charged.
+   TWO SOURCES FOR A NUMBER, in order of preference:
+     1. /api/travel, which measures the real drive with the Routes API from
+        an origin that never leaves the server. Needs a key.
+     2. A local estimate. Inside the mapped area that is a blend of the three
+        nearest ZIP bands; outside it, great circle distance with a road
+        factor. Always available, always labelled as an estimate.
+
+   Both run the SAME mileage ladder as the booking funnel and the payment
+   functions, so nothing shown here can drift from what gets charged.
 
    Degrades in two steps:
-     1. Leaflet missing or blocked -> a schematic SVG map, drawn from the same
-        data, so the section still works offline or behind a strict network.
-     2. No JavaScript at all -> the town lists below the map, which are plain
-        HTML and are what search engines read anyway.
+     1. Leaflet missing or blocked -> a schematic SVG map from the same data.
+     2. No JavaScript -> the town lists below, which are what search engines
+        read anyway.
    ============================================================ */
 (function () {
   'use strict';
@@ -28,6 +33,7 @@
   var BASE_ZIP = '45220';
   // Clifton, not the house. Close enough to draw from, far enough to publish.
   var BASE_LATLON = [39.135, -84.517];
+  var MAX_MIN = P.MAX_ONE_WAY_MINUTES || 720;
 
   /* ---------------- fee bands ---------------- */
 
@@ -54,6 +60,16 @@
     });
   }
 
+  function rangeText(lo, hi) {
+    if (hi === 0) return 'No travel fee';
+    return lo === hi ? $(hi) : $(lo) + ' to ' + $(hi);
+  }
+
+  function hours(min) {
+    var h = min / 60;
+    return h < 10 ? h.toFixed(1) : String(Math.round(h));
+  }
+
   /* ---------------- the data, joined once ---------------- */
 
   var POINTS = (function () {
@@ -61,14 +77,14 @@
     (P.ZIP_GEO || []).forEach(function (g) {
       var hit = P.lookupZip(g.zip);
       if (!hit) return;
-      var mid = Math.round((hit.minMin + hit.maxMin) / 2);
       var lo = feeCents(hit.minMin), hi = feeCents(hit.maxMin);
       list.push({
         zip: g.zip, area: hit.area, lat: g.lat, lon: g.lon,
-        minMin: hit.minMin, maxMin: hit.maxMin, mid: mid,
+        minMin: hit.minMin, maxMin: hit.maxMin,
+        mid: Math.round((hit.minMin + hit.maxMin) / 2),
         loCents: lo, hiCents: hi,
-        band: bandOf(feeCents(mid)),
-        range: hi === 0 ? 'No travel fee' : lo === hi ? $(hi) : $(lo) + ' to ' + $(hi)
+        band: bandOf(feeCents(Math.round((hit.minMin + hit.maxMin) / 2))),
+        range: rangeText(lo, hi)
       });
     });
     return list;
@@ -77,22 +93,106 @@
   var BY_ZIP = {};
   POINTS.forEach(function (p) { BY_ZIP[p.zip] = p; });
 
-  /* ---------------- readout ---------------- */
+  /* ---------------- estimating anywhere ---------------- */
 
-  var selected = '';
+  var COS_LAT = Math.cos((39.15 * Math.PI) / 180);
+
+  /** Rough degrees, longitude squeezed. Only ever compared, never published. */
+  function degreesFrom(lat, lon, p) {
+    var dx = (p.lon - lon) * COS_LAT;
+    var dy = p.lat - lat;
+    return Math.sqrt(dx * dx + dy * dy);
+  }
+
+  function crowMiles(lat, lon) {
+    var R = 3958.8;
+    var dLat = ((lat - BASE_LATLON[0]) * Math.PI) / 180;
+    var dLon = ((lon - BASE_LATLON[1]) * Math.PI) / 180;
+    var a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos((BASE_LATLON[0] * Math.PI) / 180) * Math.cos((lat * Math.PI) / 180) *
+      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  }
+
+  /** Inside this many degrees of a mapped ZIP, the measured bands win. */
+  var NEAR_DEG = 0.35;
+
+  /**
+   * Estimate a drive to any point on earth, with no network call.
+   *
+   * Near home that is an inverse distance blend of the three closest mapped
+   * ZIPs, which is built from real drive times rather than a miles per minute
+   * guess. Far from home there is nothing to blend, so it falls back to great
+   * circle distance with a road winding factor. Crude, and labelled as such,
+   * but it is enough to answer "is this even possible".
+   */
+  function estimateAt(lat, lon) {
+    var scored = POINTS.map(function (p) {
+      return { p: p, d: degreesFrom(lat, lon, p) };
+    }).sort(function (a, b) { return a.d - b.d; });
+
+    var nearest = scored[0];
+
+    if (nearest && nearest.d <= NEAR_DEG) {
+      var top = scored.slice(0, 3);
+      var wsum = 0, lo = 0, hi = 0;
+      top.forEach(function (s) {
+        var w = 1 / Math.max(s.d, 0.004);
+        wsum += w;
+        lo += s.p.minMin * w;
+        hi += s.p.maxMin * w;
+      });
+      return finish(Math.round(lo / wsum), Math.round(hi / wsum), nearest.p.area, false);
+    }
+
+    // Roads are not straight, so a crow flight gets a winding factor, and
+    // anything this far out is interstate rather than city streets, so the
+    // average speed is an open road one. Calibrated against real drives:
+    // Chicago lands near 4.7 hours and New York near 10.6, which is about
+    // right, and that matters because the 12 hour cut off is decided here.
+    var miles = crowMiles(lat, lon);
+    var mid = (miles * 1.15) / 62 * 60;
+    return finish(Math.round(mid * 0.9), Math.round(mid * 1.15),
+      nearest ? nearest.p.area : 'us', true);
+  }
+
+  function finish(minMin, maxMin, area, coarse) {
+    var mid = Math.round((minMin + maxMin) / 2);
+    var lo = feeCents(minMin), hi = feeCents(maxMin);
+    return {
+      minMin: minMin, maxMin: maxMin, area: area,
+      loCents: lo, hiCents: hi, range: rangeText(lo, hi),
+      approx: true, coarse: coarse, measured: false,
+      tooFar: mid > MAX_MIN
+    };
+  }
 
   function describe(zip) {
     if (BY_ZIP[zip]) return BY_ZIP[zip];
-    // A ZIP we have not mapped individually still resolves through the
-    // three digit prefix bands.
+    // A ZIP we have not mapped individually still resolves through the three
+    // digit prefix bands.
     var hit = P.lookupZip(zip);
     if (!hit) return null;
     var lo = feeCents(hit.minMin), hi = feeCents(hit.maxMin);
     return {
       zip: zip, area: hit.area, approx: !hit.found,
       minMin: hit.minMin, maxMin: hit.maxMin, loCents: lo, hiCents: hi,
-      range: hi === 0 ? 'No travel fee' : lo === hi ? $(hi) : $(lo) + ' to ' + $(hi)
+      range: rangeText(lo, hi)
     };
+  }
+
+  /* ---------------- readout ---------------- */
+
+  var selected = '';
+
+  function showTooFar(d, label) {
+    out.className = 'travel-out err';
+    out.innerHTML =
+      '<b>Too far for a mobile detail</b>' +
+      '<span>' + (label ? esc(label) + ' is ' : 'That is ') + 'roughly ' +
+      hours(Math.round((d.minMin + d.maxMin) / 2)) + ' hours of driving each way, well past the ' +
+      (MAX_MIN / 60) + ' hours we can cover. Consider booking a detail closer to you. ' +
+      'If you can get the vehicle nearer to Cincinnati, we will happily come to it there.</span>';
   }
 
   function showFee(d, label) {
@@ -101,23 +201,73 @@
       out.textContent = 'We do not have that one mapped. Ask us and we will check it for you.';
       return;
     }
+    if (d.tooFar) return showTooFar(d, label);
+
     out.className = 'travel-out ok';
     var where = esc(label || (d.area + ' (' + d.zip + ')'));
+
+    var time = d.measured
+      ? 'a measured ' + (d.minMin >= 90 ? hours(d.minMin) + ' hour' : d.minMin + ' minute') + ' drive from us'
+      : 'roughly ' + d.minMin + ' to ' + d.maxMin + ' minutes from us';
+
     out.innerHTML =
       '<b>' + esc(d.range) + '</b>' +
-      '<span>' + where + ', roughly ' + d.minMin + ' to ' + d.maxMin + ' minutes from us. ' +
+      '<span>' + where + ', ' + time + '. ' +
       (d.hiCents === 0
         ? 'That is inside our free radius.'
         : (d.loCents === 0 ? 'Closer parts of this area fall inside the free radius. ' : '') +
-          'Your exact fee comes from your address when you book.') +
+          (d.measured
+            ? 'Confirmed against your exact address when you book.'
+            : 'Your exact fee comes from your address when you book.')) +
       '</span>' +
-      (d.approx ? '<span class="travel-approx">We have not mapped this ZIP precisely yet, so this is a wider guess than usual.</span>' : '');
+      (d.coarse
+        ? '<span class="travel-approx">Well outside our usual area, so this is a distance estimate rather than a real route.</span>'
+        : d.approx && !d.measured
+          ? '<span class="travel-approx">An estimate from typical drive times nearby.</span>'
+          : '');
   }
 
   function clearOut() {
     out.className = 'travel-out';
     out.textContent = '';
     selected = '';
+  }
+
+  /* ---------------- measuring, when the key exists ----------------
+     The estimate paints immediately so nothing ever waits on a network
+     call, then the measured figure replaces it if the server can produce
+     one. A token guards against a slow reply for an old pin landing after
+     a new one. */
+
+  var quoteToken = 0;
+
+  function quoteAt(lat, lon, label, onDone) {
+    var mine = ++quoteToken;
+    var local = estimateAt(lat, lon);
+    showFee(local, label);
+    if (onDone) onDone(local);
+
+    fetch('/api/travel?lat=' + encodeURIComponent(lat.toFixed(6)) +
+          '&lng=' + encodeURIComponent(lon.toFixed(6)), { cache: 'default' })
+      .then(function (r) { return r.ok ? r.json() : Promise.reject(new Error(String(r.status))); })
+      .then(function (d) {
+        if (mine !== quoteToken) return;
+        if (d.reachable === false || d.tooFar) {
+          var far = { minMin: d.minutes || MAX_MIN + 1, maxMin: d.minutes || MAX_MIN + 1, tooFar: true };
+          showFee(far, label);
+          if (onDone) onDone(far);
+          return;
+        }
+        var m = {
+          minMin: d.minutes, maxMin: d.minutes, area: local.area,
+          loCents: d.feeCents, hiCents: d.feeCents,
+          range: rangeText(d.feeCents, d.feeCents),
+          measured: true, approx: false, coarse: false, tooFar: false
+        };
+        showFee(m, label);
+        if (onDone) onDone(m);
+      })
+      .catch(function () { /* the estimate is already on screen */ });
   }
 
   /* ---------------- legend ---------------- */
@@ -135,6 +285,9 @@
   var map = null, markers = {}, pin = null;
   var pinBtn = document.getElementById('pinDrop');
   var pinHint = document.getElementById('pinHint');
+  var zoomHint = document.getElementById('mapZoomHint');
+
+  var isTouch = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
 
   function initLeaflet() {
     var host = document.getElementById('areaMap');
@@ -143,7 +296,13 @@
     map = L.map(host, {
       center: [39.14, -84.5],
       zoom: 9,
-      scrollWheelZoom: false, // grabbing the page scroll is hostile on mobile
+      // Both off at the start. A map that eats the page scroll the moment
+      // your cursor crosses it is the most hated widget on the internet.
+      scrollWheelZoom: false,
+      // One finger has to keep scrolling the page, so panning is off until a
+      // second finger arrives. Pinch to zoom stays on throughout.
+      dragging: !isTouch,
+      touchZoom: true,
       zoomControl: true
     });
 
@@ -152,17 +311,51 @@
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
     }).addTo(map);
 
-    // Two fingers to pan on touch, so scrolling past the map still works.
     if (map.tap) map.tap.disable();
-    map.dragging.enable();
+
+    /* ---- zoom, once you have actually chosen the map ---- */
+
+    function armWheel() {
+      if (map.scrollWheelZoom.enabled()) return;
+      map.scrollWheelZoom.enable();
+      host.classList.add('zoom-on');
+      if (zoomHint) zoomHint.textContent = 'Scroll to zoom. Move off the map to scroll the page again.';
+    }
+
+    function disarmWheel() {
+      map.scrollWheelZoom.disable();
+      host.classList.remove('zoom-on');
+      if (zoomHint) zoomHint.textContent = idleZoomHint();
+    }
+
+    function idleZoomHint() {
+      return isTouch
+        ? 'Pinch with two fingers to zoom, two fingers to pan.'
+        : 'Click the map, then scroll to zoom.';
+    }
+
+    if (!isTouch) {
+      host.addEventListener('click', armWheel);
+      host.addEventListener('mouseleave', disarmWheel);
+      // Focusing a control inside the map counts as choosing it too.
+      host.addEventListener('focusin', armWheel);
+    } else {
+      host.addEventListener('touchstart', function (e) {
+        if (e.touches.length > 1) map.dragging.enable();
+        else map.dragging.disable();
+      }, { passive: true });
+      host.addEventListener('touchend', function (e) {
+        if (!e.touches || e.touches.length === 0) map.dragging.disable();
+      }, { passive: true });
+    }
+    if (zoomHint) zoomHint.textContent = idleZoomHint();
+
+    /* ---- the ZIP markers ---- */
 
     POINTS.forEach(function (p) {
       var m = L.circleMarker([p.lat, p.lon], {
-        radius: 8,
-        color: '#ffffff',
-        weight: 2,
-        fillColor: p.band.color,
-        fillOpacity: 0.92
+        radius: 8, color: '#ffffff', weight: 2,
+        fillColor: p.band.color, fillOpacity: 0.92
       }).addTo(map);
 
       m.bindTooltip(p.area + ': ' + p.range, { direction: 'top' });
@@ -175,11 +368,11 @@
       markers[p.zip] = m;
     });
 
-    // Where we start from. Marked so the whole map has an origin, without
+    // Where we start from. Marked so the map has an origin, without
     // publishing the actual address.
     L.circleMarker(BASE_LATLON, {
       radius: 9, color: '#0b0e13', weight: 3, fillColor: '#ffffff', fillOpacity: 1
-    }).addTo(map).bindTooltip('We start here', { permanent: false, direction: 'top' });
+    }).addTo(map).bindTooltip('We start here', { direction: 'top' });
 
     L.circle(BASE_LATLON, {
       radius: 8000, color: '#2f9e5e', weight: 1.5, dashArray: '5 7', fill: false
@@ -189,9 +382,7 @@
 
     // Right click drops the pin where you clicked. Long press does the same
     // on touch, which is what Leaflet fires contextmenu for there.
-    map.on('contextmenu', function (e) {
-      placePin(e.latlng.lat, e.latlng.lng);
-    });
+    map.on('contextmenu', function (e) { placePin(e.latlng.lat, e.latlng.lng); });
 
     if (pinBtn) {
       pinBtn.hidden = false;
@@ -201,9 +392,8 @@
         map.panTo(c);
       });
     }
-    if (pinHint) {
-      pinHint.textContent = 'Or right click anywhere on the map to drop the pin there.';
-    }
+    if (pinHint) pinHint.textContent = 'Or right click anywhere on the map to drop the pin there.';
+
     return true;
   }
 
@@ -214,17 +404,13 @@
     });
   }
 
-  /**
-   * The pin.
-   *
-   * Most people are not going to type a ZIP; they are going to want to point
-   * at their street. Drag it, or right click anywhere on the map, and the fee
-   * updates from where it lands.
-   *
-   * A divIcon rather than Leaflet's default marker: the default pulls PNGs
-   * from a path derived from wherever the stylesheet loaded, which is exactly
-   * the kind of thing that silently 404s behind a CDN.
-   */
+  /* ---------------- the pin ----------------
+     Most people are not going to type a ZIP; they are going to want to point
+     at their street. Drag it, or right click anywhere on the map, and the fee
+     follows it. A divIcon rather than Leaflet's default marker, because the
+     default pulls PNGs from a path derived from wherever the stylesheet
+     loaded, which is exactly the kind of thing that silently 404s. */
+
   function pinIcon() {
     return L.divIcon({
       className: 'ac-pin',
@@ -235,22 +421,32 @@
     });
   }
 
-  function pinLabel(d) {
-    return 'Your pin, nearest ' + d.area;
+  function pinPopup(d, label) {
+    if (d.tooFar) {
+      return '<b>Too far to drive</b><br><span class="lp-min">About ' +
+        hours(Math.round((d.minMin + d.maxMin) / 2)) + ' hours each way</span>';
+    }
+    return '<b>' + esc(label || 'Your pin') + '</b>' +
+      '<br><span class="lp-fee">' + esc(d.range) + '</span>' +
+      '<br><span class="lp-min">' +
+      (d.measured ? d.minMin + ' min, measured' : d.minMin + ' to ' + d.maxMin + ' min, estimated') +
+      '</span>';
   }
 
-  function priceAtPin() {
+  function pinLabel(d) {
+    return d.coarse ? 'Your pin' : 'Your pin, nearest ' + d.area;
+  }
+
+  function pricePin(opts) {
     if (!pin) return;
     var ll = pin.getLatLng();
-    var d = bandFromLatLon(ll.lat, ll.lng);
     selected = '';
     highlight('');
-    showFee(d, pinLabel(d));
-    pin.setPopupContent(
-      '<b>Your pin</b><br><span class="lp-fee">' + esc(d.range) + '</span>' +
-      '<br><span class="lp-min">' + d.minMin + ' to ' + d.maxMin + ' min from us, estimated</span>'
-    );
-    if (pinHint) pinHint.textContent = 'Drag the pin to move it. Right click the map to send it somewhere else.';
+    quoteAt(ll.lat, ll.lng, pinLabel(estimateAt(ll.lat, ll.lng)), function (d) {
+      if (pin) pin.setPopupContent(pinPopup(d, pinLabel(d)));
+    });
+    if (opts && opts.open && pin) pin.openPopup();
+    if (pinHint) pinHint.textContent = 'Drag the pin to move it. Right click the map to send it elsewhere.';
   }
 
   function placePin(lat, lon, opts) {
@@ -259,18 +455,17 @@
       pin = L.marker([lat, lon], { draggable: true, autoPan: true, icon: pinIcon() })
         .addTo(map)
         .bindPopup('');
-      pin.on('dragend', priceAtPin);
+      pin.on('dragend', function () { pricePin({ open: true }); });
       pin.on('drag', function () {
-        // Live while dragging, so the number moves under your thumb.
+        // Instant feedback while dragging; no network call until it lands.
         var ll = pin.getLatLng();
-        var d = bandFromLatLon(ll.lat, ll.lng);
+        var d = estimateAt(ll.lat, ll.lng);
         showFee(d, pinLabel(d));
       });
     } else {
       pin.setLatLng([lat, lon]);
     }
-    priceAtPin();
-    if (!opts || opts.open !== false) pin.openPopup();
+    pricePin({ open: !opts || opts.open !== false });
     if (pinBtn) pinBtn.textContent = 'Move the pin to the middle';
   }
 
@@ -278,15 +473,7 @@
     if (pin && map) map.removeLayer(pin);
     pin = null;
     if (pinBtn) pinBtn.textContent = 'Drop a pin on the map';
-    if (pinHint) pinHint.textContent = '';
-  }
-
-  function dropPin(lat, lon, label) {
-    placePin(lat, lon, { open: false });
-    if (!pin) return;
-    pin.setPopupContent(esc(label));
-    pin.openPopup();
-    map.setView([lat, lon], 12);
+    if (pinHint) pinHint.textContent = map ? 'Or right click anywhere on the map to drop the pin there.' : '';
   }
 
   /* ---------------- schematic fallback ----------------
@@ -297,10 +484,7 @@
     if (!canvas || POINTS.length < 10) return false;
 
     var W = 1000, PAD = 46;
-    var k = Math.cos((39.15 * Math.PI) / 180);
-    var pts = POINTS.map(function (p) {
-      return { ref: p, px: p.lon * k, py: -p.lat };
-    });
+    var pts = POINTS.map(function (p) { return { ref: p, px: p.lon * COS_LAT, py: -p.lat }; });
 
     var minX = Math.min.apply(null, pts.map(function (p) { return p.px; }));
     var maxX = Math.max.apply(null, pts.map(function (p) { return p.px; }));
@@ -403,14 +587,17 @@
     suggest.hidden = false;
   }
 
-  /* Address lookup, only when the local town and ZIP list comes up empty.
-     Nominatim is free and rate limited, so it is a last resort rather than a
-     keystroke handler, and a failure just leaves the local search in place. */
-  var geoTimer = null;
-
+  /**
+   * Address lookup.
+   *
+   * Biased toward the Cincinnati box so a bare street name lands locally, but
+   * NOT bounded to it, so a full address anywhere still resolves and the
+   * twelve hour rule gets a chance to answer honestly rather than the search
+   * simply failing.
+   */
   function geocode(q) {
-    var url = 'https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=us' +
-      '&viewbox=-85.6,39.9,-83.9,38.6&bounded=1&q=' + encodeURIComponent(q);
+    var url = 'https://nominatim.openstreetmap.org/search?format=json&limit=1&addressdetails=0' +
+      '&viewbox=-85.6,39.9,-83.9,38.6&q=' + encodeURIComponent(q);
     return fetch(url, { headers: { Accept: 'application/json' } })
       .then(function (r) { return r.ok ? r.json() : Promise.reject(new Error(String(r.status))); })
       .then(function (rows) {
@@ -419,36 +606,7 @@
       });
   }
 
-  /**
-   * Turn a coordinate into a drive-time band without calling a routing API.
-   *
-   * Takes the three nearest mapped ZIPs and blends their bands by inverse
-   * distance. Cruder than a real route, and clearly labelled as such, but it
-   * is built from the same measured drive times as everything else rather
-   * than from a miles-per-minute guess.
-   */
-  function bandFromLatLon(lat, lon) {
-    var scored = POINTS.map(function (p) {
-      var dx = (p.lon - lon) * Math.cos((39.15 * Math.PI) / 180);
-      var dy = p.lat - lat;
-      return { p: p, d: Math.sqrt(dx * dx + dy * dy) };
-    }).sort(function (a, b) { return a.d - b.d; }).slice(0, 3);
-
-    var wsum = 0, lo = 0, hi = 0;
-    scored.forEach(function (s) {
-      var w = 1 / Math.max(s.d, 0.004);
-      wsum += w;
-      lo += s.p.minMin * w;
-      hi += s.p.maxMin * w;
-    });
-    var minMin = Math.round(lo / wsum), maxMin = Math.round(hi / wsum);
-    var loC = feeCents(minMin), hiC = feeCents(maxMin);
-    return {
-      zip: scored[0].p.zip, area: scored[0].p.area, approx: true,
-      minMin: minMin, maxMin: maxMin, loCents: loC, hiCents: hiC,
-      range: hiC === 0 ? 'No travel fee' : loC === hiC ? $(hiC) : $(loC) + ' to ' + $(hiC)
-    };
-  }
+  var geoTimer = null;
 
   function search(commit) {
     var q = input.value.trim();
@@ -457,24 +615,36 @@
     if (/^\d{5}$/.test(q)) { pick(q); return; }
 
     var rows = localMatches(q);
-    if (rows.length) {
+    // A query with a house number in it is an address, not a town, so the
+    // town list should not intercept it.
+    var looksLikeAddress = /\d/.test(q) && /[a-z]/i.test(q);
+
+    if (rows.length && !looksLikeAddress) {
       if (commit) { pick(rows[0].zip); return; }
       renderSuggest(rows);
       return;
     }
 
-    // Nothing local. If it reads like a street address, geocode it.
-    if (!commit || q.length < 5) { hideSuggest(); return; }
+    if (!commit || q.length < 4) {
+      if (rows.length) renderSuggest(rows);
+      else hideSuggest();
+      return;
+    }
 
     renderSuggest([], '<p class="at-sg-note">Looking that up...</p>');
     geocode(q)
       .then(function (hit) {
         hideSuggest();
         if (!hit) { showFee(null); return; }
-        var d = bandFromLatLon(hit.lat, hit.lon);
-        var short = hit.label.split(',').slice(0, 3).join(',');
-        showFee(d, short);
-        dropPin(hit.lat, hit.lon, short);
+        var short = hit.label.split(',').slice(0, 3).join(',').trim();
+        clearPin();
+        if (map) {
+          placePin(hit.lat, hit.lon, { open: false });
+          map.setView([hit.lat, hit.lon], 13);
+        }
+        quoteAt(hit.lat, hit.lon, short, function (d) {
+          if (pin) { pin.setPopupContent(pinPopup(d, short)); pin.openPopup(); }
+        });
       })
       .catch(function () {
         hideSuggest();
