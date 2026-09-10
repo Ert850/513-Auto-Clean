@@ -89,6 +89,15 @@ export interface Package {
   schedulingDurationMin?: number;
   /** See ServiceComponent.videoUrl. Reserved for the (i) markers. */
   videoUrl?: string;
+  /**
+   * Plain "how it works" for the customer, behind a toggle on the card.
+   *
+   * Always says what the tier does NOT cover as well as what it does. Setting
+   * that expectation before the job is far cheaper than arguing about it
+   * afterwards, and it points people at the right tier instead of the
+   * cheapest one they hoped would be enough.
+   */
+  note?: string;
 }
 
 export interface Catalog {

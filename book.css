@@ -538,3 +538,7 @@ body.bk-open { overflow: hidden; }
 .bk-pkg.off:hover { border-color: var(--line); }
 
 .bk-coverage { font-size: .82rem; color: var(--text-soft); line-height: 1.55; margin: 0 0 .9rem; }
+
+/* how it works, on a package card */
+.bk-how-pkg { margin: -.2rem 0 .55rem .2rem; }
+.bk-how-pkg summary { font-size: .79rem; }

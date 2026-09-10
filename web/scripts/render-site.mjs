@@ -79,6 +79,11 @@ ${p.featured ? '          <span class="svc-tag">Most Popular</span>\n' : ""}    
           <ul class="feat">
 ${feats}
           </ul>
+          ${
+            p.note
+              ? `<details class="svc-how"><summary>How it works</summary><p>${esc(p.note)}</p></details>`
+              : ""
+          }
           <div class="svc-foot"><a class="btn ${p.featured ? "btn-primary" : "btn-ghost"} btn-block" href="book.html">Book ${esc(p.name)}</a></div>
         </article>`;
 }
