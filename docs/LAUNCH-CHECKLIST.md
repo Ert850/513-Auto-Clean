@@ -17,8 +17,16 @@ build if a page and the switches ever disagree, so neither page can promise
 something that is not working or name a processor that is not in use.
 
 The switches, as of today: `cardOnFile`, `digitalWallets`, `liveCalendar`,
-`measuredTravel`, `automatedMessages`, `bookingLink`, `placesAutocomplete`,
-`botCheck`. All off.
+`measuredTravel`, `automatedEmail`, `automatedTexts`, `bookingLink`,
+`placesAutocomplete`, `botCheck`. All off.
+
+**Email and text are separate switches on purpose.** Resend is a signup and
+one DNS record, so `automatedEmail` can go live this week. A2P 10DLC is days
+to weeks of carrier review, and until it clears, business texts are silently
+filtered: they look sent and never arrive. Do the email one first and the
+site starts confirming bookings on its own while the text registration is
+still in a queue. Until then the pages say plainly that Elijah confirms by
+hand and texts the ETA himself, because he does.
 
 **Never paste a secret key into a chat, a commit, or the HTML.** Secrets go in
 `web/.env.local` (gitignored) and into Netlify's environment variables. The
@@ -37,7 +45,7 @@ only things safe to send me are marked "safe to share" below.
 | 5 | Google Place ID | You | 2 min | Reviews come from a snapshot I update by hand |
 | 5b | Personal calendar URL into Netlify | You | 2 min | Bookings can land on top of your own commitments |
 | 6 | Neon Postgres | You | 10 min | Bookings are not stored, so double-booking is possible |
-| 7 | Resend | You | 10 min | No confirmation emails |
+| 7 | Resend | You | 10 min | No confirmation emails. **Do this before Twilio**: it is one DNS record and it makes confirmations automatic weeks before A2P clears |
 | 8 | PayPal business account | You | 20 min | No PayPal or Venmo at checkout |
 | 9 | Netlify environment variables | You | 10 min | None of the above reaches the live site |
 | 10 | Six add-on prices | You | 0 min | **Done.** All fifteen add-ons are priced |

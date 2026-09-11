@@ -61,6 +61,7 @@ import {
 } from "./catalog/types.js";
 import { averageOneWayMinutes, mileageFeeCents, travelCommitmentMinutes } from "./pricing/mileage.js";
 import { LEGAL } from "./site/legal.js";
+import { CAPABILITIES, IN_PERSON, isLive } from "./site/capabilities.js";
 import {
   cancellationLadder,
   computeCancellation,
@@ -190,6 +191,9 @@ const api = {
   requiresPriorityBooking,
   slotNeedsPriority,
   LEGAL,
+  CAPABILITIES,
+  IN_PERSON,
+  isLive,
   computeCancellation,
   computeReschedule,
   cancellationLadder,

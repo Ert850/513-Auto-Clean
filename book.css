@@ -954,3 +954,57 @@ body.bk-open { overflow: hidden; }
   animation: bkNudge .45s var(--ease);
 }
 @media (prefers-reduced-motion: reduce) { .bk-check.bk-juston { animation: none; } }
+
+/* ---------- Getting set up on the day ---------- */
+.bk-accbox {
+  background: var(--paper-2); border: 1.5px solid var(--line); border-radius: var(--r-md);
+  padding: 1rem 1.05rem; margin: 1.1rem 0;
+}
+.bk-accbox h4 { margin: 0 0 .3rem; font-family: var(--font-display); font-size: 1.02rem; }
+.bk-accbox > .bk-hint { margin: 0 0 .9rem; }
+.bk-accbox .bk-field { margin-top: .9rem; }
+
+.bk-acc { padding: .7rem 0; border-top: 1px solid var(--line); }
+.bk-acc-q { margin: 0; font-size: .92rem; font-weight: 700; }
+.bk-acc-h { margin: .12rem 0 .5rem; font-size: .82rem; color: var(--text-soft); line-height: 1.5; }
+.bk-acc-opts { display: grid; grid-template-columns: repeat(3, 1fr); gap: .4rem; }
+.bk-acc-b {
+  font: inherit; font-size: .88rem; font-weight: 700; cursor: pointer;
+  padding: .55rem .4rem; border-radius: var(--r-sm);
+  border: 1.5px solid var(--line); background: var(--paper); color: var(--text);
+  transition: border-color .16s, background .16s;
+}
+.bk-acc-b:hover { border-color: var(--red); }
+.bk-acc-b.on { border-color: var(--red); background: var(--red-ghost); color: var(--red-deep); }
+
+/* ---------- The receipt on the confirmation screen ---------- */
+.bk-done-h {
+  margin: 1.6rem 0 .5rem; font-family: var(--font-display); font-size: .95rem;
+  text-align: left;
+}
+.bk-receipt {
+  margin: 0; text-align: left;
+  display: grid; grid-template-columns: minmax(5.5rem, auto) 1fr; gap: .1rem .9rem;
+  background: var(--paper); border: 1px solid var(--line); border-radius: var(--r-sm);
+  padding: .8rem .95rem; font-size: .87rem;
+}
+.bk-receipt dt { color: var(--text-soft); font-weight: 700; }
+.bk-receipt dd { margin: 0; color: var(--text); overflow-wrap: anywhere; }
+
+.bk-done-acts { display: grid; gap: .45rem; margin: 1.3rem 0 .6rem; }
+.bk-done-acts button {
+  font: inherit; font-size: .92rem; font-weight: 700; cursor: pointer;
+  border-radius: var(--r-sm); padding: .72rem .9rem;
+  border: 1.5px solid var(--line); background: var(--paper-2); color: var(--text);
+  transition: border-color .16s;
+}
+.bk-done-acts button:hover { border-color: var(--red); }
+.bk-done-fix { border-color: var(--red) !important; color: var(--red) !important; }
+.bk-done-call { font-size: .84rem; color: var(--text-soft); line-height: 1.55; margin: 0 0 .4rem; }
+.bk-done-call a { color: var(--red); font-weight: 700; }
+
+/* The step tabs, once there is nothing left to step through. */
+.bk-nav-done {
+  display: block; padding: .55rem 1.1rem; font-size: .78rem; font-weight: 700;
+  letter-spacing: .04em; text-transform: uppercase; color: var(--text-soft);
+}

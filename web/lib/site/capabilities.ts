@@ -51,10 +51,22 @@ export const CAPABILITIES: Capability[] = [
     blockedBy: "Google Routes API key and SHOP_ORIGIN_ADDRESS",
   },
   {
-    id: "automatedMessages",
-    what: "Automatic confirmations, reminders and an on-the-way text",
+    // Split from a single "automatedMessages" switch, because the two halves
+    // are not remotely the same job. Resend is a signup and one DNS record.
+    // A2P 10DLC registration is days to weeks of carrier review, and until it
+    // clears, business texts are SILENTLY FILTERED: they look sent and never
+    // arrive. Tying email to that would hold back a working feature for
+    // weeks for no reason.
+    id: "automatedEmail",
+    what: "Automatic confirmation and reminder emails",
     live: false,
-    blockedBy: "Twilio A2P 10DLC registration and Resend",
+    blockedBy: "Resend account and one DNS record. The quickest win on this list",
+  },
+  {
+    id: "automatedTexts",
+    what: "Automatic confirmation, reminder and on-the-way texts",
+    live: false,
+    blockedBy: "Twilio A2P 10DLC registration, which takes days to weeks",
   },
   {
     id: "bookingLink",
@@ -105,8 +117,8 @@ export const PROCESSORS: Processor[] = [
   { name: "Google Calendar", does: "holds our availability. Your browser reads our open times from it.", capability: "liveCalendar" },
   { name: "Stripe", does: "takes card payments and keeps your card on file. Card details go straight to Stripe over an encrypted connection; we never see or store the card number.", capability: "cardOnFile" },
   { name: "PayPal", does: "takes PayPal and Venmo payments.", capability: "digitalWallets" },
-  { name: "Twilio", does: "sends our appointment text messages.", capability: "automatedMessages" },
-  { name: "Resend", does: "sends our confirmation and reminder emails.", capability: "automatedMessages" },
+  { name: "Twilio", does: "sends our appointment text messages.", capability: "automatedTexts" },
+  { name: "Resend", does: "sends our confirmation and reminder emails.", capability: "automatedEmail" },
   { name: "Neon", does: "stores bookings in our database so your booking link works.", capability: "bookingLink" },
   { name: "Cloudflare Turnstile", does: "checks that a booking is being made by a person, before payment. It may set a cookie to do so.", capability: "botCheck" },
 ];
@@ -194,22 +206,23 @@ export const GATED_COPY: GatedCopy[] = [
   },
   {
     id: "confirmation",
-    capability: "automatedMessages",
+    capability: "automatedEmail",
     live:
-      "When you book online you pick the time that suits you and we confirm it straight away by text and email.",
+      "When you book online you pick the time that suits you and an email confirming it arrives straight away.",
     notYet:
-      "When you book online you pick the time that suits you and we confirm it, usually within a few hours, " +
-      "by text or email.",
+      "When you book online you pick the time that suits you. We confirm it by hand, usually within a few " +
+      "hours, by text or email, so a booking is not final until you hear from us.",
   },
   {
     id: "messages",
-    capability: "automatedMessages",
+    capability: "automatedTexts",
     live:
       "We ask when you book whether we can text you about your detail. If you say yes we will confirm the " +
       "booking, remind you beforehand and let you know when we are on the way.",
     notYet:
-      "We ask when you book whether we can text you about your detail. If you say yes we will use it to " +
-      "confirm the booking, remind you beforehand and let you know when we are on the way.",
+      "We ask when you book whether we can text you about your detail. If you say yes, Elijah texts you " +
+      "himself: to confirm, to check anything he needs to know, and with an ETA before he sets off. There " +
+      "is no automated messaging behind it yet, so you are texting a person.",
   },
 ];
 
