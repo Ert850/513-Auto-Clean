@@ -87,6 +87,12 @@ near a total.
 milliseconds, which is why there are 106 tests and why they are fast enough to
 run on every change.
 
+**The terms page is generated too.** Every number in it comes from
+`lib/pricing/rules.ts`, and every sentence whose truth depends on a feature
+comes from `lib/site/capabilities.ts`. Flip a capability to `live: true`,
+rebuild, and the page rewrites itself. `lib/site/terms.test.ts` fails if the
+page ever claims something a switch says is not working.
+
 **No em-dashes in anything a customer reads.** Code and comments are exempt.
 
 ---

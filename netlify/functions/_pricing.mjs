@@ -1658,6 +1658,95 @@ function cancellationLadder(r) {
   ];
 }
 
+// lib/site/capabilities.ts
+var CAPABILITIES = [
+  {
+    id: "cardOnFile",
+    what: "Taking a card at booking and charging it when the work is done",
+    live: false,
+    blockedBy: "Stripe keys"
+  },
+  {
+    id: "digitalWallets",
+    what: "Apple Pay, Google Pay, PayPal and Venmo at checkout",
+    live: false,
+    blockedBy: "Stripe and PayPal accounts"
+  },
+  {
+    id: "liveCalendar",
+    what: "Reading real availability, so a chosen time is genuinely open",
+    live: false,
+    blockedBy: "Google Calendar API key and a public availability calendar"
+  },
+  {
+    id: "measuredTravel",
+    what: "Measuring the real drive at the appointment time, traffic included",
+    live: false,
+    blockedBy: "Google Routes API key and SHOP_ORIGIN_ADDRESS"
+  },
+  {
+    id: "automatedMessages",
+    what: "Automatic confirmations, reminders and an on-the-way text",
+    live: false,
+    blockedBy: "Twilio A2P 10DLC registration and Resend"
+  },
+  {
+    id: "bookingLink",
+    what: "A customer link for moving a time or changing services without calling",
+    live: false,
+    blockedBy: "Neon Postgres, so there is a stored booking to point at"
+  }
+];
+function isLive(id) {
+  return CAPABILITIES.find((c2) => c2.id === id)?.live ?? false;
+}
+function pending() {
+  return CAPABILITIES.filter((c2) => !c2.live);
+}
+var GATED_COPY = [
+  {
+    id: "howToChange",
+    capability: "bookingLink",
+    live: 'Easiest way is your <strong>booking link</strong>, which is in the confirmation we sent when you booked. Open it and you can move the time, change what is included, or cancel, and it shows you what each one costs before you commit. Otherwise call or text <a href="tel:+15132792915">(513) 279-2915</a>.',
+    notYet: 'Call or text <a href="tel:+15132792915">(513) 279-2915</a>, or reply to the confirmation we sent you. A text is fine and you do not need a reason.'
+  },
+  {
+    id: "changeSelfService",
+    capability: "bookingLink",
+    live: "Your booking link works this out and shows you the number before you confirm anything.",
+    notYet: "Ask us and we will work out the number for you before you agree to anything."
+  },
+  {
+    id: "paymentMethods",
+    capability: "digitalWallets",
+    live: "We take cards, Apple Pay, Google Pay, PayPal, Venmo and cash.",
+    notYet: "If you would rather settle another way, ask us and we will sort it out."
+  },
+  {
+    id: "travelBasis",
+    capability: "measuredTravel",
+    live: "After that we charge for the real drive out to you, measured at the time you picked with the traffic of that hour, rather than a flat call-out fee.",
+    notYet: "After that we charge for the drive out to you rather than a flat call-out fee, worked out from your address and the time you picked."
+  },
+  {
+    id: "confirmation",
+    capability: "automatedMessages",
+    live: "When you book online you pick the time that suits you and we confirm it straight away by text and email.",
+    notYet: "When you book online you pick the time that suits you and we confirm it, usually within a few hours, by text or email."
+  },
+  {
+    id: "messages",
+    capability: "automatedMessages",
+    live: "We ask when you book whether we can text you about your detail. If you say yes we will confirm the booking, remind you beforehand and let you know when we are on the way.",
+    notYet: "We ask when you book whether we can text you about your detail. If you say yes we will use it to confirm the booking, remind you beforehand and let you know when we are on the way."
+  }
+];
+function copyFor(id) {
+  const row = GATED_COPY.find((c2) => c2.id === id);
+  if (!row) throw new Error(`No gated copy for "${id}"`);
+  return isLive(row.capability) ? row.live : row.notYet;
+}
+
 // lib/server-entry.ts
 function priceFromWire(wire, opts = {}) {
   const rejected = [];
@@ -1752,12 +1841,14 @@ function priceFromWire(wire, opts = {}) {
 }
 export {
   ADDONS,
+  CAPABILITIES,
   COATING_COVERAGE,
   COATING_EXPLAINER,
   COATING_TERMS,
   CORRECTION_RULES,
   CORRECTION_TIERS,
   DEFAULT_RULES,
+  GATED_COPY,
   MAINTENANCE_PLAN,
   MAX_ONE_WAY_MINUTES,
   PROMOS,
@@ -1770,10 +1861,12 @@ export {
   componentsOf,
   computeCancellation,
   computeReschedule,
+  copyFor,
   estimateOneWayMinutes,
   findAddon,
   findPackage,
   findPromo,
+  isLive,
   isSelectable,
   isUnpriced,
   mergeBusy,
@@ -1781,6 +1874,7 @@ export {
   normalisePromo,
   packagesFor,
   parseIcsBusy,
+  pending,
   priceFromWire,
   promoDiscountCents,
   promoMessage,

@@ -9,6 +9,12 @@ and exactly what breaks until you do.
 `SETUP.md` has the click-by-click steps for each service. This page is the
 tracker: what is blocked, by whom, and how bad it is.
 
+**When you finish one of these, flip its switch.** `web/lib/site/capabilities.ts`
+has one line per feature. Set `live: true`, run `npm run build`, and the terms
+page rewrites itself to describe what the site now actually does. A test fails
+the build if the two ever disagree, so the page cannot promise something that
+is not working.
+
 **Never paste a secret key into a chat, a commit, or the HTML.** Secrets go in
 `web/.env.local` (gitignored) and into Netlify's environment variables. The
 only things safe to send me are marked "safe to share" below.

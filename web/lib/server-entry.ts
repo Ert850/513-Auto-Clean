@@ -218,6 +218,7 @@ export {
   computeReschedule,
   cancellationLadder,
 } from "./pricing/cancellation.js";
+export { CAPABILITIES, GATED_COPY, copyFor, isLive, pending } from "./site/capabilities.js";
 export { estimateOneWayMinutes } from "./travel/zipRanges.js";
 
 export {
