@@ -18,6 +18,9 @@
   var $ = P.formatCents;
 
   var WEB3FORMS_KEY = '8a502fe3-2a53-4904-98e9-b18dabb1f579';
+
+  /** Everything we can take standing in a driveway. From capabilities.ts. */
+  var IN_PERSON = P.IN_PERSON;
   var DAY = 86400000;
 
   /* ================= state ================= */
@@ -43,6 +46,13 @@
       preferredWindows: [],
       slot: null,
       daysShown: 3,
+      // A date typed into the picker, as yyyy-mm-dd, or '' for the soonest.
+      jumpDate: '',
+      // A time typed into the picker, as HH:MM, and what we made of it.
+      wantTime: '',
+      timeNote: '',
+      // Set for one render when a near-term day ticks the box for them.
+      flashPrio: false,
       contact: { name: '', phone: '', email: '' },
       consent: { terms: null, sms: null, media: null },
       payInFull: false,
@@ -62,6 +72,11 @@
       // has not launched instead of guessing at it.
       interest: [],
       prefer: { parts: [], days: [] },
+      // What we need to know before loading the van. Asked on the last step
+      // rather than promised as "a few quick questions" in a list of things
+      // that will happen later, which is how it used to read and meant
+      // turning up to find a locked gate and no outdoor tap.
+      access: { water: null, power: null, parking: '' },
       // Which band's times are expanded, as 'dayKey|bandId'.
       openBand: '',
       // Set when the funnel was opened from a shared quote link.
@@ -69,7 +84,11 @@
       quotedSlot: null,
       slotTaken: false,
       promoCode: '',
-      promoOpen: false,
+      // True while the "are you sure" panel is up.
+      leaving: false,
+      // True when this session was restored from a saved draft, so the page
+      // can say so rather than silently remembering a stranger's answers.
+      resumed: false,
       notes: '',
       sending: false,
       done: false,
@@ -97,7 +116,7 @@
     { id: 'more',     tab: 'Vehicles', title: 'Add another vehicle?',      auto: false, render: rMore,    valid: ok,       sum: sMore },
     { id: 'time',     tab: 'Time',     title: 'Pick your time',            auto: true,  render: rTime,    valid: vTime,    sum: sTime },
     { id: 'location', tab: 'Where',    title: 'Where are we detailing?',   auto: false, render: rLoc,     valid: vLoc,     sum: sLoc },
-    { id: 'contact',  tab: 'You',      title: 'How do we reach you?',      auto: false, render: rContact, valid: vContact, sum: sContact },
+    { id: 'contact',  tab: 'Accept',   title: 'Your details, and what you agree to', auto: false, render: rContact, valid: vContact, sum: sContact },
     { id: 'pay',      tab: 'Confirm',  title: 'Confirm your booking',      auto: false, render: rPay,     valid: vPay,     sum: sPay }
   ];
 
@@ -124,6 +143,9 @@
   }
   function sContact() { return state.contact.name ? state.contact.name.split(' ')[0] : ''; }
   function sPay() { return $(q().totalCents); }
+
+  /** "50%", "10%". Basis points are for the engine, not for a customer. */
+  function pctOf(bp) { return (bp / 100) + '%'; }
 
   function ok() { return null; }
   function step() { return STEPS[state.step]; }
@@ -218,7 +240,58 @@
   function q() { return P.quote(cart(), RULES); }
 
   /** Showroom is priced from a floor, so its card has to say so. */
-  function pkgPrice(p) { return $(p.priceCents) + (p.pricePlus ? '+' : ''); }
+  /* ---------------- prices under a promo code ---------------- */
+
+  /**
+   * The live percentage off, or null.
+   *
+   * ONLY percentage codes strike prices through. A flat "$20 off" cannot be
+   * shown against each line, because a quarter of it is not a quarter off
+   * every package: the numbers on screen would stop adding up to the number
+   * in the footer. Flat codes show their saving once, on the total.
+   *
+   * Cached per render because it is read once per package, add-on and tier,
+   * and recomputing the promo lookup a few dozen times a paint is waste.
+   */
+  var _rate;
+
+  function clearPromoRate() { _rate = undefined; }
+
+  function promoRate() {
+    if (_rate !== undefined) return _rate;
+    _rate = null;
+    if (state.promoCode) {
+      var hit = P.findPromo(state.promoCode, { serviceCents: q().serviceSubtotalCents });
+      if (hit.promo && hit.promo.percentBp) _rate = hit.promo.percentBp;
+    }
+    return _rate;
+  }
+
+  /**
+   * A service price, struck through when a code is taking a slice off it.
+   *
+   * `$215` on its own, or `$215 $161.25` with the first one crossed out. The
+   * point of the strike is that the discount is visible at the moment someone
+   * is choosing, not discovered at checkout, which is where it does the least
+   * good for them and for us.
+   */
+  function svc(cents, suffix) {
+    var bp = promoRate();
+    var tail = suffix || '';
+    if (!bp || !cents || cents <= 0) return $(cents) + tail;
+    var off = Math.round((cents * bp) / 10000);
+    return '<s>' + $(cents) + tail + '</s> <span class="bk-cut">' + $(cents - off) + tail + '</span>';
+  }
+
+  /** The same, for a figure written as an addition: "+$50". */
+  function svcPlus(cents) {
+    var bp = promoRate();
+    if (!bp || !cents || cents <= 0) return '+' + $(cents);
+    var off = Math.round((cents * bp) / 10000);
+    return '<s>+' + $(cents) + '</s> <span class="bk-cut">+' + $(cents - off) + '</span>';
+  }
+
+  function pkgPrice(p) { return svc(p.priceCents, p.pricePlus ? '+' : ''); }
 
   function pkgDuration(p) {
     return p.durationMaxMin
@@ -329,6 +402,7 @@
 
   function render() {
     if (state.done) return;
+    clearPromoRate();
     var s = step();
     var pct = Math.round(((state.step + 1) / STEPS.length) * 100);
 
@@ -348,6 +422,27 @@
         ? (isInquiry() ? 'Send request' : state.payInFull ? 'Pay and confirm' : 'Confirm booking')
         : 'Continue';
 
+    if (state.resumed) {
+      // Once, on the step they come back to. Repeating it on every step
+      // afterwards would be nagging about something they already know.
+      state.resumed = false;
+      var back = document.createElement('p');
+      back.className = 'bk-resumed';
+      back.innerHTML = 'Picked up where you left off. ' +
+        '<button type="button" id="bkFresh">Start fresh instead</button>';
+      el('bkBody').insertBefore(back, el('bkBody').firstChild);
+    }
+
+    if (state.flashPrio) {
+      state.flashPrio = false;
+      var prio = el('bkPrioBox');
+      if (prio) {
+        prio.classList.add('bk-juston');
+        prio.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        setTimeout(function () { prio.classList.remove('bk-juston'); }, 3200);
+      }
+    }
+
     renderTotal();
     var focusable = el('bkBody').querySelector('[data-focus]');
     if (focusable) focusable.focus();
@@ -356,6 +451,7 @@
   }
 
   function renderTotal() {
+    clearPromoRate();
     var quote = q();
     var box = el('bkTotal');
     if (!quote.lines.length) { box.hidden = true; return; }
@@ -363,7 +459,18 @@
     box.querySelector('.bk-total-amt').textContent = $(quote.totalCents);
     var dur = quote.serviceDurationMin;
     var sub = box.querySelector('.bk-total-sub');
-    if (quote.multiVehicleDiscountCents > 0) {
+
+    if (quote.promoDiscountCents > 0) {
+      // Re-priced without the code rather than adding the discount back by
+      // hand, so the struck figure includes the tax that came off with it and
+      // the two numbers on screen really do subtract to the saving beside
+      // them.
+      var plain = cart();
+      plain.promoCode = null;
+      var before = P.quote(plain, RULES);
+      sub.innerHTML = '<s>' + $(before.totalCents) + '</s> ' +
+        esc(quote.promoCode) + ' saves you ' + $(before.totalCents - quote.totalCents);
+    } else if (quote.multiVehicleDiscountCents > 0) {
       // Lead with the saving, not the duration: this is the moment the second
       // vehicle has to look like a good idea.
       // Quote the visible gap, not the pre-tax discount, so the two numbers
@@ -381,15 +488,97 @@
     return (h ? h + ' hr' + (h > 1 ? 's' : '') : '') + (m ? (h ? ' ' : '') + m + ' min' : '');
   }
 
-  function flash(msg) {
-    var old = el('bkBody').querySelector('.bk-err');
+  /** A brief word after the funnel has already closed. */
+  function toast(msg) {
+    var old = document.getElementById('bkToast');
     if (old) old.remove();
+    var t = document.createElement('div');
+    t.id = 'bkToast';
+    t.className = 'bk-toast';
+    t.setAttribute('role', 'status');
+    t.textContent = msg;
+    document.body.appendChild(t);
+    setTimeout(function () { t.classList.add('out'); }, 4200);
+    setTimeout(function () { if (t.parentNode) t.remove(); }, 4800);
+  }
+
+  /**
+   * Say what is wrong, next to the thing that is wrong.
+   *
+   * `near` is the control at fault. The message is planted beside it rather
+   * than at the foot of the step, because a message at the bottom of a long
+   * form is a message about nothing in particular: the reader has to go
+   * hunting for the field it means.
+   */
+  function flash(msg, near) {
+    var body = el('bkBody');
+    var old = body.querySelector('.bk-err');
+    if (old) old.remove();
+
     var p = document.createElement('p');
     p.className = 'bk-err';
     p.setAttribute('role', 'alert');
     p.textContent = msg;
-    el('bkBody').appendChild(p);
-    p.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+
+    var box = near && (near.closest('.bk-field,.bk-consent,.bk-check,.bk-band,.bk-cards') || near);
+    if (box && box.parentNode) box.parentNode.insertBefore(p, box.nextSibling);
+    else body.appendChild(p);
+
+    (box || p).scrollIntoView({ block: 'center', behavior: 'smooth' });
+  }
+
+  /**
+   * A validation failure, and the control that caused it.
+   *
+   * Validators used to return a bare sentence, which told someone WHAT was
+   * missing but not WHERE. On a step with three text fields and three yes or
+   * no questions, "Please answer yes or no on filming" meant scrolling back
+   * up to find which of the three was blank.
+   */
+  function fail(msg, focus) {
+    return { msg: msg, focus: focus || null };
+  }
+
+  /** Validators may return a plain string or a fail(). Normalise both. */
+  function asProblem(r, stepIndex) {
+    if (!r) return null;
+    return typeof r === 'string'
+      ? { step: stepIndex, msg: r, focus: null }
+      : { step: stepIndex, msg: r.msg, focus: r.focus };
+  }
+
+  /**
+   * The first thing standing between here and Continue.
+   *
+   * Looks at every step up to and including this one, not just this one. If
+   * someone jumped back, changed a package and jumped forward again, the gap
+   * they opened is behind them, and sending them on would only fail later at
+   * the payment step where it is far more annoying.
+   */
+  function firstProblem() {
+    for (var i = 0; i <= state.step; i++) {
+      var found = asProblem(STEPS[i].valid(), i);
+      if (found) return found;
+    }
+    return null;
+  }
+
+  /** Take them to it, point at it, and put the cursor in it. */
+  function showProblem(prob) {
+    if (prob.step !== state.step) {
+      state.step = prob.step;
+      render();
+    }
+    var node = prob.focus ? el('bkBody').querySelector(prob.focus) : null;
+    flash(prob.msg, node);
+    if (node) {
+      var box = node.closest('.bk-field,.bk-consent,.bk-check') || node;
+      box.classList.add('bk-invalid');
+      setTimeout(function () { box.classList.remove('bk-invalid'); }, 3000);
+      // preventScroll, because flash has already scrolled to the right place
+      // and a second scroll from the focus call fights it.
+      try { node.focus({ preventScroll: true }); } catch (e) { node.focus(); }
+    }
   }
 
   function go(n) {
@@ -399,8 +588,8 @@
   }
 
   function advance() {
-    var err = step().valid();
-    if (err) { flash(err); return; }
+    var prob = firstProblem();
+    if (prob) { showProblem(prob); return; }
     if (state.step === STEPS.length - 1) { submit(); return; }
 
     // Skip past anything already answered, which is what happens when someone
@@ -424,7 +613,7 @@
           '</button>';
       }).join('') + '</div>';
   }
-  function vSize() { return veh().size ? null : 'Pick a vehicle size to continue.'; }
+  function vSize() { return veh().size ? null : fail('Pick a vehicle size to continue.', '[data-size]'); }
 
   /* ================= step 2: intent ================= */
 
@@ -594,7 +783,7 @@
           '<span class="bk-pkg-r">' +
           (i.unavailable
             ? '<b class="bk-soon">Soon</b><i>' + esc(i.unavailable) + '</i>'
-            : '<b>' + $(i.priceCents) + (i.pricePlus ? '+' : '') + '</b>' + (dur ? '<i>' + dur + '</i>' : '')) +
+            : '<b>' + svc(i.priceCents, i.pricePlus ? '+' : '') + '</b>' + (dur ? '<i>' + dur + '</i>' : '')) +
           '</span>' +
           '</button>' +
           (i.note
@@ -607,14 +796,17 @@
     html += '<button type="button" class="bk-morelink" id="bkBrowseBack">Back to the quick picker</button>';
     return html;
   }
-  function vIntent() { return veh().intent ? null : 'Pick interior, exterior, or both.'; }
+  function vIntent() { return veh().intent ? null : fail('Pick interior, exterior, or both.', '[data-intent]'); }
 
   /* ================= step 3: package ================= */
 
   function rPackage() {
     var v = veh();
     var cats = v.intent === 'both' ? ['interior', 'exterior'] : [v.intent];
-    var html = '';
+    // Prices first appear on this screen, so the code goes here rather than
+    // waiting for checkout. Somebody holding a code should watch it come off
+    // while they choose, not find out afterwards that they could have.
+    var html = promoBox(q(), true);
 
     cats.forEach(function (cat) {
       if (v.intent === 'both') {
@@ -715,7 +907,7 @@
         '<span class="bk-pkg-l"><b>' + esc(t.label) + (t.asterisk ? '<sup>*</sup>' : '') + '</b>' +
         '<span class="bk-pkg-tag">' + esc(t.result) + '</span>' +
         '<span class="bk-pkg-feat">' + esc(t.detail) + '</span></span>' +
-        '<span class="bk-pkg-r"><b>+' + $(t.addCents) + '</b><i>' + fmtDur(t.addMin) + '</i></span>' +
+        '<span class="bk-pkg-r"><b>' + svcPlus(t.addCents) + '</b><i>' + fmtDur(t.addMin) + '</i></span>' +
         '</button>';
     }).join('');
 
@@ -725,7 +917,7 @@
           return '<button type="button" class="bk-tier' + (v.coatingTerm === c.id ? ' on' : '') +
             '" data-coating="' + c.id + '">' +
             '<span class="bk-tier-l">' + esc(c.label) + (c.asterisk ? '*' : '') + '</span>' +
-            '<span class="bk-tier-p">' + (c.addCents ? '+' + $(c.addCents) : 'included') + '</span>' +
+            '<span class="bk-tier-p">' + (c.addCents ? svcPlus(c.addCents) : 'included') + '</span>' +
             '</button>';
         }).join('') + '</div>';
 
@@ -747,12 +939,12 @@
 
   function vPackage() {
     var v = veh();
-    if (!v.packageIds.length) return 'Choose a package to continue.';
-    if (needsCorrection(v) && !v.correctionTier) return 'Pick a correction level to continue.';
+    if (!v.packageIds.length) return fail('Choose a package to continue.', '[data-pkg]');
+    if (needsCorrection(v) && !v.correctionTier) return fail('Pick a correction level to continue.', '[data-corr]');
     if (v.intent === 'both') {
       var cats = v.packageIds.map(function (id) { return P.findPackage(id).category; });
-      if (cats.indexOf('interior') < 0) return 'Pick an interior package too.';
-      if (cats.indexOf('exterior') < 0) return 'Pick an exterior package too.';
+      if (cats.indexOf('interior') < 0) return fail('Pick an interior package too.', '[data-pkg]');
+      if (cats.indexOf('exterior') < 0) return fail('Pick an exterior package too.', '[data-pkg]');
     }
     return null;
   }
@@ -820,7 +1012,7 @@
             html += '<button type="button" class="bk-tier' + (sel ? ' on' : '') + '" data-addon="' + a.id + '" data-tier="' + t.id + '">' +
               '<span class="bk-tier-l">' + esc(t.label) +
               (t.description ? '<i>' + esc(t.description) + '</i>' : '') + '</span>' +
-              '<span class="bk-tier-p">' + $(t.priceCents) + (t.asterisk ? '*' : '') + '</span>' +
+              '<span class="bk-tier-p">' + svc(t.priceCents, t.asterisk ? '*' : '') + '</span>' +
               '</button>';
           });
           html += '</div>';
@@ -1034,9 +1226,9 @@
 
   function vLoc() {
     var a = state.address;
-    if (!a.line1.trim()) return 'We need a street address.';
-    if (!a.city.trim()) return 'We need a city.';
-    if (!/^\d{5}$/.test(a.zip.trim())) return 'We need a 5 digit ZIP so we can work out tax and travel.';
+    if (!a.line1.trim()) return fail('We need a street address.', '#bkL1');
+    if (!a.city.trim()) return fail('We need a city.', '#bkCity');
+    if (!/^\d{5}$/.test(a.zip.trim())) return fail('We need a 5 digit ZIP so we can work out tax and travel.', '#bkZip');
     return null;
   }
 
@@ -1099,19 +1291,23 @@
     }
 
     html += hasCorrection() ? '' :
-      '<label class="bk-check bk-prio' + (state.priority ? ' on' : '') + '">' +
+      '<label class="bk-check bk-prio' + (state.priority ? ' on' : '') + '" id="bkPrioBox">' +
       '<input type="checkbox" id="bkPrio"' + (state.priority ? ' checked' : '') + ' />' +
-      '<span><b>I need it within the next 3 days</b>' +
-      '<i>Opens our soonest slots.</i></span></label>';
+      '<span><b>I need it within the next ' + RULES.window.minLeadDays + ' days</b>' +
+      '<i>Those days are marked <b>Soonest</b> below. They cost <b>+' +
+      (RULES.surcharge.priorityBp / 100) + '%</b>, because taking one means moving work we have already ' +
+      'planned. Pick one and this ticks itself.</i></span></label>';
 
     if (hasCorrection()) {
       var lead = new Date(startOfToday().getTime() + P.CORRECTION_RULES.minLeadDays * DAY);
       html += '<p class="bk-note">Correction work starts on a weekend morning from <b>' +
         lead.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }) +
         '</b>, and runs across consecutive days.</p>';
-    } else if (!state.priority) {
-      html += '<p class="bk-note">Standard bookings start from <b>' +
-        earliest.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }) + '</b>.</p>';
+    } else {
+      html += '<p class="bk-note">Standard prices start from <b>' +
+        earliest.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }) +
+        '</b>. Anything sooner than that is marked below and carries the +' +
+        (RULES.surcharge.priorityBp / 100) + '% shown beside it.</p>';
     }
 
     html += '<div class="bk-slots" id="bkSlots"><p class="bk-loading">Checking the calendar...</p></div>';
@@ -1294,14 +1490,33 @@
     var corr = hasCorrection();
     var CR = P.CORRECTION_RULES;
 
-    var from = state.priority
-      ? Date.now()
-      : P.earliestBookableDate(startOfToday(), RULES.window).getTime();
+    // ALWAYS from now, whether or not the near-term box is ticked.
+    //
+    // It used to start at the standard lead date unless somebody found and
+    // ticked "I need it within the next 3 days", which meant the checkbox
+    // revealed nothing: there was no sign those days existed, so there was no
+    // reason to tick it. The soonest days are listed now, marked with what
+    // they cost, and touching one ticks the box for you.
+    var from = Date.now();
     if (corr && CR.minLeadDays > 0) {
       var lead = startOfToday().getTime() + CR.minLeadDays * DAY;
       if (lead > from) from = lead;
     }
-    var to = from + (corr ? 70 : 28) * DAY;
+
+    // A date typed into the picker moves the whole window to it. Asking for
+    // 14 March and being shown next Tuesday is not an answer.
+    if (state.jumpDate) {
+      var jump = dayStartFromInput(state.jumpDate);
+      if (jump && jump + DAY > from) from = Math.max(from, jump);
+    }
+
+    // The window grows with "show more days" rather than staying at 28 and
+    // leaving the button showing nothing new. Capped at a year, which is as
+    // far ahead as the date picker allows and further than anyone books.
+    var span = state.jumpDate
+      ? 7
+      : Math.min(MAX_BOOK_DAYS, Math.max(corr ? 70 : 28, (state.daysShown || 3) + 14));
+    var to = Math.min(from + span * DAY, startOfToday().getTime() + MAX_BOOK_DAYS * DAY);
 
     // The WHOLE job, however long. Anything past a day gets planned across
     // consecutive days rather than truncated to its first morning, which is
@@ -1515,7 +1730,21 @@
         '<a href="sms:+15132792915">(513) 279-2915</a>.</p>';
   }
 
+  /**
+   * The first start on the day a band key belongs to.
+   *
+   * Band keys look like "2026-8-14|midday". Only the day matters here, and
+   * only enough of it to ask whether that day is inside the lead window.
+   */
+  var _dayFirst = {};
+
+  function byDayFirst(bandKey) {
+    return _dayFirst[String(bandKey).split('|')[0]] || 0;
+  }
+
   function paintSlotsInner(box, win, from, to, dur, errMsg) {
+    /* `to` is used at the foot of this function to decide whether there is
+       anything further to show. */
     var drive = travelAllowanceMin();
 
     // Past a day's work this stops being a slot search and becomes a plan.
@@ -1593,14 +1822,21 @@
     // Day by day, because "which day" is the first thing anyone decides.
     var byDay = {};
     var order = [];
+    _dayFirst = {};
     slots.forEach(function (ms) {
       var d = new Date(ms);
       var key = d.getFullYear() + '-' + d.getMonth() + '-' + d.getDate();
-      if (!byDay[key]) { byDay[key] = []; order.push(key); }
+      if (!byDay[key]) { byDay[key] = []; order.push(key); _dayFirst[key] = ms; }
       byDay[key].push(ms);
     });
 
-    var shown = state.showDays || 3;
+    // state.showDays never existed: the field is daysShown, so this read
+    // undefined every time and "Show more days" added four days to a number
+    // nothing looked at. The button has been dead since it was written.
+    var shown = state.daysShown || 3;
+
+    noteWantedTime(slots);
+    html += jumpBox();
 
     html += '<p class="bk-starts">These are <b>start times</b>, not how long we stay. ' +
       'A ' + fmtDur(dur) + ' detail beginning at 10am runs until about ' +
@@ -1609,8 +1845,12 @@
     order.slice(0, shown).forEach(function (key) {
       var dayMs = byDay[key];
       var d = new Date(dayMs[0]);
-      html += '<div class="bk-daygroup"><h4>' +
+      var soon = needsPriority(dayMs[0]);
+      html += '<div class="bk-daygroup' + (soon ? ' soon' : '') + '"><h4>' +
         d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }) +
+        (soon
+          ? '<em class="bk-soonest">Soonest &middot; +' + (RULES.surcharge.priorityBp / 100) + '%</em>'
+          : '') +
         '</h4>';
 
       P.groupIntoBands(dayMs).forEach(function (g) {
@@ -1650,14 +1890,101 @@
       html += '</div>';
     });
 
-    if (order.length > shown) {
-      html += '<button type="button" class="bk-morelink" id="bkMoreDays">Show more options</button>';
+    var canGoFurther = to < startOfToday().getTime() + MAX_BOOK_DAYS * DAY;
+    if (order.length > shown || canGoFurther) {
+      html += '<button type="button" class="bk-morelink" id="bkMoreDays">Show more days</button>';
+    } else {
+      html += '<p class="bk-hint">That is everything we have open in the next year. ' +
+        'If none of it works, tell us when suits below.</p>';
     }
 
     box.innerHTML = html;
   }
 
   function localMin(ms) { return P.localMinutesOfDay(ms); }
+
+  /** How far ahead the date picker and the slot window will go. */
+  var MAX_BOOK_DAYS = 365;
+
+  /** "2026-03-14" as local midnight. Built by parts: Date.parse treats a bare
+   *  date string as UTC, which lands on the previous evening in Cincinnati. */
+  function dayStartFromInput(value) {
+    var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(value || ''));
+    if (!m) return 0;
+    var d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+    return isNaN(d.getTime()) ? 0 : d.getTime();
+  }
+
+  function dateInputValue(ms) {
+    var d = new Date(ms);
+    return d.getFullYear() + '-' +
+      String(d.getMonth() + 1).padStart(2, '0') + '-' +
+      String(d.getDate()).padStart(2, '0');
+  }
+
+  /**
+   * Pick a date, or ask for a time.
+   *
+   * "Show more options" walked forward four days at a time through a window
+   * that stopped at 28, so someone booking six weeks out had no way to get
+   * there and no way to know they could. A date field is one tap on a phone
+   * and goes anywhere inside a year.
+   *
+   * The time field is a REQUEST, not a filter: it looks for what was asked
+   * for on the days on screen and says plainly whether it is there, rather
+   * than emptying the list and leaving someone to guess.
+   */
+  function jumpBox() {
+    var min = dateInputValue(Math.max(Date.now(), hasCorrection()
+      ? startOfToday().getTime() + P.CORRECTION_RULES.minLeadDays * DAY
+      : Date.now()));
+    var max = dateInputValue(startOfToday().getTime() + MAX_BOOK_DAYS * DAY);
+
+    return '<div class="bk-jump">' +
+      '<div class="bk-jump-f"><label for="bkJumpDate">Jump to a date</label>' +
+        '<input type="date" id="bkJumpDate" data-jumpdate value="' + esc(state.jumpDate) +
+        '" min="' + min + '" max="' + max + '" />' +
+      '</div>' +
+      '<div class="bk-jump-f"><label for="bkJumpTime">Got a time in mind?</label>' +
+        '<input type="time" id="bkJumpTime" data-jumptime value="' + esc(state.wantTime) +
+        '" step="1800" />' +
+      '</div>' +
+      (state.jumpDate || state.wantTime
+        ? '<button type="button" class="bk-jump-clear" id="bkJumpClear">Show the soonest instead</button>'
+        : '') +
+      (state.timeNote ? '<p class="bk-jump-note">' + esc(state.timeNote) + '</p>' : '') +
+      '</div>';
+  }
+
+  /**
+   * Does the time they asked for exist, and if not what is nearest?
+   *
+   * Sets a sentence for the picker rather than filtering anything away. A
+   * list that empties itself because you typed 7:15 is a list that looks
+   * broken.
+   */
+  function noteWantedTime(slots) {
+    if (!state.wantTime) { state.timeNote = ''; return; }
+    var m = /^(\d{2}):(\d{2})$/.exec(state.wantTime);
+    if (!m) { state.timeNote = ''; return; }
+    var wanted = Number(m[1]) * 60 + Number(m[2]);
+
+    var exact = null, near = null, bestGap = Infinity;
+    slots.forEach(function (ms) {
+      var gap = Math.abs(localMin(ms) - wanted);
+      if (gap === 0 && exact === null) exact = ms;
+      if (gap < bestGap) { bestGap = gap; near = ms; }
+    });
+
+    if (exact !== null) {
+      state.timeNote = 'Good news, ' + timeLabel(exact) + ' is open. It is in the list below.';
+    } else if (near !== null) {
+      state.timeNote = 'Nothing at exactly ' + state.wantTime + '. The closest we have is ' +
+        timeLabel(near) + ' on ' + new Date(near).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }) + '.';
+    } else {
+      state.timeNote = 'Nothing open in this range. Try another date, or tell us when suits below.';
+    }
+  }
 
   function timeLabel(ms) {
     return new Date(ms).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
@@ -1685,9 +2012,21 @@
     });
   }
 
+  /** Does this start fall inside the lead window, whatever the box says? */
+  function needsPriority(ms) {
+    return P.slotNeedsPriority(ms, Date.now(), RULES.window);
+  }
+
+  /**
+   * What a given start costs on top, in money.
+   *
+   * Both surcharges, judged on the slot itself rather than on the state of a
+   * checkbox, so the figure beside a time is the figure that time is charged
+   * at. They are capped together, so a 7am slot tomorrow is +30%, not +40%.
+   */
   function deltaFor(ms) {
     var bp = P.computeSurcharge(
-      { startMinutesLocal: P.localMinutesOfDay(ms), priorityBooking: state.priority },
+      { startMinutesLocal: P.localMinutesOfDay(ms), priorityBooking: needsPriority(ms) },
       RULES.surcharge
     ).appliedBp;
     return Math.round((q().serviceSubtotalCents * bp) / 10000);
@@ -1696,7 +2035,7 @@
   function vTime() {
     if (state.slot) return null;
     if (isInquiry()) return null;
-    return 'Pick a time, or tell us when suits.';
+    return fail('Pick a time, or tell us when suits.', '[data-band],[data-prefday],[data-prefpart]');
   }
 
   /* ================= step 8: contact ================= */
@@ -1728,16 +2067,20 @@
       // see what the customer was shown at the moment they agreed, and
       // "there was a link" is a weak answer. The full terms are one tap away
       // for anyone who wants them.
+      // Four short facts, built from the same rules the policy and the
+      // charge are built from. This used to be a nine line paragraph that
+      // explained the reasoning as well as the numbers; nobody reads a
+      // paragraph at a consent checkbox. The reasoning is on the terms page,
+      // one tap away, for anyone who wants it.
       yesNo('terms',
         'Do you accept our terms and privacy policy?',
-        '<b>Moving a booking always beats cancelling it.</b> ' +
-        'More than 72 hours notice and either is free. Inside that 50% applies, and inside ' +
-        '24 hours the full booking does, but <b>if you reschedule, every cent goes onto your ' +
-        'new date</b> rather than being kept. Moving inside 24 hours adds a flat 10% each time. ' +
-        'We waive all of it for ' +
-        'emergencies. This is why we take a card now, though nothing is charged today. ' +
-        '<b>If your vehicle needs more work than the package covers, we tell you the new price before we start</b>, ' +
-        'and you can say no and pay nothing at all.' +
+        '<b>' + pctOf(RULES.cancelMidWindowBp) + ' cancellation fee inside ' + RULES.refundFullWindowHours + ' hours, ' +
+        pctOf(RULES.cancelLateWindowBp) + ' inside ' + RULES.refundMidWindowHours + ' hours.</b> ' +
+        'Rescheduling instead costs ' + pctOf(RULES.lateRescheduleFeeBp) + ' inside ' + RULES.refundMidWindowHours +
+        ' hours, and anything you are charged goes onto the new date for ' + RULES.rescheduleCreditDays + ' days. ' +
+        'Nothing is charged today. ' +
+        'If your vehicle needs more work than the package covers we tell you the price before we start, ' +
+        'and you can say no and pay nothing.' +
         '<a class="bk-readmore" href="terms.html#cancellation" target="_blank" rel="noopener">Read the full terms and cancellation policy</a>' +
         '<a class="bk-readmore" href="privacy.html" target="_blank" rel="noopener">Read the privacy policy</a>') +
 
@@ -1758,42 +2101,124 @@
   }
 
   function vContact() {
-    if (!state.contact.name.trim()) return 'We need your name.';
-    if (!state.contact.phone.trim()) return 'We need a phone number to confirm your booking.';
+    if (!state.contact.name.trim()) return fail('We need your name.', '#bkName');
+    if (!state.contact.phone.trim()) return fail('We need a phone number to confirm your booking.', '#bkPhone');
     // The same shape the server insists on, checked here so the message
     // arrives while the field still has focus rather than after a round trip.
     var digits = state.contact.phone.replace(/\D/g, '');
     if (digits.length === 11 && digits.charAt(0) === '1') digits = digits.slice(1);
-    if (digits.length !== 10 || /^[01]/.test(digits)) return 'That does not look like a US phone number. Ten digits, area code first.';
-    if (state.contact.name.trim().length > 80) return 'That name is too long for our form.';
-    if (state.contact.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(state.contact.email.trim())) {
-      return 'That email address does not look right.';
+    if (digits.length !== 10 || /^[01]/.test(digits)) {
+      return fail('That does not look like a US phone number. Ten digits, area code first.', '#bkPhone');
     }
-    if (state.consent.terms === null) return 'Please answer yes or no on the terms.';
-    if (state.consent.terms === false) return 'We cannot take a booking without accepting the terms. You can still send us a question instead.';
-    if (state.consent.sms === null) return 'Please answer yes or no on text messages.';
-    if (state.consent.media === null) return 'Please answer yes or no on filming.';
+    if (state.contact.name.trim().length > 80) return fail('That name is too long for our form.', '#bkName');
+    if (state.contact.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(state.contact.email.trim())) {
+      return fail('That email address does not look right.', '#bkEmail');
+    }
+    if (state.consent.terms === null) return fail('Please answer yes or no on the terms.', '[data-consent="terms"]');
+    if (state.consent.terms === false) {
+      return fail('We cannot take a booking without accepting the terms. You can still send us a question instead.', '[data-consent="terms"]');
+    }
+    if (state.consent.sms === null) return fail('Please answer yes or no on text messages.', '[data-consent="sms"]');
+    if (state.consent.media === null) return fail('Please answer yes or no on filming.', '[data-consent="media"]');
     return null;
+  }
+
+  /* ================= step 9: confirm ================= */
+
+  /**
+   * Three states, not two.
+   *
+   * "Not sure" is the honest answer for most people about their own outdoor
+   * tap, and forcing a yes or a no turns a useful answer into a guess. We
+   * bring our own water and power anyway; knowing in advance is the
+   * difference between topping up a tank the night before and finding out in
+   * a driveway.
+   */
+  function askAccess(name, label, help) {
+    var v = state.access[name];
+    var opt = function (val, text) {
+      return '<button type="button" class="bk-acc-b' + (v === val ? ' on' : '') +
+        '" data-access="' + name + '" data-accval="' + val + '">' + text + '</button>';
+    };
+    return '<div class="bk-acc' + (v === null ? '' : ' answered') + '">' +
+      '<p class="bk-acc-q">' + label + '</p>' +
+      '<p class="bk-acc-h">' + help + '</p>' +
+      '<div class="bk-acc-opts">' + opt('yes', 'Yes') + opt('no', 'No') + opt('unsure', 'Not sure') + '</div>' +
+      '</div>';
+  }
+
+  function accessBlock() {
+    return '<div class="bk-accbox">' +
+      '<h4>Getting set up on the day <i class="bk-opt">Optional</i></h4>' +
+      '<p class="bk-hint"><b>None of this is a requirement, and no answer here changes your price.</b> ' +
+      'We bring our own water, our own power and everything else, so a detail goes ahead either way. ' +
+      'Answering just means we load the van for your driveway instead of working it out when we arrive. ' +
+      'Skip it if you are not sure.</p>' +
+      askAccess('water', 'Is there an outdoor tap we could use?',
+        'Saves filling the tank, and it is the one that matters most for an exterior.') +
+      askAccess('power', 'Is there an outdoor outlet we could use?',
+        'For the extractor and the polisher. We bring a generator otherwise.') +
+      '<div class="bk-field"><label for="bkParking">Where should we park, and how do we reach the vehicle? ' +
+      '<i>(optional)</i></label>' +
+      '<textarea id="bkParking" data-note="parking" rows="2" maxlength="300" ' +
+      'placeholder="e.g. driveway on the left, gate code 4821, car is usually out front">' +
+      esc(state.access.parking) + '</textarea></div>' +
+      '</div>';
+  }
+
+  /* ---- what actually happens next, as of today ---- */
+
+  /**
+   * The steps after Confirm, generated from what is switched on.
+   *
+   * This used to promise automatic reminders two days before and on the
+   * morning, and an on-the-way text, none of which exist: Elijah texts an
+   * ETA himself before he sets off. Promising software you have not built is
+   * the fastest way to look unreliable while doing everything right.
+   */
+  function nextSteps() {
+    var auto = P.isLive('automatedEmail');
+    var texts = P.isLive('automatedTexts');
+    var out = [];
+
+    out.push(auto
+      ? '<li><b>A confirmation lands in your inbox now.</b> It has your time, your total and everything you picked.</li>'
+      : '<li><b>Elijah confirms it himself, usually within a few hours.</b> By text or email, whichever you said. ' +
+        'Until you hear back, treat the time as requested rather than locked in.</li>');
+
+    out.push('<li><b>We work out the exact drive.</b> Travel is measured from your address and added to the total, ' +
+      'and you see the number before anything is charged.</li>');
+
+    out.push(texts
+      ? '<li><b>A reminder before the day</b>, and a text when we are on the way.</li>'
+      : '<li><b>A text before we set off</b>, with an ETA. Elijah sends that one by hand, so if you need to ' +
+        'move anything, replying to it reaches a person.</li>');
+
+    out.push('<li><b>Pay when it is done.</b> ' +
+      (state.payInFull
+        ? 'Already paid, so there is nothing to do.'
+        : 'By ' + IN_PERSON + ', or ask us to put it on the card on file. The card is only authorized for a ' +
+          'late cancellation.') + '</li>');
+
+    return '<ol>' + out.join('') + '</ol>';
   }
 
   /* ================= step 9: pay ================= */
 
   /**
-   * Promo code entry.
+   * Promo code entry, on the last screen, visible.
    *
-   * Collapsed behind a link by default. An open "discount code" field is an
-   * invitation to go and hunt for one, and most people do not have a code.
-   * The ones who do will look for it.
+   * It used to be collapsed behind a "Have a promo code?" link, on the theory
+   * that an open discount field sends people off to hunt for one. That theory
+   * cost more than it saved: someone holding a code Elijah texted them could
+   * not find anywhere to type it, which is a worse outcome than a few people
+   * searching the internet for a code that does not exist.
    */
-  function promoBox(quote) {
+  function promoBox(quote, early) {
     var applied = quote.promoCode && quote.promoDiscountCents > 0;
 
-    if (!state.promoOpen && !applied) {
-      return '<button type="button" class="bk-promolink" id="bkPromoOpen">Have a promo code?</button>';
-    }
-
     if (applied) {
-      return '<div class="bk-promo on">' +
+      return '<div class="bk-promo on' + (early ? ' early' : '') + '">' +
         '<span class="bk-promo-tag">' + esc(quote.promoCode) + '</span>' +
         '<span class="bk-promo-msg">' + esc(promoBlurb(quote.promoCode)) +
           ' You saved ' + $(quote.promoDiscountCents) + '.</span>' +
@@ -1801,14 +2226,19 @@
         '</div>';
     }
 
+    // On the package screen, before anything is chosen, an empty discount box
+    // at the top of the page is noise. It appears once there is a price for
+    // it to act on.
+    if (early && !quote.lines.length && !state.promoCode) return '';
+
     var typed = state.promoCode || '';
     var bad = typed && quote.promoRejected ? P.promoMessage(quote.promoRejected) : '';
 
-    return '<div class="bk-promo">' +
-      '<label for="bkPromo">Promo code</label>' +
+    return '<div class="bk-promo' + (early ? ' early' : '') + '">' +
+      '<label for="bkPromo">Promo code <i>(if you have one)</i></label>' +
       '<div class="bk-promo-row">' +
         '<input type="text" id="bkPromo" data-promo value="' + esc(typed) +
-          '" placeholder="Enter a code" autocomplete="off" autocapitalize="characters" spellcheck="false" />' +
+          '" placeholder="Enter a code" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="32" />' +
         '<button type="button" class="bk-promo-go" id="bkPromoApply">Apply</button>' +
       '</div>' +
       (bad ? '<p class="bk-promo-err">' + esc(bad) + '</p>' : '') +
@@ -1866,7 +2296,8 @@
       html += '<div class="bk-payopts">' +
         '<button type="button" class="bk-pay' + (!now ? ' on' : '') + '" data-pay="later">' +
           '<b>Pay after the detail</b>' +
-          '<span>Settle up once the work is finished. We may still need a card on file in case of cancellations or payment issues.</span>' +
+          '<span>Pay when the work is finished, by ' + IN_PERSON + ', or ask us to put it on the card on file. ' +
+            'The card is only authorized for a late cancellation.</span>' +
           '<i>' + $(quote.totalCents) + '</i>' +
         '</button>' +
         '<button type="button" class="bk-pay' + (now ? ' on' : '') + '" data-pay="now">' +
@@ -1877,12 +2308,15 @@
         '</div>';
     }
 
+    html += accessBlock();
+
     html += '<div class="bk-cardbox">' +
       '<h4>' + (now ? 'How would you like to pay?' : 'Card on file') + '</h4>' +
       '<p class="bk-hint">' +
         (now
           ? 'Card, Apple Pay, Google Pay, bank transfer, PayPal or Venmo.'
-          : 'Nothing is charged now. Your card holds the time slot and covers a late cancellation.') +
+          : 'Nothing is charged now, and nothing will be unless you cancel or move the booking late. ' +
+            'On the day, pay however suits: ' + IN_PERSON + '.') +
       '</p>';
 
     if (now) {
@@ -1900,11 +2334,18 @@
     // without it.
     var viaPaypal = now && state.payMethod === 'paypal';
     if (!viaPaypal) {
+      // The narrow thing the card is actually for. Claiming permission to
+      // charge the whole detail, when the customer may well hand over cash in
+      // the driveway, is both wrong and the sort of overreach that gets a
+      // chargeback decided against you.
       html += '<label class="bk-check bk-mandate' + (state.mandate ? ' on' : '') + '">' +
         '<input type="checkbox" id="bkMandate"' + (state.mandate ? ' checked' : '') + ' />' +
-        '<span>I authorize 513 Auto Clean to keep this card on file and to charge it for the balance of this booking once the work is done, ' +
-        'and for any cancellation or late change fee set out in the terms I accepted. Nothing is charged today' +
-        (now ? ' beyond the amount shown.' : '.') + '</span></label>';
+        '<span>I authorize 513 Auto Clean to keep this card on file and to charge it <b>if I cancel or ' +
+        'move this booking late</b>, for the fee set out in the terms I accepted. ' +
+        (now
+          ? 'The detail itself I am paying for now.'
+          : 'It is not permission to charge me for the detail, which I can pay for however I like on the day.') +
+        '</span></label>';
     }
 
     if (CFG.turnstileSiteKey) {
@@ -1930,7 +2371,7 @@
   function vPay() {
     if (state.payState === 'paid') return null;
     if (!state.mandate && !(state.payInFull && state.payMethod === 'paypal')) {
-      return 'Please tick the card authorization to continue.';
+      return fail('Please tick the card authorization to continue.', '#bkMandate');
     }
     if (state.payMethod === 'paypal' && state.payInFull) {
       return 'Use the PayPal button above to finish paying.';
@@ -1983,6 +2424,7 @@
       // A request, not a booking. The server must not take money for a time
       // that does not exist yet.
       kind: isInquiry() ? 'inquiry' : 'booking',
+      access: state.access,
       interest: state.interest.slice(),
       prefer: isInquiry() ? state.prefer : null,
       payInFull: isInquiry() ? false : state.payInFull
@@ -2154,17 +2596,19 @@
       '[data-size],[data-intent],[data-pkg],[data-addon],[data-clear],[data-win],[data-slot],' +
       '[data-consent],[data-pay],[data-delveh],[data-browsepick],[data-max],[data-sort],' +
       '[data-kind],[data-paymethod],[data-corr],[data-coating],[data-garage],[data-step],' +
-      '[data-prefday],[data-prefpart],[data-interest],[data-band],' +
-      '#bkAddVeh,#bkMoreDays,#bkNext,#bkBack,#bkClose,#bkScrim,#bkBrowse,#bkBrowseBack,' +
+      '[data-prefday],[data-prefpart],[data-interest],[data-band],[data-access],' +
+      '#bkAddVeh,#bkMoreDays,#bkJumpClear,#bkNext,#bkBack,#bkClose,#bkScrim,#bkBrowse,#bkBrowseBack,' +
+      '#bkLeaveStay,#bkLeaveKeep,#bkLeaveAsk,#bkLeaveDrop,#bkFresh,' +
+      '#bkDoneClose,#bkDoneAsk,#bkDoneCopy,#bkDoneAgain,' +
       '#bkCopyQuote,' +
-      '#bkPromoOpen,#bkPromoApply,#bkPromoClear,' +
+      '#bkPromoApply,#bkPromoClear,' +
       '#bkQClear,#bkReset,#bkOther'
     );
     if (!t) return;
     var v = veh();
 
-    if (t.id === 'bkPromoOpen') { state.promoOpen = true; return render(); }
-    if (t.id === 'bkPromoClear') { state.promoCode = ''; state.promoOpen = false; return render(); }
+
+    if (t.id === 'bkPromoClear') { state.promoCode = ''; return render(); }
     if (t.id === 'bkPromoApply') {
       var pbox = el('bkPromo');
       // Normalised on the way in, so "  likenew " and "LIKENEW" are one code.
@@ -2263,9 +2707,27 @@
       // A new time means a new drive, so the measured figure is stale.
       state.travel = blankTravel(); state.slot = Number(t.dataset.slot); return advance(); }
     if (t.id === 'bkMoreDays') {
-      // More DAYS at the same six times, never more times within a day.
-      state.daysShown = (state.daysShown || 3) + 4;
+      // More DAYS at the same start times, never more times within a day.
+      state.daysShown = Math.min(MAX_BOOK_DAYS, (state.daysShown || 3) + 7);
       return loadSlots();
+    }
+    if (t.id === 'bkJumpClear') {
+      state.jumpDate = '';
+      state.wantTime = '';
+      state.timeNote = '';
+      state.daysShown = 3;
+      return loadSlots();
+    }
+
+    if (t.dataset.access) {
+      state.access[t.dataset.access] = t.dataset.accval;
+      // In place, so the page does not jump back to the top of a long step.
+      var accGroup = t.closest('.bk-acc');
+      accGroup.classList.add('answered');
+      accGroup.querySelectorAll('[data-access]').forEach(function (b) {
+        b.classList.toggle('on', b === t);
+      });
+      return;
     }
 
     if (t.dataset.consent) {
@@ -2289,6 +2751,21 @@
       renderTotal();
       return;
     }
+    // A day inside the lead window costs more, and saying so AFTER someone
+    // has picked it is how a surprise feels like a trick. The first touch on
+    // one of those days ticks the opt-in, scrolls up so they watch it happen,
+    // and leaves the time unpicked. The second touch books it.
+    if ((t.dataset.band || t.dataset.slot) && !state.priority && !hasCorrection()) {
+      var when = t.dataset.slot
+        ? Number(t.dataset.slot)
+        : Number((byDayFirst(t.dataset.band) || 0));
+      if (when && needsPriority(when)) {
+        state.priority = true;
+        state.flashPrio = true;
+        return render();
+      }
+    }
+
     if (t.dataset.band) {
       state.openBand = state.openBand === t.dataset.band ? '' : t.dataset.band;
       return render();
@@ -2329,7 +2806,31 @@
     if (t.id === 'bkCopyQuote') return copyQuoteLink(t);
     if (t.id === 'bkNext') return advance();
     if (t.id === 'bkBack') return go(state.step - 1);
-    if (t.id === 'bkClose' || t.id === 'bkScrim') return close();
+    if (t.id === 'bkClose' || t.id === 'bkScrim') return requestClose();
+    if (t.id === 'bkLeaveStay') { state.leaving = false; return renderLeave(); }
+    if (t.id === 'bkLeaveKeep') {
+      var kept = saveDraft();
+      close();
+      return toast(kept
+        ? 'Saved. Tap Book Now whenever you are ready and it will be here.'
+        : 'This browser will not let us save it, sorry. Text us and we will hold it for you.');
+    }
+    if (t.id === 'bkLeaveAsk') return askAboutIt();
+    if (t.id === 'bkDoneAsk') return amendBooking();
+    if (t.id === 'bkDoneCopy') return copyQuoteLink(t);
+    if (t.id === 'bkDoneAgain') {
+      // Same person, same address, same day if they picked one. Only the
+      // vehicle changes, so everything else stays put.
+      var keep = { address: state.address, contact: state.contact, access: state.access };
+      reset();
+      state.address = keep.address;
+      state.contact = keep.contact;
+      state.access = keep.access;
+      state.step = 0;
+      return render();
+    }
+    if (t.id === 'bkLeaveDrop') { clearDraft(); return close(); }
+    if (t.id === 'bkFresh') { clearDraft(); reset(); return render(); }
   }
 
   /** Drop add-ons whose requirement no longer holds after a package change. */
@@ -2353,7 +2854,9 @@
     }
     if (t.id === 'bkPrio') {
       state.priority = t.checked;
-      state.slot = null;
+      // Unticking it while a near-term time is selected would leave them
+      // holding a slot they have just said they do not want.
+      if (!t.checked && state.slot && needsPriority(state.slot)) state.slot = null;
       state.daysShown = 3;
       return render();
     }
@@ -2388,7 +2891,17 @@
     }
     if (t.dataset.c) { state.contact[t.dataset.c] = t.value; return; }
     if (t.dataset.label !== undefined) { state.vehicles[Number(t.dataset.label)].label = t.value; return; }
+    if (t.dataset.jumpdate !== undefined) {
+      state.jumpDate = t.value;
+      state.daysShown = 3;
+      return loadSlots();
+    }
+    if (t.dataset.jumptime !== undefined) {
+      state.wantTime = t.value;
+      return loadSlots();
+    }
     if (t.dataset.note === 'loc') { state.locationNote = t.value; return; }
+    if (t.dataset.note === 'parking') { state.access.parking = t.value; return; }
     if (t.dataset.note === 'general') { state.notes = t.value; return; }
     if (t.hasAttribute('data-browseq')) {
       state.browseQ = t.value;
@@ -2544,9 +3057,12 @@
         return '  ' + l.label + ': ' + $(l.amountCents);
       }).join('\n') +
       '\n  TOTAL: ' + $(quote.totalCents) +
-      '\n  Paying: ' + (state.payInFull ? 'in full now' : 'after service, card on file') +
+      '\n  Paying: ' + (state.payInFull ? 'in full now' : 'on the day; card on file is cancellation cover only') +
       '\n  Travel: added at confirmation' +
       '\n  On site: ' + fmtDur(quote.serviceDurationMin) + '\n\n' +
+      'ACCESS\n  Water: ' + (state.access.water || 'not answered') +
+      '\n  Power: ' + (state.access.power || 'not answered') +
+      (state.access.parking ? '\n  Parking: ' + state.access.parking : '') + '\n\n' +
       'CONSENT\n  Terms: yes, version ' + P.LEGAL.termsEffective +
       '\n  Card authorization: ' + (state.mandate ? 'YES' : 'no') +
       '\n  SMS: ' + (state.consent.sms ? 'YES' : 'no') +
@@ -2554,41 +3070,143 @@
       (state.notes ? 'NOTES\n  ' + state.notes + '\n' : '');
   }
 
+  /**
+   * Everything they just sent, in a table they can read back.
+   *
+   * A confirmation that only says "thanks" asks the customer to trust that
+   * the right thing arrived. This is the receipt: every answer, in the order
+   * they gave it, so a mistake is spotted in the ten seconds when it is still
+   * easy to fix rather than on the doorstep.
+   */
+  function receiptRows(quote) {
+    var rows = [];
+    var add = function (k, v) { if (v) rows.push([k, v]); };
+
+    state.vehicles.forEach(function (v, i) {
+      var size = v.size ? P.vehicleSize(v.size) : null;
+      var names = v.packageIds.map(function (id) { return (P.findPackage(id) || {}).name; }).filter(Boolean);
+      var label = state.vehicles.length > 1 ? 'Vehicle ' + (i + 1) : 'Vehicle';
+      add(label, [v.label, size && size.label, names.join(' + ')].filter(Boolean).join(', '));
+      if (v.addons.length) {
+        add('Add-ons', v.addons.map(function (a) {
+          var d = P.findAddon(a.addonId);
+          return d ? d.name : a.addonId;
+        }).join(', '));
+      }
+    });
+
+    add('When', state.slot
+      ? new Date(state.slot).toLocaleString('en-US', {
+          weekday: 'long', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit'
+        })
+      : (isInquiry() ? preferenceSummary() || 'Times requested' : ''));
+    add('Where', [state.address.line1, state.address.city, state.address.region, state.address.zip]
+      .filter(Boolean).join(', '));
+    add('You', [state.contact.name, state.contact.phone, state.contact.email].filter(Boolean).join(' · '));
+    add('Water', state.access.water);
+    add('Power', state.access.power);
+    add('Parking', state.access.parking);
+    add('Notes', state.notes);
+    if (quote.promoCode && quote.promoDiscountCents > 0) {
+      add('Promo', quote.promoCode + ', ' + $(quote.promoDiscountCents) + ' off');
+    }
+    add('Paying', state.payInFull ? 'In full, now' : 'On the day');
+    add('Total', $(quote.totalCents) + (state.travel.source === 'routes' ? '' : ', before travel'));
+
+    return '<dl class="bk-receipt">' + rows.map(function (r) {
+      return '<dt>' + esc(r[0]) + '</dt><dd>' + esc(String(r[1])) + '</dd>';
+    }).join('') + '</dl>';
+  }
+
   function done(quote) {
     state.done = true;
+    clearDraft();
     el('bkBar').style.width = '100%';
-    el('bkTitle').textContent = 'You are booked in';
+    el('bkTitle').textContent = isInquiry() ? 'Request sent' : 'You are booked in';
     el('bkNext').hidden = true;
     el('bkBack').hidden = true;
     el('bkTotal').hidden = true;
+
+    // The step tabs are still on screen from the last render and every one of
+    // them is dead: go() calls render(), and render() returns early once
+    // state.done is set. A row of buttons that look clickable and do nothing
+    // is worse than no buttons, so they become a finished-state line.
+    el('bkNav').innerHTML = '<span class="bk-nav-done">' +
+      (isInquiry() ? 'Request sent' : 'Booked') + ' &middot; ' +
+      esc(new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })) +
+      '</span>';
 
     el('bkBody').innerHTML =
       '<div class="bk-done"><div class="bk-done-ic">' +
       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 6L9 17l-5-5"/></svg></div>' +
       '<h3>Thanks, ' + esc(state.contact.name.split(' ')[0]) + '.</h3>' +
-      '<p>We have your booking' + (state.slot ? ' for <b>' +
-        new Date(state.slot).toLocaleString('en-US', { weekday: 'long', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit' }) +
-        '</b>' : '') + '. Your total is <b>' + $(quote.totalCents) + '</b> before travel.</p>' +
-      '<button type="button" class="bk-next-steps" id="bkSteps">Learn more about next steps</button>' +
-      '<div class="bk-steps" id="bkStepsBody" hidden>' +
-        '<ol>' +
-        '<li><b>We confirm within a few hours.</b> We check the drive from our base, add the travel fee, and text you the final number.</li>' +
-        '<li><b>You get a reminder.</b> Two days before, and again the morning of.</li>' +
-        '<li><b>A few quick questions.</b> Water access, power access, and where to park. Takes a minute and means we arrive ready.</li>' +
-        '<li><b>On the day.</b> We text when we are on the way. You do not need to be there, as long as we can reach the vehicle.</li>' +
-        '<li><b>After.</b> ' + (state.payInFull ? 'Already paid, nothing more to do.' : 'We charge the card on file once the work is done.') +
-        ' We will ask how it went before asking for a review.</li>' +
-        '</ol>' +
-        '<p>Need to change anything? Call or text <a href="tel:+15132792915">(513) 279-2915</a>.</p>' +
+      '<p>' + (isInquiry()
+        ? 'We have your request and the times that suit you. Elijah will come back with a time to confirm.'
+        : 'We have your booking' + (state.slot ? ' for <b>' +
+            new Date(state.slot).toLocaleString('en-US', { weekday: 'long', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit' }) +
+            '</b>' : '') + '. Your total is <b>' + $(quote.totalCents) + '</b> before travel.') +
+      '</p>' +
+
+      '<h4 class="bk-done-h">What you sent us</h4>' +
+      receiptRows(quote) +
+
+      '<button type="button" class="bk-next-steps" id="bkSteps">What happens next</button>' +
+      '<div class="bk-steps" id="bkStepsBody" hidden>' + nextSteps() + '</div>' +
+
+      '<div class="bk-done-acts">' +
+        '<button type="button" class="bk-done-fix" id="bkDoneAsk">Something needs changing</button>' +
+        '<button type="button" class="bk-done-copy" id="bkDoneCopy">Copy my booking link</button>' +
+        '<button type="button" class="bk-done-again" id="bkDoneAgain">Book another vehicle</button>' +
       '</div>' +
+      '<p class="bk-done-call">Or call or text <a href="tel:+15132792915">(513) 279-2915</a>. ' +
+      'A booking is only really settled once you have heard back from us.</p>' +
+
       '<button type="button" class="bk-doneclose" id="bkDoneClose">Close</button>' +
       '</div>';
+  }
+
+  /**
+   * Send a correction after the booking has gone.
+   *
+   * There is no customer booking link yet, so "go back and change it" cannot
+   * mean editing a stored record: the booking is an email that has already
+   * left. What it CAN mean is a follow-up that carries the whole thing, so
+   * Elijah reads the change next to what it changes rather than hunting for
+   * the original.
+   */
+  function amendBooking() {
+    var lines = draftSummary();
+    var url = P.quoteUrl(quotePayload(), location.origin + location.pathname);
+    var msg =
+      'I just booked and something needs changing.\n\n' +
+      (lines.length ? 'What I booked:\n' + lines.map(function (l) { return '  ' + l; }).join('\n') + '\n\n' : '') +
+      'My booking: ' + url + '\n\nWhat needs changing: ';
+
+    close();
+
+    var form = document.getElementById('inquiryForm');
+    if (!form) { location.href = 'sms:+15132792915'; return; }
+
+    var set = function (id, val) { var f = document.getElementById(id); if (f && val) f.value = val; };
+    set('q-name', state.contact.name);
+    set('q-phone', state.contact.phone);
+    set('q-email', state.contact.email);
+    set('q-zip', state.address.zip);
+
+    var message = document.getElementById('q-message');
+    if (message) {
+      message.value = msg;
+      try { message.setSelectionRange(msg.length, msg.length); } catch (e) { /* older browsers */ }
+    }
+    (document.getElementById('inquiry') || form).scrollIntoView({ behavior: 'smooth', block: 'start' });
+    setTimeout(function () { if (message) message.focus(); }, 420);
   }
 
   /* ================= mount ================= */
 
   var SHELL =
     '<div class="bk-scrim" id="bkScrim"></div>' +
+    '<div class="bk-leave" id="bkLeave" hidden></div>' +
     '<div class="bk-modal" role="dialog" aria-modal="true" aria-labelledby="bkTitle">' +
       '<div class="bk-progress" id="bkProgress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">' +
         '<div class="bk-bar" id="bkBar"></div>' +
@@ -2617,6 +3235,101 @@
 
   var lastFocus = null;
 
+  /* ---------------- a quote someone left behind ---------------- */
+
+  /**
+   * Saving a half-finished booking, at the customer's request only.
+   *
+   * Nothing is written here unless somebody clicks "Keep my quote" on the way
+   * out. That matters: this holds a name, a phone number and a home address,
+   * and the right default for that is to forget it. It stays in this browser,
+   * never reaches a server, and expires on its own.
+   *
+   * localStorage rather than a cookie, because a cookie would be sent with
+   * every request to the site, and there is no reason for any of this to
+   * leave the device.
+   */
+  var DRAFT_KEY = 'ac-booking-draft-v1';
+  var DRAFT_DAYS = 14;
+
+  /** Answers only. Never the payment state, the card, or the bot token. */
+  var DRAFT_FIELDS = [
+    'step', 'vehicles', 'active', 'address', 'noGoodLocation', 'locationNote',
+    'priority', 'slot', 'daysShown', 'contact', 'consent', 'interest',
+    'prefer', 'promoCode', 'notes', 'separateTimes', 'payInFull', 'access',
+    'jumpDate', 'wantTime'
+  ];
+
+  function saveDraft() {
+    try {
+      var keep = {};
+      DRAFT_FIELDS.forEach(function (k) { keep[k] = state[k]; });
+      localStorage.setItem(DRAFT_KEY, JSON.stringify({ v: 1, at: Date.now(), state: keep }));
+      return true;
+    } catch (e) {
+      // Private windows and blocked site data both throw here. A quote that
+      // cannot be saved is not a broken booking, so say nothing and move on.
+      return false;
+    }
+  }
+
+  function loadDraft() {
+    try {
+      var raw = localStorage.getItem(DRAFT_KEY);
+      if (!raw) return null;
+      var d = JSON.parse(raw);
+      if (!d || d.v !== 1 || !d.state) return null;
+      if (Date.now() - (d.at || 0) > DRAFT_DAYS * 86400000) { clearDraft(); return null; }
+      return d.state;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function clearDraft() {
+    try { localStorage.removeItem(DRAFT_KEY); } catch (e) { /* nothing to do */ }
+  }
+
+  /**
+   * Is there enough here to be worth asking about?
+   *
+   * Someone who opened the funnel and closed it again has lost nothing, and
+   * a confirmation dialog on the way out of an empty form is just a door
+   * that sticks.
+   */
+  function worthKeeping() {
+    if (state.done || state.sending) return false;
+    var v = state.vehicles[0];
+    return Boolean(
+      (v && (v.size || v.packageIds.length || v.addons.length)) ||
+      state.vehicles.length > 1 ||
+      state.slot ||
+      state.address.line1 || state.address.zip ||
+      state.contact.name || state.contact.phone
+    );
+  }
+
+  /** A plain description of where they got to, for the panel and the email. */
+  function draftSummary() {
+    var bits = [];
+    state.vehicles.forEach(function (v) {
+      var names = v.packageIds.map(function (id) { return (P.findPackage(id) || {}).name; }).filter(Boolean);
+      var size = v.size ? P.vehicleSize(v.size) : null;
+      var line = [size ? size.label : '', names.join(' + ')].filter(Boolean).join(', ');
+      if (v.addons.length) line += ' plus ' + v.addons.length + ' add-on' + (v.addons.length === 1 ? '' : 's');
+      if (line) bits.push(line);
+    });
+    if (state.slot) {
+      bits.push(new Date(state.slot).toLocaleString('en-US', {
+        weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit'
+      }));
+    }
+    if (state.address.city || state.address.zip) {
+      bits.push([state.address.city, state.address.zip].filter(Boolean).join(' '));
+    }
+    return bits;
+  }
+
   /**
    * While the funnel is open the rest of the page is inert: a screen reader
    * cannot wander into it and Tab cannot leave the dialog. `inert` is the
@@ -2642,7 +3355,9 @@
 
   function trapTab(e) {
     if (e.key !== 'Tab' || !host || host.hidden) return;
-    var items = Array.prototype.filter.call(host.querySelectorAll(FOCUSABLE), function (n) {
+    // While the leaving panel is up it owns the focus, not the form behind it.
+    var scope = state.leaving ? (el('bkLeave') || host) : host;
+    var items = Array.prototype.filter.call(scope.querySelectorAll(FOCUSABLE), function (n) {
       return n.offsetParent !== null;
     });
     if (!items.length) return;
@@ -2654,6 +3369,31 @@
   function open() {
     if (!host) return;
     reset();
+
+    // Pick up exactly where they left off, including the step they were on,
+    // because that is what they asked for when they kept it.
+    var draft = loadDraft();
+    if (draft) {
+      try {
+        Object.keys(draft).forEach(function (k) {
+          if (draft[k] !== undefined) state[k] = draft[k];
+        });
+        state.resumed = true;
+        state.step = Math.max(0, Math.min(STEPS.length - 1, Number(state.step) || 0));
+        // A draft written by an older build could be shaped differently.
+        // Prove it before trusting it, rather than rendering a broken form.
+        if (!Array.isArray(state.vehicles) || !state.vehicles.length || !state.vehicles[0]) {
+          throw new Error('draft shape');
+        }
+        state.vehicles.forEach(function (v) {
+          if (!Array.isArray(v.packageIds) || !Array.isArray(v.addons)) throw new Error('draft shape');
+        });
+      } catch (e) {
+        clearDraft();
+        reset();
+      }
+    }
+
     host.hidden = false;
     document.body.classList.add('bk-open');
     lastFocus = document.activeElement;
@@ -2663,8 +3403,103 @@
     el('bkClose').focus();
   }
 
+  /**
+   * The way out.
+   *
+   * A tap on the backdrop is as easy to do by accident as on purpose, and
+   * losing eight answered questions to a misplaced thumb is the sort of thing
+   * people do not come back from. So a close with real work behind it asks
+   * first, and offers to keep it.
+   */
+  function requestClose() {
+    if (!worthKeeping()) return close();
+    state.leaving = true;
+    renderLeave();
+  }
+
+  function renderLeave() {
+    var box = el('bkLeave');
+    if (!box) return close();
+
+    if (!state.leaving) {
+      box.hidden = true;
+      box.innerHTML = '';
+      return;
+    }
+
+    var lines = draftSummary();
+    box.hidden = false;
+    box.innerHTML =
+      '<div class="bk-leave-card" role="dialog" aria-modal="true" aria-labelledby="bkLeaveT">' +
+        '<h3 id="bkLeaveT">Abandon your detail quote?</h3>' +
+        (lines.length
+          ? '<ul class="bk-leave-sum">' +
+              lines.map(function (l) { return '<li>' + esc(l) + '</li>'; }).join('') +
+            '</ul>'
+          : '') +
+        '<div class="bk-leave-acts">' +
+          '<button type="button" class="bk-leave-go" id="bkLeaveStay">Back to my booking</button>' +
+          '<button type="button" class="bk-leave-keep" id="bkLeaveKeep">Keep it for next time</button>' +
+          '<button type="button" class="bk-leave-ask" id="bkLeaveAsk">I have a question</button>' +
+          '<button type="button" class="bk-leave-drop" id="bkLeaveDrop">Throw it away</button>' +
+        '</div>' +
+        '<p class="bk-leave-note">Keeping it stores your answers in this browser only, for ' +
+          DRAFT_DAYS + ' days. They never reach us until you book.</p>' +
+      '</div>';
+
+    var first = box.querySelector('#bkLeaveStay');
+    if (first) first.focus();
+  }
+
+  /**
+   * Hand the whole half-finished quote to the question form.
+   *
+   * Someone who stops to ask a question has usually hit something the funnel
+   * did not answer, and making them retype what they already picked is how
+   * that turns into no message at all. The summary and a link that reopens
+   * this exact quote both go into the message, so the reply can be specific.
+   */
+  function askAboutIt() {
+    var url = P.quoteUrl(quotePayload(), location.origin + location.pathname);
+    var lines = draftSummary();
+    var msg =
+      'I was booking and had a question.\n\n' +
+      (lines.length ? 'What I had picked:\n' + lines.map(function (l) { return '  ' + l; }).join('\n') + '\n\n' : '') +
+      'My quote: ' + url + '\n\nMy question: ';
+
+    saveDraft();
+    close();
+
+    var form = document.getElementById('inquiryForm');
+    if (!form) { location.href = 'sms:+15132792915'; return; }
+
+    var set = function (id, val) {
+      var f = document.getElementById(id);
+      if (f && val && !f.value) f.value = val;
+    };
+    set('q-name', state.contact.name);
+    set('q-phone', state.contact.phone);
+    set('q-email', state.contact.email);
+    set('q-zip', state.address.zip);
+    var v = state.vehicles[0];
+    set('q-vehicle', v && v.label);
+
+    var message = document.getElementById('q-message');
+    if (message) {
+      message.value = msg;
+      // The cursor lands after "My question: ", so they can just type.
+      try { message.setSelectionRange(msg.length, msg.length); } catch (e) { /* older browsers */ }
+    }
+
+    var target = document.getElementById('inquiry') || form;
+    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    setTimeout(function () { if (message) message.focus(); }, 420);
+  }
+
   function close() {
     if (!host) return;
+    state.leaving = false;
+    renderLeave();
     host.hidden = true;
     document.body.classList.remove('bk-open');
     setPageInert(false);
@@ -2700,16 +3535,74 @@
     host.addEventListener('change', onChange);
     host.addEventListener('input', onInput);
 
+    /**
+      * Enter means "done with this, what is next".
+      *
+      * The funnel is not a <form>, so Enter did nothing at all: someone
+      * filling in three address fields had to reach for the mouse between
+      * each one and again to continue. Now it walks to the next field in the
+      * step and, from the last one, does what Continue does.
+      *
+      * A textarea is left alone, because there Enter means a new line, and a
+      * button is left alone, because the browser already clicks it.
+      */
     host.addEventListener('keydown', function (e) {
-      if (e.key !== 'Enter') return;
-      if (!e.target || !e.target.dataset || e.target.dataset.promo === undefined) return;
+      if (e.key !== 'Enter' || e.shiftKey) return;
+      var t = e.target;
+      if (!t || t.tagName === 'TEXTAREA' || t.tagName === 'BUTTON' || t.tagName === 'A') return;
+
+      // The promo box applies the code rather than moving on. Someone who
+      // just typed a code wants to see it land, not skip past it.
+      if (t.dataset && t.dataset.promo !== undefined) {
+        e.preventDefault();
+        state.promoCode = P.normalisePromo(t.value);
+        return render();
+      }
+
+      if (t.tagName !== 'INPUT' || t.type === 'checkbox' || t.type === 'radio') return;
       e.preventDefault();
-      state.promoCode = P.normalisePromo(e.target.value);
-      render();
+
+      var fields = Array.prototype.filter.call(
+        el('bkBody').querySelectorAll('input[type="text"],input[type="tel"],input[type="email"]'),
+        function (n) { return !n.disabled && n.offsetParent !== null; }
+      );
+      var i = fields.indexOf(t);
+      if (i > -1 && i < fields.length - 1) {
+        var next = fields[i + 1];
+        next.focus();
+        if (next.select) next.select();
+        return;
+      }
+      advance();
     });
 
+    /**
+      * Opening a panel should reveal the panel.
+      *
+      * Only scrolls when it has to. A "How it works" near the top of the
+      * screen opens into space the reader can already see, and yanking the
+      * page for it would be worse than doing nothing. One that opens below
+      * the fold gets moved up just far enough to read.
+      */
+    host.addEventListener('toggle', function (e) {
+      var d = e.target;
+      if (!d || d.tagName !== 'DETAILS' || !d.open) return;
+      var scroller = el('bkScroll');
+      if (!scroller) return;
+      var box = d.getBoundingClientRect();
+      var view = scroller.getBoundingClientRect();
+      // Already fully visible: leave the page exactly where it is.
+      if (box.bottom <= view.bottom && box.top >= view.top) return;
+      var summary = d.querySelector('summary') || d;
+      summary.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }, true);
+
     document.addEventListener('keydown', function (e) {
-      if (e.key === 'Escape' && !host.hidden) close();
+      if (e.key !== 'Escape' || host.hidden) return;
+      // Escape backs out of the leaving panel before it backs out of the
+      // booking, so the key that means "undo" never destroys anything.
+      if (state.leaving) { state.leaving = false; return renderLeave(); }
+      requestClose();
     });
 
     // Any Book Now link opens the funnel in place rather than navigating.
