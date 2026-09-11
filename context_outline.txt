@@ -1,0 +1,2155 @@
+# 513 Auto Clean Website Summary + Senior UI Development Workflow
+
+## 1. Company Summary
+
+**513 Auto Clean** is a student-owned mobile auto detailing business based in Cincinnati, Ohio, owned and operated by **Elijah Thacker**, a University of Cincinnati student. The business serves Cincinnati and nearby areas, with a strong focus on Clifton, UC-connected neighborhoods, families, homeowners, daily drivers, family SUVs, and work vehicles.
+
+The strongest positioning is not simply “car detailing.” The business should be framed as:
+
+> **UC student-owned mobile detailing for Cincinnati families who want their cars done right without wasting time at a shop.**
+
+The best customers are likely middle- to upper-middle-class Cincinnati families, homeowners, UC alumni, parents, professionals, and people who value local businesses, personal accountability, hard work, and convenience. They are not purely price-shopping; they care about who is doing the work and want to feel good supporting a real person building something.
+
+---
+
+## 2. Brand Positioning
+
+513 Auto Clean should feel:
+
+* **Local**
+* **Trustworthy**
+* **Student-owned**
+* **Professional**
+* **Convenient**
+* **Hard-working**
+* **Personal, not corporate**
+* **Clean, modern, and functional**
+
+The brand should avoid sounding like a cheap car wash or luxury-only detail shop. The ideal tone is:
+
+> “Professional enough to trust, personal enough to care.”
+
+The site should emphasize:
+
+* UC student-owned
+* 65+ vehicles detailed
+* consistent 5-star reviews
+* mobile convenience
+* honest pricing
+* hands-on owner-operated service
+* no handoffs, no pressure sales
+* quality guarantee: if something is off, Elijah will come back and make it right
+
+---
+
+## 3. Core Website Goal
+
+The website should act as the main conversion funnel for 513 Auto Clean.
+
+Its job is to help a visitor:
+
+1. Quickly understand what 513 Auto Clean is.
+2. Trust Elijah and the quality of the work.
+3. View services and pricing clearly.
+4. See real reviews and before/after photos.
+5. Book a mobile detailing appointment.
+6. Optionally call or text instead.
+
+Primary goal:
+
+> **Turn Google, social, flyer, and referral traffic into booked detailing jobs.**
+
+Secondary goal:
+
+> Support local SEO for **mobile car detailing Cincinnati** and related searches.
+
+---
+
+## 4. Current Business Assets
+
+513 Auto Clean already has:
+
+* Domain: **513AutoClean.com**
+* WordPress hosting through Porkbun
+* Logo assets
+* Business phone number
+* Google Business Profile
+* 11+ Google reviews
+* Facebook account
+* Instagram account
+* Yelp profile
+* Google posts
+* Physical flyers
+* Business cards
+* Interest form / lead form
+* Before/after photos
+* Job photos
+* Service descriptions
+* Pricing
+* Testimonials
+* Referral program concept
+* Local customer targeting strategy
+
+These assets should be consolidated into one clear online booking experience.
+
+---
+
+## 5. Services and Pricing
+
+### Refresh Package — $200
+
+Vacuum seats, carpets & trunk; wipe & dress plastics; clean mats; clean glass; freshen interior; pressure wash; shine tires; hand dry.
+
+### Full Interior Detail — $175
+
+Vacuum seats, carpets & trunk; shampoo upholstery; steam stains; wash mats; clean glass; protect trim; detail crevices.
+
+### Basic Interior Detail — $100
+
+Vacuum seats & carpets; rinse mats; clean glass; wipe trim; brush tight crevices.
+
+### Express Interior Detail — $65
+
+Quick vacuum seats & carpets; rinse mats; wipe surfaces; clean glass.
+
+### Full Exterior Detail — $200
+
+Rinse/pressure wash; decon & restore wheels; dress tires; detail engine bay; wash & ceramic seal; clean windows; towel dry.
+
+### Basic Exterior Detail — $115
+
+Rinse exterior; scrub hubcaps with non-acid cleaner; spray & wipe engine bay; wash & wax; clean windows & mirrors; towel dry.
+
+### Express Exterior Detail — $65
+
+Rinse or wipe exterior; scrub hubcaps; hand wash; clean windows & mirrors; towel dry.
+
+### Add-ons
+
+* Headlight Restoration and Ceramic Coating — **$75**
+* Seat Removal for Cleaning — **$100**
+* Pet Hair Removal — **$50**
+
+---
+
+## 6. Booking System Requirements
+
+The booking system should be more advanced than a normal contact form.
+
+It needs to support:
+
+### Customer-facing
+
+* Choose a package
+* Add optional add-ons
+* Add multiple vehicles
+* Enter address or location
+* See estimated price
+* See deposit required
+* See available appointment windows
+* Reserve appointment
+* Pay deposit
+* Optionally pay full amount now for 5% off
+* Understand that arrival is within a 1-hour window
+
+Example:
+
+> “Selected time: 4:00 PM. Arrival window: 4:00–5:00 PM.”
+
+### Admin-facing
+
+* Set availability based on when Elijah cannot work
+* Hide reasons for unavailable time from customers
+* Create hard blocks
+* Create soft blocks
+* Add premium pricing for early/late times
+* Approve or reject same-day and future bookings
+* View jobs by package, add-ons, location, duration, and value
+* Track what services are selling and where
+
+---
+
+## 7. Travel Logic
+
+Travel should be calculated from a hidden base location controlled by the admin.
+
+Rules:
+
+* First 15 minutes of one-way drive time included
+* After 15 minutes, charge based on **$50/hour**
+* Travel fee should account for both directions
+* Minimum travel fee: **$5**
+* Round up to the nearest $1
+* No hard maximum distance if the schedule allows enough time
+
+Travel time must also affect scheduling. A 4-hour detail plus 1 hour of total travel should require a 5-hour availability window.
+
+---
+
+## 8. Payment Logic
+
+Booking should require a deposit:
+
+> **$50 or 25% of total price, whichever is greater.**
+
+Customers may also optionally pay in full before the job.
+
+Optional incentive:
+
+> **Save 5% when you pay in full now.**
+
+Remaining balance is paid after the job is completed.
+
+---
+
+# 9. Recommended Technical Direction
+
+The current site is WordPress-based, but the requested functionality is closer to a modern custom booking application. The cleanest senior-level architecture is:
+
+## Option A — WordPress-first implementation
+
+Best for fastest launch.
+
+Use:
+
+* WordPress
+* Custom theme
+* Custom plugin for booking logic
+* WooCommerce for payments
+* Stripe for deposits
+* Google Reviews plugin
+* Booking/calendar plugin or custom calendar UI
+* Google Maps API for travel estimates
+
+## Option B — Headless / modern frontend
+
+Best for maximum polish.
+
+Use:
+
+* WordPress as CMS
+* Next.js frontend
+* Three.js / React Three Fiber for interactive visuals
+* Stripe for payments
+* Google Maps API
+* Custom booking engine
+* WordPress REST API or custom backend
+
+## My recommendation
+
+Use a **hybrid approach**:
+
+> WordPress stays as CMS/admin backend, but the booking experience becomes a custom modern front-end module embedded into WordPress.
+
+This gives you:
+
+* WordPress SEO and content control
+* modern UI/UX
+* better booking flexibility
+* cleaner animation and Three.js support
+* less plugin fighting
+
+---
+
+# 10. Senior UI Engineer Development Workflow
+
+## Phase 1 — Product Definition
+
+### Objective
+
+Convert the current business into a polished local-service booking platform.
+
+### Primary user
+
+Busy Cincinnati homeowner or UC-connected customer who wants a reliable mobile detail without spending time at a shop.
+
+### Core user journey
+
+1. Visitor lands on homepage.
+2. Immediately sees UC student-owned mobile detailing.
+3. Sees reviews and proof.
+4. Views packages.
+5. Chooses package.
+6. Adds add-ons / vehicles.
+7. Enters location.
+8. Sees price and available times.
+9. Pays deposit.
+10. Booking enters pending approval.
+
+### Success metrics
+
+Track:
+
+* homepage conversion rate
+* booking-start rate
+* booking-completion rate
+* average order value
+* add-on attach rate
+* service area demand
+* source attribution
+* review-click rate
+* call/text clicks
+
+---
+
+## Phase 2 — Site Architecture
+
+### Pages
+
+| Page     | Purpose                              |
+| -------- | ------------------------------------ |
+| Home     | Main conversion and SEO landing page |
+| Services | Explain service categories           |
+| Pricing  | Clear packages and add-ons           |
+| Book Now | Interactive booking flow             |
+| Gallery  | Before/after proof                   |
+| Reviews  | Trust-building                       |
+| FAQ      | SEO + objection handling             |
+| Contact  | Call/text fallback                   |
+
+### Homepage Structure
+
+1. Hero
+2. Quick trust bar
+3. Packages preview
+4. Before/after section
+5. Google reviews
+6. How it works
+7. UC student-owned story
+8. FAQ preview
+9. Final booking CTA
+
+---
+
+## Phase 3 — Visual Design System
+
+### Style
+
+Clean, minimalist, modern, functional.
+
+### Colors
+
+Primary:
+
+* Red
+* Black
+* White
+
+Secondary:
+
+* Light gray
+* Charcoal
+* Soft off-white
+
+### Design feel
+
+Avoid excessive “car wash clip art.” The design should feel like a modern local service business with strong trust signals.
+
+### UI principles
+
+* Large buttons
+* Clear cards
+* Mobile-first spacing
+* Sticky booking CTA
+* Minimal text blocks
+* Strong before/after visuals
+* Easy price scanning
+
+---
+
+# 11. Three.js and Animation Strategy
+
+Important constraint:
+
+> Three.js should improve memorability, not slow down booking.
+
+This is a local service website, so the booking flow must remain fast and clear. Three.js should be used as progressive enhancement, not as the foundation of the whole site.
+
+## Best Three.js Uses
+
+### 1. Homepage Hero Background
+
+A subtle animated 3D car silhouette or glossy hood reflection.
+
+Concept:
+
+* Clean dark background
+* Light reflections moving across a car surface
+* Small spray mist particles
+* Red accent lighting
+* CTA remains fully readable
+
+### 2. Service Package Interaction
+
+When hovering over a package:
+
+* subtle 3D tilt
+* light reflection sweep
+* small animated sparkle or clean-line effect
+
+This can be CSS/Framer Motion rather than full Three.js.
+
+### 3. Before/After Reveal
+
+Use smooth image comparison sliders. Avoid heavy 3D here.
+
+### 4. Loading / Brand Moment
+
+A short spray bottle icon animation:
+
+* spray particles
+* car silhouette reveal
+* logo fades in
+
+Keep under 1.2 seconds.
+
+---
+
+## Animation Rules
+
+Use:
+
+* CSS transitions for basic movement
+* Framer Motion or GSAP for UI animations
+* Three.js only for hero or visual accent
+* Respect `prefers-reduced-motion`
+* Lazy-load heavy visuals
+* Disable complex effects on low-end mobile devices
+
+Avoid:
+
+* 3D everywhere
+* spinning cars
+* distracting particles over text
+* animations that delay booking
+* heavy WebGL on the booking page
+
+---
+
+# 12. Recommended Frontend Stack
+
+If building a polished custom frontend:
+
+* Next.js
+* React
+* TypeScript
+* Tailwind CSS
+* Framer Motion
+* Three.js / React Three Fiber
+* GSAP only if needed
+* Stripe
+* Google Maps API
+* WordPress REST API
+* Plausible or GA4 analytics
+
+If staying inside WordPress:
+
+* Custom WordPress theme
+* Vanilla JS or React bundle loaded through theme
+* Three.js loaded only on homepage
+* WooCommerce for payment
+* Stripe gateway
+* Custom plugin for booking engine
+
+---
+
+# 13. Suggested Project Structure
+
+```text
+513-auto-clean/
+  app/
+    page.tsx
+    services/
+    pricing/
+    gallery/
+    reviews/
+    faq/
+    contact/
+    book/
+  components/
+    Hero/
+    BookingFlow/
+    PackageCard/
+    ReviewCarousel/
+    GalleryGrid/
+    FAQAccordion/
+    ServiceAreaMap/
+    StickyCTA/
+  lib/
+    pricing.ts
+    travel.ts
+    availability.ts
+    booking.ts
+    analytics.ts
+  three/
+    HeroScene.tsx
+    SprayParticles.tsx
+    CarReflection.tsx
+  styles/
+    globals.css
+  data/
+    services.ts
+    faqs.ts
+    packages.ts
+```
+
+For WordPress:
+
+```text
+wp-content/
+  themes/
+    513-auto-clean/
+      functions.php
+      style.css
+      front-page.php
+      page-book-now.php
+      assets/
+        js/
+          booking.js
+          hero-three.js
+        css/
+          main.css
+  plugins/
+    513-auto-clean-core/
+      includes/
+        post-types.php
+        booking-engine.php
+        pricing-engine.php
+        travel-engine.php
+        settings.php
+```
+
+---
+
+# 14. Booking Flow Design
+
+## Step 1 — Choose Package
+
+Show clean package cards:
+
+* Express Interior
+* Basic Interior
+* Full Interior
+* Express Exterior
+* Basic Exterior
+* Full Exterior
+* Refresh Package
+
+Each card shows:
+
+* price
+* time estimate
+* short summary
+* “Best for…” label
+
+Example:
+
+> Full Interior Detail
+> $175 · About 4 hours
+> Best for deep interior resets, stains, carpets, seats, and daily-use vehicles.
+
+---
+
+## Step 2 — Add Options
+
+Options:
+
+* Pet Hair Removal
+* Seat Removal
+* Headlight Restoration
+* Add Another Vehicle
+
+Each add-on updates:
+
+* total price
+* total time
+* deposit amount
+
+---
+
+## Step 3 — Enter Location
+
+Customer enters address or ZIP.
+
+System calculates:
+
+* estimated drive time
+* travel fee
+* total time commitment
+
+Customer sees:
+
+* price
+* estimated job time
+* arrival window note
+
+---
+
+## Step 4 — Pick Time
+
+Show a clear visual calendar.
+
+Available slots:
+
+* normal style
+
+Unavailable slots:
+
+* gray / disabled
+
+Soft unavailable slots:
+
+* available but marked:
+
+  > Premium time +$X
+
+Early/late slots:
+
+* visible with surcharge
+
+Important:
+The customer should not see why a time is blocked.
+
+---
+
+## Step 5 — Deposit / Payment
+
+Show:
+
+* total price
+* deposit due
+* remaining balance
+* optional full payment discount
+
+Example:
+
+```text
+Total: $200
+Deposit due today: $50
+Remaining after service: $150
+
+Pay in full now and save 5%: $190
+```
+
+---
+
+## Step 6 — Confirmation
+
+Booking should be marked:
+
+> Pending approval
+
+Customer message:
+
+> Your appointment request has been received. I’ll confirm the final appointment shortly by text or email.
+
+---
+
+# 15. Admin Workflow
+
+Admin should be able to:
+
+## Manage services
+
+* price
+* time
+* materials cost
+* package assignment
+
+## Manage bookings
+
+Calendar view:
+
+* drag hard blocks
+* drag soft blocks
+* approve pending bookings
+* reject bookings
+* add internal notes
+
+## Manage availability
+
+* weekly availability
+* blackout blocks
+* soft blocks
+* premium early/late windows
+
+## Manage content
+
+* gallery items
+* before/after labels
+* package tags
+* reviews
+* FAQs
+* testimonials
+
+---
+
+# 16. SEO Plan
+
+Primary keyword:
+
+> mobile car detailing Cincinnati
+
+Secondary keywords:
+
+* mobile detailing Cincinnati
+* car detailing Clifton
+* interior car detailing Cincinnati
+* mobile car cleaning Cincinnati
+* auto detailing near me
+* pet hair removal car detailing Cincinnati
+* car seat shampoo Cincinnati
+* headlight restoration Cincinnati
+
+## Homepage SEO title
+
+**Mobile Car Detailing Cincinnati | 513 Auto Clean**
+
+## Meta description
+
+**Mobile car detailing in Cincinnati by 513 Auto Clean. Interior and exterior detailing at your home or workplace with honest pricing and 5-star service.**
+
+## H1
+
+**UC Student-Owned Mobile Car Detailing in Cincinnati**
+
+This is stronger for the target customer than a generic “Mobile Car Detailing Cincinnati” alone.
+
+---
+
+# 17. FAQ SEO Content
+
+Include FAQs like:
+
+### How much does mobile car detailing cost in Cincinnati?
+
+Pricing starts at $65 for express services and ranges up to $200+ depending on the package, vehicle size, condition, add-ons, and travel.
+
+### Do you come to my house?
+
+Yes. 513 Auto Clean is mobile and can detail your vehicle at your home or workplace.
+
+### Do you bring your own equipment?
+
+Yes. Equipment and supplies are brought to the job. Access to water or power may help depending on the service.
+
+### Can you remove pet hair?
+
+Yes. Pet hair removal is available as an add-on.
+
+### Can you remove stains?
+
+Minor to moderate stains can often be improved with shampooing, steam treatment, and extraction-style cleaning.
+
+### How long does a full interior detail take?
+
+A full interior detail usually takes about 4 hours, plus travel time.
+
+---
+
+# 18. Performance Requirements
+
+Because the site uses photos and possible Three.js:
+
+* Lighthouse mobile score target: 85+
+* Lazy-load all images
+* Use WebP/AVIF
+* Compress gallery images
+* Load Three.js only on homepage
+* No Three.js on booking flow unless necessary
+* Use reduced-motion fallback
+* Use caching carefully with booking pages excluded
+
+Booking pages should not be cached aggressively because availability and pricing are dynamic.
+
+---
+
+# 19. Accessibility Requirements
+
+* Alt text on all service/gallery images
+* Keyboard-accessible booking flow
+* High contrast buttons
+* Large tap targets
+* No text embedded only in images
+* Respect reduced motion
+* Clear form labels
+* Error messages that explain what to fix
+
+Logo alt text:
+
+> 513 Auto Clean logo featuring a red spray bottle with a car silhouette inside.
+
+If logo links home:
+
+> 513 Auto Clean home
+
+---
+
+# 20. Analytics and Data
+
+Track events:
+
+* click book now
+* start booking
+* package selected
+* add-on selected
+* location entered
+* time selected
+* deposit started
+* booking submitted
+* call clicked
+* text clicked
+* review clicked
+
+Store booking metadata:
+
+* package
+* add-ons
+* estimated time
+* travel fee
+* ZIP/neighborhood
+* total price
+* deposit amount
+* source if known
+
+This lets the business learn:
+
+* which areas convert
+* which packages sell
+* whether add-ons are worthwhile
+* whether SEO traffic books
+* whether flyer/card traffic books
+
+---
+
+# 21. Development Milestones
+
+## Milestone 1 — Foundation
+
+* Set up theme
+* Create design system
+* Create pages
+* Add core service content
+* Add SEO metadata
+
+## Milestone 2 — Conversion Homepage
+
+* Hero
+* service cards
+* reviews
+* gallery preview
+* UC student-owned story
+* CTA sections
+
+## Milestone 3 — Booking MVP
+
+* package selection
+* add-ons
+* multiple vehicles
+* price calculation
+* deposit calculation
+* booking request submission
+* admin notification
+
+## Milestone 4 — Calendar Upgrade
+
+* visual availability calendar
+* hard blocks
+* soft blocks
+* premium times
+* pending approval workflow
+
+## Milestone 5 — Payment Integration
+
+* Stripe
+* deposit payment
+* pay-in-full option
+* 5% full-payment discount
+* confirmation email/text
+
+## Milestone 6 — Reviews + Gallery
+
+* automatic Google reviews
+* manual testimonials
+* before/after galleries
+* service-tagged photos
+
+## Milestone 7 — SEO + Analytics
+
+* FAQ schema
+* local SEO copy
+* analytics events
+* Google Search Console
+* Google Business Profile links
+
+## Milestone 8 — Polish
+
+* Three.js hero
+* smooth animations
+* mobile optimization
+* speed optimization
+* accessibility pass
+
+---
+
+# 22. Critical Engineering Warning
+
+Do not let the Three.js layer become the product.
+
+The booking experience is the product.
+
+Three.js should make the site memorable, but the customer must still be able to book in under 90 seconds.
+
+The priority order is:
+
+1. Booking clarity
+2. Trust
+3. Speed
+4. SEO
+5. Visual polish
+6. 3D effects
+
+---
+
+# 23. Final Development Brief
+
+Build 513AutoClean.com as a high-converting, locally optimized website for a UC student-owned mobile detailing business serving Cincinnati. The experience should feel personal, trustworthy, modern, and easy to use. The core funnel should move visitors from trust signals into a clear booking flow with dynamic service pricing, add-ons, travel calculation, appointment availability, deposit collection, and pending approval. Use strong local SEO around “mobile car detailing Cincinnati,” showcase reviews and before/after photos, and use smooth UI animations plus selective Three.js visuals to create a polished brand experience without slowing the site or distracting from booking.
+
+Below is a 513 Auto Clean master business archive for a website rebuild, CRM buildout, booking automation system, Google Calendar integration, callback/text automation, and future Jobber-style operations platform.
+
+This should be treated as a working source-of-truth brief for a developer, UI/UX designer, automation builder, or AI coding agent.
+
+513 Auto Clean Master Archive
+1. Business Identity
+
+Business name: 513 Auto Clean
+Owner/operator: Elijah Thacker
+Location: Cincinnati, Ohio
+Primary market: Greater Cincinnati, especially Clifton / UC-connected areas
+Business type: Mobile auto detailing
+Website: 513AutoClean.com
+Hosting/domain: Porkbun WordPress
+Business positioning: UC student-owned, local, mobile, reliable, personal, professional detailing.
+
+513 Auto Clean is a mobile car detailing business serving Cincinnati and surrounding neighborhoods. The service is performed at the customer’s home or workplace. The business is built around convenience, honest pricing, hands-on care, strong reviews, and the trust of working directly with the owner.
+
+The strongest short positioning:
+
+UC student-owned mobile detailing for Cincinnati families who want their cars done right without wasting time at a shop.
+
+2. Ideal Customer
+
+The website and automations should be directed toward:
+
+Middle-aged Cincinnati families, homeowners, UC alumni, professionals, and local customers with one or more vehicles who value convenience, trust, small business, hard work, and a real person behind the service.
+
+The ideal customer is not simply looking for the cheapest detail. They care that:
+
+the work is done well
+the business is local
+the owner is accountable
+the story feels personal
+they are supporting a hardworking UC student
+they can trust the person coming to their home
+
+Avoid language that makes the business sound like charity. Use “UC student-owned” instead of “college kid.”
+
+3. Website Goal
+
+The website should be the main customer funnel for 513 Auto Clean.
+
+Its job is to:
+
+help visitors instantly understand the service
+build trust through reviews, photos, and UC/local identity
+explain pricing simply
+guide people toward booking
+allow call/text for people who prefer direct contact
+support future automation through CRM, calendar, payments, callbacks, and customer follow-up
+
+Primary conversion goal:
+
+Turn website visitors into booked detailing jobs.
+
+Primary SEO target:
+
+mobile car detailing Cincinnati
+
+4. Brand Direction
+
+The site should feel:
+
+clean
+simple
+modern
+trustworthy
+smooth
+mobile-first
+local
+personal
+professional, but not corporate
+
+Use Archer Detailing-style direction as inspiration: simple layout, strong spacing, clean typography, smooth scrolling, high-quality visuals, clear calls to action, and minimal clutter.
+
+The website should be built with the judgment of a senior UI/UX designer and senior front-end engineer. Use modern standards: semantic HTML, accessibility, responsive components, optimized assets, conversion-focused hierarchy, subtle motion, and strong Core Web Vitals.
+
+Three.js, GSAP, Framer Motion, or WebGL effects can be used, but only as subtle enhancement. The priority is not flashy 3D. The priority is simplicity, speed, trust, and conversion.
+
+5. Core Website Copy
+Homepage opening direction
+
+Best current opening:
+
+UC student-owned mobile detailing for Cincinnati families who want their cars done right without wasting time at a shop.
+
+Alternate:
+
+UC student-owned detailing for Cincinnati homeowners who want reliable, high-quality work done at home.
+
+About / story copy
+
+Use this as the base:
+
+I’m Elijah Thacker, a University of Cincinnati student and the owner of 513 Auto Clean. I started detailing after my sister asked me to clean her car, posted the results, and grew from there into a mobile detailing business serving Cincinnati and nearby neighborhoods.
+
+I’ve now detailed 65+ vehicles with consistent 5-star reviews. I come to your home or workplace, bring the equipment, and handle the work while you keep your day moving. From family SUVs to daily drivers and work trucks, every detail is done by me personally.
+
+513 Auto Clean is independent and student-owned. When you book, you’re working directly with me — no crews, no handoffs, no pressure. Just fair pricing, professional results, and if anything’s off after I leave, I’ll come back and make it right.
+
+Short business description
+
+513 Auto Clean is a mobile car detailing service serving Cincinnati and surrounding neighborhoods. We provide on-site interior and exterior detailing at customers’ homes or workplaces with honest pricing, reliable service, and hands-on care.
+
+6. Services Archive
+
+There are two service structures in the business history. The rebuild should preserve both as known business context, but the final site should use one clear live structure.
+
+Existing / current website package structure
+Refresh Package — $200
+
+Vacuum seats, carpets & trunk; wipe & dress plastics; clean mats; clean glass; freshen interior; pressure wash; shine tires; hand dry.
+Estimated time: 4 hours
+
+Full Interior Detail — $175
+
+Vacuum seats, carpets & trunk; shampoo upholstery; steam stains; wash mats; clean glass; protect trim; detail crevices.
+Estimated time: 4 hours
+
+Basic Interior Detail — $100
+
+Vacuum seats & carpets; rinse mats; clean glass; wipe trim; brush tight crevices.
+Estimated time: 2 hours
+
+Express Interior Detail — $65
+
+Quick vacuum seats & carpets; rinse mats; wipe surfaces; clean glass.
+Estimated time: 1 hour
+
+Full Exterior Detail — $200
+
+Rinse/pressure wash; decon & restore wheels; dress tires; detail engine bay; wash & ceramic seal; clean windows; towel dry.
+Estimated time: 3 hours
+
+Basic Exterior Detail — $115
+
+Rinse exterior; scrub hubcaps with non-acid cleaner; spray & wipe engine bay; wash & wax; clean windows & mirrors; towel dry.
+Estimated time: 2 hours
+
+Express Exterior Detail — $65
+
+Rinse or wipe exterior; scrub hubcaps; hand wash; clean windows & mirrors; towel dry.
+Estimated time: 1 hour
+
+Add-ons
+Pet Hair Removal — $50
+
+Default added time: 1 hour
+
+Seat Removal for Cleaning — $100
+
+Default added time: 1 hour
+
+Headlight Restoration and Ceramic Coating — $75
+
+Default added time: 1 hour
+Default materials cost: $20
+
+Planned newer service structure
+
+This was also defined for the next evolution of 513 Auto Clean:
+
+Maintenance — $145
+
+Equivalent to the previous Basic package. Customer must provide photo evidence to qualify.
+
+Restore — $195
+
+Equivalent to the previous Full Interior Detail. Same approximate 4-hour service.
+
+Transform — starting at $600 minimum
+
+A 6-hour in-depth interior service. Seat removal if possible. Goal is to get the vehicle as close to perfect as reasonably achievable. Additional time billed at $100/hour. Every Transform job is performed by the owner and requires manual contact. It should not be automatically bookable.
+
+Add-on billing for non-Transform jobs
+
+General add-ons billed at $50/hour, with a $50 minimum.
+
+Specific add-ons:
+
+Headlights: $75
+Ozone: $75
+Disaster vehicle interior: $65/hour
+Extraction add-on
+Steam add-on
+Mandatory size add-on: $20 for vehicles larger than sedan/coupe/similar smaller vehicles, unless waived
+7. Pricing Logic
+
+The final rebuild should support modular service pricing behind the scenes.
+
+Each service component should be able to store:
+
+name
+customer-facing description
+internal description
+time estimate
+labor basis
+materials cost
+package assignment
+add-on status
+visibility
+discount eligibility
+
+Default labor basis:
+
+$50/hour
+
+Packages should be composed of service components. Admin should be able to create package discounts, promos, and target package prices.
+
+Discount rules requested:
+
+percentage discounts should be supported
+discount rounding should support nearest $1 or multiple of $5
+admin should be able to set a target final package price
+if target price is set, system calculates the discount automatically
+customers may remove included service components and receive half of that component’s value back
+8. Booking System Archive
+
+The booking system should eventually function like a custom CRM/field-service platform rather than a basic form.
+
+Customer booking requirements
+
+Customers should be able to:
+
+choose an exact package
+mix and match services if desired
+add add-ons
+add multiple vehicles
+enter their address or service location
+see pricing update clearly
+see available time slots visually
+click the time that works for them
+pay a required deposit
+optionally pay in full
+submit the booking for approval
+
+All bookings require owner approval.
+
+Same-day requests are allowed, but still require approval.
+
+Arrival window
+
+Customers should understand that the selected time is an arrival window.
+
+Example:
+
+Selected time: 4:00 PM
+Arrival window: 4:00–5:00 PM
+
+Deposit rule
+
+Deposit due at booking:
+
+$50 or 25% of total price, whichever is higher
+
+Optional full-payment rule
+
+Customer can pay in full before the job.
+
+Optional incentive:
+
+Save 5% if you pay now
+
+Remaining balance
+
+If the customer only pays the deposit, the remaining balance is paid after the job is complete.
+
+9. Availability Rules
+
+Elijah should manage scheduling based on when he cannot work, not by manually creating every available slot.
+
+Admin calendar needs:
+
+weekly recurring availability
+hard blocks
+soft blocks
+drag-and-drop calendar management
+premium time windows
+early/late pricing rules
+conflict hiding from the customer
+clear visual booking grid
+Hard block
+
+A hard block means the customer cannot book that time.
+
+Customer sees:
+
+Busy / unavailable
+
+Customer does not see why.
+
+Soft block
+
+A soft block means the customer can book that time, but only with a surcharge.
+
+Customer sees:
+
+Premium time available +$X
+
+Customer does not see the reason.
+
+Early / late pricing
+
+Certain time windows should be bookable at a higher price, such as very early or very late appointments.
+
+10. Travel Logic
+
+Travel should be calculated from a hidden admin-set base location.
+
+The customer should not see the base location.
+
+Travel pricing rule
+
+Let:
+
+one_way_drive_minutes = estimated drive time from hidden base to customer
+free_minutes = 15
+rate = $50/hour
+
+If one-way drive time is 15 minutes or less:
+
+travel_fee = $0
+
+If one-way drive time is over 15 minutes:
+
+billable_round_trip_minutes = (one_way_drive_minutes - 15) × 2
+raw_fee = billable_round_trip_minutes / 60 × 50
+travel_fee = ceil(raw_fee)
+
+Then:
+
+minimum travel fee if charged: $5
+round up to nearest whole dollar
+no hard maximum distance as long as the full time fits in the schedule
+Travel scheduling rule
+
+Travel time should also count toward the schedule commitment.
+
+Example:
+
+4-hour detail + 30 minutes there + 30 minutes back = 5-hour calendar commitment
+11. Multiple Vehicle Logic
+
+The system should support multiple vehicles in one appointment.
+
+Customer-facing option:
+
+Add another vehicle to this detail
+
+Rules:
+
+each vehicle can have its own package/add-ons
+total price adds together
+total service duration adds together
+travel should generally apply once to the appointment, not once per vehicle
+booking is allowed only if total job time plus travel fits into the available slot
+12. Reviews and Testimonials
+
+513 Auto Clean has consistent 5-star reviews and around 11+ Google reviews from prior context. The site should automatically display Google reviews and allow manual testimonials.
+
+Preferred behavior:
+
+auto-populate reviews from Google
+only show 5-star reviews publicly
+allow manual testimonial entries
+allow internal tagging by service/package
+optionally attach reviews to gallery items or services
+
+For WordPress, a plugin such as Widgets for Google Reviews can display Google reviews and filter by rating; WordPress.org describes review-rating filtering for related review widget plugins.
+
+For a custom rebuild, the Google Business Profile API has review-data operations that can be used to work with business reviews programmatically.
+
+13. Gallery / Portfolio System
+
+The business has many before-and-after photos and job photos.
+
+Gallery should support:
+
+upload many photos
+mark image as before, after, or result
+tag image by service
+tag image by package
+connect image to customer/job internally
+decide whether a photo is public or private
+display before/after comparisons
+filter gallery by package
+show relevant photos on package pages
+
+Photo/video release documents exist in prior business materials. The future CRM should store whether a customer has approved use of before/after photos for website, Google Business Profile, Yelp, Facebook, Instagram, TikTok, YouTube, ads, and gallery.
+
+14. SEO Archive
+
+Primary SEO target:
+
+mobile car detailing Cincinnati
+
+Secondary targets:
+
+mobile detailing Cincinnati
+car detailing Cincinnati
+car detailing Clifton
+interior car detailing Cincinnati
+auto detailing Cincinnati
+car seat shampoo Cincinnati
+pet hair removal car detailing Cincinnati
+headlight restoration Cincinnati
+mobile car wash Cincinnati
+car detailing near me
+
+Core service area:
+
+Cincinnati
+Clifton
+UC area
+Hyde Park
+Oakley
+Norwood
+Mt. Lookout
+North Avondale
+Paddock Hills
+Mt. Adams
+Covington
+Northern Kentucky
+broader Greater Cincinnati
+Dayton only as extended coverage if scheduling allows
+SEO title
+
+Mobile Car Detailing Cincinnati | 513 Auto Clean
+
+Meta description
+
+Mobile car detailing in Cincinnati by 513 Auto Clean. Interior and exterior detailing at your home or workplace with honest pricing and 5-star service.
+
+H1
+
+UC Student-Owned Mobile Car Detailing in Cincinnati
+
+15. FAQ Archive
+
+The FAQ should support real customer questions and SEO.
+
+Core FAQs:
+
+How much does mobile car detailing cost in Cincinnati?
+
+Pricing starts at $65 for express services and can increase based on package, vehicle size, condition, add-ons, and travel.
+
+Do you come to my house?
+
+Yes. 513 Auto Clean is mobile and can detail vehicles at your home or workplace.
+
+How long does a full interior detail take?
+
+A full interior detail usually takes about 4 hours, plus travel time.
+
+Can you remove pet hair?
+
+Yes. Pet hair removal is available as an add-on.
+
+Can you remove stains?
+
+Many stains can be improved with shampooing, steam, extraction, and proper interior cleaning. Results depend on material, age, and severity.
+
+Do you clean family SUVs and work vehicles?
+
+Yes. Daily drivers, family SUVs, and work vehicles are core customer types.
+
+Is every job done by Elijah?
+
+The current positioning should emphasize owner-operated service when accurate. For future employees, wording should change to “trained by Elijah” or “quality-checked by Elijah.”
+
+What happens if something is not right?
+
+The customer should be told that 513 Auto Clean will come back and make it right when reasonable.
+
+16. Customer Message Response Archive
+
+These are reusable text message templates.
+
+Initial lead response
+Hi [Name], this is Elijah with 513 Auto Clean. Thanks for reaching out. I’d be happy to help get your vehicle cleaned up. What vehicle do you have, and are you mainly looking for interior, exterior, or both?
+If customer selected “not sure”
+Hi [Name], this is Elijah with 513 Auto Clean. I saw you weren’t sure which service makes the most sense. I can help recommend the right option. What vehicle do you have, and what are the main things you want cleaned or improved?
+Full interior quote
+Hi [Name], this is Elijah with 513 Auto Clean. For a full interior detail on a [vehicle type], pricing is typically around $175 plus any condition-based add-ons if needed. It usually takes about 4 hours. If that sounds good, send me your address or ZIP and a few times that work for you.
+Schedule option text
+Hi [Name], I can get that done for you. I currently have [Option 1], [Option 2], or [Option 3] available. The arrival window is within 1 hour of the selected time. Let me know which works best and I can reserve it for you.
+Address request
+What address would you like the detail done at? I use that to confirm travel time and make sure the appointment fits correctly.
+Photo request
+Could you send a few photos of the interior and any main problem areas? That helps me confirm the right service and make sure the quote is accurate.
+Deposit request
+To reserve the appointment, the deposit is $50 or 25% of the total, whichever is higher. The rest is due after the job is completed.
+Booking confirmation
+You’re reserved for [day/date] with an arrival window of [time]-[time+1 hour]. Service: [service]. Vehicle: [vehicle]. Address: [address]. Estimated total: $[amount]. Deposit paid: $[deposit]. I’ll let you know when I’m on the way.
+Same-day booking pending approval
+I can potentially do same-day, but I’ll need to confirm the timing first. Send the vehicle, address, and a few photos if possible, and I’ll let you know if I can fit it in.
+Day-of “on the way”
+Hi [Name], this is Elijah with 513 Auto Clean. I’m on my way now. My estimated arrival is around [time].
+Running late but within window
+Hi [Name], just keeping you updated — I’m still within the arrival window and expect to arrive around [time].
+Payment after completion
+The detail is finished. The remaining balance is $[amount]. You can pay by [payment options]. Thank you again for booking with 513 Auto Clean.
+Review request
+Thank you again for booking with 513 Auto Clean. If you’re happy with the result, a quick Google review would help a lot and means more than you know.
+Cancellation response
+Understood, [Name]. I appreciate you letting me know. I hope you get a great result. If anything changes or you need help in the future, I’d be happy to take care of it.
+
+Stronger save-the-sale version:
+
+Understood, [Name]. I appreciate you letting me know. Just as a note, I do stand behind my work and will come back to fix anything that is off. I’m fully insured and every job is handled carefully. Either way, I hope you have a good experience with whoever you choose.
+17. AI Prompt Archive for Booking and CRM
+Prompt: turn customer text into booking workflow
+You are the booking assistant for 513 Auto Clean, a UC student-owned mobile detailing business in Cincinnati. Convert the customer message into a structured booking workflow.
+
+Extract:
+- customer name
+- phone number
+- vehicle year/make/model/type if available
+- requested service
+- add-ons or problem areas
+- address or ZIP
+- preferred dates/times
+- quoted price if mentioned
+- deposit status
+- photos requested or received
+- special notes
+
+Then produce:
+1. Best text response to send to the customer
+2. Missing information needed
+3. Suggested service/package
+4. Estimated duration
+5. Suggested Google Calendar event title
+6. Suggested Google Calendar description
+7. Follow-up task if the customer does not reply
+
+Keep the customer-facing message short, clear, and natural. Do not over-explain.
+Prompt: create Google Calendar event from booking
+Create a Google Calendar event for a 513 Auto Clean job using the details below.
+
+Use this title format:
+513 Auto Clean - [Service] - [Customer Name] - [Vehicle]
+
+Calendar description format:
+Customer:
+Phone:
+Service:
+Vehicle:
+Address:
+Arrival Window:
+Estimated Job Time:
+Travel Time:
+Estimated Total:
+Deposit:
+Remaining Balance:
+Payment Method:
+Photos:
+Notes:
+Lead Source:
+Follow-Up Needed:
+
+Make the event duration include the estimated service time plus travel buffer. Do not expose internal conflicts or hidden base-location details to the customer.
+Prompt: callback summary after phone call
+Summarize this 513 Auto Clean customer call into CRM-ready notes.
+
+Output:
+- customer name
+- phone
+- vehicle(s)
+- requested service
+- pain points
+- quote given
+- objections
+- preferred date/time
+- address or ZIP
+- deposit/payment status
+- next action
+- suggested customer follow-up text
+- suggested calendar event details if booked
+
+Keep the notes factual and concise.
+Prompt: estimate / quote builder
+Build a quote for a 513 Auto Clean customer.
+
+Use the provided vehicle, condition, photos/notes, location, requested service, add-ons, and schedule constraints.
+
+Output:
+- recommended package
+- optional add-ons
+- estimated time
+- base price
+- travel fee if applicable
+- deposit required
+- remaining balance
+- customer-facing quote text
+
+Do not promise stain, odor, or damage removal. Use careful wording like “improve,” “treat,” or “reduce” when results are condition-dependent.
+Prompt: lead follow-up
+Write a short follow-up text for a 513 Auto Clean lead who has not responded.
+
+Tone:
+- polite
+- direct
+- not needy
+- local and professional
+
+Goal:
+- get them to either book, send photos, or tell us they are no longer interested
+
+Keep it under 3 sentences.
+Prompt: job completion summary
+Create a job completion summary for 513 Auto Clean.
+
+Include:
+- service performed
+- vehicle
+- major issues addressed
+- add-ons completed
+- before/after photo reminder
+- final balance
+- review request
+- internal notes for CRM
+
+Separate customer-facing text from internal CRM notes.
+18. Google Calendar Booking Format
+Event title
+513 Auto Clean - [Package] - [Customer Name] - [Vehicle]
+
+Example:
+
+513 Auto Clean - Full Interior - Karen - Chevy Traverse
+Event description
+Customer: [Name]
+Phone: [Phone]
+Service: [Package/Add-ons]
+Vehicle: [Year Make Model]
+Address: [Service Address]
+Arrival Window: [Start Time] - [Start Time + 1 hour]
+Estimated Service Time: [X hours]
+Estimated Travel Time: [X minutes each way]
+Estimated Total: $[Total]
+Deposit: $[Deposit Paid / Due]
+Remaining Balance: $[Balance]
+Payment: [Cash/Card/Venmo/Zelle/Invoice/etc.]
+Photos: [Received / Needed / Before-after approved]
+Lead Source: [Google / Website / Facebook / Instagram / Yelp / Referral / Flyer / Card]
+Notes: [Condition, pet hair, stains, odor, access instructions, water/power]
+Status: Pending Approval / Confirmed / Completed
+Calendar color/status suggestion
+Pending approval: yellow
+Confirmed: blue
+In progress: orange
+Completed: green
+Needs payment: red
+Follow-up needed: purple
+19. CRM Archive
+
+The CRM should eventually behave like a simplified Jobber-style system customized for 513 Auto Clean.
+
+Core CRM objects
+Lead
+
+Stores:
+
+name
+phone
+email
+lead source
+first message
+desired service
+ZIP/address
+status
+next follow-up date
+Customer
+
+Stores:
+
+name
+phone
+email
+preferred contact method
+notes
+referral source
+review status
+lifetime value
+Vehicle
+
+Stores:
+
+year
+make
+model
+color
+size category
+condition
+owner/customer
+prior services
+photos
+Quote
+
+Stores:
+
+requested service
+recommended package
+add-ons
+travel fee
+discount
+total
+deposit
+expiration date
+status
+Booking
+
+Stores:
+
+date/time
+arrival window
+duration
+travel time
+package
+add-ons
+vehicle(s)
+approval status
+payment status
+Job
+
+Stores:
+
+actual start/end time
+before photos
+after photos
+checklist completion
+internal notes
+customer-visible summary
+issue flags
+guarantee/fix request
+Payment
+
+Stores:
+
+invoice total
+sales tax
+card fee if tracked
+deposit
+remaining balance
+payment method
+paid status
+Review
+
+Stores:
+
+Google review status
+star rating
+review text
+review source
+public display toggle
+linked job/package
+Media
+
+Stores:
+
+before/after/result
+linked customer/job/vehicle
+permission status
+public/private toggle
+service tags
+20. CRM Pipeline
+
+Recommended statuses:
+
+New lead
+Needs info
+Awaiting photos
+Quote sent
+Awaiting deposit
+Pending approval
+Confirmed
+Reminder sent
+In progress
+Completed
+Payment due
+Paid
+Review requested
+Closed
+Lost / cancelled
+21. Automation System Goals
+
+The future system should automate:
+
+new lead capture
+missed-call response
+callback reminders
+quote creation
+deposit collection
+calendar hold creation
+approval workflow
+confirmation texts
+day-before reminders
+on-the-way texts
+post-job payment requests
+review requests
+follow-up sequences
+gallery/review tagging
+revenue and package analytics
+
+Twilio is a logical candidate for SMS/MMS and callback workflows because its Programmable Messaging API supports programmatic sending/receiving of messages, and its Programmable Voice API supports programmable calling workflows.
+
+Google Calendar can support the calendar layer because the Calendar API includes event resources and a FreeBusy endpoint for availability checks.
+
+If using a real Jobber integration later, Jobber’s developer documentation describes a GraphQL API endpoint and webhooks that notify connected apps about account events.
+
+22. Callback Automation Workflow
+Missed call flow
+Customer calls.
+If missed, system logs call.
+Twilio or similar sends automatic text.
+CRM creates callback task.
+AI summarizes call/contact history.
+Elijah calls back.
+Call notes are converted into quote/booking.
+Missed call text
+Hi, this is Elijah with 513 Auto Clean. Sorry I missed your call. If you’re looking to schedule a detail, text me your vehicle, ZIP code, and what you’d like cleaned, and I’ll get back to you shortly.
+Callback task format
+Task: Call back [Name/Phone]
+Reason: Missed call / quote request / scheduling
+Known info:
+- Service:
+- Vehicle:
+- Location:
+- Preferred time:
+Goal of call:
+- confirm service
+- get address/ZIP
+- quote price
+- collect deposit
+- schedule appointment
+23. Text Automation Sequences
+New website booking request
+
+Immediate text:
+
+Hi [Name], this is Elijah with 513 Auto Clean. I received your booking request for [service]. I’ll review the details and confirm shortly.
+Quote sent follow-up, 24 hours later
+Hi [Name], just checking back on the [service] quote for your [vehicle]. I’d be happy to get you scheduled if you still want it cleaned up.
+Deposit reminder
+Hi [Name], your appointment is ready to reserve. The deposit is $[amount], and the remaining balance is due after the detail is complete.
+Day-before reminder
+Hi [Name], this is a reminder for your 513 Auto Clean detail tomorrow. Arrival window: [time]-[time]. Please make sure the vehicle is accessible and personal items are removed if possible.
+Post-job review request
+Thanks again for booking with 513 Auto Clean. If you’re happy with the result, leaving a quick Google review would help a lot.
+24. Website Rebuild Architecture
+Best long-term architecture
+
+Use WordPress as the public content/SEO layer, with a custom booking and CRM application connected behind it.
+
+Recommended structure:
+
+WordPress / Porkbun
+- public marketing website
+- SEO pages
+- service pages
+- gallery
+- reviews
+- FAQ
+
+Custom app / embedded module
+- booking flow
+- dynamic pricing
+- travel calculation
+- availability calendar
+- deposit/payment flow
+- CRM dashboard
+
+Integrations
+- Google Calendar
+- Twilio or similar SMS/callback
+- payment processor
+- Google Business Profile reviews
+- analytics dashboard
+Senior development direction
+
+Frontend:
+
+Next.js or custom WordPress theme
+React
+TypeScript
+Tailwind CSS
+Framer Motion or GSAP
+optional Three.js / React Three Fiber for subtle hero polish
+mobile-first responsive design
+
+Backend:
+
+WordPress REST API or custom plugin API
+CRM database tables
+booking engine
+pricing engine
+calendar sync
+payment webhooks
+SMS/call webhooks
+review sync
+
+Do not overbuild visual effects. The site should feel smooth and premium, but the funnel must stay simple.
+
+Priority order:
+
+Conversion
+Simplicity
+Trust
+Speed
+SEO
+Automation
+Visual polish
+25. Admin Dashboard Requirements
+
+The owner dashboard should show:
+
+upcoming jobs
+pending booking requests
+missed calls needing callback
+unpaid balances
+new leads
+quote follow-ups
+reviews needed
+recent revenue
+jobs by package
+jobs by ZIP/neighborhood
+add-on attach rate
+average order value
+source attribution
+
+Calendar should allow:
+
+drag hard blocks
+drag soft blocks
+approve pending bookings
+move jobs
+add internal notes
+view travel/load by day
+26. Data and Analytics Archive
+
+Track:
+
+lead source
+package selected
+add-ons selected
+vehicle type
+customer ZIP/neighborhood
+booking date
+job date
+quote amount
+final amount
+deposit paid
+payment method
+sales tax
+travel fee
+job duration estimate
+actual job duration
+customer review status
+repeat customer status
+referral source
+
+Useful business metrics:
+
+conversion rate by traffic source
+conversion rate by ZIP
+revenue by service
+profit by service
+average order value
+add-on attach rate
+quote-to-book rate
+booking-to-completion rate
+review request success rate
+repeat customer rate
+27. Marketing Archive
+Door-drop / business card strategy
+
+Past test:
+
+about 75 cards distributed
+roughly 2 replies
+1 booked job
+job value around $175
+very strong early conversion for cold local marketing
+
+Suggested tactic:
+
+business card or flyer
+clear plastic bag
+optional Hershey Kiss
+place at door/threshold
+do not put anything in mailboxes
+do not talk to door cameras by default
+
+Best areas:
+
+Clifton
+Gaslight District
+North Avondale
+Paddock Hills
+Hyde Park
+Oakley
+Mt. Lookout
+higher-income streets with driveways and multi-car households
+
+Targeted streets mentioned:
+
+Clifton Ridge Dr
+Windings Ln
+Cliff Ln
+Lafayette Cir
+Lafayette Ln
+Biddle St
+Middleton Ave
+Whitfield Ave
+Vernon Pl
+Vernon Ave
+McAlpin Ave
+Nextdoor post
+Hi neighbors — I’m Elijah, a UC student running 513 Auto Clean. I do mobile car detailing around Cincinnati and come straight to your home or work. I focus mostly on interior detailing, pet hair, stains, smells, and deep cleaning, but also offer exterior wash and wax. If your car needs a reset, send me a message and I’ll get you taken care of.
+Google offer
+15% Off Mobile Interior Detailing — 5 Spots Only
+
+Deep interior cleaning for seats, carpets, stains, and pet hair.
+Mobile service around Cincinnati — done at your home or work.
+Send a message to reserve a spot.
+28. Referral Program Archive
+
+Original concept:
+
+Referrer earns $10 after referred customer completes a job originally priced at $100+
+Referrer earns $5 for referred jobs under $100
+Referred customer gets 15% off first service only
+Discount applies before tax
+Sales tax calculated after discount
+
+Clean terms:
+
+Referral Program Terms
+
+Earn $10 for each referral who books and completes a service originally priced at $100 or more. A $5 referral reward is earned for services originally priced under $100. Rewards are issued only after the referred customer’s service is completed and paid in full.
+
+Referred customers receive a 15% discount on their first service only. The discount applies to the service price before tax, and applicable sales tax will be calculated after the discount.
+
+513 Auto Clean reserves the right to modify or end this referral program at any time.
+
+Strategic warning: the stacked 15% discount plus referral payout can be expensive. A better long-term version may be 10% off for the new customer plus $10 service credit to the referrer.
+
+29. Operations Archive
+Arrival SOP
+Send on-the-way text.
+Arrive within stated arrival window.
+Confirm vehicle and service.
+Ask where power/water access is if needed.
+Take before photos.
+Remove or organize personal belongings as agreed.
+Start job timer.
+Complete service checklist.
+Take after photos.
+Request payment.
+Send review request.
+Log notes/photos into CRM.
+Full interior SOP summary
+
+Known operating process includes:
+
+ask where electric/water are
+plug in large battery
+plug in compressor and tools
+plug in steamer if needed
+use distilled water in steamer only
+take before photos
+remove personal belongings
+remove mats
+blow out interior
+clean mats with APC and drill brushes
+vacuum
+clean crevices
+shampoo / steam / extract as needed
+clean glass
+protect trim
+take after photos
+Condition-sensitive detail rules
+
+For worn leather with exposed foam:
+
+do not over-saturate
+do not aggressively steam
+use low-moisture cleaning
+avoid extraction that could soak foam
+
+For odor jobs:
+
+shampoo/extract source first
+ozone can help after source removal
+ozone is less ideal if the vehicle is still damp
+avoid promising total odor removal
+
+For heavy weed smell:
+
+quote as odor removal, not a “weed fee”
+light odor can be included
+moderate/strong odor should be add-on priced
+ozone/chlorine dioxide may be needed for severe odor
+30. Compliance / Admin Archive
+
+Ohio treats motor vehicle washing, cleaning, waxing, polishing, or painting as taxable services under the sales-tax definition, so the rebuild should assume detailing invoices need sales tax handling unless a qualified tax professional says otherwise.
+
+The business should maintain Ohio vendor’s license / sales tax procedures and track sales tax separately from income.
+
+Ohio business records use the term statutory agent, and Ohio’s Secretary of State lists a Statutory Agent Update as Form 521 with a $25 filing fee.
+
+An EIN should be obtained directly from the IRS for free; the IRS states the online EIN tool issues an EIN immediately after approval.
+
+Known business/legal context from prior work:
+
+513 Auto Clean is associated with Elijah Thacker LLC as DBA/fictitious name.
+513 AUTO CLEAN was registered as an Ohio fictitious name in prior records.
+employee/payroll systems were previously explored.
+Patrick Mormon employee offboarding documents were created.
+accounting workflow tracks revenue, sales tax, card fees, mileage, supplies, payroll, tips, receipts, and job-specific income.
+
+This section is an operational archive, not legal or tax advice.
+
+31. Important Data Conflicts to Resolve Before Rebuild
+
+These items should be verified before hardcoding into the website or CRM:
+
+Canonical business phone number
+Prior materials reference more than one number. Confirm the exact public-facing number.
+Current service structure
+Decide whether the live site should use:
+Express / Basic / Full / Refresh structure, or
+Maintenance / Restore / Transform structure.
+Exact service area wording
+Cincinnati should be primary. Dayton should likely be framed as extended availability, not core service area.
+Owner-operated wording
+If employees are added, update “done by me personally” to avoid overpromising.
+Water/power policy
+Clarify whether the business always brings power/water or sometimes needs customer access.
+Automatic booking vs approval
+Current preference: customers can request same-day and future bookings, but every booking requires approval.
+32. Final Rebuild Objective
+
+Build 513AutoClean.com into a clean, fast, conversion-focused local service platform for a UC student-owned mobile detailing business in Cincinnati.
+
+The website should combine:
+
+simple premium visual design
+strong local SEO
+real reviews
+real before/after proof
+clear service/pricing presentation
+smooth booking flow
+calendar-based availability
+customer messaging automation
+callback tracking
+deposit/payment support
+CRM-style job management
+data visibility for business decisions
+
+The core strategy:
+
+Use the website to make 513 Auto Clean feel more trustworthy, easier to book, and more personal than competitors, while using automation behind the scenes to reduce manual scheduling, callbacks, follow-ups, payments, and CRM work.
+
+This is a full copy of a very good, working, job summary formatter model:
+Job Summary Formatter turns messy job/customer chat notes into short employee-facing job summaries for 513 Auto Clean mobile detailing jobs. Accepts chats, texts, notes, or booking details for one or more jobs; extracts on-site operational details. Understands shorthand ("basic detail," "basic interior," "full interior," "express exterior," "wash no wax," "full package") using known package info below. Never invent facts — mark critical unknowns as Missing.
+
+ORDER OF OUTPUT (most job-specific/high-importance first, standard/reusable text last): time, customer name, phone (if useful), address, vehicle, scope of work, price, urgent special instructions — THEN compact how-to checklist, payment copy, review note, and cancellation/power/parking/weather text. Standard text must never bury job details.
+
+PER-JOB BLOCK (near top):
+[Time] — [Customer Name] — [Phone Number]
+[Address]
+[Vehicle] — [Very short service summary]
+Price: [Total if available]
+Instructions: [ETA/call/text/arrival/payment/special notes]
+
+One block per job, in source order, if multiple jobs. Keep it short, obvious, scannable on a phone. No long professionalism/sales copy unless asked.
+
+Summarize only: time, name, phone, location, vehicle, short service details, price, special instructions. Missing time/address/service/price = mark "Missing," don't guess. Never invent customer names, vehicles, addresses, prices, or timing. Infer scope only from known service language below or prior job context in the same conversation (e.g., "same as last time," "do the basic again"); otherwise Missing.
+
+SERVICE DEFAULTS (time/price are historical defaults; use provided/implied price if stated, else don't guess a number beyond the range):
+- Express Interior: fast vacuum seats/carpet, rinse mats, wipe surfaces. ~1.25hr, $65 unless overridden.
+- Basic Interior: vacuum seats/carpet, clean mats/glass/surfaces, remove visible grime. ~2hr, $100–115.
+- Full Interior: thorough vacuum incl. trunk, blow out embedded dirt/sand, wash/shampoo upholstery & carpet, treat minor/moderate stains, wash/dress mats, clean glass, clean/protect trim, condition leather, brush crevices. ~4hr, $189–195.
+- Express Exterior: rinse, spray/rinse hubcaps, hand wash, clean windows/mirrors, dry. ~1.25hr, $75 unless overridden.
+- Basic Exterior: rinse, scrub hubcaps/wheels, wash & wax/hand wash, clean windows/mirrors, dry. ~2hr, $100–115.
+- Full Exterior: rinse/pressure wash, bug/tar remover, wheel/tire restore, possible iron decon, engine bay detail, hand wash, dry, 6-mo ceramic sealant, clean windows/mirrors. ~4hr, $189–205.
+- Wash no wax: simpler exterior wash, no wax/sealant, unless stated otherwise.
+- Touchless exterior: spray/rinse, quick dirt removal, clean up area.
+- Exterior spot check: check obvious issues only, don't overdo unless requested.
+- Pet hair/steam/ozone/seat removal: $50/hr if explicitly relevant/requested.
+- Headlight restoration (ceramic): $70 + 1hr, if requested. Clay bar all panels: $80 + 1.5hr, if requested.
+
+DEFAULT EMPLOYEE INSTRUCTIONS (always include unless job says otherwise, compressed to one line): send ETA when headed over; start group text with 513-279-2915 + customer; start timer once parked; send on-site photo to 513-279-2915; text "I am here," then knock; ask what areas need extra attention; double-check area before leaving. Include when relevant: check in via text channel; confirm payment by asking customer to show confirmation; send before/after photos to Elijah at 513-504-1359 when done.
+
+HOW-TO CHECKLIST: after all job summaries, before payment copy. ~5–8 concise, service-specific, operational steps.
+- Full Interior: setup/access → photos/belongings/mats → blowout/vacuum/pet hair → mats → fabric/leather/stains → panels/trim/glass → final vacuum/inspection/photos → customer handoff.
+- Basic Interior: vacuum, mats, glass, surfaces, visible grime, final check.
+- Exterior services: rinse/wash/wheels/windows/dry/cleanup + package-specific add-ons.
+Warnings only if critical: distilled water only in steamer; don't spray headliner/screens/acrylic dash/vents with APC; don't overwork permanent stains.
+
+PAYMENT SECTION (copy-paste, per job, below summary/checklist): If cost + mileage given, break out. Total = job cost + mileage. After-tax = Total × 1.07. Card/app fee total = Total × 1.10 (per business rule, not after-tax × 1.03, unless told otherwise). Round to cents. Missing cost/mileage/total = mark Missing, don't guess.
+
+Template:
+"Whenever you are ready and are satisfied with the condition of your vehicle, here are your available payment methods.
+Job Cost: $[job cost]
+Mileage: $[mileage]
+Total: $[total]
+After sales tax (7%): $[after tax]
+Cash or Check (write check to "513 Auto Clean") no fee | $[after tax]
+All other payment methods, 3% fee (Charged to us for accepting the below methods) | $[fee total]
+Zelle at 513-504-1359, enrolled as Elijah R Thacker
+Paypal at https://www.paypal.me/ElijahRThacker
+Venmo at https://www.venmo.com/u/ElijahThackerLLC
+Apple Pay at 513-504-1359
+Cashapp at https://cash.app/$Ert850
+Chime at $Elijah-Thacker-3 or 513-504-1359
+Feel free if desired to add a tip through each app or to give a separate tip via Cash"
+
+REVIEW/THANK-YOU (below payment section, per job). Use detailer name if given, else "[Detailer Name]" or omit if cleaner:
+"Thanks again for trusting 513 Auto Clean with your vehicle, it genuinely means a lot. If you notice anything off, just drop a quick message, and we will make it right straight away at no cost.
+If you can leave a Photo Review, it helps out tremendously. It takes around a minute. Make sure you mention my name ([Detailer Name]) as your detailer! https://g.page/r/CQ569olCjWEfEAE/review"
+After this, remind employee to send a good paired before/after photo when relevant.
+
+LOGISTICS/DISCLAIMER (bottom, concise, exact text, lightly formatted):
+"If you cancel and need to reschedule within 24 hours of the detail, there will be a cancellation fee of $35 charged to your new detail date.
+If you have access to power at your location, let us know when we get there. We can do the detail without using battery power but it is always helpful.
+Make sure we have access to your vehicle to park near.
+In the instance of extreme weather we may need to reschedule your detail."
+
+CONTEXT: Mobile detailing — may ask about power/water access and parking. Cash/check no fee; other methods 3% fee. Cancellation <24hr may add $35 to new date. Employees reach Elijah via message thread or by texting before/after photos to 513-504-1359.
+
+Include phone numbers where useful (customer line or instructions) without cluttering. Preserve exact prices/tax/payment wording if given. Include special instructions if job mentions: call/text first, arrive after another job, don't overdo a service, clean a specific area, heat/weather considerations, or reschedule.
+
+If input is unclear, give the best concise summary and mark critical unknowns Missing. Only ask a clarifying question if the input can't be organized into any job summary at all. No browsing/live info — work only from the supplied conversation and this embedded context.
