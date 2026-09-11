@@ -194,3 +194,65 @@ describe("every code in the table", () => {
     }
   });
 });
+
+describe("discounts stack, and in the right order", () => {
+  const two = (code?: string) =>
+    quote(
+      cart({
+        vehicles: [
+          { label: "Car one", packages: [FULL_INT], addons: [] },
+          { label: "Car two", packages: [FULL_INT], addons: [] },
+        ],
+        ...(code ? { promoCode: code } : {}),
+      }),
+      R,
+    );
+
+  it("a promo code and the multi-vehicle discount both apply", () => {
+    const plain = two();
+    const coded = two("LIKENEW");
+
+    // Both figures are non-zero on the same quote. Whichever one had been
+    // swallowed, this is the test that would have said so.
+    expect(coded.multiVehicleDiscountCents).toBeGreaterThan(0);
+    expect(coded.promoDiscountCents).toBeGreaterThan(0);
+    expect(coded.multiVehicleDiscountCents).toBe(plain.multiVehicleDiscountCents);
+    expect(coded.totalCents).toBeLessThan(plain.totalCents);
+  });
+
+  it("the code comes off AFTER the vehicle discount, not before", () => {
+    // Order matters to the cent. 10% off two vehicles then 10% off the rest
+    // is not the same as 20% off the lot, and the customer should be able to
+    // add the two figures on screen and land on the total.
+    const q = two("LIKENEW");
+    const gross = 2 * 21500;
+    const afterMulti = gross - q.multiVehicleDiscountCents;
+    expect(q.promoDiscountCents).toBe(Math.round(afterMulti * 0.1));
+    expect(q.serviceSubtotalCents).toBe(afterMulti - q.promoDiscountCents);
+  });
+
+  it("stacks with the friends and family rate too", () => {
+    const q = two("FRIANDFAM");
+    expect(q.multiVehicleDiscountCents).toBeGreaterThan(0);
+    expect(q.promoDiscountCents).toBe(Math.round((2 * 21500 - q.multiVehicleDiscountCents) * 0.25));
+  });
+
+  it("stacks on top of a premium time surcharge without eating it", () => {
+    const q = quote(
+      cart({
+        vehicles: [
+          { label: "Car one", packages: [FULL_INT], addons: [] },
+          { label: "Car two", packages: [FULL_INT], addons: [] },
+        ],
+        surchargeContext: { startMinutesLocal: 7 * 60, priorityBooking: false },
+        promoCode: "LIKENEW",
+      }),
+      R,
+    );
+    expect(q.multiVehicleDiscountCents).toBeGreaterThan(0);
+    expect(q.promoDiscountCents).toBeGreaterThan(0);
+    expect(q.surchargeCents).toBeGreaterThan(0);
+    // The surcharge is charged on what is left after both discounts.
+    expect(q.surchargeCents).toBe(Math.round((q.serviceSubtotalCents * q.surchargeBp) / 10_000));
+  });
+});
