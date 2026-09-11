@@ -61,6 +61,10 @@ import {
 } from "./catalog/types.js";
 import { averageOneWayMinutes, mileageFeeCents, travelCommitmentMinutes } from "./pricing/mileage.js";
 import { computeRefund, rescheduleFeeCents } from "./pricing/refund.js";
+import {
+  cancellationLadder,
+  computeCancellation,
+} from "./pricing/cancellation.js";
 import { DEFAULT_RULES } from "./pricing/rules.js";
 import {
   computeSurcharge,
@@ -172,6 +176,8 @@ const api = {
   requiresPriorityBooking,
   computeRefund,
   rescheduleFeeCents,
+  computeCancellation,
+  cancellationLadder,
   componentsOf,
   removableComponents,
   addableComponents,

@@ -105,6 +105,15 @@ export interface PricingRules {
   cancellationFlatFeeCents: number;
   /** Share of the deposit returned when cancelling 24-72hr out. */
   refundMidWindowBp: number;
+  /**
+   * Share of the booking charged for a cancellation inside each window.
+   *
+   * Rescheduling is always free at any notice, which is the point: the fee
+   * exists to make moving a booking the obvious choice over dropping it, not
+   * to earn money from cancellations.
+   */
+  cancelMidWindowBp: number;
+  cancelLateWindowBp: number;
   /** Hours before the appointment that bound the refund tiers. */
   refundFullWindowHours: number;
   refundMidWindowHours: number;
@@ -141,6 +150,8 @@ export const DEFAULT_RULES: PricingRules = {
   payAfterMaxCents: 19500, // $195
   cancellationFlatFeeCents: 2500, // $25
   refundMidWindowBp: 5000, // 50% of deposit
+  cancelMidWindowBp: 5000, // 24 to 72 hrs: half the booking
+  cancelLateWindowBp: 10_000, // under 24 hrs: the whole booking
   refundFullWindowHours: 72,
   refundMidWindowHours: 24,
 };

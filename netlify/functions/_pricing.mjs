@@ -700,6 +700,10 @@ var DEFAULT_RULES = {
   // $25
   refundMidWindowBp: 5e3,
   // 50% of deposit
+  cancelMidWindowBp: 5e3,
+  // 24 to 72 hrs: half the booking
+  cancelLateWindowBp: 1e4,
+  // under 24 hrs: the whole booking
   refundFullWindowHours: 72,
   refundMidWindowHours: 24
 };
@@ -1521,6 +1525,87 @@ function mergeBusy(list) {
   return out;
 }
 
+// lib/pricing/cancellation.ts
+function settle(bucket, feeCents, paidCents, explanation) {
+  return {
+    bucket,
+    feeCents,
+    dueCents: Math.max(0, feeCents - paidCents),
+    refundCents: Math.max(0, paidCents - feeCents),
+    explanation
+  };
+}
+function computeCancellation(input, r) {
+  const total = Math.max(0, Math.round(input.totalCents));
+  const paid = Math.max(0, Math.round(input.paidCents ?? 0));
+  if (input.ownerCancelled) {
+    return settle(
+      "owner_cancelled",
+      0,
+      paid,
+      "We cancelled, so there is no charge and anything you paid comes back in full."
+    );
+  }
+  if (input.rescheduling) {
+    return settle(
+      "rescheduled",
+      0,
+      paid,
+      "Rescheduled at no charge. Anything you have paid moves to the new booking."
+    );
+  }
+  if (input.waived) {
+    return settle("waived", 0, paid, "Cancellation fee waived.");
+  }
+  const hrs = input.hoursUntilStart;
+  if (hrs >= r.refundFullWindowHours) {
+    return settle(
+      "gte72h",
+      0,
+      paid,
+      `Cancelled more than ${r.refundFullWindowHours} hours ahead, so there is no charge.`
+    );
+  }
+  if (hrs >= r.refundMidWindowHours) {
+    const fee2 = Math.round(total * r.cancelMidWindowBp / 1e4);
+    return settle(
+      "24h_to_72h",
+      fee2,
+      paid,
+      `Cancelled inside ${r.refundFullWindowHours} hours, so ${r.cancelMidWindowBp / 100}% of the booking applies. Rescheduling instead is free.`
+    );
+  }
+  const fee = Math.round(total * r.cancelLateWindowBp / 1e4);
+  return settle(
+    "lt24h",
+    fee,
+    paid,
+    `Cancelled inside ${r.refundMidWindowHours} hours, so the booking is charged in full. Rescheduling instead is free, at any notice.`
+  );
+}
+function cancellationLadder(r) {
+  return [
+    {
+      id: "gte72h",
+      when: `${r.refundFullWindowHours} hours or more before`,
+      charge: "No charge",
+      bp: 0
+    },
+    {
+      id: "24h_to_72h",
+      when: `${r.refundMidWindowHours} to ${r.refundFullWindowHours} hours before`,
+      charge: `${r.cancelMidWindowBp / 100}% of the booking`,
+      bp: r.cancelMidWindowBp
+    },
+    {
+      id: "lt24h",
+      when: `Less than ${r.refundMidWindowHours} hours before`,
+      charge: "The full booking",
+      bp: r.cancelLateWindowBp
+    }
+  ];
+}
+
 // lib/server-entry.ts
 function priceFromWire(wire, opts = {}) {
   const rejected = [];
@@ -1629,7 +1714,9 @@ export {
   addonIcon,
   addonsFor,
   averageOneWayMinutes,
+  cancellationLadder,
   componentsOf,
+  computeCancellation,
   estimateOneWayMinutes,
   findAddon,
   findPackage,
