@@ -4,11 +4,12 @@ import { DEFAULT_RULES as R } from "../pricing/rules.js";
 import { computeSurcharge } from "../pricing/surcharge.js";
 import {
   IGNORE_RETURN_AFTER_MIN,
-  PREFERRED_STARTS,
+  TIME_BANDS,
+  bandOf,
+  groupIntoBands,
+  travelBufferMin,
   computeSlots,
-  computeSlotsTiered,
   localMinutesOfDay,
-  matchWindows,
   mergeIntervals,
   subtractIntervals,
   type Interval,
@@ -147,38 +148,107 @@ describe("preferred start times", () => {
   const hours = (list: number[]) =>
     list.map((ms) => new Date(ms).getHours() + ":" + String(new Date(ms).getMinutes()).padStart(2, "0"));
 
-  it("offers exactly the six canonical times", () => {
-    const slots = computeSlots({ ...req(14), preferredStartsMin: PREFERRED_STARTS });
-    expect(hours(slots)).toEqual(["6:00", "8:00", "10:00", "16:00", "18:00", "20:00"]);
+  it("puts every offered start in exactly one band", () => {
+    for (const ms of computeSlots(req(14))) {
+      expect(bandOf(localMinutesOfDay(ms)), hours([ms])[0]).not.toBeNull();
+    }
   });
 
-  it("offers the same six at the weekend", () => {
-    const slots = computeSlots({ ...req(19), preferredStartsMin: PREFERRED_STARTS });
-    expect(hours(slots)).toEqual(["6:00", "8:00", "10:00", "16:00", "18:00", "20:00"]);
+  it("never charges a premium for a time sold as standard", () => {
+    // The old arrangement offered 8am under a heading that read as ordinary
+    // and then charged 20% for it. Band boundaries and surcharge boundaries
+    // now have to agree, and this is what holds them together.
+    for (const band of TIME_BANDS) {
+      for (const min of [band.fromMin, band.preferMin, band.toMin - 1]) {
+        const charged =
+          computeSurcharge({ startMinutesLocal: min, priorityBooking: false }, R.surcharge)
+            .appliedBp > 0;
+        expect(charged, `${band.label} at ${min / 60}h`).toBe(band.premium);
+      }
+    }
   });
 
-  it("never fills in the gaps between them", () => {
-    const slots = computeSlots({ ...req(14), preferredStartsMin: PREFERRED_STARTS });
-    // 9am and 2pm both fit comfortably, and are deliberately not offered.
-    expect(hours(slots)).not.toContain("9:00");
-    expect(hours(slots)).not.toContain("14:00");
+  it("suggests 10am in the late morning and 4pm in the afternoon", () => {
+    const banded = groupIntoBands(computeSlots(req(120)));
+    const find = (id: string) => banded.find((b) => b.band.id === id);
+    expect(hours([find("midday")!.suggested])).toEqual(["10:00"]);
+    expect(hours([find("afternoon")!.suggested])).toEqual(["16:00"]);
   });
 
-  it("leaves 10am and 4pm as the only standard-price options", () => {
-    const slots = computeSlots({ ...req(14), preferredStartsMin: PREFERRED_STARTS });
-    const standard = slots.filter(
-      (ms) => computeSurcharge({ startMinutesLocal: localMinutesOfDay(ms), priorityBooking: false }, R.surcharge).appliedBp === 0,
-    );
-    expect(hours(standard)).toEqual(["10:00", "16:00"]);
+  it("leans EARLY in the evening band, not late", () => {
+    const banded = groupIntoBands(computeSlots(req(120)));
+    const evening = banded.find((b) => b.band.id === "evening")!;
+    expect(hours([evening.suggested])).toEqual(["18:00"]);
   });
 
-  it("skips a canonical start that no longer fits around a booking", () => {
+  it("drops a band entirely rather than showing it empty", () => {
     const busyMorning = {
       ...req(14),
       busy: [iv(new Date(2026, 8, 14, 5).getTime(), new Date(2026, 8, 14, 13).getTime())],
     };
-    const slots = computeSlots({ ...busyMorning, preferredStartsMin: PREFERRED_STARTS });
-    expect(hours(slots)).toEqual(["16:00", "18:00", "20:00"]);
+    const ids = groupIntoBands(computeSlots(busyMorning)).map((b) => b.band.id);
+    expect(ids).not.toContain("early");
+    expect(ids).toContain("afternoon");
+  });
+});
+
+describe("how much clearance a booking needs", () => {
+  it("asks for a whole hour, not the raw drive", () => {
+    expect(travelBufferMin(10)).toBe(60);
+    expect(travelBufferMin(30)).toBe(60);
+  });
+
+  it("still gives an hour at 45 minutes of driving, which is the point", () => {
+    // Elijah would rather take the job and work a little faster than have
+    // the scheduler refuse it for him.
+    expect(travelBufferMin(45)).toBe(60);
+  });
+
+  it("lets a longer drive set its own buffer", () => {
+    expect(travelBufferMin(46)).toBe(61);
+    expect(travelBufferMin(90)).toBe(105);
+  });
+
+  it("handles nonsense without producing a negative buffer", () => {
+    expect(travelBufferMin(0)).toBe(60);
+    expect(travelBufferMin(-5)).toBe(60);
+  });
+});
+
+describe("daylight and end of day limits", () => {
+  const day = (h: number, m = 0) => new Date(2026, 8, 14, h, m).getTime();
+  const base = (durationMin: number) => ({
+    openBlocks: [iv(day(0), new Date(2026, 8, 15, 2).getTime())],
+    busy: [],
+    serviceDurationMin: durationMin,
+    travelBeforeMin: 60,
+    travelAfterMin: 60,
+    granularityMin: 60,
+    notBefore: day(0),
+    notAfter: day(23),
+    ignoreReturnAfterMin: IGNORE_RETURN_AFTER_MIN,
+  });
+  const hrs = (l: number[]) => l.map((ms) => new Date(ms).getHours());
+
+  it("offers a 10pm start for a two hour job", () => {
+    expect(hrs(computeSlots(base(120)))).toContain(22);
+  });
+
+  it("refuses 10pm for anything longer, because it would run past midnight", () => {
+    // No separate rule for this: serviceEndByMin already says it.
+    expect(hrs(computeSlots(base(150)))).not.toContain(22);
+    expect(hrs(computeSlots(base(240)))).not.toContain(22);
+  });
+
+  it("stops exterior work at 8pm, because you cannot wash what you cannot see", () => {
+    const late = computeSlots({ ...base(120), hasExterior: true });
+    expect(hrs(late)).not.toContain(22);
+    expect(hrs(late)).not.toContain(21);
+    expect(hrs(late)).toContain(20);
+  });
+
+  it("leaves interior work alone after dark", () => {
+    expect(hrs(computeSlots({ ...base(120), hasExterior: false }))).toContain(22);
   });
 });
 
@@ -217,8 +287,10 @@ describe("bookable window, 6am to 8pm ending by midnight", () => {
     expect(Math.max(...hrs(computeSlots(req(300))))).toBe(19);
   });
 
-  it("never offers a start past 8pm however short the job", () => {
-    expect(Math.max(...hrs(computeSlots(req(30))))).toBe(20);
+  it("offers up to 10pm for a short job, and no later", () => {
+    // The ceiling used to be 8pm for everything. A half hour job at 10pm is
+    // done by 10:30, so there was no reason to refuse it.
+    expect(Math.max(...hrs(computeSlots(req(30))))).toBe(22);
   });
 });
 
@@ -234,7 +306,6 @@ describe("last job of the day", () => {
     granularityMin: 60,
     notBefore: day(0),
     notAfter: day(23),
-    preferredStartsMin: PREFERRED_STARTS,
   });
   const hrs = (l: number[]) => l.map((ms) => new Date(ms).getHours());
 
@@ -260,16 +331,19 @@ describe("last job of the day", () => {
   });
 });
 
-describe("preferred time windows", () => {
-  it("splits candidate slots into preferred and everything else", () => {
-    const slots = [at(7), at(11), at(13), at(19)];
-    const { inPreferred, outsidePreferred } = matchWindows(slots, ["morning", "afternoon"]);
-    expect(inPreferred).toEqual([at(11), at(13)]);
-    expect(outsidePreferred).toEqual([at(7), at(19)]);
+describe("grouping starts into bands", () => {
+  it("puts each start in the band that owns that hour", () => {
+    const banded = groupIntoBands([at(7), at(11), at(15), at(19)]);
+    expect(banded.map((b) => b.band.id)).toEqual(["early", "midday", "afternoon", "evening"]);
   });
 
-  it("treats early and late as their own windows", () => {
-    const { inPreferred } = matchWindows([at(7), at(12), at(19)], ["early", "late"]);
-    expect(inPreferred).toEqual([at(7), at(19)]);
+  it("marks only the outer two bands as premium", () => {
+    expect(TIME_BANDS.filter((b) => b.premium).map((b) => b.id)).toEqual(["early", "evening"]);
+  });
+
+  it("leaves no gap between bands for a start to fall through", () => {
+    for (let m = 6 * 60; m <= 22 * 60; m += 15) {
+      expect(bandOf(m), `${m / 60}h`).not.toBeNull();
+    }
   });
 });

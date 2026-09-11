@@ -58,6 +58,8 @@
       // has not launched instead of guessing at it.
       interest: [],
       prefer: { parts: [], days: [] },
+      // Which band's times are expanded, as 'dayKey|bandId'.
+      openBand: '',
       promoCode: '',
       promoOpen: false,
       notes: '',
@@ -68,7 +70,6 @@
       browseMax: null,
       browseFilters: {},
       browseSort: 'price',
-      openBucket: null,
       separateTimes: false,
       payMethod: 'card',
       payState: null
@@ -1384,34 +1385,34 @@
       return paintMultiDay(box, win, from, to, dur, plan);
     }
 
-    // Flat 30 minute travel allowance until a Maps key gives us real drive
-    // time. Deliberately generous so a slot we offer is one we can keep.
+    // An hour of clearance either side, which absorbs a drive of up to 45
+    // minutes. Refusing a booking because the drive home clips the buffer is
+    // the scheduler making Elijah's call for him, and he would rather have
+    // the job and move a little faster.
+    var buffer = P.travelBufferMin(drive);
+
     var req = {
       openBlocks: win.open,
       busy: win.busy,
       serviceDurationMin: dur,
-      travelBeforeMin: 30,
-      travelAfterMin: 30,
+      travelBeforeMin: buffer,
+      travelAfterMin: buffer,
       granularityMin: 30,
       notBefore: from,
       notAfter: to,
+      hasExterior: hasExterior(),
       // A 6pm or later job is the last of the day, so the drive home does not
       // need to fit inside the calendar and should not shorten what is offered.
       ignoreReturnAfterMin: P.IGNORE_RETURN_AFTER_MIN
     };
     if (corr) {
-      req.preferredStartsMin = { weekday: CR.allowedStartsMin, weekend: CR.allowedStartsMin };
+      req.preferredStartsMin = { weekday: P.CORRECTION_RULES.allowedStartsMin, weekend: P.CORRECTION_RULES.allowedStartsMin };
       req.allowedWeekdays = [0, 6];
     }
-    // Only the six canonical times, ever. Extending the search means more
-    // DAYS at these same times, never filling in the gaps between them.
-    var slots = P.computeSlots(
-      corr ? req : Object.assign({}, req, { preferredStartsMin: P.PREFERRED_STARTS })
-    );
 
-    var primary = slots;
+    var slots = P.computeSlots(req);
 
-    if (!primary.length) {
+    if (!slots.length) {
       box.innerHTML = inquiryPanel('Nothing open in that range for a ' + fmtDur(dur) + ' job.');
       return;
     }
@@ -1424,93 +1425,100 @@
         'Pick whichever suits and we will confirm it, usually within a few hours. ' +
         'Occasionally a time needs adjusting, and we will text you if so.</p>';
     }
+    if (errMsg && window.console) console.warn('[513] calendar:', errMsg);
 
+    // Day by day, because "which day" is the first thing anyone decides.
     var byDay = {};
-    primary.forEach(function (ms) {
-      var k = new Date(ms).toDateString();
-      (byDay[k] = byDay[k] || []).push(ms);
+    var order = [];
+    slots.forEach(function (ms) {
+      var d = new Date(ms);
+      var key = d.getFullYear() + '-' + d.getMonth() + '-' + d.getDate();
+      if (!byDay[key]) { byDay[key] = []; order.push(key); }
+      byDay[key].push(ms);
     });
 
-    var days = Object.keys(byDay);
-    var shown = state.daysShown || 3;
+    var shown = state.showDays || 3;
 
-    html += '<div class="bk-days">';
-    days.slice(0, shown).forEach(function (k, di) {
-      var d = new Date(k);
-      var all = byDay[k];
-      // Standard-price times lead. The premium ones sit inside an Earlier and
-      // a Later bucket, so the default view is the two times most people want
-      // without hiding the others.
-      var early = all.filter(function (ms) { return P.localMinutesOfDay(ms) < 10 * 60; });
-      var mid = all.filter(function (ms) {
-        var m = P.localMinutesOfDay(ms);
-        return m >= 10 * 60 && m < 18 * 60;
+    html += '<p class="bk-starts">These are <b>start times</b>, not how long we stay. ' +
+      'A ' + fmtDur(dur) + ' detail beginning at 10am runs until about ' +
+      endLabel(10 * 60 + dur) + '. Pick a part of the day, then fine tune the hour.</p>';
+
+    order.slice(0, shown).forEach(function (key) {
+      var dayMs = byDay[key];
+      var d = new Date(dayMs[0]);
+      html += '<div class="bk-daygroup"><h4>' +
+        d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }) +
+        '</h4>';
+
+      P.groupIntoBands(dayMs).forEach(function (g) {
+        var openBand = state.openBand === key + '|' + g.band.id;
+        var pick = state.slot && dayMs.indexOf(state.slot) > -1 &&
+          P.bandOf(localMin(state.slot)) && P.bandOf(localMin(state.slot)).id === g.band.id
+          ? state.slot : null;
+
+        html += '<div class="bk-band' + (pick ? ' on' : '') + (g.band.premium ? ' premium' : '') + '">' +
+          '<button type="button" class="bk-band-h" data-band="' + key + '|' + g.band.id + '">' +
+            '<span class="bk-band-l"><b>' + esc(g.band.label) + '</b>' +
+              '<i>' + esc(g.band.hint) + '</i></span>' +
+            '<span class="bk-band-r">' +
+              (g.band.premium
+                ? '<em class="bk-band-prem">+' + $(deltaFor(g.suggested)) + '</em>'
+                : '<em class="bk-band-std">Standard price</em>') +
+              '<b>' + (pick ? timeLabel(pick) : timeLabel(g.suggested)) + '</b>' +
+              '<i>' + (openBand ? 'Hide times' : g.starts.length + ' to choose from') + '</i>' +
+            '</span>' +
+          '</button>';
+
+        if (openBand) {
+          html += '<div class="bk-bandtimes">';
+          g.starts.forEach(function (ms) {
+            html += '<button type="button" class="bk-time' + (state.slot === ms ? ' on' : '') +
+              '" data-slot="' + ms + '">' + timeLabel(ms) +
+              '<i>to ' + endLabel(localMin(ms) + dur) + '</i></button>';
+          });
+          html += '</div>';
+        }
+        html += '</div>';
       });
-      var late = all.filter(function (ms) { return P.localMinutesOfDay(ms) >= 18 * 60; });
 
-      html += '<div class="bk-day"><h4>' +
-        d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) + '</h4>';
-
-      if (early.length) html += bucket('early-' + di, 'Earlier', early);
-      if (mid.length) html += '<div class="bk-times">' + mid.map(slotButton).join('') + '</div>';
-      if (late.length) html += bucket('late-' + di, 'Later', late);
-      if (!mid.length && !early.length && !late.length) html += '<p class="bk-empty">Nothing open.</p>';
       html += '</div>';
     });
-    html += '</div>';
 
-    if (days.length > shown) {
+    if (order.length > shown) {
       html += '<button type="button" class="bk-morelink" id="bkMoreDays">Show more options</button>';
     }
+
     box.innerHTML = html;
   }
 
-  /**
-   * One slot. Shows the price effect on the slot itself rather than
-   * explaining the rules anywhere: a customer only needs to know what THIS
-   * choice costs. Sooner slots are never framed as a penalty, they just
-   * carry a number like any other option.
-   */
-  function slotButton(ms) {
-    var t = new Date(ms);
-    var label = t.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-    var end = new Date(ms + 60 * 60000).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+  function localMin(ms) { return P.localMinutesOfDay(ms); }
 
-    var bp = P.computeSurcharge(
-      { startMinutesLocal: P.localMinutesOfDay(ms), priorityBooking: state.priority },
-      RULES.surcharge
-    ).appliedBp;
-
-    // The actual dollar difference, not a percentage to work out.
-    var delta = deltaFor(ms);
-    var tone = bp === 0 ? 'std' : (bp >= 3000 ? 'hi' : 'mid');
-
-    return '<button type="button" class="bk-time ' + tone + (state.slot === ms ? ' on' : '') +
-      '" data-slot="' + ms + '">' +
-      '<span class="bk-t">' + label + '</span>' +
-      (delta > 0 ? '<em>+' + $(delta) + '</em>' : '<em class="inc">included</em>') +
-      '<i>arrive ' + label + ' to ' + end + '</i></button>';
+  function timeLabel(ms) {
+    return new Date(ms).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+      .replace(':00', '');
   }
 
-  /**
-   * Earlier and Later collapse into one tappable row showing the cheapest
-   * price change inside them, so the premium is visible before expanding and
-   * the row never reads as a warning.
-   */
-  function bucket(key, label, list) {
-    var open = state.openBucket === key || list.indexOf(state.slot) > -1;
-    var cheapest = Math.min.apply(null, list.map(deltaFor));
-    return '<div class="bk-bucket' + (open ? ' open' : '') + '">' +
-      '<button type="button" class="bk-bucket-h" data-bucket="' + key + '">' +
-        '<span>' + label + '</span>' +
-        '<em>' + (cheapest > 0 ? 'from +' + $(cheapest) : 'included') + '</em>' +
-        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 9l6 6 6-6"/></svg>' +
-      '</button>' +
-      (open ? '<div class="bk-times">' + list.map(slotButton).join('') + '</div>' : '') +
-      '</div>';
+  /** A finish time from minutes past midnight, rolling past midnight safely. */
+  function endLabel(minutesOfDay) {
+    var h = Math.floor(minutesOfDay / 60) % 24;
+    var m = Math.round(minutesOfDay % 60);
+    var h12 = h % 12 === 0 ? 12 : h % 12;
+    return h12 + (m ? ':' + String(m).padStart(2, '0') : '') + (h < 12 ? 'am' : 'pm');
   }
 
-  /** Dollar difference this start time makes to the service subtotal. */
+  /** Any exterior work in the cart, which is bound by daylight. */
+  function hasExterior() {
+    return state.vehicles.some(function (v) {
+      return v.packageIds.some(function (id) {
+        var p = P.findPackage(id);
+        return p && p.category === 'exterior';
+      }) || v.addons.some(function (a) {
+        var def = P.findAddon(a.addonId);
+        return def && def.scope === 'exterior';
+      });
+    });
+  }
+
   function deltaFor(ms) {
     var bp = P.computeSurcharge(
       { startMinutesLocal: P.localMinutesOfDay(ms), priorityBooking: state.priority },
@@ -1905,8 +1913,8 @@
     var t = e.target.closest(
       '[data-size],[data-intent],[data-pkg],[data-addon],[data-clear],[data-win],[data-slot],' +
       '[data-consent],[data-pay],[data-delveh],[data-browsepick],[data-max],[data-sort],' +
-      '[data-kind],[data-bucket],[data-paymethod],[data-corr],[data-coating],[data-garage],[data-step],' +
-      '[data-prefday],[data-prefpart],[data-interest],' +
+      '[data-kind],[data-paymethod],[data-corr],[data-coating],[data-garage],[data-step],' +
+      '[data-prefday],[data-prefpart],[data-interest],[data-band],' +
       '#bkAddVeh,#bkMoreDays,#bkNext,#bkBack,#bkClose,#bkScrim,#bkBrowse,#bkBrowseBack,' +
       '#bkPromoOpen,#bkPromoApply,#bkPromoClear,' +
       '#bkQClear,#bkReset,#bkOther'
@@ -1932,10 +1940,6 @@
     }
     if (t.dataset.sort) { state.browseSort = t.dataset.sort; return render(); }
     if (t.dataset.kind) { cycleFilter(t.dataset.kind); return render(); }
-    if (t.dataset.bucket) {
-      state.openBucket = state.openBucket === t.dataset.bucket ? null : t.dataset.bucket;
-      return loadSlots();
-    }
     if (t.dataset.paymethod) { state.payMethod = t.dataset.paymethod; return render(); }
     if (t.dataset.corr) {
       v.correctionTier = v.correctionTier === t.dataset.corr ? null : t.dataset.corr;
@@ -2043,6 +2047,10 @@
       if (target) target.scrollIntoView({ behavior: 'smooth', block: next ? 'center' : 'nearest' });
       renderTotal();
       return;
+    }
+    if (t.dataset.band) {
+      state.openBand = state.openBand === t.dataset.band ? '' : t.dataset.band;
+      return render();
     }
     if (t.dataset.interest) {
       toggle(state.interest, t.dataset.interest);

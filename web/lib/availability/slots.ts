@@ -14,6 +14,11 @@ export interface Interval {
 }
 
 export interface SlotRequest {
+  /**
+   * Whether the cart contains any exterior work, which is bound by daylight
+   * rather than by the general end of the day.
+   */
+  hasExterior?: boolean;
   openBlocks: Interval[];
   /** Existing bookings, ALREADY expanded by their travel buffers. */
   busy: Interval[];
@@ -79,16 +84,49 @@ export interface BookingWindow {
    * and keeps working for a 7pm start without another special case.
    */
   serviceEndByMin: number;
+  /**
+   * Latest a job containing ANY exterior work may start.
+   *
+   * Earlier than the general cut-off because it gets dark. You cannot judge a
+   * wash or spot a missed panel by torchlight.
+   */
+  latestExteriorStartMin?: number;
 }
 
 export const DEFAULT_BOOKING_WINDOW: BookingWindow = {
   earliestStartMin: 6 * 60,
-  latestStartMin: 20 * 60,
+  // 10pm. Which does NOT mean any job can start at 10pm: serviceEndByMin
+  // still has to be met, so a 10pm start is only ever available to a job of
+  // two hours or less. The rule falls out of the arithmetic rather than
+  // needing a clause of its own.
+  latestStartMin: 22 * 60,
   serviceEndByMin: 24 * 60,
+  // Washing a car you cannot see is how panels get missed and paint gets
+  // marred. Exterior work has a harder cut-off than interior work.
+  latestExteriorStartMin: 20 * 60,
 };
 
 /** From 6pm on, a booking is the last of the day. */
 export const IGNORE_RETURN_AFTER_MIN = 18 * 60;
+
+/**
+ * How much clearance a booking needs either side of the work itself.
+ *
+ * ONE HOUR, not the raw drive time. The hour covers the drive plus unloading,
+ * setting up, packing down and the minutes that always go missing, and up to
+ * 45 minutes of driving fits inside it with slack to spare. That slack is
+ * deliberate: Elijah would rather take a job with a tight turnaround and work
+ * a little faster than have the scheduler refuse it on his behalf.
+ *
+ * Past 45 minutes the drive is the binding constraint, so it sets the buffer
+ * itself with a quarter hour on top.
+ */
+export const TRAVEL_FITS_IN_HOUR_MIN = 45;
+
+export function travelBufferMin(oneWayMinutes: number): number {
+  const drive = Math.max(0, oneWayMinutes || 0);
+  return drive <= TRAVEL_FITS_IN_HOUR_MIN ? 60 : drive + 15;
+}
 
 const MIN = 60_000;
 
@@ -165,7 +203,7 @@ export function computeSlots(req: SlotRequest): number[] {
       if (
         commitmentStart >= f.start &&
         (!req.allowedWeekdays || req.allowedWeekdays.includes(new Date(t).getDay())) &&
-        withinBookingWindow(t, req.serviceDurationMin, win, req.timeZone) &&
+        withinBookingWindow(t, req.serviceDurationMin, win, req.timeZone, req.hasExterior) &&
         matchesPreferred(t, wanted, req.timeZone)
       ) {
         out.push(t);
@@ -181,18 +219,127 @@ function ceilTo(ms: number, step: number): number {
 }
 
 /**
- * The only start times a customer is offered.
+ * The four bands a customer chooses between.
  *
- * Six clean options rather than a wall of half-hour slots. 10am and 4pm sit
- * at standard price and are what most people should take; the outer four
- * carry the premium and exist for someone who needs a particular day to work.
- * Extending the search means MORE DAYS at these same times, never filling in
- * the gaps between them.
+ * THESE ARE START TIMES, not the length of the visit. Picking "Early Morning"
+ * means the detail begins somewhere between 6am and 10am, not that it is over
+ * by 10am. The funnel says so in as many words, because the old six-chip list
+ * read as a menu of appointment windows and it is not one.
+ *
+ * The two middle bands are standard price and carry the defaults, because
+ * they are what most people should take. The outer two carry the premium and
+ * exist for someone who needs a particular day to work.
+ *
+ * The boundaries deliberately match the surcharge rule exactly: premium
+ * before 10am and from 6pm. A band that straddled that line would charge a
+ * premium for a time the customer was told was standard, which is how the
+ * old 6am-and-8am-under-"morning" arrangement went wrong.
  */
-export const PREFERRED_STARTS = {
-  weekday: [6 * 60, 8 * 60, 10 * 60, 16 * 60, 18 * 60, 20 * 60],
-  weekend: [6 * 60, 8 * 60, 10 * 60, 16 * 60, 18 * 60, 20 * 60],
-};
+export interface TimeBand {
+  id: string;
+  label: string;
+  /** Minutes past local midnight. `toMin` is exclusive. */
+  fromMin: number;
+  toMin: number;
+  premium: boolean;
+  /** The start to land on when it is free. */
+  preferMin: number;
+  /** Shown under the label. */
+  hint: string;
+}
+
+export const TIME_BANDS: TimeBand[] = [
+  {
+    id: "early",
+    label: "Early Morning",
+    fromMin: 6 * 60,
+    toMin: 10 * 60,
+    premium: true,
+    preferMin: 8 * 60,
+    hint: "Starts 6am to 10am",
+  },
+  {
+    id: "midday",
+    label: "Late Morning",
+    fromMin: 10 * 60,
+    toMin: 14 * 60,
+    premium: false,
+    preferMin: 10 * 60,
+    hint: "Starts 10am to 2pm",
+  },
+  {
+    id: "afternoon",
+    label: "Afternoon",
+    fromMin: 14 * 60,
+    toMin: 18 * 60,
+    premium: false,
+    preferMin: 16 * 60,
+    hint: "Starts 2pm to 6pm",
+  },
+  {
+    id: "evening",
+    label: "Late Evening",
+    fromMin: 18 * 60,
+    toMin: 22 * 60 + 1,
+    premium: true,
+    // Earliest in the band rather than a fixed hour: a late job should be as
+    // early as it can be, not as late as it is allowed to be.
+    preferMin: 18 * 60,
+    hint: "Starts 6pm to 10pm",
+  },
+];
+
+export function bandOf(minutesOfDay: number): TimeBand | null {
+  return TIME_BANDS.find((b) => minutesOfDay >= b.fromMin && minutesOfDay < b.toMin) ?? null;
+}
+
+export interface BandedSlots {
+  band: TimeBand;
+  /** Every start that fits, ascending. */
+  starts: number[];
+  /** The one to preselect: nearest to the band's preferred hour. */
+  suggested: number;
+}
+
+/**
+ * Group candidate starts into the four bands, with a suggestion per band.
+ *
+ * Bands with nothing in them are dropped rather than shown empty, so the
+ * customer only ever sees parts of the day that are genuinely available.
+ */
+export function groupIntoBands(slots: number[], timeZone?: string): BandedSlots[] {
+  const buckets = new Map<string, number[]>();
+
+  for (const ms of slots) {
+    const band = bandOf(localMinutesOfDay(ms, timeZone));
+    if (!band) continue;
+    const list = buckets.get(band.id);
+    if (list) list.push(ms);
+    else buckets.set(band.id, [ms]);
+  }
+
+  const out: BandedSlots[] = [];
+
+  for (const band of TIME_BANDS) {
+    const starts = (buckets.get(band.id) ?? []).sort((a, b) => a - b);
+    if (!starts.length) continue;
+
+    // Closest to the band's preferred hour, earliest wins a tie, which is
+    // what makes the evening band lean early rather than late.
+    let suggested = starts[0]!;
+    let best = Infinity;
+    for (const ms of starts) {
+      const gap = Math.abs(localMinutesOfDay(ms, timeZone) - band.preferMin);
+      if (gap < best) {
+        best = gap;
+        suggested = ms;
+      }
+    }
+    out.push({ band, starts, suggested });
+  }
+
+  return out;
+}
 
 /**
  * A start is allowed when it falls inside the bookable window AND the service
@@ -204,9 +351,17 @@ function withinBookingWindow(
   serviceDurationMin: number,
   win: BookingWindow,
   timeZone?: string,
+  hasExterior?: boolean,
 ): boolean {
   const startMin = localMinutesOfDay(ms, timeZone);
   if (startMin < win.earliestStartMin || startMin > win.latestStartMin) return false;
+  if (
+    hasExterior &&
+    win.latestExteriorStartMin !== undefined &&
+    startMin > win.latestExteriorStartMin
+  ) {
+    return false;
+  }
   return startMin + serviceDurationMin <= win.serviceEndByMin;
 }
 
@@ -222,45 +377,6 @@ function matchesPreferred(
   return list.includes(mins);
 }
 
-/**
- * Preferred starts first, then anything else that fits.
- *
- * Returning them separately lets the funnel lead with the two or three times
- * Elijah actually wants, and keep the rest behind a "more times" affordance
- * rather than dumping everything at once.
- */
-export function computeSlotsTiered(req: SlotRequest): { preferred: number[]; other: number[] } {
-  const preferred = computeSlots({ ...req, preferredStartsMin: PREFERRED_STARTS });
-  // Omit the key rather than setting it undefined: exactOptionalPropertyTypes
-  // treats an explicit undefined as a distinct, disallowed value.
-  const { preferredStartsMin: _ignored, ...unrestricted } = req;
-  const all = computeSlots(unrestricted);
-  const set = new Set(preferred);
-  return { preferred, other: all.filter((t) => !set.has(t)) };
-}
-
-/**
- * Group candidate starts into the customer's preferred windows, then fall back
- * outward. The funnel shows a small number of real options rather than a wall
- * of times: nearest match first, then anything else that day.
- */
-export interface TimeWindow {
-  id: string;
-  label: string;
-  /** Minutes past local midnight. */
-  fromMin: number;
-  toMin: number;
-  premium: boolean;
-}
-
-export const TIME_WINDOWS: TimeWindow[] = [
-  { id: "early", label: "Early", fromMin: 6 * 60, toMin: 8 * 60, premium: true },
-  { id: "morning", label: "Morning", fromMin: 10 * 60, toMin: 12 * 60, premium: false },
-  { id: "afternoon", label: "Afternoon", fromMin: 12 * 60, toMin: 16 * 60, premium: false },
-  { id: "evening", label: "Evening", fromMin: 16 * 60, toMin: 18 * 60, premium: false },
-  { id: "late", label: "Late", fromMin: 18 * 60, toMin: 20 * 60, premium: true },
-];
-
 /** Local minutes past midnight for an epoch ms, in a given IANA zone. */
 export function localMinutesOfDay(ms: number, timeZone = "America/New_York"): number {
   const parts = new Intl.DateTimeFormat("en-US", {
@@ -272,23 +388,4 @@ export function localMinutesOfDay(ms: number, timeZone = "America/New_York"): nu
   const h = Number(parts.find((p) => p.type === "hour")?.value ?? "0");
   const m = Number(parts.find((p) => p.type === "minute")?.value ?? "0");
   return (h % 24) * 60 + m;
-}
-
-export function inWindow(ms: number, w: TimeWindow, timeZone?: string): boolean {
-  const mins = localMinutesOfDay(ms, timeZone);
-  return mins >= w.fromMin && mins < w.toMin;
-}
-
-export function matchWindows(
-  slots: number[],
-  windowIds: string[],
-  timeZone?: string,
-): { inPreferred: number[]; outsidePreferred: number[] } {
-  const wanted = TIME_WINDOWS.filter((w) => windowIds.includes(w.id));
-  const inPreferred: number[] = [];
-  const outsidePreferred: number[] = [];
-  for (const s of slots) {
-    (wanted.some((w) => inWindow(s, w, timeZone)) ? inPreferred : outsidePreferred).push(s);
-  }
-  return { inPreferred, outsidePreferred };
 }
