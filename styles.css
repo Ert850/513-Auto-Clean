@@ -792,6 +792,15 @@ html.scrolling-fast .reveal { transition: none; transition-delay: 0s; }
   padding: 1rem 1.1rem; border-radius: 0 8px 8px 0; margin: 0 0 1.4rem;
 }
 .legal .callout p:last-child { margin-bottom: 0; }
+.legal .contact-list { margin: 0; padding: 0; list-style: none; display: grid; gap: .5rem; }
+.legal .contact-list li { color: var(--text-soft); }
+.legal .contact-list strong { color: var(--text); margin-right: .3rem; }
+/* The one clause in here that can cost someone money on the day, so it gets
+   a rule beside it rather than blending into fifteen other headings. */
+.legal h3.flag {
+  border-left: 3px solid var(--red); padding-left: .8rem; margin-left: -.8rem;
+  color: var(--red-deep);
+}
 .legal .toc { background: var(--paper-2); border: 1px solid var(--line); border-radius: var(--r-md); padding: 1.1rem 1.3rem; margin-bottom: 2.4rem; }
 .legal .toc b { display: block; margin-bottom: .5rem; font-size: .95rem; }
 .legal .toc ol { margin: 0; padding-left: 1.2rem; }

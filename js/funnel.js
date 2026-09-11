@@ -1549,10 +1549,19 @@
       '<div class="bk-field"><label for="bkEmail">Email</label>' +
       '<input type="email" id="bkEmail" data-c="email" value="' + esc(c.email) + '" inputmode="email" autocomplete="email" /></div>' +
 
+      // The two clauses that actually affect someone are stated HERE, not
+      // hidden behind a link. A card network deciding a chargeback wants to
+      // see what the customer was shown at the moment they agreed, and
+      // "there was a link" is a weak answer. The full terms are one tap away
+      // for anyone who wants them.
       yesNo('terms',
         'Do you accept our terms and privacy policy?',
-        'Includes our cancellation policy, and that the price may be adjusted on arrival if the vehicle is in a different condition than the package covers.',
-        ' <a href="privacy.html" target="_blank" rel="noopener">Read them</a>') +
+        '<b>Cancel or move your booking any time before we arrive and you owe nothing.</b> ' +
+        'No deposit, no cancellation fee, and a full refund if you paid in full. ' +
+        '<b>If your vehicle needs more work than the package covers, we tell you the new price before we start</b>, ' +
+        'and you can say no and pay nothing at all.' +
+        '<a class="bk-readmore" href="terms.html#cancellation" target="_blank" rel="noopener">Read the full terms and cancellation policy</a>' +
+        '<a class="bk-readmore" href="privacy.html" target="_blank" rel="noopener">Read the privacy policy</a>') +
 
       yesNo('sms',
         'Can we text you about this booking?',
