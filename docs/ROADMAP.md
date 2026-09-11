@@ -40,8 +40,9 @@ Nothing else matters until a stranger can pay at 11pm.
   included without calling. The decision logic is written and tested
   (`bookingChange.ts`, `cancellation.ts`); what is missing is the stored
   booking to point it at, which needs Neon.
-  **When this ships, put it back into `terms.html`**: section 5 currently
-  says to call or text, because that is all that works today.
+  **When this ships, set `bookingLink: true` in
+  `web/lib/site/capabilities.ts` and rebuild.** The terms page picks up the
+  self-service wording on its own.
 - [ ] **On-site price adjustment.** You keep the right to revise the price
   after inspecting the vehicle. Needs a line in the booking UI, a clause in
   the Terms, and an admin control to revise the total before charging.
