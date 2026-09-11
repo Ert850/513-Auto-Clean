@@ -34,8 +34,14 @@ Nothing else matters until a stranger can pay at 11pm.
 - [ ] **Terms and Cancellation Policy pages**, with the cancellation ladder
   written out inline at the checkbox rather than behind a link.
 - [ ] **Cancel and reschedule** against the refund ladder, with the admin
-  dialog showing the computed refund *before* you confirm it. Never do the
+  dialog showing the computed charge *before* you confirm it. Never do the
   72-hour maths in your head.
+- [ ] **Customer booking link**, so someone can move a time or change what is
+  included without calling. The decision logic is written and tested
+  (`bookingChange.ts`, `cancellation.ts`); what is missing is the stored
+  booking to point it at, which needs Neon.
+  **When this ships, put it back into `terms.html`**: section 5 currently
+  says to call or text, because that is all that works today.
 - [ ] **On-site price adjustment.** You keep the right to revise the price
   after inspecting the vehicle. Needs a line in the booking UI, a clause in
   the Terms, and an admin control to revise the total before charging.
