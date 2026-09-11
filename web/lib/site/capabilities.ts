@@ -142,6 +142,15 @@ export interface GatedCopy {
   notYet: string;
 }
 
+/**
+ * What we can take standing in a driveway.
+ *
+ * One list, read by the terms and by the booking funnel, because a customer
+ * told two different things about how they may pay is the kind of small
+ * contradiction that makes someone wonder what else is wrong.
+ */
+export const IN_PERSON = "cash, check, card, tap to pay, Venmo, Apple Pay, Cash App or Zelle";
+
 export const GATED_COPY: GatedCopy[] = [
   {
     id: "howToChange",
@@ -163,9 +172,15 @@ export const GATED_COPY: GatedCopy[] = [
   },
   {
     id: "paymentMethods",
-    capability: "digitalWallets",
-    live: "We take cards, Apple Pay, Google Pay, PayPal, Venmo and cash.",
-    notYet: "If you would rather settle another way, ask us and we will sort it out.",
+    // Gated on taking money online at all, not on wallets: the in-person
+    // list is true today and does not wait for a Stripe key.
+    capability: "cardOnFile",
+    live:
+      `On the day you can pay by ${IN_PERSON}. You can also pay in full online when you book, ` +
+      "or ask us to put it on the card we already have on file.",
+    notYet:
+      `On the day you can pay by ${IN_PERSON}. Ask us for anything not on that list and we will ` +
+      "almost certainly be able to take it.",
   },
   {
     id: "travelBasis",

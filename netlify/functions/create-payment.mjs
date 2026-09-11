@@ -16,8 +16,11 @@ import { verifyTurnstile } from "./_turnstile.mjs";
  *
  * Two modes:
  *   pay_now    PaymentIntent for the full total, discount applied
- *   card_only  SetupIntent, nothing charged, card kept for the balance and
- *              for cancellation cover. Requires the mandate to be accepted.
+ *   card_only  SetupIntent, nothing charged. The card is kept ONLY as cover
+ *              for a late cancellation or change, which is the narrow thing
+ *              the customer authorized; the detail itself they pay for on the
+ *              day by whatever suits, or by asking us to use this card.
+ *              Requires the mandate to be accepted.
  */
 
 const json = (status, body) => ({
