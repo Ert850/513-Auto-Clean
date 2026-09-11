@@ -244,10 +244,33 @@ export interface TimeBand {
   premium: boolean;
   /** The start to land on when it is free. */
   preferMin: number;
-  /** Shown under the label. */
-  hint: string;
+  /**
+   * The hours themselves, in the customer's words: "6am to 10am".
+   *
+   * One string, used by both places that name a band: the slot picker, which
+   * writes "Starts 6am to 10am" because these are START times, and the
+   * preferred-time picker on the inquiry path. Those two used to carry their
+   * own wording, and the second one had drifted to a completely different set
+   * of hours (8am to 12pm, 12pm to 4pm, 4pm to 8pm) that matched neither the
+   * bands nor the surcharge.
+   */
+  range: string;
 }
 
+/**
+ * FOUR BANDS, and their edges are the surcharge edges.
+ *
+ *   6am to 10am   Early Morning   premium
+ *   10am to 2pm   Midday          standard, defaults to 10am
+ *   2pm to 6pm    Afternoon       standard, defaults to 4pm
+ *   6pm to 10pm   Late Evening    premium, pushed as early as it can go
+ *
+ * `fromMin` of the first premium band and `toMin` of the last standard one
+ * are the same numbers as `earlyBeforeMinutes` and `lateFromMinutes` in the
+ * pricing rules, and a test walks every quarter hour to prove it. That is
+ * what stops the oldest bug in this feature coming back: a time sold inside
+ * a band labelled standard, then billed at the premium rate.
+ */
 export const TIME_BANDS: TimeBand[] = [
   {
     id: "early",
@@ -256,16 +279,16 @@ export const TIME_BANDS: TimeBand[] = [
     toMin: 10 * 60,
     premium: true,
     preferMin: 8 * 60,
-    hint: "Starts 6am to 10am",
+    range: "6am to 10am",
   },
   {
     id: "midday",
-    label: "Late Morning",
+    label: "Midday",
     fromMin: 10 * 60,
     toMin: 14 * 60,
     premium: false,
     preferMin: 10 * 60,
-    hint: "Starts 10am to 2pm",
+    range: "10am to 2pm",
   },
   {
     id: "afternoon",
@@ -274,18 +297,19 @@ export const TIME_BANDS: TimeBand[] = [
     toMin: 18 * 60,
     premium: false,
     preferMin: 16 * 60,
-    hint: "Starts 2pm to 6pm",
+    range: "2pm to 6pm",
   },
   {
     id: "evening",
     label: "Late Evening",
     fromMin: 18 * 60,
+    // Exclusive, and a 10pm start is allowed, so this is a minute past it.
     toMin: 22 * 60 + 1,
     premium: true,
     // Earliest in the band rather than a fixed hour: a late job should be as
     // early as it can be, not as late as it is allowed to be.
     preferMin: 18 * 60,
-    hint: "Starts 6pm to 10pm",
+    range: "6pm to 10pm",
   },
 ];
 

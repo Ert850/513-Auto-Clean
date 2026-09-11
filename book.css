@@ -312,7 +312,10 @@ body.bk-open { overflow: hidden; }
 .bk-pref-day b { display: block; font-size: .82rem; font-weight: 800; }
 .bk-pref-day span { display: block; font-size: .72rem; color: var(--text-soft); margin-top: .1rem; }
 
-.bk-pref-parts { display: grid; grid-template-columns: repeat(3, 1fr); gap: .4rem; }
+/* Four bands: two by two on a phone, one row on anything wider. Never three
+   across with one sitting alone underneath. */
+.bk-pref-parts { display: grid; grid-template-columns: repeat(2, 1fr); gap: .4rem; }
+@media (min-width: 560px) { .bk-pref-parts { grid-template-columns: repeat(4, 1fr); } }
 .bk-pref-part {
   font: inherit; cursor: pointer; text-align: left;
   background: var(--paper); border: 1.5px solid var(--line); border-radius: var(--r-sm);
@@ -322,6 +325,12 @@ body.bk-open { overflow: hidden; }
 .bk-pref-part.on { border-color: var(--red); background: var(--red-ghost); }
 .bk-pref-part b { display: block; font-size: .85rem; font-weight: 700; }
 .bk-pref-part span { display: block; font-size: .72rem; color: var(--text-soft); margin-top: .1rem; }
+/* Same amber as the premium marker on the slot bands, so the two screens
+   agree about which hours cost more. */
+.bk-pref-part em {
+  display: block; font-style: normal; font-size: .7rem; font-weight: 800;
+  color: #7a5209; margin-top: .15rem;
+}
 
 .bk-pref-ok { margin: .7rem 0 0; font-size: .84rem; color: #1a8a3f; font-weight: 700; }
 .bk-pref-hint { margin: .7rem 0 0; font-size: .82rem; color: var(--text-soft); }
