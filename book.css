@@ -184,6 +184,13 @@ body.bk-open { overflow: hidden; }
 .bk-travel.far { border-color: var(--red); }
 .bk-travel.far b { color: var(--red-deep); }
 
+/* Links out of a consent question, below the text they are agreeing to. */
+.bk-readmore {
+  display: block; margin-top: .45rem; font-size: .82rem; font-weight: 700;
+  color: var(--red); text-decoration: underline; text-underline-offset: 3px;
+}
+.bk-consent-h b { color: var(--text); font-weight: 700; }
+
 /* ---------- coming soon, and registering interest ---------- */
 /* Shown rather than hidden, because hiding a service hides the demand for
    it. Amber not red: this is information, not a call to action. */
