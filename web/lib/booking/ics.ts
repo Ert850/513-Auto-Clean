@@ -76,8 +76,48 @@ function parseTime(value: string, params: Record<string, string>, fallbackZone: 
   }
 
   // TZID when given, otherwise floating, which means local wall clock.
-  const zone = params["TZID"] || fallbackZone;
+  const zone = usableZone(params["TZID"], fallbackZone);
   return { ms: zonedToUtc(+y!, +mo!, +d!, +h!, +mi!, +s!, zone), allDay: false };
+}
+
+/**
+ * A zone name Intl will accept, or the fallback.
+ *
+ * One Outlook invite carrying TZID="Eastern Standard Time" used to make
+ * zonedToUtc throw, which took the whole feed down and silently removed
+ * every personal conflict from the funnel. Windows names for the zones that
+ * actually turn up around here are mapped; anything else unknown falls back
+ * to the calendar's own zone, which is right far more often than it is wrong
+ * for a calendar that lives in Cincinnati.
+ */
+const WINDOWS_ZONES: Record<string, string> = {
+  "eastern standard time": "America/New_York",
+  "eastern daylight time": "America/New_York",
+  "us eastern standard time": "America/Indiana/Indianapolis",
+  "central standard time": "America/Chicago",
+  "mountain standard time": "America/Denver",
+  "pacific standard time": "America/Los_Angeles",
+  "utc": "UTC",
+  "gmt standard time": "Europe/London",
+};
+
+const zoneOk = new Map<string, boolean>();
+
+export function usableZone(tzid: string | undefined, fallbackZone: string): string {
+  if (!tzid) return fallbackZone;
+  const mapped = WINDOWS_ZONES[tzid.trim().toLowerCase()];
+  if (mapped) return mapped;
+  let ok = zoneOk.get(tzid);
+  if (ok === undefined) {
+    try {
+      new Intl.DateTimeFormat("en-US", { timeZone: tzid });
+      ok = true;
+    } catch {
+      ok = false;
+    }
+    zoneOk.set(tzid, ok);
+  }
+  return ok ? tzid : fallbackZone;
 }
 
 /** ISO 8601 duration, the subset calendars actually emit. */

@@ -4,7 +4,9 @@
    ============================================================ */
 
 /* ---------- Fonts ---------- */
-@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&family=Hanken+Grotesk:wght@400;500;600;700&display=swap');
+/* Fonts are linked from the HTML head with a preconnect, not imported here:
+   an @import inside a stylesheet is a second round trip the browser cannot
+   start until this file has arrived. */
 
 /* ---------- Tokens ---------- */
 :root {
@@ -21,10 +23,10 @@
   --text-inv:   #eef1f4;
   --text-inv-soft: #a7b0bd;
 
-  --red:       #e01a1a;
+  --red:       #c41414;
   --red-bright:#ff3b3b;
   --red-deep:  #b41212;
-  --red-ghost: rgba(224,26,26,.12);
+  --red-ghost: rgba(196,20,20,.12);
 
   --amber:      #f0a93f;
 
@@ -1124,3 +1126,11 @@ html.scrolling-fast .reveal { transition: none; transition-delay: 0s; }
 
 
 .svc-explain ul.ex-time li::marker { color: var(--amber); }
+
+/* ---------- Skip link: invisible until it has keyboard focus ---------- */
+.skip-link {
+  position: absolute; left: 16px; top: -100px; z-index: 1000;
+  background: var(--ink); color: #fff; padding: .6rem 1rem; border-radius: 0 0 10px 10px;
+  font-weight: 700; text-decoration: none;
+}
+.skip-link:focus { top: 0; outline: 2px solid var(--red); outline-offset: 2px; }

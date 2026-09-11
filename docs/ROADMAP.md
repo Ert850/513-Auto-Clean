@@ -1,6 +1,6 @@
 # 513 Auto Clean, everything still to build
 
-Last updated 2026-09-10.
+Last updated 2026-09-11.
 
 Every feature discussed but not yet shipped, in one place. Sourced from the
 original brief in `context_outline.txt`, the plan in
@@ -285,3 +285,25 @@ Small things I would want cleaned up eventually.
   deposit rule, the WordPress recommendation, the Refresh Package that does
   not exist. Worth marking rather than deleting, since the goals section is
   still the best statement of what this is for.
+
+### Left over from the 11 September stress test
+
+Everything the audit found was fixed the same day except these, which are
+real work rather than repairs. See `STRESS-TEST-2026-09-11.md` for the
+findings they came from.
+
+- [ ] **Availability computed on the server.** `/api/personal-busy` now
+  returns half-hour blocks, merged, and nothing else, but it is still a
+  public list of when Elijah is busy. The proper fix is an
+  `/api/availability` function that reads both calendars and returns
+  bookable starts for a given job, so the browser never sees busy time at
+  all. Needs the calendar key first.
+- [ ] **Enforce the Content-Security-Policy.** It ships report-only. After a
+  real booking end to end with the console open and quiet, drop the
+  `-Report-Only` suffix in `netlify.toml`.
+- [ ] **Geocode on the server.** The map search still asks OpenStreetMap
+  from the browser. Once the Routes key exists, move it behind
+  `/api/travel`, which already accepts an address.
+- [ ] **Priority window in one place.** The funnel derives it from the slot
+  now, the same way the server does, but the "show me sooner dates" checkbox
+  still exists as a separate control. Fold the two together.

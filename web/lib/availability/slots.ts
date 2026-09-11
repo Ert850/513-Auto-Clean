@@ -124,7 +124,7 @@ export const IGNORE_RETURN_AFTER_MIN = 18 * 60;
 export const TRAVEL_FITS_IN_HOUR_MIN = 45;
 
 export function travelBufferMin(oneWayMinutes: number): number {
-  const drive = Math.max(0, oneWayMinutes || 0);
+  const drive = Number.isFinite(oneWayMinutes) ? Math.max(0, oneWayMinutes) : 0;
   return drive <= TRAVEL_FITS_IN_HOUR_MIN ? 60 : drive + 15;
 }
 

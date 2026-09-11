@@ -22,8 +22,8 @@
   var fallback = document.getElementById('revFallback');
 
   function esc(s) {
-    return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) {
-      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
     });
   }
 
@@ -82,7 +82,7 @@
   function fromApi(d) {
     return {
       source: 'api',
-      rating: d.rating || 5,
+      rating: typeof d.rating === 'number' && d.rating > 0 ? d.rating : null,
       total: d.total || (d.reviews || []).length,
       mapsUri: d.mapsUri || MAPS_URL,
       reviews: (d.reviews || []).map(normalise)
@@ -92,7 +92,7 @@
   function fromSnapshot(d) {
     return {
       source: 'snapshot',
-      rating: d.rating || 5,
+      rating: typeof d.rating === 'number' && d.rating > 0 ? d.rating : null,
       total: d.count || (d.reviews || []).length,
       mapsUri: d.source || MAPS_URL,
       reviews: (d.reviews || []).map(normalise)
@@ -156,7 +156,8 @@
 
     var head = '<div class="rv-head">' +
       '<svg class="g-logo" viewBox="0 0 24 24" aria-hidden="true"><path fill="#4285F4" d="M22 12c0-.6-.1-1.2-.2-1.8H12v3.6h5.6a4.8 4.8 0 0 1-2 3.1v2.6h3.2A9.6 9.6 0 0 0 22 12z"/><path fill="#34A853" d="M12 22c2.7 0 5-.9 6.6-2.4l-3.2-2.6c-.9.6-2 .9-3.4.9-2.6 0-4.8-1.7-5.6-4.1H3.1v2.6A10 10 0 0 0 12 22z"/><path fill="#FBBC05" d="M6.4 13.8a6 6 0 0 1 0-3.6V7.6H3.1a10 10 0 0 0 0 8.8z"/><path fill="#EA4335" d="M12 6.4c1.5 0 2.8.5 3.8 1.5l2.8-2.8A10 10 0 0 0 3.1 7.6l3.3 2.6C7.2 8 9.4 6.4 12 6.4z"/></svg>' +
-      '<div class="rv-score"><b>' + Number(d.rating).toFixed(1) + '</b>' + stars(d.rating) +
+      // No rating means no number, not a made-up five.
+      (d.rating ? '<div class="rv-score"><b>' + Number(d.rating).toFixed(1) + '</b>' + stars(d.rating) : '<div class="rv-score">') +
       '<span>' + d.total + ' Google review' + (d.total === 1 ? '' : 's') + '</span></div>' +
       '</div>';
 

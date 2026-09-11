@@ -251,3 +251,22 @@ back only these non-sensitive values so I can wire them up:
 - Confirmation that the **A2P campaign** is submitted, and its status
 
 Keep every key and the service account JSON in `.env.local` only.
+
+---
+
+## Cloudflare Turnstile (bot check before payment)
+
+1. dash.cloudflare.com, Turnstile, Add site. Domain `513autoclean.com`, widget
+   mode Managed.
+2. Copy the **site key** into `js/config.js` as `turnstileSiteKey`.
+3. Copy the **secret key** into Netlify as `TURNSTILE_SECRET_KEY`.
+4. Set `botCheck` to `live: true` in `web/lib/site/capabilities.ts` and
+   rebuild, so the privacy policy names Cloudflare.
+
+Until both keys exist, nothing changes: the payment step shows no check and
+the functions do not ask for a token.
+
+## Where public keys go
+
+All of them go in `js/config.js`, never inline in a page. That file is loaded
+before anything else and is the only place `window.AC_CONFIG` is set.

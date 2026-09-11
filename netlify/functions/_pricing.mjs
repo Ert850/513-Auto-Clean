@@ -705,13 +705,14 @@ var DEFAULT_RULES = {
   cancelLateWindowBp: 1e4,
   // under 24 hrs: the whole booking
   lateRescheduleFeeBp: 1e3,
-  // 10% per late move, compounding
+  // 10% per late move, FLAT, never compounding
   rescheduleCreditDays: 30,
   shortNoticeChangeBp: 2e3,
   // 20%, same as priority booking
   refundFullWindowHours: 72,
   refundMidWindowHours: 24
 };
+var MAX_BOOKING_CENTS = 75e4;
 
 // lib/pricing/tax.ts
 var SEED_TAX_TABLE = {
@@ -775,10 +776,60 @@ function computeTax(taxableBaseCents, zip, table, currentYear) {
   };
 }
 
-// lib/pricing/surcharge.ts
-function minutesOfDay(hour, minute = 0) {
-  return hour * 60 + minute;
+// lib/time/zone.ts
+function zoneOffsetMs(utcMs, timeZone) {
+  const dtf = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    hour12: false,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit"
+  });
+  const parts = dtf.formatToParts(new Date(utcMs));
+  const get = (type) => {
+    const p = parts.find((x) => x.type === type);
+    return p ? Number(p.value) : 0;
+  };
+  const asIfUtc = Date.UTC(
+    get("year"),
+    get("month") - 1,
+    get("day"),
+    get("hour") % 24,
+    get("minute"),
+    get("second")
+  );
+  return asIfUtc - utcMs;
 }
+function zonedToUtc(y, mo, d, h, mi, s, timeZone) {
+  const guess = Date.UTC(y, mo - 1, d, h, mi, s);
+  const off1 = zoneOffsetMs(guess, timeZone);
+  const once = guess - off1;
+  const off2 = zoneOffsetMs(once, timeZone);
+  const twice = guess - off2;
+  if (off1 === off2) return twice;
+  const off3 = zoneOffsetMs(twice, timeZone);
+  if (off3 === off2) return twice;
+  return guess - Math.min(off2, off3);
+}
+function localParts(ms, timeZone) {
+  const dtf = new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit"
+  });
+  const [y, mo, d] = dtf.format(new Date(ms)).split("-").map(Number);
+  return { y, mo, d };
+}
+function localDayStart(ms, timeZone) {
+  const { y, mo, d } = localParts(ms, timeZone);
+  return zonedToUtc(y, mo, d, 0, 0, 0, timeZone);
+}
+
+// lib/pricing/surcharge.ts
 function computeSurcharge(ctx, r) {
   const isEarlyOrLate = ctx.startMinutesLocal < r.earlyBeforeMinutes || ctx.startMinutesLocal >= r.lateFromMinutes;
   const timeOfDayBp = isEarlyOrLate ? r.timeOfDayBp : 0;
@@ -789,6 +840,11 @@ function computeSurcharge(ctx, r) {
 }
 function applySurchargeCents(baseCents, appliedBp) {
   return Math.round(baseCents * appliedBp / 1e4);
+}
+function slotNeedsPriority(slotMs, nowMs, r, timeZone = "America/New_York") {
+  if (!Number.isFinite(slotMs) || !Number.isFinite(nowMs)) return false;
+  const dayIndex = (ms) => Math.round(localDayStart(ms, timeZone) / 864e5);
+  return dayIndex(slotMs) < dayIndex(nowMs) + r.minLeadDays;
 }
 
 // lib/availability/slots.ts
@@ -1243,37 +1299,259 @@ function addonIcon(name) {
   return name && ADDON_ICONS[name] || '<circle cx="12" cy="12" r="8.5"/>';
 }
 
-// lib/time/zone.ts
-function zoneOffsetMs(utcMs, timeZone) {
-  const dtf = new Intl.DateTimeFormat("en-US", {
-    timeZone,
-    hour12: false,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit"
-  });
-  const parts = dtf.formatToParts(new Date(utcMs));
-  const get = (type) => {
-    const p = parts.find((x) => x.type === type);
-    return p ? Number(p.value) : 0;
-  };
-  const asIfUtc = Date.UTC(
-    get("year"),
-    get("month") - 1,
-    get("day"),
-    get("hour") % 24,
-    get("minute"),
-    get("second")
-  );
-  return asIfUtc - utcMs;
+// lib/pricing/wire.ts
+var WIRE_LIMITS = {
+  maxVehicles: 6,
+  maxPackagesPerVehicle: 4,
+  maxAddonsPerVehicle: 24,
+  maxLabel: 60,
+  maxName: 80,
+  maxEmail: 120,
+  maxLine1: 120,
+  maxCity: 60,
+  maxRegion: 30,
+  maxPromo: 32,
+  /** How far ahead a slot may be. Past this it is a conversation, not a form. */
+  maxDaysAhead: 400,
+  /**
+   * ZIPs we will price. Ohio is 43000 to 45999, Kentucky 40000 to 42799,
+   * Indiana 46000 to 47999. Everything else is outside the twelve hour
+   * radius by geography alone, and would otherwise be taxed at a guessed
+   * rate, which is worse than a polite refusal.
+   */
+  zipPattern: /^4[0-7]\d{3}$/
+};
+var DAY = 864e5;
+var isObj = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var str = (v, max) => {
+  if (typeof v !== "string") return null;
+  const s = v.trim();
+  return s.length <= max ? s : null;
+};
+function normalisePhone(raw) {
+  if (typeof raw !== "string") return null;
+  let digits = raw.replace(/\D/g, "");
+  if (digits.length === 11 && digits.startsWith("1")) digits = digits.slice(1);
+  if (digits.length !== 10) return null;
+  if (/^[01]/.test(digits)) return null;
+  return "+1" + digits;
 }
-function zonedToUtc(y, mo, d, h, mi, s, timeZone) {
-  const guess = Date.UTC(y, mo - 1, d, h, mi, s);
-  const once = guess - zoneOffsetMs(guess, timeZone);
-  return guess - zoneOffsetMs(once, timeZone);
+var EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+function validateWire(body, opts) {
+  const fail = (error, message) => ({ ok: false, error, message });
+  if (!isObj(body)) return fail("bad_body", "The request was not understood.");
+  const cart = body["cart"];
+  if (!isObj(cart)) return fail("empty_cart", "Nothing to price.");
+  const rawVehicles = cart["vehicles"];
+  if (!Array.isArray(rawVehicles) || rawVehicles.length === 0) return fail("empty_cart", "Nothing to price.");
+  if (rawVehicles.length > WIRE_LIMITS.maxVehicles) {
+    return fail("too_many_vehicles", `We can book up to ${WIRE_LIMITS.maxVehicles} vehicles online. Ask us about more.`);
+  }
+  const vehicles = [];
+  let anything = false;
+  for (const rv of rawVehicles) {
+    if (!isObj(rv)) return fail("bad_vehicle", "A vehicle entry was not understood.");
+    const v = {};
+    if (rv["label"] !== void 0) {
+      const label = str(rv["label"], WIRE_LIMITS.maxLabel);
+      if (label === null) return fail("bad_label", "That vehicle description is too long.");
+      if (label) v.label = label;
+    }
+    if (rv["sizeId"] !== void 0 && rv["sizeId"] !== null) {
+      if (typeof rv["sizeId"] !== "string" || !vehicleSize(rv["sizeId"])) {
+        return fail("unknown_size", "That vehicle size is not one we offer.");
+      }
+      v.sizeId = rv["sizeId"];
+    }
+    const pkgIds = rv["packageIds"] ?? [];
+    if (!Array.isArray(pkgIds)) return fail("bad_packages", "Packages were not understood.");
+    if (pkgIds.length > WIRE_LIMITS.maxPackagesPerVehicle) return fail("bad_packages", "Too many packages on one vehicle.");
+    const seenCat = /* @__PURE__ */ new Set();
+    const seenPkg = /* @__PURE__ */ new Set();
+    const packageIds = [];
+    for (const id of pkgIds) {
+      if (typeof id !== "string") return fail("bad_packages", "Packages were not understood.");
+      const p = findPackage(id);
+      if (!p) return fail("unknown_package", "One of those packages does not exist.");
+      if (p.comingSoon) {
+        return fail("not_bookable_yet", `${p.name} is not bookable yet. You can register interest and book the rest.`);
+      }
+      if (seenPkg.has(p.id)) return fail("duplicate_package", `${p.name} is on the same vehicle twice.`);
+      if (seenCat.has(p.category)) {
+        return fail("one_per_category", `Pick one ${p.category} package per vehicle.`);
+      }
+      seenPkg.add(p.id);
+      seenCat.add(p.category);
+      packageIds.push(p.id);
+    }
+    v.packageIds = packageIds;
+    const rawAddons = rv["addons"] ?? [];
+    if (!Array.isArray(rawAddons)) return fail("bad_addons", "Add-ons were not understood.");
+    if (rawAddons.length > WIRE_LIMITS.maxAddonsPerVehicle) return fail("bad_addons", "Too many add-ons on one vehicle.");
+    const seenAddon = /* @__PURE__ */ new Set();
+    const addons = [];
+    for (const ra of rawAddons) {
+      if (!isObj(ra) || typeof ra["addonId"] !== "string" || typeof ra["tierId"] !== "string") {
+        return fail("bad_addons", "Add-ons were not understood.");
+      }
+      const def = findAddon(ra["addonId"]);
+      if (!def) return fail("unknown_addon", "One of those add-ons does not exist.");
+      if (!isSelectable(def)) return fail("addon_unavailable", `${def.name} is not available right now.`);
+      const tier = def.tiers.find((t) => t.id === ra["tierId"]);
+      if (!tier || tier.priceCents === null) return fail("unknown_addon", `${def.name} does not have that option.`);
+      if (seenAddon.has(def.id)) return fail("duplicate_addon", `${def.name} is on the same vehicle twice.`);
+      seenAddon.add(def.id);
+      addons.push({ addonId: def.id, tierId: tier.id });
+    }
+    v.addons = addons;
+    if (rv["correction"] !== void 0 && rv["correction"] !== null) {
+      const rc = rv["correction"];
+      if (!isObj(rc) || typeof rc["tierId"] !== "string" || typeof rc["coatingId"] !== "string") {
+        return fail("bad_correction", "Correction options were not understood.");
+      }
+      const host = findPackage("showroom-exterior");
+      if (!host || host.comingSoon) {
+        return fail("not_bookable_yet", "Paint correction is not bookable yet. You can register interest.");
+      }
+      if (!findCorrectionTier(rc["tierId"]) || !findCoatingTerm(rc["coatingId"])) {
+        return fail("unknown_correction", "That correction option does not exist.");
+      }
+      v.correction = {
+        tierId: rc["tierId"],
+        coatingId: rc["coatingId"],
+        ...rc["noGarage"] === true ? { noGarage: true } : {}
+      };
+    }
+    if (packageIds.length || addons.length || v.correction) anything = true;
+    vehicles.push(v);
+  }
+  if (!anything) return fail("empty_cart", "Pick at least one service.");
+  const kind = cart["kind"] === "inquiry" ? "inquiry" : "booking";
+  let slot = null;
+  const rawSlot = cart["slot"];
+  if (rawSlot !== void 0 && rawSlot !== null) {
+    if (typeof rawSlot !== "number" || !Number.isFinite(rawSlot)) {
+      return fail("bad_slot", "That time was not understood.");
+    }
+    if (rawSlot <= opts.nowMs) return fail("slot_in_past", "That time has already passed. Pick another.");
+    if (rawSlot > opts.nowMs + WIRE_LIMITS.maxDaysAhead * DAY) {
+      return fail("slot_too_far", "That is further ahead than we book online. Ask us.");
+    }
+    slot = Math.round(rawSlot);
+  }
+  if (kind === "inquiry" && slot !== null) {
+    return fail("inquiry_has_slot", "A request cannot carry a fixed time.");
+  }
+  const payInFull = opts.mode === "pay_now";
+  if (payInFull && slot === null) {
+    return fail("inquiry_cannot_prepay", "We do not take payment in full for a time that is not confirmed yet.");
+  }
+  let visits;
+  if (cart["visits"] !== void 0 && cart["visits"] !== null) {
+    const n = cart["visits"];
+    if (typeof n !== "number" || !Number.isInteger(n) || n < 1 || n > vehicles.length) {
+      return fail("bad_visits", "Separate visits were not understood.");
+    }
+    visits = n;
+  }
+  let promoCode = null;
+  if (cart["promoCode"] !== void 0 && cart["promoCode"] !== null) {
+    const code = str(cart["promoCode"], WIRE_LIMITS.maxPromo);
+    if (code === null) return fail("bad_promo", "That promo code is too long to be one of ours.");
+    promoCode = code || null;
+  }
+  let address = null;
+  let zip = null;
+  const rawAddr = cart["address"];
+  if (rawAddr !== void 0 && rawAddr !== null) {
+    if (!isObj(rawAddr)) return fail("bad_address", "The address was not understood.");
+    const line1 = str(rawAddr["line1"], WIRE_LIMITS.maxLine1);
+    const city = str(rawAddr["city"], WIRE_LIMITS.maxCity);
+    const region = str(rawAddr["region"] ?? "", WIRE_LIMITS.maxRegion);
+    const z = str(rawAddr["zip"], 10);
+    if (line1 === null || city === null || region === null || z === null) {
+      return fail("bad_address", "Part of the address is too long.");
+    }
+    address = { line1, city, region, zip: z };
+    zip = z;
+  }
+  if (opts.requireAddress !== false) {
+    if (!address || !address.line1 || !address.city) {
+      return fail("missing_address", "We need the address the vehicle will be at.");
+    }
+  }
+  if (zip === null && typeof cart["zip"] === "string") zip = cart["zip"].trim();
+  if (opts.requireAddress !== false || zip !== null) {
+    if (!zip || !/^\d{5}$/.test(zip)) return fail("bad_zip", "We need a 5 digit ZIP so we can work out tax and travel.");
+    if (!WIRE_LIMITS.zipPattern.test(zip)) {
+      return fail("zip_out_of_area", "That ZIP is outside the area we can drive to. Ask us if you think that is wrong.");
+    }
+  }
+  let contact = { name: "", phone: "" };
+  const rawContact = body["contact"];
+  if (opts.requireContact !== false || rawContact !== void 0) {
+    if (!isObj(rawContact)) return fail("missing_contact", "We need a name and a phone number.");
+    const name = str(rawContact["name"], WIRE_LIMITS.maxName);
+    if (!name) return fail("bad_name", "We need your name.");
+    const phone = normalisePhone(rawContact["phone"]);
+    if (!phone) return fail("bad_phone", "That does not look like a US phone number.");
+    contact = { name, phone };
+    if (rawContact["email"] !== void 0 && rawContact["email"] !== null && rawContact["email"] !== "") {
+      const email = str(rawContact["email"], WIRE_LIMITS.maxEmail);
+      if (!email || !EMAIL.test(email)) return fail("bad_email", "That email address does not look right.");
+      contact.email = email.toLowerCase();
+    }
+  }
+  const consent = {};
+  const rawConsent = body["consent"];
+  if (isObj(rawConsent)) {
+    if (typeof rawConsent["termsVersion"] === "string") consent.termsVersion = rawConsent["termsVersion"].slice(0, 20);
+    if (typeof rawConsent["sms"] === "boolean") consent.sms = rawConsent["sms"];
+    if (typeof rawConsent["media"] === "boolean") consent.media = rawConsent["media"];
+    if (rawConsent["mandateAccepted"] === true) consent.mandateAccepted = true;
+  }
+  const clean = {
+    vehicles,
+    zip,
+    slot,
+    kind,
+    ...visits !== void 0 ? { visits } : {},
+    ...promoCode ? { promoCode } : {},
+    ...address ? { address } : {},
+    payInFull
+  };
+  return { ok: true, booking: { cart: clean, contact, consent, kind, payInFull } };
+}
+function driveTooFar(oneWayMinutes) {
+  return typeof oneWayMinutes === "number" && oneWayMinutes > MAX_ONE_WAY_MINUTES;
+}
+
+// lib/site/legal.ts
+var LEGAL = {
+  termsEffective: "2026-09-11",
+  privacyEffective: "2026-09-11"
+};
+function longDate(iso) {
+  const [y, m, d] = iso.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString("en-US", {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+    timeZone: "UTC"
+  });
+}
+
+// lib/site/legalFingerprint.ts
+function legalFingerprint(html) {
+  const text = html.replace(/<script[\s\S]*?<\/script>/gi, " ").replace(/<style[\s\S]*?<\/style>/gi, " ").replace(/<!--[\s\S]*?-->/g, " ").replace(/<[^>]+>/g, " ").replace(/Effective [A-Z][a-z]+ \d{1,2}, \d{4}(?: &middot; | · )(?:Version|Last updated) [\w, -]+/g, " ").replace(/&[a-z]+;|&#\d+;/g, " ").replace(/\s+/g, " ").trim();
+  let a = 2166136261;
+  let b = 16777619;
+  for (let i = 0; i < text.length; i++) {
+    const c2 = text.charCodeAt(i);
+    a = Math.imul(a ^ c2, 16777619) >>> 0;
+    b = Math.imul(b ^ c2, 2166136261) >>> 0;
+  }
+  return a.toString(16).padStart(8, "0") + b.toString(16).padStart(8, "0");
 }
 
 // lib/booking/ics.ts
@@ -1294,8 +1572,35 @@ function parseTime(value, params, fallbackZone) {
   if (z) {
     return { ms: Date.UTC(+y, +mo - 1, +d, +h, +mi, +s), allDay: false };
   }
-  const zone = params["TZID"] || fallbackZone;
+  const zone = usableZone(params["TZID"], fallbackZone);
   return { ms: zonedToUtc(+y, +mo, +d, +h, +mi, +s, zone), allDay: false };
+}
+var WINDOWS_ZONES = {
+  "eastern standard time": "America/New_York",
+  "eastern daylight time": "America/New_York",
+  "us eastern standard time": "America/Indiana/Indianapolis",
+  "central standard time": "America/Chicago",
+  "mountain standard time": "America/Denver",
+  "pacific standard time": "America/Los_Angeles",
+  "utc": "UTC",
+  "gmt standard time": "Europe/London"
+};
+var zoneOk = /* @__PURE__ */ new Map();
+function usableZone(tzid, fallbackZone) {
+  if (!tzid) return fallbackZone;
+  const mapped = WINDOWS_ZONES[tzid.trim().toLowerCase()];
+  if (mapped) return mapped;
+  let ok = zoneOk.get(tzid);
+  if (ok === void 0) {
+    try {
+      new Intl.DateTimeFormat("en-US", { timeZone: tzid });
+      ok = true;
+    } catch {
+      ok = false;
+    }
+    zoneOk.set(tzid, ok);
+  }
+  return ok ? tzid : fallbackZone;
 }
 function parseDuration(v) {
   const m = /^([+-])?P(?:(\d+)W)?(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?)?$/.exec(v.trim());
@@ -1559,6 +1864,9 @@ function computeCancellation(input, r) {
     );
   }
   if (input.waived) return settle("waived", 0, "Cancellation fee waived.");
+  if (!Number.isFinite(input.hoursUntilStart)) {
+    return settle("needs_review", 0, "We could not work out the notice on this booking. Someone will check it by hand before anything is charged.");
+  }
   const bucket = bucketForNotice(input.hoursUntilStart, r);
   const fee = Math.round(total * chargeBpForNotice(input.hoursUntilStart, r) / 1e4);
   if (bucket === "gte72h") {
@@ -1599,6 +1907,9 @@ function computeReschedule(input, r) {
     return free("owner_cancelled", "We moved it, so there is nothing to pay and nothing changes.");
   }
   if (input.waived) return free("waived", "Reschedule charge waived.");
+  if (!Number.isFinite(input.hoursUntilStart)) {
+    return free("needs_review", "We could not work out the notice on this booking. Someone will check it by hand before anything is charged.");
+  }
   const bucket = bucketForNotice(input.hoursUntilStart, r);
   if (bucket === "gte72h") {
     return free(
@@ -1695,8 +2006,42 @@ var CAPABILITIES = [
     what: "A customer link for moving a time or changing services without calling",
     live: false,
     blockedBy: "Neon Postgres, so there is a stored booking to point at"
+  },
+  {
+    id: "placesAutocomplete",
+    what: "Address suggestions as the customer types, from Google Places",
+    live: false,
+    blockedBy: "Google browser key in js/config.js"
+  },
+  {
+    id: "botCheck",
+    what: "Cloudflare Turnstile in front of the payment step",
+    live: false,
+    blockedBy: "TURNSTILE_SECRET_KEY in Netlify and turnstileSiteKey in js/config.js"
   }
 ];
+var PROCESSORS = [
+  { name: "Netlify", does: "hosts the website and runs the code behind the booking form. Keeps standard server logs, including IP addresses." },
+  { name: "Web3Forms", does: "delivers your question or booking request to our email inbox." },
+  { name: "Google (Gmail and Fonts)", does: "is where our email lives, so anything you send us is stored there, and serves the typefaces on this site, which means Google receives your IP address when a page loads." },
+  { name: "OpenStreetMap", does: "provides the service area map tiles and looks up places you type into the map search. Your IP address and that search text go to OpenStreetMap." },
+  { name: "cdnjs (Cloudflare)", does: "serves the map library, so Cloudflare receives your IP address when the map loads." },
+  { name: "Google Places", does: "suggests addresses as you type in the booking form. What you type in that box goes to Google.", capability: "placesAutocomplete" },
+  { name: "Google Maps (Routes)", does: "measures the drive to your address so we can price travel. This happens from our server, with your address, not from your browser.", capability: "measuredTravel" },
+  { name: "Google Calendar", does: "holds our availability. Your browser reads our open times from it.", capability: "liveCalendar" },
+  { name: "Stripe", does: "takes card payments and keeps your card on file. Card details go straight to Stripe over an encrypted connection; we never see or store the card number.", capability: "cardOnFile" },
+  { name: "PayPal", does: "takes PayPal and Venmo payments.", capability: "digitalWallets" },
+  { name: "Twilio", does: "sends our appointment text messages.", capability: "automatedMessages" },
+  { name: "Resend", does: "sends our confirmation and reminder emails.", capability: "automatedMessages" },
+  { name: "Neon", does: "stores bookings in our database so your booking link works.", capability: "bookingLink" },
+  { name: "Cloudflare Turnstile", does: "checks that a booking is being made by a person, before payment. It may set a cookie to do so.", capability: "botCheck" }
+];
+function liveProcessors() {
+  return PROCESSORS.filter((p) => !p.capability || isLive(p.capability));
+}
+function dormantProcessors() {
+  return PROCESSORS.filter((p) => p.capability && !isLive(p.capability));
+}
 function isLive(id) {
   return CAPABILITIES.find((c2) => c2.id === id)?.live ?? false;
 }
@@ -1813,15 +2158,21 @@ function priceFromWire(wire, opts = {}) {
       ...correction ? { correction } : {}
     };
   });
+  const nowMs = opts.nowMs ?? Date.now();
+  const priority = wire.slot ? slotNeedsPriority(wire.slot, nowMs, DEFAULT_RULES.window) : false;
+  const payInFull = opts.payInFull ?? false;
   const cart = {
     vehicles,
     // A measured drive wins. The ZIP band estimate is the fallback for a
     // site without a Maps key, and prices an uncovered ZIP as no travel
     // rather than guessing.
     oneWayMinutes: opts.measuredOneWayMinutes ?? (wire.zip ? estimateOneWayMinutes(wire.zip) : null),
-    surchargeContext: wire.slot ? { startMinutesLocal: localMinutesOfDay(wire.slot), priorityBooking: Boolean(wire.priority) } : wire.priority ? { startMinutesLocal: minutesOfDay(12), priorityBooking: true } : null,
+    // Priority is DERIVED from the slot. The browser used to send a boolean
+    // and this trusted it, which was a 20% discount for anyone who edited one
+    // word of the request. Without a slot there is no window to be inside.
+    surchargeContext: wire.slot ? { startMinutesLocal: localMinutesOfDay(wire.slot), priorityBooking: priority } : null,
     zip: wire.zip ?? null,
-    ...wire.payInFull ? { payInFull: true } : {},
+    ...payInFull ? { payInFull: true } : {},
     ...wire.promoCode ? { promoCode: wire.promoCode } : {},
     ...wire.visits ? { visits: Math.max(1, Math.min(wire.visits, wire.vehicles.length || 1)) } : {}
   };
@@ -1832,6 +2183,7 @@ function priceFromWire(wire, opts = {}) {
     surchargeBp: q.surchargeBp,
     serviceDurationMin: q.serviceDurationMin,
     oneWayMinutes: cart.oneWayMinutes,
+    priority,
     travelSource: opts.measuredOneWayMinutes != null ? "routes" : cart.oneWayMinutes != null ? "estimate" : "none",
     promoCode: q.promoCode,
     promoDiscountCents: q.promoDiscountCents,
@@ -1849,11 +2201,15 @@ export {
   CORRECTION_TIERS,
   DEFAULT_RULES,
   GATED_COPY,
+  LEGAL,
   MAINTENANCE_PLAN,
+  MAX_BOOKING_CENTS,
   MAX_ONE_WAY_MINUTES,
+  PROCESSORS,
   PROMOS,
   SEED_CATALOG,
   VEHICLE_SIZES,
+  WIRE_LIMITS,
   addonIcon,
   addonsFor,
   averageOneWayMinutes,
@@ -1862,6 +2218,8 @@ export {
   computeCancellation,
   computeReschedule,
   copyFor,
+  dormantProcessors,
+  driveTooFar,
   estimateOneWayMinutes,
   findAddon,
   findPackage,
@@ -1869,8 +2227,12 @@ export {
   isLive,
   isSelectable,
   isUnpriced,
+  legalFingerprint,
+  liveProcessors,
+  longDate,
   mergeBusy,
   mileageFeeCents,
+  normalisePhone,
   normalisePromo,
   packagesFor,
   parseIcsBusy,
@@ -1879,6 +2241,8 @@ export {
   promoDiscountCents,
   promoMessage,
   quote,
+  slotNeedsPriority,
   unavailableReason,
+  validateWire,
   vehicleSize
 };

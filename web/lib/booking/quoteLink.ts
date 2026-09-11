@@ -87,9 +87,22 @@ function fromBase64Url(text: string): Uint8Array {
   return out;
 }
 
+/** Free text in a link has to fit in a text message. */
+export const QUOTE_NOTE_MAX = 500;
+export const QUOTE_LABEL_MAX = 60;
+
 /** UTF-8 in and out, so a name with an accent survives the round trip. */
 export function encodeQuote(payload: QuotePayload): string {
-  const json = JSON.stringify(payload);
+  // A malformed payload is encoded as it is, so a test (or a bug) that
+  // builds one still gets refused by decodeQuote rather than quietly fixed.
+  const trimmed: QuotePayload = {
+    ...payload,
+    ...(Array.isArray(payload.vs)
+      ? { vs: payload.vs.map((v) => (v && v.l ? { ...v, l: v.l.slice(0, QUOTE_LABEL_MAX) } : v)) }
+      : {}),
+    ...(typeof payload.nt === "string" ? { nt: payload.nt.slice(0, QUOTE_NOTE_MAX) } : {}),
+  };
+  const json = JSON.stringify(trimmed);
   return toBase64Url(new TextEncoder().encode(json));
 }
 
@@ -120,7 +133,13 @@ export function decodeQuote(text: string, nowMs: number = Date.now()): DecodedQu
     return { ok: false, reason: "This link is from an older version of our booking page. Ask us for a new one." };
   }
 
-  const ageHours = (nowMs - (payload.ts ?? 0) * 1000) / 3_600_000;
+  // A timestamp that is not a number would make every age comparison false
+  // and produce a link that never expires.
+  if (typeof payload.ts !== "number" || !Number.isFinite(payload.ts)) {
+    return { ok: false, reason: "This link is damaged. Ask us to send a fresh one." };
+  }
+
+  const ageHours = (nowMs - payload.ts * 1000) / 3_600_000;
 
   // A clock skewed a little into the future is a device problem, not an
   // attack, so a small negative age is tolerated rather than refused.

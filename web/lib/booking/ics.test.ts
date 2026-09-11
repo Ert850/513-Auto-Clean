@@ -221,3 +221,29 @@ describe("merging busy time", () => {
     expect(mergeBusy([])).toEqual([]);
   });
 });
+
+describe("time zones the feed might carry", () => {
+  const from = Date.parse("2026-09-01T00:00:00Z");
+  const to = Date.parse("2026-09-30T00:00:00Z");
+  const feed = (tzid: string) =>
+    "BEGIN:VCALENDAR\r\nBEGIN:VEVENT\r\nUID:a\r\n" +
+    `DTSTART;TZID=${tzid}:20260905T100000\r\nDTEND;TZID=${tzid}:20260905T110000\r\n` +
+    "END:VEVENT\r\nBEGIN:VEVENT\r\nUID:b\r\nDTSTART:20260906T140000Z\r\nDTEND:20260906T150000Z\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n";
+
+  it("an Outlook style Windows zone name is mapped, not fatal", () => {
+    const busy = parseIcsBusy(feed("Eastern Standard Time"), { from, to, timeZone: "America/New_York" });
+    expect(busy).toHaveLength(2);
+    // 10am Eastern on 5 September is 14:00Z.
+    expect(busy[0]!.start).toBe(Date.parse("2026-09-05T14:00:00Z"));
+  });
+
+  it("an unknown zone falls back to the calendar's zone and keeps the other events", () => {
+    const busy = parseIcsBusy(feed("Mars/Olympus"), { from, to, timeZone: "America/New_York" });
+    expect(busy).toHaveLength(2);
+    expect(busy[0]!.start).toBe(Date.parse("2026-09-05T14:00:00Z"));
+  });
+
+  it("a zone that looks like a path is not a crash either", () => {
+    expect(() => parseIcsBusy(feed("../../etc"), { from, to })).not.toThrow();
+  });
+});

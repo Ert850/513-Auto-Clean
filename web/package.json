@@ -11,7 +11,10 @@
     "build:funnel:dev": "esbuild lib/browser-entry.ts --bundle --format=iife --target=es2018 --sourcemap --outfile=../js/pricing.bundle.js",
     "build:server": "esbuild lib/server-entry.ts --bundle --format=esm --platform=node --target=node20 --outfile=../netlify/functions/_pricing.mjs",
     "build:site": "node scripts/render-site.mjs",
-    "build:terms": "node scripts/render-terms.mjs"
+    "build:stamp": "node scripts/stamp-assets.mjs",
+    "build:dist": "node scripts/build-dist.mjs",
+    "lock:legal": "node scripts/lock-legal.mjs",
+    "build:legal": "node scripts/render-legal.mjs"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
@@ -21,9 +24,6 @@
     "vitest": "^2.1.8"
   },
   "dependencies": {
-    "@neondatabase/serverless": "^1.1.0",
-    "drizzle-orm": "^0.45.2",
-    "googleapis": "^178.0.0",
-    "stripe": "^22.6.1"
+    "drizzle-orm": "^0.45.2"
   }
 }
