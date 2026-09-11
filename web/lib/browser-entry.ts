@@ -64,6 +64,7 @@ import { computeRefund, rescheduleFeeCents } from "./pricing/refund.js";
 import {
   cancellationLadder,
   computeCancellation,
+  computeReschedule,
 } from "./pricing/cancellation.js";
 import { DEFAULT_RULES } from "./pricing/rules.js";
 import {
@@ -73,6 +74,13 @@ import {
   requiresPriorityBooking,
 } from "./pricing/surcharge.js";
 import { quote } from "./pricing/quote.js";
+import {
+  QUOTE_TTL_HOURS,
+  decodeQuote,
+  encodeQuote,
+  hoursRemaining,
+  quoteUrl,
+} from "./booking/quoteLink.js";
 import {
   LONGEST_DAY,
   LONG_JOB_STARTS,
@@ -153,6 +161,11 @@ const api = {
   mergeIntervals,
   subtractIntervals,
   quote,
+  QUOTE_TTL_HOURS,
+  decodeQuote,
+  encodeQuote,
+  hoursRemaining,
+  quoteUrl,
   PROMOS,
   findPromo,
   normalisePromo,
@@ -177,6 +190,7 @@ const api = {
   computeRefund,
   rescheduleFeeCents,
   computeCancellation,
+  computeReschedule,
   cancellationLadder,
   componentsOf,
   removableComponents,

@@ -213,7 +213,11 @@ export { MAX_ONE_WAY_MINUTES } from "./travel/zipRanges.js";
 export { PROMOS, findPromo, normalisePromo, promoDiscountCents, promoMessage } from "./pricing/promos.js";
 export { parseIcsBusy, mergeBusy } from "./booking/ics.js";
 export { averageOneWayMinutes, mileageFeeCents } from "./pricing/mileage.js";
-export { computeCancellation, cancellationLadder } from "./pricing/cancellation.js";
+export {
+  computeCancellation,
+  computeReschedule,
+  cancellationLadder,
+} from "./pricing/cancellation.js";
 export { estimateOneWayMinutes } from "./travel/zipRanges.js";
 
 export {

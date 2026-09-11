@@ -704,6 +704,11 @@ var DEFAULT_RULES = {
   // 24 to 72 hrs: half the booking
   cancelLateWindowBp: 1e4,
   // under 24 hrs: the whole booking
+  lateRescheduleFeeBp: 1e3,
+  // 10% per late move, compounding
+  rescheduleCreditDays: 30,
+  shortNoticeChangeBp: 2e3,
+  // 20%, same as priority booking
   refundFullWindowHours: 72,
   refundMidWindowHours: 24
 };
@@ -1526,81 +1531,128 @@ function mergeBusy(list) {
 }
 
 // lib/pricing/cancellation.ts
-function settle(bucket, feeCents, paidCents, explanation) {
-  return {
-    bucket,
-    feeCents,
-    dueCents: Math.max(0, feeCents - paidCents),
-    refundCents: Math.max(0, paidCents - feeCents),
-    explanation
-  };
+function chargeBpForNotice(hoursUntilStart, r) {
+  if (hoursUntilStart >= r.refundFullWindowHours) return 0;
+  if (hoursUntilStart >= r.refundMidWindowHours) return r.cancelMidWindowBp;
+  return r.cancelLateWindowBp;
+}
+function bucketForNotice(hoursUntilStart, r) {
+  if (hoursUntilStart >= r.refundFullWindowHours) return "gte72h";
+  if (hoursUntilStart >= r.refundMidWindowHours) return "24h_to_72h";
+  return "lt24h";
 }
 function computeCancellation(input, r) {
   const total = Math.max(0, Math.round(input.totalCents));
   const paid = Math.max(0, Math.round(input.paidCents ?? 0));
+  const settle = (bucket2, fee2, explanation) => ({
+    bucket: bucket2,
+    feeCents: fee2,
+    dueCents: Math.max(0, fee2 - paid),
+    refundCents: Math.max(0, paid - fee2),
+    explanation
+  });
   if (input.ownerCancelled) {
     return settle(
       "owner_cancelled",
       0,
-      paid,
       "We cancelled, so there is no charge and anything you paid comes back in full."
     );
   }
-  if (input.rescheduling) {
+  if (input.waived) return settle("waived", 0, "Cancellation fee waived.");
+  const bucket = bucketForNotice(input.hoursUntilStart, r);
+  const fee = Math.round(total * chargeBpForNotice(input.hoursUntilStart, r) / 1e4);
+  if (bucket === "gte72h") {
     return settle(
-      "rescheduled",
+      bucket,
       0,
-      paid,
-      "Rescheduled at no charge. Anything you have paid moves to the new booking."
-    );
-  }
-  if (input.waived) {
-    return settle("waived", 0, paid, "Cancellation fee waived.");
-  }
-  const hrs = input.hoursUntilStart;
-  if (hrs >= r.refundFullWindowHours) {
-    return settle(
-      "gte72h",
-      0,
-      paid,
       `Cancelled more than ${r.refundFullWindowHours} hours ahead, so there is no charge.`
     );
   }
-  if (hrs >= r.refundMidWindowHours) {
-    const fee2 = Math.round(total * r.cancelMidWindowBp / 1e4);
+  if (bucket === "24h_to_72h") {
     return settle(
-      "24h_to_72h",
-      fee2,
-      paid,
-      `Cancelled inside ${r.refundFullWindowHours} hours, so ${r.cancelMidWindowBp / 100}% of the booking applies. Rescheduling instead is free.`
+      bucket,
+      fee,
+      `Cancelled inside ${r.refundFullWindowHours} hours, so ${r.cancelMidWindowBp / 100}% of the booking applies. Rescheduling instead puts the same amount toward your new date.`
     );
   }
-  const fee = Math.round(total * r.cancelLateWindowBp / 1e4);
   return settle(
-    "lt24h",
+    bucket,
     fee,
-    paid,
-    `Cancelled inside ${r.refundMidWindowHours} hours, so the booking is charged in full. Rescheduling instead is free, at any notice.`
+    `Cancelled inside ${r.refundMidWindowHours} hours, so the booking is charged in full. Rescheduling instead puts the whole amount toward your new date.`
   );
+}
+function computeReschedule(input, r) {
+  const total = Math.max(0, Math.round(input.totalCents));
+  const paid = Math.max(0, Math.round(input.paidCents ?? 0));
+  const priorLate = Math.max(0, Math.floor(input.lateMoves ?? 0));
+  const free = (bucket2, explanation) => ({
+    bucket: bucket2,
+    prepayCents: 0,
+    dueNowCents: 0,
+    creditCents: paid,
+    lateFeeCents: 0,
+    lateFeeBp: 0,
+    creditValidDays: paid > 0 ? r.rescheduleCreditDays : 0,
+    explanation
+  });
+  if (input.ownerInitiated) {
+    return free("owner_cancelled", "We moved it, so there is nothing to pay and nothing changes.");
+  }
+  if (input.waived) return free("waived", "Reschedule charge waived.");
+  const bucket = bucketForNotice(input.hoursUntilStart, r);
+  if (bucket === "gte72h") {
+    return free(
+      "gte72h",
+      `Moved with more than ${r.refundFullWindowHours} hours notice, so there is nothing to pay.`
+    );
+  }
+  const prepay = Math.round(total * chargeBpForNotice(input.hoursUntilStart, r) / 1e4);
+  if (bucket === "24h_to_72h") {
+    return {
+      bucket,
+      prepayCents: prepay,
+      dueNowCents: Math.max(0, prepay - paid),
+      creditCents: Math.max(prepay, paid),
+      lateFeeCents: 0,
+      lateFeeBp: 0,
+      creditValidDays: r.rescheduleCreditDays,
+      explanation: `Moved inside ${r.refundFullWindowHours} hours, so ${r.cancelMidWindowBp / 100}% is taken now and goes straight onto your new booking. No fee for moving it.`
+    };
+  }
+  const lateFeeBp = r.lateRescheduleFeeBp;
+  const lateFeeCents = Math.round(total * lateFeeBp / 1e4);
+  return {
+    bucket,
+    prepayCents: prepay,
+    dueNowCents: Math.max(0, prepay - paid),
+    creditCents: Math.max(prepay, paid),
+    lateFeeCents,
+    lateFeeBp,
+    creditValidDays: r.rescheduleCreditDays,
+    explanation: `Moved inside ${r.refundMidWindowHours} hours, so the booking is taken in full now and held as credit for ${r.rescheduleCreditDays} days. A ${r.lateRescheduleFeeBp / 100}% late move fee applies` + (priorLate > 0 ? `, the same ${lateFeeBp / 100}% as last time. This is late move number ${priorLate + 1}.` : ".")
+  };
 }
 function cancellationLadder(r) {
   return [
     {
       id: "gte72h",
       when: `${r.refundFullWindowHours} hours or more before`,
-      charge: "No charge",
+      cancel: "No charge",
+      reschedule: "Free, nothing to pay",
       bp: 0
     },
     {
       id: "24h_to_72h",
       when: `${r.refundMidWindowHours} to ${r.refundFullWindowHours} hours before`,
-      charge: `${r.cancelMidWindowBp / 100}% of the booking`,
+      cancel: `${r.cancelMidWindowBp / 100}% of the booking, kept`,
+      reschedule: `${r.cancelMidWindowBp / 100}% taken now, all of it credited to the new date`,
       bp: r.cancelMidWindowBp
     },
     {
       id: "lt24h",
       when: `Less than ${r.refundMidWindowHours} hours before`,
-      charge: "The full booking",
+      cancel: "The full booking, kept",
+      reschedule: `Paid in full now, credited for ${r.rescheduleCreditDays} days, plus a flat ${r.lateRescheduleFeeBp / 100}% late move fee`,
       bp: r.cancelLateWindowBp
     }
   ];
@@ -1717,6 +1769,7 @@ export {
   cancellationLadder,
   componentsOf,
   computeCancellation,
+  computeReschedule,
   estimateOneWayMinutes,
   findAddon,
   findPackage,
