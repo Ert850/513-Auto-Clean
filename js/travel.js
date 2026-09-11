@@ -305,7 +305,7 @@
     function idleZoomHint() {
       // One line covering both, since the same laptop can be either.
       return 'Click the map then scroll to zoom, and drag to move it. ' +
-        'On a phone use two fingers to pan and pinch to zoom. ' +
+        'On a phone, one finger moves the map and two fingers pinch to zoom. ' +
         'Right click, or long press, to drop a pin anywhere.';
     }
 
@@ -315,20 +315,18 @@
     host.addEventListener('mouseleave', disarmWheel);
     host.addEventListener('focusin', armWheel);
 
-    // Touch: one finger scrolls the PAGE, so dragging is suspended for the
-    // length of that gesture and restored the moment the finger lifts. Two
-    // fingers pan the map. Pinch zoom is never disabled.
-    host.addEventListener('touchstart', function (e) {
-      if (e.touches.length > 1) map.dragging.enable();
-      else map.dragging.disable();
-    }, { passive: true });
-
-    host.addEventListener('touchend', function (e) {
-      // Back on for the mouse the instant the touch is over.
-      if (!e.touches || e.touches.length === 0) map.dragging.enable();
-    }, { passive: true });
-
-    host.addEventListener('touchcancel', function () { map.dragging.enable(); }, { passive: true });
+    // TOUCH: one finger moves the map, two fingers pinch to zoom.
+    //
+    // It used to be the other way round. One finger was reserved for
+    // scrolling the page, so panning the map needed two, which is not a
+    // gesture anybody tries: every other map on a phone moves with one
+    // finger, so the map read as broken. The page still scrolls from
+    // anywhere above or below the map, and the map is a fixed height with
+    // room either side of it, so nobody gets stuck inside it.
+    //
+    // Nothing to wire up. Leaflet's dragging handler already does one finger
+    // pan and touchZoom already does the pinch; the old listeners existed
+    // only to take the first one away.
 
     if (zoomHint) zoomHint.textContent = idleZoomHint();
 

@@ -1008,3 +1008,39 @@ body.bk-open { overflow: hidden; }
   display: block; padding: .55rem 1.1rem; font-size: .78rem; font-weight: 700;
   letter-spacing: .04em; text-transform: uppercase; color: var(--text-soft);
 }
+
+/* "Optional", on a heading that could otherwise read as a list of demands. */
+.bk-opt {
+  font-style: normal; font-size: .64rem; font-weight: 800;
+  letter-spacing: .09em; text-transform: uppercase;
+  color: var(--text-soft); background: var(--line);
+  padding: .18rem .45rem; border-radius: 5px; margin-left: .45rem; vertical-align: 2px;
+}
+
+/* ---------- Jump to a date, or ask for a time ---------- */
+.bk-jump {
+  display: grid; grid-template-columns: 1fr 1fr; gap: .6rem;
+  background: var(--paper-2); border: 1.5px solid var(--line); border-radius: var(--r-md);
+  padding: .85rem .9rem; margin: 0 0 1rem;
+}
+.bk-jump-f { min-width: 0; }
+.bk-jump-f label {
+  display: block; font-size: .78rem; font-weight: 700; color: var(--text-soft);
+  margin-bottom: .3rem;
+}
+.bk-jump input {
+  width: 100%; font: inherit; font-size: .92rem;
+  border: 1.5px solid var(--line); border-radius: var(--r-sm);
+  padding: .55rem .65rem; background: var(--paper); color: var(--text);
+}
+.bk-jump input:focus { border-color: var(--red); outline: none; }
+.bk-jump-clear, .bk-jump-note { grid-column: 1 / -1; }
+.bk-jump-clear {
+  justify-self: start; font: inherit; font-size: .82rem; font-weight: 700;
+  color: var(--red); background: none; border: 0; padding: 0; cursor: pointer;
+  text-decoration: underline; text-underline-offset: 3px;
+}
+.bk-jump-note {
+  margin: 0; font-size: .85rem; line-height: 1.5; color: var(--text);
+  background: var(--red-ghost); border-radius: var(--r-sm); padding: .5rem .65rem;
+}

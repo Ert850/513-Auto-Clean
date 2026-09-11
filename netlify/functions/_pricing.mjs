@@ -98,6 +98,11 @@ var ADDONS = [
       packageIds: ["showroom-exterior"],
       message: "Already covered by the correction tier on Showroom Ready Exterior."
     },
+    // Off the menu until the correction setup is built out. Listed with its
+    // price rather than hidden, so someone who wants it can say so and be
+    // first in the queue when it opens.
+    unavailable: true,
+    unavailableNote: "Not available yet. We are building up to machine correction work, and this opens with it.",
     tiers: [
       {
         id: "std",
@@ -128,7 +133,7 @@ var ADDONS = [
       packageIds: ["basic-exterior", "full-exterior", "showroom-exterior"],
       message: "Already included from Basic Exterior up. No need to add it."
     },
-    tiers: [{ id: "std", label: "All four", priceCents: 3500, durationMin: 30 }]
+    tiers: [{ id: "std", label: "All four", priceCents: 4500, durationMin: 30 }]
   },
   {
     id: "paint-decon",
@@ -159,7 +164,7 @@ var ADDONS = [
     // same way ozone is gated behind stain work.
     requiresAnyAddonTier: [{ addonId: "paint-decon", tierIds: ["std"] }],
     requirementMessage: "Clay goes on after the chemical decontamination, never before it. Add Paint Decontamination first, or step up to Full Exterior, which includes both.",
-    tiers: [{ id: "std", label: "All panels", priceCents: 4500, durationMin: 60 }]
+    tiers: [{ id: "std", label: "All panels", priceCents: 3500, durationMin: 60 }]
   },
   {
     id: "hard-water",
@@ -211,7 +216,7 @@ var ADDONS = [
     description: "3 to 5 years of protection with proper maintenance, bonded to the clear coat.",
     note: "A real coating cures into a hard glass-like layer chemically bonded to the clear coat, which is why it lasts years rather than months. It also locks in whatever the paint looks like at the time, so any swirls underneath are sealed in with it. That is why coatings are sold with correction rather than on their own, and why this one lives inside Showroom Ready Exterior.",
     unavailable: true,
-    unavailableNote: "Booked through Showroom Ready Exterior, which includes the prep a coating needs.",
+    unavailableNote: "Not available yet. A coating needs the paint corrected first, so it opens together with Showroom Ready Exterior.",
     tiers: [
       {
         id: "std",

@@ -46,6 +46,11 @@
       preferredWindows: [],
       slot: null,
       daysShown: 3,
+      // A date typed into the picker, as yyyy-mm-dd, or '' for the soonest.
+      jumpDate: '',
+      // A time typed into the picker, as HH:MM, and what we made of it.
+      wantTime: '',
+      timeNote: '',
       // Set for one render when a near-term day ticks the box for them.
       flashPrio: false,
       contact: { name: '', phone: '', email: '' },
@@ -1497,7 +1502,21 @@
       var lead = startOfToday().getTime() + CR.minLeadDays * DAY;
       if (lead > from) from = lead;
     }
-    var to = from + (corr ? 70 : 28) * DAY;
+
+    // A date typed into the picker moves the whole window to it. Asking for
+    // 14 March and being shown next Tuesday is not an answer.
+    if (state.jumpDate) {
+      var jump = dayStartFromInput(state.jumpDate);
+      if (jump && jump + DAY > from) from = Math.max(from, jump);
+    }
+
+    // The window grows with "show more days" rather than staying at 28 and
+    // leaving the button showing nothing new. Capped at a year, which is as
+    // far ahead as the date picker allows and further than anyone books.
+    var span = state.jumpDate
+      ? 7
+      : Math.min(MAX_BOOK_DAYS, Math.max(corr ? 70 : 28, (state.daysShown || 3) + 14));
+    var to = Math.min(from + span * DAY, startOfToday().getTime() + MAX_BOOK_DAYS * DAY);
 
     // The WHOLE job, however long. Anything past a day gets planned across
     // consecutive days rather than truncated to its first morning, which is
@@ -1724,6 +1743,8 @@
   }
 
   function paintSlotsInner(box, win, from, to, dur, errMsg) {
+    /* `to` is used at the foot of this function to decide whether there is
+       anything further to show. */
     var drive = travelAllowanceMin();
 
     // Past a day's work this stops being a slot search and becomes a plan.
@@ -1814,6 +1835,9 @@
     // nothing looked at. The button has been dead since it was written.
     var shown = state.daysShown || 3;
 
+    noteWantedTime(slots);
+    html += jumpBox();
+
     html += '<p class="bk-starts">These are <b>start times</b>, not how long we stay. ' +
       'A ' + fmtDur(dur) + ' detail beginning at 10am runs until about ' +
       endLabel(10 * 60 + dur) + '. Pick a part of the day, then fine tune the hour.</p>';
@@ -1866,14 +1890,101 @@
       html += '</div>';
     });
 
-    if (order.length > shown) {
-      html += '<button type="button" class="bk-morelink" id="bkMoreDays">Show more options</button>';
+    var canGoFurther = to < startOfToday().getTime() + MAX_BOOK_DAYS * DAY;
+    if (order.length > shown || canGoFurther) {
+      html += '<button type="button" class="bk-morelink" id="bkMoreDays">Show more days</button>';
+    } else {
+      html += '<p class="bk-hint">That is everything we have open in the next year. ' +
+        'If none of it works, tell us when suits below.</p>';
     }
 
     box.innerHTML = html;
   }
 
   function localMin(ms) { return P.localMinutesOfDay(ms); }
+
+  /** How far ahead the date picker and the slot window will go. */
+  var MAX_BOOK_DAYS = 365;
+
+  /** "2026-03-14" as local midnight. Built by parts: Date.parse treats a bare
+   *  date string as UTC, which lands on the previous evening in Cincinnati. */
+  function dayStartFromInput(value) {
+    var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(value || ''));
+    if (!m) return 0;
+    var d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+    return isNaN(d.getTime()) ? 0 : d.getTime();
+  }
+
+  function dateInputValue(ms) {
+    var d = new Date(ms);
+    return d.getFullYear() + '-' +
+      String(d.getMonth() + 1).padStart(2, '0') + '-' +
+      String(d.getDate()).padStart(2, '0');
+  }
+
+  /**
+   * Pick a date, or ask for a time.
+   *
+   * "Show more options" walked forward four days at a time through a window
+   * that stopped at 28, so someone booking six weeks out had no way to get
+   * there and no way to know they could. A date field is one tap on a phone
+   * and goes anywhere inside a year.
+   *
+   * The time field is a REQUEST, not a filter: it looks for what was asked
+   * for on the days on screen and says plainly whether it is there, rather
+   * than emptying the list and leaving someone to guess.
+   */
+  function jumpBox() {
+    var min = dateInputValue(Math.max(Date.now(), hasCorrection()
+      ? startOfToday().getTime() + P.CORRECTION_RULES.minLeadDays * DAY
+      : Date.now()));
+    var max = dateInputValue(startOfToday().getTime() + MAX_BOOK_DAYS * DAY);
+
+    return '<div class="bk-jump">' +
+      '<div class="bk-jump-f"><label for="bkJumpDate">Jump to a date</label>' +
+        '<input type="date" id="bkJumpDate" data-jumpdate value="' + esc(state.jumpDate) +
+        '" min="' + min + '" max="' + max + '" />' +
+      '</div>' +
+      '<div class="bk-jump-f"><label for="bkJumpTime">Got a time in mind?</label>' +
+        '<input type="time" id="bkJumpTime" data-jumptime value="' + esc(state.wantTime) +
+        '" step="1800" />' +
+      '</div>' +
+      (state.jumpDate || state.wantTime
+        ? '<button type="button" class="bk-jump-clear" id="bkJumpClear">Show the soonest instead</button>'
+        : '') +
+      (state.timeNote ? '<p class="bk-jump-note">' + esc(state.timeNote) + '</p>' : '') +
+      '</div>';
+  }
+
+  /**
+   * Does the time they asked for exist, and if not what is nearest?
+   *
+   * Sets a sentence for the picker rather than filtering anything away. A
+   * list that empties itself because you typed 7:15 is a list that looks
+   * broken.
+   */
+  function noteWantedTime(slots) {
+    if (!state.wantTime) { state.timeNote = ''; return; }
+    var m = /^(\d{2}):(\d{2})$/.exec(state.wantTime);
+    if (!m) { state.timeNote = ''; return; }
+    var wanted = Number(m[1]) * 60 + Number(m[2]);
+
+    var exact = null, near = null, bestGap = Infinity;
+    slots.forEach(function (ms) {
+      var gap = Math.abs(localMin(ms) - wanted);
+      if (gap === 0 && exact === null) exact = ms;
+      if (gap < bestGap) { bestGap = gap; near = ms; }
+    });
+
+    if (exact !== null) {
+      state.timeNote = 'Good news, ' + timeLabel(exact) + ' is open. It is in the list below.';
+    } else if (near !== null) {
+      state.timeNote = 'Nothing at exactly ' + state.wantTime + '. The closest we have is ' +
+        timeLabel(near) + ' on ' + new Date(near).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }) + '.';
+    } else {
+      state.timeNote = 'Nothing open in this range. Try another date, or tell us when suits below.';
+    }
+  }
 
   function timeLabel(ms) {
     return new Date(ms).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
@@ -2038,9 +2149,11 @@
 
   function accessBlock() {
     return '<div class="bk-accbox">' +
-      '<h4>Getting set up on the day</h4>' +
-      '<p class="bk-hint">We carry our own water and power, so none of these stop the detail. ' +
-      'Knowing beforehand just means we arrive loaded for your driveway rather than working it out there.</p>' +
+      '<h4>Getting set up on the day <i class="bk-opt">Optional</i></h4>' +
+      '<p class="bk-hint"><b>None of this is a requirement, and no answer here changes your price.</b> ' +
+      'We bring our own water, our own power and everything else, so a detail goes ahead either way. ' +
+      'Answering just means we load the van for your driveway instead of working it out when we arrive. ' +
+      'Skip it if you are not sure.</p>' +
       askAccess('water', 'Is there an outdoor tap we could use?',
         'Saves filling the tank, and it is the one that matters most for an exterior.') +
       askAccess('power', 'Is there an outdoor outlet we could use?',
@@ -2484,7 +2597,7 @@
       '[data-consent],[data-pay],[data-delveh],[data-browsepick],[data-max],[data-sort],' +
       '[data-kind],[data-paymethod],[data-corr],[data-coating],[data-garage],[data-step],' +
       '[data-prefday],[data-prefpart],[data-interest],[data-band],[data-access],' +
-      '#bkAddVeh,#bkMoreDays,#bkNext,#bkBack,#bkClose,#bkScrim,#bkBrowse,#bkBrowseBack,' +
+      '#bkAddVeh,#bkMoreDays,#bkJumpClear,#bkNext,#bkBack,#bkClose,#bkScrim,#bkBrowse,#bkBrowseBack,' +
       '#bkLeaveStay,#bkLeaveKeep,#bkLeaveAsk,#bkLeaveDrop,#bkFresh,' +
       '#bkDoneClose,#bkDoneAsk,#bkDoneCopy,#bkDoneAgain,' +
       '#bkCopyQuote,' +
@@ -2594,8 +2707,15 @@
       // A new time means a new drive, so the measured figure is stale.
       state.travel = blankTravel(); state.slot = Number(t.dataset.slot); return advance(); }
     if (t.id === 'bkMoreDays') {
-      // More DAYS at the same six times, never more times within a day.
-      state.daysShown = (state.daysShown || 3) + 4;
+      // More DAYS at the same start times, never more times within a day.
+      state.daysShown = Math.min(MAX_BOOK_DAYS, (state.daysShown || 3) + 7);
+      return loadSlots();
+    }
+    if (t.id === 'bkJumpClear') {
+      state.jumpDate = '';
+      state.wantTime = '';
+      state.timeNote = '';
+      state.daysShown = 3;
       return loadSlots();
     }
 
@@ -2771,6 +2891,15 @@
     }
     if (t.dataset.c) { state.contact[t.dataset.c] = t.value; return; }
     if (t.dataset.label !== undefined) { state.vehicles[Number(t.dataset.label)].label = t.value; return; }
+    if (t.dataset.jumpdate !== undefined) {
+      state.jumpDate = t.value;
+      state.daysShown = 3;
+      return loadSlots();
+    }
+    if (t.dataset.jumptime !== undefined) {
+      state.wantTime = t.value;
+      return loadSlots();
+    }
     if (t.dataset.note === 'loc') { state.locationNote = t.value; return; }
     if (t.dataset.note === 'parking') { state.access.parking = t.value; return; }
     if (t.dataset.note === 'general') { state.notes = t.value; return; }
@@ -3127,7 +3256,8 @@
   var DRAFT_FIELDS = [
     'step', 'vehicles', 'active', 'address', 'noGoodLocation', 'locationNote',
     'priority', 'slot', 'daysShown', 'contact', 'consent', 'interest',
-    'prefer', 'promoCode', 'notes', 'separateTimes', 'payInFull', 'access'
+    'prefer', 'promoCode', 'notes', 'separateTimes', 'payInFull', 'access',
+    'jumpDate', 'wantTime'
   ];
 
   function saveDraft() {
