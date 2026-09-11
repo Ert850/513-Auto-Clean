@@ -1445,11 +1445,18 @@
     return !state.slot && (state.prefer.parts.length > 0 || state.prefer.days.length > 0);
   }
 
-  var DAY_PARTS = [
-    { id: 'morning',   label: 'Morning',   hint: '8am to 12pm' },
-    { id: 'afternoon', label: 'Afternoon', hint: '12pm to 4pm' },
-    { id: 'evening',   label: 'Evening',   hint: '4pm to 8pm' }
-  ];
+  /**
+   * The time-of-day choices on the inquiry path.
+   *
+   * THE SAME FOUR BANDS the slot picker offers, read from one definition, so
+   * asking for "early morning" here means the hours it means everywhere else.
+   * These used to be three hand-written options (8am to 12pm, 12pm to 4pm,
+   * 4pm to 8pm) that matched neither the bands nor the surcharge boundaries,
+   * so somebody could ask for an "afternoon" that started at noon and be
+   * offered a midday slot, or ask for an "evening" and be surprised by a
+   * premium they were never shown.
+   */
+  var DAY_PARTS = P.TIME_BANDS;
 
   /**
    * What to do when we cannot offer a single time.
@@ -1481,8 +1488,13 @@
     var parts = DAY_PARTS.map(function (w) {
       var on = state.prefer.parts.indexOf(w.id) > -1;
       return '<button type="button" class="bk-pref-part' + (on ? ' on' : '') +
-        '" data-prefpart="' + w.id + '">' +
-        '<b>' + w.label + '</b><span>' + w.hint + '</span></button>';
+        (w.premium ? ' premium' : '') +
+        '" data-prefpart="' + esc(w.id) + '">' +
+        '<b>' + esc(w.label) + '</b><span>' + esc(w.range) + '</span>' +
+        // The surcharge is named on the band they are asking for, not sprung
+        // on them when we come back with a time.
+        (w.premium ? '<em>+' + RULES.surcharge.timeOfDayBp / 100 + '%</em>' : '') +
+        '</button>';
     }).join('');
 
     return '<div class="bk-noslots">' +
@@ -1493,7 +1505,7 @@
       '<div class="bk-pref">' +
         '<h4>Which days could work?</h4>' +
         '<div class="bk-pref-days">' + days + '</div>' +
-        '<h4>And what time of day?</h4>' +
+        '<h4>And what time of day could you start?</h4>' +
         '<div class="bk-pref-parts">' + parts + '</div>' +
         (isInquiry()
           ? '<p class="bk-pref-ok">Good. Carry on and we will confirm a time with you.</p>'
@@ -1609,8 +1621,11 @@
 
         html += '<div class="bk-band' + (pick ? ' on' : '') + (g.band.premium ? ' premium' : '') + '">' +
           '<button type="button" class="bk-band-h" data-band="' + key + '|' + g.band.id + '">' +
+            // "Starts", because a band is when the work BEGINS, not how long
+            // it runs. A four hour detail booked in the 10am to 2pm band can
+            // start at 1pm and finish at 5pm.
             '<span class="bk-band-l"><b>' + esc(g.band.label) + '</b>' +
-              '<i>' + esc(g.band.hint) + '</i></span>' +
+              '<i>Starts ' + esc(g.band.range) + '</i></span>' +
             '<span class="bk-band-r">' +
               (g.band.premium
                 ? '<em class="bk-band-prem">+' + $(deltaFor(g.suggested)) + '</em>'

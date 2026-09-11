@@ -869,16 +869,16 @@ var TIME_BANDS = [
     toMin: 10 * 60,
     premium: true,
     preferMin: 8 * 60,
-    hint: "Starts 6am to 10am"
+    range: "6am to 10am"
   },
   {
     id: "midday",
-    label: "Late Morning",
+    label: "Midday",
     fromMin: 10 * 60,
     toMin: 14 * 60,
     premium: false,
     preferMin: 10 * 60,
-    hint: "Starts 10am to 2pm"
+    range: "10am to 2pm"
   },
   {
     id: "afternoon",
@@ -887,18 +887,19 @@ var TIME_BANDS = [
     toMin: 18 * 60,
     premium: false,
     preferMin: 16 * 60,
-    hint: "Starts 2pm to 6pm"
+    range: "2pm to 6pm"
   },
   {
     id: "evening",
     label: "Late Evening",
     fromMin: 18 * 60,
+    // Exclusive, and a 10pm start is allowed, so this is a minute past it.
     toMin: 22 * 60 + 1,
     premium: true,
     // Earliest in the band rather than a fixed hour: a late job should be as
     // early as it can be, not as late as it is allowed to be.
     preferMin: 18 * 60,
-    hint: "Starts 6pm to 10pm"
+    range: "6pm to 10pm"
   }
 ];
 function localMinutesOfDay(ms, timeZone = "America/New_York") {

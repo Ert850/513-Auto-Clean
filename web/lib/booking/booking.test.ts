@@ -19,6 +19,12 @@ const MIN = 60_000;
 const at = (h: number, m = 0, day = 1) => new Date(2026, 8, day, h, m).getTime();
 const iv = (a: number, b: number): Interval => ({ start: a, end: b });
 
+/** "6am", "2pm": minutes past local midnight in the words the page uses. */
+const clockOf = (min: number) => {
+  const h = Math.floor(min / 60) % 24;
+  return `${((h + 11) % 12) + 1}${h < 12 ? "am" : "pm"}`;
+};
+
 describe("provisional slots", () => {
   const base = { depositPaidCents: 0, hoursUntilStart: 200, displacedByDeposit: false };
 
@@ -168,7 +174,7 @@ describe("preferred start times", () => {
     }
   });
 
-  it("suggests 10am in the late morning and 4pm in the afternoon", () => {
+  it("suggests 10am at midday and 4pm in the afternoon", () => {
     const banded = groupIntoBands(computeSlots(req(120)));
     const find = (id: string) => banded.find((b) => b.band.id === id);
     expect(hours([find("midday")!.suggested])).toEqual(["10:00"]);
@@ -339,6 +345,50 @@ describe("grouping starts into bands", () => {
 
   it("marks only the outer two bands as premium", () => {
     expect(TIME_BANDS.filter((b) => b.premium).map((b) => b.id)).toEqual(["early", "evening"]);
+  });
+
+  it("is exactly the four bands, at the hours the site advertises", () => {
+    expect(
+      TIME_BANDS.map((b) => `${b.fromMin / 60}-${b.premium ? "P" : "S"}`),
+    ).toEqual(["6-P", "10-S", "14-S", "18-P"]);
+    expect(TIME_BANDS.map((b) => b.range)).toEqual([
+      "6am to 10am",
+      "10am to 2pm",
+      "2pm to 6pm",
+      "6pm to 10pm",
+    ]);
+    // The written range and the arithmetic have to be the same hours, or the
+    // page advertises one thing and the engine offers another.
+    for (const b of TIME_BANDS) {
+      // The evening band ends a minute past 10pm so a 10pm start is included.
+      const endMin = b.toMin % 60 === 0 ? b.toMin : b.toMin - 1;
+      expect(b.range, b.id).toBe(`${clockOf(b.fromMin)} to ${clockOf(endMin)}`);
+      expect(b.preferMin, `${b.id} default start`).toBeGreaterThanOrEqual(b.fromMin);
+      expect(b.preferMin, `${b.id} default start`).toBeLessThan(b.toMin);
+    }
+  });
+
+  it("band edges are the surcharge edges, walked quarter hour by quarter hour", () => {
+    for (let m = 6 * 60; m <= 22 * 60; m += 15) {
+      const band = bandOf(m);
+      expect(band, `${m / 60}h has no band`).not.toBeNull();
+      const charged = computeSurcharge(
+        { startMinutesLocal: m, priorityBooking: false },
+        R.surcharge,
+      );
+      expect(
+        band!.premium,
+        `${clockOf(m)} sits in the ${band!.label} band but is billed ${charged.appliedBp / 100}%`,
+      ).toBe(charged.appliedBp > 0);
+    }
+  });
+
+  it("the two standard bands run back to back with no premium gap", () => {
+    const standard = TIME_BANDS.filter((b) => !b.premium);
+    expect(standard.map((b) => b.id)).toEqual(["midday", "afternoon"]);
+    expect(standard[0]!.toMin).toBe(standard[1]!.fromMin);
+    expect(standard[0]!.fromMin).toBe(R.surcharge.earlyBeforeMinutes);
+    expect(standard[1]!.toMin).toBe(R.surcharge.lateFromMinutes);
   });
 
   it("leaves no gap between bands for a start to fall through", () => {
