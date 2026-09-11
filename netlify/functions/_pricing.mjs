@@ -98,6 +98,11 @@ var ADDONS = [
       packageIds: ["showroom-exterior"],
       message: "Already covered by the correction tier on Showroom Ready Exterior."
     },
+    // Off the menu until the correction setup is built out. Listed with its
+    // price rather than hidden, so someone who wants it can say so and be
+    // first in the queue when it opens.
+    unavailable: true,
+    unavailableNote: "Not available yet. We are building up to machine correction work, and this opens with it.",
     tiers: [
       {
         id: "std",
@@ -128,7 +133,7 @@ var ADDONS = [
       packageIds: ["basic-exterior", "full-exterior", "showroom-exterior"],
       message: "Already included from Basic Exterior up. No need to add it."
     },
-    tiers: [{ id: "std", label: "All four", priceCents: 3500, durationMin: 30 }]
+    tiers: [{ id: "std", label: "All four", priceCents: 4500, durationMin: 30 }]
   },
   {
     id: "paint-decon",
@@ -159,7 +164,7 @@ var ADDONS = [
     // same way ozone is gated behind stain work.
     requiresAnyAddonTier: [{ addonId: "paint-decon", tierIds: ["std"] }],
     requirementMessage: "Clay goes on after the chemical decontamination, never before it. Add Paint Decontamination first, or step up to Full Exterior, which includes both.",
-    tiers: [{ id: "std", label: "All panels", priceCents: 4500, durationMin: 60 }]
+    tiers: [{ id: "std", label: "All panels", priceCents: 3500, durationMin: 60 }]
   },
   {
     id: "hard-water",
@@ -211,7 +216,7 @@ var ADDONS = [
     description: "3 to 5 years of protection with proper maintenance, bonded to the clear coat.",
     note: "A real coating cures into a hard glass-like layer chemically bonded to the clear coat, which is why it lasts years rather than months. It also locks in whatever the paint looks like at the time, so any swirls underneath are sealed in with it. That is why coatings are sold with correction rather than on their own, and why this one lives inside Showroom Ready Exterior.",
     unavailable: true,
-    unavailableNote: "Booked through Showroom Ready Exterior, which includes the prep a coating needs.",
+    unavailableNote: "Not available yet. A coating needs the paint corrected first, so it opens together with Showroom Ready Exterior.",
     tiers: [
       {
         id: "std",
@@ -1029,6 +1034,17 @@ var PROMOS = [
     percentBp: 1e3,
     active: true,
     blurb: "10% off your service."
+  },
+  {
+    // Not advertised anywhere on the site. It works when somebody types it,
+    // which is the point: Elijah hands it out to friends, family and anyone
+    // working for him, and nothing on the page invites a stranger to guess
+    // at it. If it ever leaks, set active to false and it stops that minute.
+    code: "FRIANDFAM",
+    label: "FRIANDFAM, 25% off",
+    percentBp: 2500,
+    active: true,
+    blurb: "Friends and family rate, 25% off your service."
   }
 ];
 function normalisePromo(code) {
@@ -1997,10 +2013,22 @@ var CAPABILITIES = [
     blockedBy: "Google Routes API key and SHOP_ORIGIN_ADDRESS"
   },
   {
-    id: "automatedMessages",
-    what: "Automatic confirmations, reminders and an on-the-way text",
+    // Split from a single "automatedMessages" switch, because the two halves
+    // are not remotely the same job. Resend is a signup and one DNS record.
+    // A2P 10DLC registration is days to weeks of carrier review, and until it
+    // clears, business texts are SILENTLY FILTERED: they look sent and never
+    // arrive. Tying email to that would hold back a working feature for
+    // weeks for no reason.
+    id: "automatedEmail",
+    what: "Automatic confirmation and reminder emails",
     live: false,
-    blockedBy: "Twilio A2P 10DLC registration and Resend"
+    blockedBy: "Resend account and one DNS record. The quickest win on this list"
+  },
+  {
+    id: "automatedTexts",
+    what: "Automatic confirmation, reminder and on-the-way texts",
+    live: false,
+    blockedBy: "Twilio A2P 10DLC registration, which takes days to weeks"
   },
   {
     id: "bookingLink",
@@ -2032,8 +2060,8 @@ var PROCESSORS = [
   { name: "Google Calendar", does: "holds our availability. Your browser reads our open times from it.", capability: "liveCalendar" },
   { name: "Stripe", does: "takes card payments and keeps your card on file. Card details go straight to Stripe over an encrypted connection; we never see or store the card number.", capability: "cardOnFile" },
   { name: "PayPal", does: "takes PayPal and Venmo payments.", capability: "digitalWallets" },
-  { name: "Twilio", does: "sends our appointment text messages.", capability: "automatedMessages" },
-  { name: "Resend", does: "sends our confirmation and reminder emails.", capability: "automatedMessages" },
+  { name: "Twilio", does: "sends our appointment text messages.", capability: "automatedTexts" },
+  { name: "Resend", does: "sends our confirmation and reminder emails.", capability: "automatedEmail" },
   { name: "Neon", does: "stores bookings in our database so your booking link works.", capability: "bookingLink" },
   { name: "Cloudflare Turnstile", does: "checks that a booking is being made by a person, before payment. It may set a cookie to do so.", capability: "botCheck" }
 ];
@@ -2049,6 +2077,7 @@ function isLive(id) {
 function pending() {
   return CAPABILITIES.filter((c2) => !c2.live);
 }
+var IN_PERSON = "cash, check, card, tap to pay, Venmo, Apple Pay, Cash App or Zelle";
 var GATED_COPY = [
   {
     id: "howToChange",
@@ -2064,9 +2093,11 @@ var GATED_COPY = [
   },
   {
     id: "paymentMethods",
-    capability: "digitalWallets",
-    live: "We take cards, Apple Pay, Google Pay, PayPal, Venmo and cash.",
-    notYet: "If you would rather settle another way, ask us and we will sort it out."
+    // Gated on taking money online at all, not on wallets: the in-person
+    // list is true today and does not wait for a Stripe key.
+    capability: "cardOnFile",
+    live: `On the day you can pay by ${IN_PERSON}. You can also pay in full online when you book, or ask us to put it on the card we already have on file.`,
+    notYet: `On the day you can pay by ${IN_PERSON}. Ask us for anything not on that list and we will almost certainly be able to take it.`
   },
   {
     id: "travelBasis",
@@ -2076,15 +2107,15 @@ var GATED_COPY = [
   },
   {
     id: "confirmation",
-    capability: "automatedMessages",
-    live: "When you book online you pick the time that suits you and we confirm it straight away by text and email.",
-    notYet: "When you book online you pick the time that suits you and we confirm it, usually within a few hours, by text or email."
+    capability: "automatedEmail",
+    live: "When you book online you pick the time that suits you and an email confirming it arrives straight away.",
+    notYet: "When you book online you pick the time that suits you. We confirm it by hand, usually within a few hours, by text or email, so a booking is not final until you hear from us."
   },
   {
     id: "messages",
-    capability: "automatedMessages",
+    capability: "automatedTexts",
     live: "We ask when you book whether we can text you about your detail. If you say yes we will confirm the booking, remind you beforehand and let you know when we are on the way.",
-    notYet: "We ask when you book whether we can text you about your detail. If you say yes we will use it to confirm the booking, remind you beforehand and let you know when we are on the way."
+    notYet: "We ask when you book whether we can text you about your detail. If you say yes, Elijah texts you himself: to confirm, to check anything he needs to know, and with an ETA before he sets off. There is no automated messaging behind it yet, so you are texting a person."
   }
 ];
 function copyFor(id) {

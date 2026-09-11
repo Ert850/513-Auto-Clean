@@ -840,3 +840,207 @@ body.bk-open { overflow: hidden; }
 .bk-mandate input { margin-top: .2rem; flex: 0 0 auto; }
 .bk-mandate.on span { color: var(--text); }
 .bk-turnstile { margin: .4rem 0 .8rem; min-height: 65px; }
+
+/* ---------- Leaving with a half-finished quote ---------- */
+/* Sits above the modal, inside the same host, so the funnel is still there
+   behind it and "Back to my booking" is instant rather than a re-render. */
+.bk-leave {
+  position: fixed; inset: 0; z-index: 410;
+  display: grid; place-items: center; padding: 1rem;
+  background: rgba(11, 14, 19, .55);
+}
+.bk-leave-card {
+  width: min(420px, 100%);
+  background: var(--paper-2); border-radius: var(--r-md);
+  box-shadow: var(--shadow-lg);
+  padding: 1.3rem 1.35rem 1.1rem;
+}
+.bk-leave-card h3 {
+  margin: 0 0 .7rem; font-family: var(--font-display); font-size: 1.22rem; line-height: 1.15;
+}
+.bk-leave-sum {
+  margin: 0 0 1rem; padding: .6rem .8rem; list-style: none;
+  background: var(--paper); border-radius: var(--r-sm); border: 1px solid var(--line);
+  font-size: .86rem; color: var(--text-soft);
+}
+.bk-leave-sum li + li { margin-top: .2rem; }
+
+.bk-leave-acts { display: flex; flex-direction: column; gap: .45rem; }
+.bk-leave-acts button {
+  font: inherit; font-size: .92rem; font-weight: 700; cursor: pointer;
+  border-radius: var(--r-sm); padding: .72rem .9rem; text-align: center;
+  border: 1.5px solid var(--line); background: var(--paper); color: var(--text);
+  transition: border-color .16s, background .16s;
+}
+.bk-leave-acts button:hover { border-color: var(--red); }
+.bk-leave-go { background: var(--ink) !important; color: #fff !important; border-color: var(--ink) !important; }
+.bk-leave-go:hover { background: var(--ink-2) !important; }
+.bk-leave-keep { border-color: var(--red) !important; color: var(--red) !important; }
+.bk-leave-ask { /* the plain outlined default: a third option, not a third shout */ }
+.bk-leave-drop { color: var(--text-soft) !important; font-weight: 500 !important; border-color: transparent !important; }
+.bk-leave-drop:hover { color: var(--red) !important; }
+.bk-leave-note { margin: .85rem 0 0; font-size: .76rem; color: var(--text-soft); line-height: 1.5; }
+
+/* ---------- A word after the modal has gone ---------- */
+.bk-toast {
+  position: fixed; left: 50%; bottom: 1.4rem; transform: translateX(-50%);
+  z-index: 420; max-width: min(30rem, calc(100vw - 2rem));
+  background: var(--ink); color: #fff; border-radius: var(--r-sm);
+  padding: .8rem 1.1rem; font-size: .88rem; line-height: 1.45;
+  box-shadow: var(--shadow-lg);
+  transition: opacity .45s, transform .45s;
+}
+.bk-toast.out { opacity: 0; transform: translate(-50%, .5rem); }
+
+/* ---------- Picked up where you left off ---------- */
+.bk-resumed {
+  margin: 0 0 .9rem; padding: .55rem .75rem;
+  background: var(--red-ghost); border-radius: var(--r-sm);
+  font-size: .84rem; color: var(--text);
+}
+.bk-resumed button {
+  font: inherit; font-size: .84rem; font-weight: 700; color: var(--red);
+  background: none; border: 0; padding: 0; cursor: pointer;
+  text-decoration: underline; text-underline-offset: 3px;
+}
+
+/* ---------- The field Continue is waiting on ---------- */
+/* Outline rather than a colour swap: it has to read on a text input, a pair
+   of yes/no buttons and a checkbox row, which have nothing else in common. */
+.bk-invalid {
+  outline: 2px solid var(--red); outline-offset: 3px; border-radius: var(--r-sm);
+  animation: bkNudge .45s var(--ease);
+}
+@keyframes bkNudge {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-4px); }
+  75% { transform: translateX(4px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bk-invalid { animation: none; }
+  .bk-toast { transition: none; }
+}
+
+/* ---------- A price with a promo code taken off it ---------- */
+/* The struck figure stays legible rather than fading away: the saving only
+   reads as a saving if you can still see what it was. */
+.bk-pkg-r s, .bk-tier-p s, .bk-total-sub s {
+  color: var(--text-soft); text-decoration-thickness: 1.5px; font-weight: 500;
+  margin-right: .25em;
+}
+.bk-pkg-r s { display: block; font-size: .8rem; margin: 0 0 .1rem; }
+.bk-cut { color: var(--red); }
+.bk-tier-p .bk-cut { font-weight: 800; }
+
+/* ---------- Promo code on the package screen ---------- */
+.bk-promo.early { margin: 0 0 1.1rem; }
+.bk-promo.early label { color: var(--text-soft); font-weight: 500; }
+.bk-promo.early label i { font-style: normal; }
+
+/* ---------- The soonest days, and the box they tick ---------- */
+.bk-soonest {
+  font-style: normal; font-size: .68rem; font-weight: 800;
+  letter-spacing: .05em; text-transform: uppercase;
+  color: #7a5209; background: rgba(240, 169, 63, .16);
+  padding: .18rem .45rem; border-radius: 5px; margin-left: .5rem;
+  vertical-align: 2px; white-space: nowrap;
+}
+.bk-daygroup.soon > h4 { display: flex; align-items: baseline; flex-wrap: wrap; gap: .1rem; }
+
+/* The checkbox, for the three seconds after it ticks itself. */
+.bk-check.bk-juston {
+  border-color: var(--red);
+  box-shadow: 0 0 0 3px var(--red-ghost);
+  animation: bkNudge .45s var(--ease);
+}
+@media (prefers-reduced-motion: reduce) { .bk-check.bk-juston { animation: none; } }
+
+/* ---------- Getting set up on the day ---------- */
+.bk-accbox {
+  background: var(--paper-2); border: 1.5px solid var(--line); border-radius: var(--r-md);
+  padding: 1rem 1.05rem; margin: 1.1rem 0;
+}
+.bk-accbox h4 { margin: 0 0 .3rem; font-family: var(--font-display); font-size: 1.02rem; }
+.bk-accbox > .bk-hint { margin: 0 0 .9rem; }
+.bk-accbox .bk-field { margin-top: .9rem; }
+
+.bk-acc { padding: .7rem 0; border-top: 1px solid var(--line); }
+.bk-acc-q { margin: 0; font-size: .92rem; font-weight: 700; }
+.bk-acc-h { margin: .12rem 0 .5rem; font-size: .82rem; color: var(--text-soft); line-height: 1.5; }
+.bk-acc-opts { display: grid; grid-template-columns: repeat(3, 1fr); gap: .4rem; }
+.bk-acc-b {
+  font: inherit; font-size: .88rem; font-weight: 700; cursor: pointer;
+  padding: .55rem .4rem; border-radius: var(--r-sm);
+  border: 1.5px solid var(--line); background: var(--paper); color: var(--text);
+  transition: border-color .16s, background .16s;
+}
+.bk-acc-b:hover { border-color: var(--red); }
+.bk-acc-b.on { border-color: var(--red); background: var(--red-ghost); color: var(--red-deep); }
+
+/* ---------- The receipt on the confirmation screen ---------- */
+.bk-done-h {
+  margin: 1.6rem 0 .5rem; font-family: var(--font-display); font-size: .95rem;
+  text-align: left;
+}
+.bk-receipt {
+  margin: 0; text-align: left;
+  display: grid; grid-template-columns: minmax(5.5rem, auto) 1fr; gap: .1rem .9rem;
+  background: var(--paper); border: 1px solid var(--line); border-radius: var(--r-sm);
+  padding: .8rem .95rem; font-size: .87rem;
+}
+.bk-receipt dt { color: var(--text-soft); font-weight: 700; }
+.bk-receipt dd { margin: 0; color: var(--text); overflow-wrap: anywhere; }
+
+.bk-done-acts { display: grid; gap: .45rem; margin: 1.3rem 0 .6rem; }
+.bk-done-acts button {
+  font: inherit; font-size: .92rem; font-weight: 700; cursor: pointer;
+  border-radius: var(--r-sm); padding: .72rem .9rem;
+  border: 1.5px solid var(--line); background: var(--paper-2); color: var(--text);
+  transition: border-color .16s;
+}
+.bk-done-acts button:hover { border-color: var(--red); }
+.bk-done-fix { border-color: var(--red) !important; color: var(--red) !important; }
+.bk-done-call { font-size: .84rem; color: var(--text-soft); line-height: 1.55; margin: 0 0 .4rem; }
+.bk-done-call a { color: var(--red); font-weight: 700; }
+
+/* The step tabs, once there is nothing left to step through. */
+.bk-nav-done {
+  display: block; padding: .55rem 1.1rem; font-size: .78rem; font-weight: 700;
+  letter-spacing: .04em; text-transform: uppercase; color: var(--text-soft);
+}
+
+/* "Optional", on a heading that could otherwise read as a list of demands. */
+.bk-opt {
+  font-style: normal; font-size: .64rem; font-weight: 800;
+  letter-spacing: .09em; text-transform: uppercase;
+  color: var(--text-soft); background: var(--line);
+  padding: .18rem .45rem; border-radius: 5px; margin-left: .45rem; vertical-align: 2px;
+}
+
+/* ---------- Jump to a date, or ask for a time ---------- */
+.bk-jump {
+  display: grid; grid-template-columns: 1fr 1fr; gap: .6rem;
+  background: var(--paper-2); border: 1.5px solid var(--line); border-radius: var(--r-md);
+  padding: .85rem .9rem; margin: 0 0 1rem;
+}
+.bk-jump-f { min-width: 0; }
+.bk-jump-f label {
+  display: block; font-size: .78rem; font-weight: 700; color: var(--text-soft);
+  margin-bottom: .3rem;
+}
+.bk-jump input {
+  width: 100%; font: inherit; font-size: .92rem;
+  border: 1.5px solid var(--line); border-radius: var(--r-sm);
+  padding: .55rem .65rem; background: var(--paper); color: var(--text);
+}
+.bk-jump input:focus { border-color: var(--red); outline: none; }
+.bk-jump-clear, .bk-jump-note { grid-column: 1 / -1; }
+.bk-jump-clear {
+  justify-self: start; font: inherit; font-size: .82rem; font-weight: 700;
+  color: var(--red); background: none; border: 0; padding: 0; cursor: pointer;
+  text-decoration: underline; text-underline-offset: 3px;
+}
+.bk-jump-note {
+  margin: 0; font-size: .85rem; line-height: 1.5; color: var(--text);
+  background: var(--red-ghost); border-radius: var(--r-sm); padding: .5rem .65rem;
+}

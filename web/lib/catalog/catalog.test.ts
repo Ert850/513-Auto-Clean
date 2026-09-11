@@ -32,16 +32,6 @@ describe("add-on pricing", () => {
     expect(unpriced).toEqual([]);
   });
 
-  it("prices the six exterior add-ons Elijah quoted", () => {
-    const at = (id: string) => get(id).tiers[0]!.priceCents;
-    expect(at("tire-rim-shine")).toBe(3500);
-    expect(at("paint-decon")).toBe(4500);
-    expect(at("clay-bar")).toBe(4500);
-    expect(at("hard-water")).toBe(5000);
-    expect(at("engine-bay")).toBe(5000);
-    expect(at("ceramic-sealant")).toBe(3500);
-  });
-
   it("keeps correction work visible and priced, but not selectable", () => {
     for (const id of ["ceramic-coating", "paint-polish", "paint-correction"]) {
       const a = get(id);
@@ -209,5 +199,39 @@ describe("travel map geography", () => {
     expect(at("41042").lat).toBeLessThan(at("45202").lat); // Florence south of downtown
     expect(at("45230").lon).toBeGreaterThan(at("45238").lon); // Anderson east of Delhi
     expect(at("47025").lon).toBeLessThan(at("45220").lon); // Lawrenceburg west of Clifton
+  });
+});
+
+describe("the add-on price list, as advertised", () => {
+  const tier = (addonId: string, tierId = "std") =>
+    findAddon(addonId)!.tiers.find((t) => t.id === tierId)!;
+
+  it("charges what the page says", () => {
+    expect(tier("ceramic-sealant").priceCents).toBe(3500);
+    expect(tier("clay-bar").priceCents).toBe(3500);
+    expect(tier("tire-rim-shine").priceCents).toBe(4500);
+    expect(tier("paint-decon").priceCents).toBe(4500);
+    expect(tier("hard-water").priceCents).toBe(5000);
+    expect(tier("engine-bay").priceCents).toBe(5000);
+  });
+
+  it("keeps correction work off the menu until the setup exists", () => {
+    for (const id of ["scratch-reduction", "ceramic-coating", "paint-polish", "paint-correction"]) {
+      const a = findAddon(id)!;
+      expect(a.unavailable, id).toBe(true);
+      expect(isSelectable(a), id).toBe(false);
+      // Listed with a reason rather than hidden: someone who wants it should
+      // be able to see it is coming and say so.
+      expect(unavailableReason(a), id).toBeTruthy();
+      expect(a.tiers.some((t) => t.priceCents !== null), `${id} still shows a price`).toBe(true);
+    }
+  });
+
+  it("everything still bookable has a price on every tier", () => {
+    for (const a of ADDONS.filter((x) => isSelectable(x))) {
+      for (const t of a.tiers) {
+        expect(t.priceCents, `${a.id}/${t.id}`).toBeGreaterThan(0);
+      }
+    }
   });
 });

@@ -50,13 +50,24 @@ describe("privacy.html is generated and current", () => {
       expect(text).not.toMatch(/card details/i);
     }
     if (!isLive("bookingLink")) expect(text).not.toMatch(/our database/i);
-    if (!isLive("automatedMessages")) expect(text).not.toMatch(/Twilio|Resend/);
+    if (!isLive("automatedTexts")) expect(text).not.toMatch(/Twilio/);
+    if (!isLive("automatedEmail")) expect(text).not.toMatch(/Resend/);
   });
 
   it("no longer promises a future update instead of describing the present", () => {
     expect(text).not.toMatch(/when we launch online booking/i);
     expect(text).not.toMatch(/simple static site/i);
     expect(text).not.toMatch(/quote request form/i);
+  });
+
+  it("discloses the one thing kept in the browser, and that it is opt in", () => {
+    // The funnel can save a half-finished booking to localStorage when the
+    // customer asks it to. A policy that says "we keep nothing in your
+    // browser" alongside code that keeps something is the exact drift this
+    // whole generated-page mechanism exists to prevent.
+    expect(text).toMatch(/your own browser for 14 days/i);
+    expect(text).toMatch(/only if you ask for it/i);
+    expect(text).not.toMatch(/keeps nothing in your browser/i);
   });
 
   it("always names the things that are always true", () => {
