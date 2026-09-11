@@ -3,29 +3,32 @@ import type { PricingRules } from "../pricing/rules.js";
 /**
  * Changing a booking that already exists.
  *
- * A customer decides on the day before that they also want the outside done,
- * or that they need to shift from the morning to the evening. This decides
+ * A customer decides the day before that they also want the outside done, or
+ * that they need to shift from the morning to the evening. This works out
  * what, if anything, that costs.
  *
- * THE RULE, and it is not the obvious one:
+ * OUTSIDE 72 HOURS, NOTHING. There is time to refill whatever they hand back,
+ * so change as much as you like.
  *
- *   The short notice charge is about TAKING SOMEBODY ELSE'S SLOT, not about
- *   spending more money.
+ * INSIDE 72 HOURS the question is what they took, and the test is whether
+ * they kept every minute they already had.
  *
- * So adding a second vehicle to a day that is otherwise empty is free, even
- * an hour beforehand, because nobody loses anything. Moving from 10am to 4pm
- * inside the short notice window is not, because the 10am they are giving
- * back is no use to anyone at that notice and the 4pm they are taking was
- * available to somebody else.
+ *   KEPT IT ALL AND ADDED MORE. Say 10am to 2pm becomes 8am to 2pm. The
+ *   original four hours were already theirs, so those are untouched. Only the
+ *   new 8am to 10am is time somebody else could have booked, so the short
+ *   notice rate applies to THAT and nothing else. Same for running later.
  *
- * The test for "did they take a new slot" is OVERLAP. If the new window still
- * touches the old one, the booking grew or shifted around a time that was
- * already theirs. If it does not, it is a different slot.
+ *   GAVE SOME BACK AND TOOK OTHER TIME. Say 10am to 2pm becomes 8am to 12pm.
+ *   They have handed back 12pm to 2pm, which is no use to anyone at this
+ *   notice, and taken 8am to 10am, which was. That is a different booking
+ *   rather than a bigger one, so the rate applies to the whole thing.
  *
- * WE WANT PEOPLE TO ADD SERVICES. A rule that charged 20% for deciding to add
- * an exterior would teach customers not to ask, which costs far more than the
- * occasional awkward reshuffle. Every branch here is built so that growing a
- * booking in place is free.
+ *   TOOK A COMPLETELY DIFFERENT SLOT. Same as above: the whole thing.
+ *
+ * The reason the first case is treated so much more gently is that WE WANT
+ * PEOPLE TO ADD SERVICES. Someone deciding on the morning that they also want
+ * the exterior done is a good day for everyone, and a rule that charged 20%
+ * on the entire booking for it would teach customers not to ask.
  */
 
 export interface Window {
@@ -41,8 +44,10 @@ export interface ChangeInput {
   proposed: Window;
   /** Hours between now and the ORIGINAL appointment. */
   hoursUntilStart: number;
-  /** Service total of the new booking, in cents, before any change fee. */
+  /** Service total of the NEW booking, in cents, before any change fee. */
   newServiceCents: number;
+  /** Service total of the booking as it stands. Used to value what they added. */
+  originalServiceCents?: number;
   /** Elijah suggested the move rather than the customer asking. */
   ownerInitiated?: boolean;
   waived?: boolean;
@@ -50,10 +55,12 @@ export interface ChangeInput {
 
 export type ChangeKind =
   | "no_change"
-  | "grew_in_place"
-  | "moved_overlapping"
+  | "added_free"
+  | "added_short_notice"
+  | "shifted_short_notice"
   | "moved_away_free"
   | "moved_away_short_notice"
+  | "shrank"
   | "owner_moved"
   | "waived";
 
@@ -61,106 +68,146 @@ export interface ChangeResult {
   kind: ChangeKind;
   /** True when the new window still touches the old one. */
   overlaps: boolean;
-  /** Basis points added for taking a different slot at short notice. */
+  /** True when every minute they already had is still theirs. */
+  keptOriginal: boolean;
   changeFeeBp: number;
   changeFeeCents: number;
+  /** What the fee was charged on: nothing, the added services, or the lot. */
+  chargedOn: "nothing" | "added" | "whole_booking";
   /** Minutes the booking grew by. Negative when it shrank. */
   growthMin: number;
-  /** One line for the customer. */
+  /** Value of the services they added, in cents. */
+  addedServiceCents: number;
   explanation: string;
 }
 
 const MIN = 60_000;
 
-/** Do two windows touch at all? Sharing only an endpoint does not count. */
+/** Do two windows genuinely intersect? Sharing only an endpoint does not. */
 export function overlaps(a: Window, b: Window): boolean {
   return a.startMs < b.endMs && b.startMs < a.endMs;
 }
 
+/** Does the proposed window still cover every minute of the original? */
+export function keepsAllOf(original: Window, proposed: Window): boolean {
+  return proposed.startMs <= original.startMs && proposed.endMs >= original.endMs;
+}
+
+/**
+ * Did they take no time that was not already theirs?
+ *
+ * Shrinking, or finishing earlier, or starting later inside their own slot.
+ * Nobody else's time is involved, so nothing is ever charged for it however
+ * short the notice.
+ */
+export function takesNoNewTime(original: Window, proposed: Window): boolean {
+  return proposed.startMs >= original.startMs && proposed.endMs <= original.endMs;
+}
+
 export function assessChange(input: ChangeInput, r: PricingRules): ChangeResult {
   const { original, proposed } = input;
-  const growthMin = Math.round((proposed.endMs - proposed.startMs - (original.endMs - original.startMs)) / MIN);
+  const growthMin = Math.round(
+    (proposed.endMs - proposed.startMs - (original.endMs - original.startMs)) / MIN,
+  );
   const touching = overlaps(original, proposed);
+  const keptAll = keepsAllOf(original, proposed);
+  const addedServiceCents = Math.max(
+    0,
+    Math.round(input.newServiceCents - (input.originalServiceCents ?? input.newServiceCents)),
+  );
+
+  const base = {
+    overlaps: touching,
+    keptOriginal: keptAll,
+    growthMin,
+    addedServiceCents,
+  };
 
   const free = (kind: ChangeKind, explanation: string): ChangeResult => ({
+    ...base,
     kind,
-    overlaps: touching,
     changeFeeBp: 0,
     changeFeeCents: 0,
-    growthMin,
+    chargedOn: "nothing",
     explanation,
   });
 
   if (input.ownerInitiated) {
-    return free("owner_moved", "We suggested this, so there is no charge for the change.");
+    return free("owner_moved", "We suggested this, so there is nothing extra to pay.");
   }
   if (input.waived) return free("waived", "Change fee waived.");
 
-  const sameTime = proposed.startMs === original.startMs;
-  const sameLength = growthMin === 0;
+  const sameWindow =
+    proposed.startMs === original.startMs && proposed.endMs === original.endMs;
+  if (sameWindow) return free("no_change", "No change to your time.");
 
-  if (sameTime && sameLength) {
-    return free("no_change", "No change to your time.");
-  }
-
-  // Still starts when it always did, just runs longer or shorter. This is the
-  // case we most want to be free: it is somebody buying more from us.
-  if (sameTime) {
+  // Plenty of notice. Whatever they hand back, we can fill.
+  const shortNotice = input.hoursUntilStart < r.refundFullWindowHours;
+  if (!shortNotice) {
     return free(
-      "grew_in_place",
-      growthMin > 0
-        ? `Same start time, running about ${formatMinutes(growthMin)} longer. No charge for the change.`
-        : `Same start time, finishing about ${formatMinutes(-growthMin)} earlier.`,
-    );
-  }
-
-  // Moved, but the new window still covers part of the old one, so the slot
-  // was already theirs and nobody else lost anything.
-  if (touching) {
-    return free(
-      "moved_overlapping",
-      "Shifted around the time you already had, so there is no charge for the change.",
-    );
-  }
-
-  // A genuinely different slot. Only chargeable at short notice, because with
-  // plenty of warning the old time can be filled.
-  if (input.hoursUntilStart >= r.refundFullWindowHours) {
-    return free(
-      "moved_away_free",
-      `Moved to a different time with more than ${r.refundFullWindowHours} hours notice, so there is no charge.`,
+      keptAll ? "added_free" : "moved_away_free",
+      `Changed with more than ${r.refundFullWindowHours} hours notice, so there is nothing extra to pay.`,
     );
   }
 
   const bp = r.shortNoticeChangeBp;
-  const fee = Math.round((Math.max(0, input.newServiceCents) * bp) / 10_000);
 
+  // Gave time back and took none. Handing a slot back is doing us a favour,
+  // so it is free at any notice.
+  if (takesNoNewTime(original, proposed)) {
+    return free(
+      "shrank",
+      "This only gives time back rather than taking any, so there is nothing extra to pay.",
+    );
+  }
+
+  // Kept everything and only took MORE time. The old slot was theirs already,
+  // so only the new stretch is chargeable.
+  if (keptAll) {
+    if (addedServiceCents <= 0) {
+      return free(
+        "added_free",
+        "Kept the time you had, so there is nothing extra to pay for the change.",
+      );
+    }
+    const fee = Math.round((addedServiceCents * bp) / 10_000);
+    return {
+      ...base,
+      kind: "added_short_notice",
+      changeFeeBp: bp,
+      changeFeeCents: fee,
+      chargedOn: "added",
+      explanation:
+        `You kept the time you already had, so the short notice rate only applies to what you added, ` +
+        `not the whole booking. That is ${bp / 100}% on the extra work.`,
+    };
+  }
+
+  // They gave part of their slot back and took time that was not theirs. That
+  // is a different booking rather than a longer one.
+  const fee = Math.round((Math.max(0, input.newServiceCents) * bp) / 10_000);
   return {
-    kind: "moved_away_short_notice",
-    overlaps: false,
+    ...base,
+    kind: touching ? "shifted_short_notice" : "moved_away_short_notice",
     changeFeeBp: bp,
     changeFeeCents: fee,
-    growthMin,
-    explanation:
-      `This is a different time rather than a change to the one you had, and it is inside ` +
-      `${r.refundFullWindowHours} hours, so the same ${bp / 100}% short notice rate applies as if you ` +
-      `were booking it today. Keeping any part of your original time avoids it.`,
+    chargedOn: "whole_booking",
+    explanation: touching
+      ? `This moves off part of the time you had and onto time that was not yours, inside ` +
+        `${r.refundFullWindowHours} hours, so the ${bp / 100}% short notice rate applies to the whole ` +
+        `booking. Keeping all of your original time and simply adding to it would only charge the extra.`
+      : `This is a different slot rather than a change to the one you had, inside ` +
+        `${r.refundFullWindowHours} hours, so the ${bp / 100}% short notice rate applies to the whole ` +
+        `booking, as if you were booking it today.`,
   };
-}
-
-function formatMinutes(min: number): string {
-  if (min < 60) return `${min} minutes`;
-  const h = min / 60;
-  return Number.isInteger(h) ? `${h} hour${h === 1 ? "" : "s"}` : `${h.toFixed(1)} hours`;
 }
 
 /**
  * The cheapest way to fit a longer booking, preferring not to move at all.
  *
- * Tries keeping the start and running later first, because that is free and
- * is what most people actually want. Only then does it look at other starts,
- * and it reports whether each candidate would cost anything so the funnel can
- * say so before the customer commits.
+ * Keeping the existing start and running later comes first, because that is
+ * the option that charges least, and each candidate reports what it would
+ * cost so the funnel can say so before anyone commits.
  */
 export interface FitOption {
   startMs: number;
@@ -177,12 +224,15 @@ export function bestFit(
 ): FitOption[] {
   const options = candidateStarts.map((startMs) => {
     const proposed = { startMs, endMs: startMs + newDurationMs };
-    return { startMs, endMs: proposed.endMs, result: assessChange({ ...input, original, proposed }, r) };
+    return {
+      startMs,
+      endMs: proposed.endMs,
+      result: assessChange({ ...input, original, proposed }, r),
+    };
   });
 
-  // Free first, then nearest to where they already were. Cost beats
-  // convenience here: a customer would rather move two hours for nothing than
-  // twenty minutes for twenty percent.
+  // Cost first, then nearest to where they already were. A customer would
+  // rather move two hours for nothing than twenty minutes for twenty percent.
   return options.sort((a, b) => {
     if (a.result.changeFeeCents !== b.result.changeFeeCents) {
       return a.result.changeFeeCents - b.result.changeFeeCents;

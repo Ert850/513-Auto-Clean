@@ -1,130 +1,171 @@
 import { describe, expect, it } from "vitest";
-import { assessChange, bestFit, overlaps } from "./bookingChange.js";
+import { assessChange, bestFit, keepsAllOf, overlaps } from "./bookingChange.js";
 import { DEFAULT_RULES as R } from "./../pricing/rules.js";
 
 const H = 3_600_000;
-const DAY0 = Date.UTC(2026, 9, 15, 14, 0, 0); // 10am Eastern
-const SERVICE = 24_500;
+/** 10am Eastern, and a 4 hour booking: 10am to 2pm. */
+const TEN = Date.UTC(2026, 9, 15, 14, 0, 0);
+const original = { startMs: TEN, endMs: TEN + 4 * H };
 
-/** A 4 hour booking at 10am. */
-const original = { startMs: DAY0, endMs: DAY0 + 4 * H };
+const INTERIOR = 21_500; // what they booked, a Full Interior
+const EXTERIOR = 12_500; // what they are adding, a Basic Exterior
+const BOTH = INTERIOR + EXTERIOR;
 
-const change = (
-  proposed: { startMs: number; endMs: number },
+const at = (
+  startHoursFromTen: number,
+  endHoursFromTen: number,
   hoursUntilStart: number,
   over: Record<string, unknown> = {},
 ) =>
   assessChange(
-    { original, proposed, hoursUntilStart, newServiceCents: SERVICE, ...over },
+    {
+      original,
+      proposed: { startMs: TEN + startHoursFromTen * H, endMs: TEN + endHoursFromTen * H },
+      hoursUntilStart,
+      newServiceCents: BOTH,
+      originalServiceCents: INTERIOR,
+      ...over,
+    },
     R,
   );
 
-describe("adding services is free", () => {
-  it("charges nothing to run longer from the same start, even an hour before", () => {
-    const r = change({ startMs: DAY0, endMs: DAY0 + 6 * H }, 1);
-    expect(r.changeFeeCents).toBe(0);
-    expect(r.kind).toBe("grew_in_place");
-    expect(r.growthMin).toBe(120);
+describe("Elijah's two worked examples, inside 72 hours", () => {
+  it("10am-2pm to 8am-2pm charges 20% on the ADDED service only", () => {
+    // They kept every minute they had and took two more hours in front.
+    const r = at(-2, 4, 20);
+    expect(r.keptOriginal).toBe(true);
+    expect(r.kind).toBe("added_short_notice");
+    expect(r.chargedOn).toBe("added");
+    expect(r.addedServiceCents).toBe(EXTERIOR);
+    expect(r.changeFeeCents).toBe(Math.round(EXTERIOR * 0.2)); // $25, not $68
   });
 
-  it("charges nothing for a second vehicle on an otherwise empty day", () => {
-    // The whole point: nobody loses a slot, so nobody pays for one.
-    const r = change({ startMs: DAY0, endMs: DAY0 + 8 * H }, 2);
-    expect(r.changeFeeCents).toBe(0);
-  });
-
-  it("charges nothing for shrinking either", () => {
-    const r = change({ startMs: DAY0, endMs: DAY0 + 2 * H }, 2);
-    expect(r.changeFeeCents).toBe(0);
-    expect(r.growthMin).toBe(-120);
-  });
-});
-
-describe("moving around a time you already had", () => {
-  it("is free when the new window still touches the old one", () => {
-    // 8am to 2pm still covers the 10am they had.
-    const r = change({ startMs: DAY0 - 2 * H, endMs: DAY0 + 4 * H }, 12);
+  it("10am-2pm to 8am-12pm charges 20% on the WHOLE booking", () => {
+    // They gave back 12pm to 2pm and took 8am to 10am, so it is a different
+    // booking rather than a longer one.
+    const r = at(-2, 2, 20);
+    expect(r.keptOriginal).toBe(false);
     expect(r.overlaps).toBe(true);
-    expect(r.changeFeeCents).toBe(0);
-    expect(r.kind).toBe("moved_overlapping");
+    expect(r.kind).toBe("shifted_short_notice");
+    expect(r.chargedOn).toBe("whole_booking");
+    expect(r.changeFeeCents).toBe(Math.round(BOTH * 0.2));
   });
 
-  it("is free even when it starts earlier and runs longer", () => {
-    expect(change({ startMs: DAY0 - H, endMs: DAY0 + 7 * H }, 5).changeFeeCents).toBe(0);
-  });
-
-  it("treats a window that only touches at the edge as a different slot", () => {
-    // Starting exactly when the old one ended is not an overlap.
-    const r = change({ startMs: DAY0 + 4 * H, endMs: DAY0 + 8 * H }, 12);
-    expect(r.overlaps).toBe(false);
+  it("charges far less to add than to shift, which is the whole point", () => {
+    expect(at(-2, 4, 20).changeFeeCents).toBeLessThan(at(-2, 2, 20).changeFeeCents);
   });
 });
 
-describe("taking a different slot", () => {
-  it("charges 20% inside 72 hours, the example Elijah gave", () => {
-    // 10am to 4pm, no overlap, the next day.
-    const r = change({ startMs: DAY0 + 6 * H, endMs: DAY0 + 10 * H }, 20);
-    expect(r.kind).toBe("moved_away_short_notice");
-    expect(r.changeFeeBp).toBe(2000);
-    expect(r.changeFeeCents).toBe(Math.round(SERVICE * 0.2));
+describe("adding time you did not have", () => {
+  it("charges only the extra when running later from the same start", () => {
+    const r = at(0, 6, 20);
+    expect(r.chargedOn).toBe("added");
+    expect(r.changeFeeCents).toBe(Math.round(EXTERIOR * 0.2));
   });
 
-  it("charges nothing for the same move with plenty of notice", () => {
-    const r = change({ startMs: DAY0 + 6 * H, endMs: DAY0 + 10 * H }, 100);
-    expect(r.kind).toBe("moved_away_free");
+  it("charges nothing when the booking grows but the price does not", () => {
+    const r = at(0, 6, 20, { newServiceCents: INTERIOR, originalServiceCents: INTERIOR });
+    expect(r.changeFeeCents).toBe(0);
+    expect(r.kind).toBe("added_free");
+  });
+
+  it("charges nothing for finishing earlier", () => {
+    const r = at(0, 2, 20, { newServiceCents: INTERIOR, originalServiceCents: INTERIOR });
+    expect(r.kind).toBe("shrank");
     expect(r.changeFeeCents).toBe(0);
   });
 
-  it("moves on the 72 hour line, not around it", () => {
-    const far = { startMs: DAY0 + 6 * H, endMs: DAY0 + 10 * H };
-    expect(change(far, 72).changeFeeCents).toBe(0);
-    expect(change(far, 71.9).changeFeeCents).toBeGreaterThan(0);
+  it("charges nothing for starting later inside your own slot", () => {
+    // 12pm to 2pm, entirely within the 10am to 2pm they had. Handing time
+    // back is a favour to us, so it is free however short the notice.
+    const r = at(2, 4, 1, { newServiceCents: INTERIOR, originalServiceCents: INTERIOR });
+    expect(r.kind).toBe("shrank");
+    expect(r.changeFeeCents).toBe(0);
+  });
+});
+
+describe("outside 72 hours nothing is charged at all", () => {
+  it("is free to add", () => {
+    expect(at(-2, 4, 100).changeFeeCents).toBe(0);
   });
 
-  it("explains itself in terms of what avoids the fee", () => {
-    expect(change({ startMs: DAY0 + 6 * H, endMs: DAY0 + 10 * H }, 20).explanation)
-      .toMatch(/keeping any part of your original time avoids it/i);
+  it("is free to shift", () => {
+    expect(at(-2, 2, 100).changeFeeCents).toBe(0);
   });
 
-  it("is free when we suggested the move", () => {
-    expect(change({ startMs: DAY0 + 6 * H, endMs: DAY0 + 10 * H }, 2, { ownerInitiated: true }).changeFeeCents).toBe(0);
+  it("is free to take a completely different slot", () => {
+    expect(at(8, 12, 100).changeFeeCents).toBe(0);
+  });
+
+  it("switches on at the 72 hour line, not around it", () => {
+    expect(at(-2, 4, 72).changeFeeCents).toBe(0);
+    expect(at(-2, 4, 71.9).changeFeeCents).toBeGreaterThan(0);
+  });
+});
+
+describe("a completely different slot", () => {
+  it("charges the whole booking inside 72 hours", () => {
+    const r = at(8, 12, 20);
+    expect(r.overlaps).toBe(false);
+    expect(r.kind).toBe("moved_away_short_notice");
+    expect(r.changeFeeCents).toBe(Math.round(BOTH * 0.2));
+  });
+
+  it("says how to avoid it", () => {
+    expect(at(-2, 2, 20).explanation).toMatch(/keeping all of your original time/i);
+  });
+});
+
+describe("nobody is charged when it was not their doing", () => {
+  it("costs nothing when we suggested it", () => {
+    expect(at(8, 12, 2, { ownerInitiated: true }).changeFeeCents).toBe(0);
   });
 
   it("can be waived", () => {
-    expect(change({ startMs: DAY0 + 6 * H, endMs: DAY0 + 10 * H }, 2, { waived: true }).changeFeeCents).toBe(0);
+    expect(at(8, 12, 2, { waived: true }).changeFeeCents).toBe(0);
+  });
+
+  it("costs nothing when nothing changed", () => {
+    expect(at(0, 4, 2).kind).toBe("no_change");
   });
 });
 
-describe("overlap itself", () => {
-  it("is true for any genuine intersection", () => {
-    expect(overlaps({ startMs: 0, endMs: 10 }, { startMs: 5, endMs: 15 })).toBe(true);
-    expect(overlaps({ startMs: 5, endMs: 15 }, { startMs: 0, endMs: 10 })).toBe(true);
-    expect(overlaps({ startMs: 0, endMs: 100 }, { startMs: 10, endMs: 20 })).toBe(true);
+describe("the window tests themselves", () => {
+  it("keepsAllOf is true only when the original is fully covered", () => {
+    expect(keepsAllOf(original, { startMs: TEN - H, endMs: TEN + 5 * H })).toBe(true);
+    expect(keepsAllOf(original, original)).toBe(true);
+    expect(keepsAllOf(original, { startMs: TEN - 2 * H, endMs: TEN + 2 * H })).toBe(false);
+    expect(keepsAllOf(original, { startMs: TEN + H, endMs: TEN + 5 * H })).toBe(false);
   });
 
-  it("is false for windows that merely touch", () => {
+  it("overlaps is false for windows that merely touch", () => {
     expect(overlaps({ startMs: 0, endMs: 10 }, { startMs: 10, endMs: 20 })).toBe(false);
+    expect(overlaps({ startMs: 0, endMs: 10 }, { startMs: 9, endMs: 20 })).toBe(true);
   });
 });
 
 describe("suggesting where a longer booking fits", () => {
-  const starts = [DAY0 - 4 * H, DAY0, DAY0 + 2 * H, DAY0 + 8 * H];
+  const starts = [TEN - 4 * H, TEN - 2 * H, TEN, TEN + 8 * H];
 
-  it("puts the free options first, and staying put first of all", () => {
-    const options = bestFit(original, starts, 6 * H, { hoursUntilStart: 12, newServiceCents: SERVICE }, R);
-    expect(options[0]!.startMs).toBe(DAY0);
-    expect(options[0]!.result.changeFeeCents).toBe(0);
+  it("puts staying put first, because it costs least", () => {
+    const options = bestFit(
+      original,
+      starts,
+      6 * H,
+      { hoursUntilStart: 20, newServiceCents: BOTH, originalServiceCents: INTERIOR },
+      R,
+    );
+    expect(options[0]!.startMs).toBe(TEN);
   });
 
-  it("puts a chargeable option last however convenient it is", () => {
-    // A customer would rather move two hours for nothing than twenty minutes
-    // for twenty percent.
-    const options = bestFit(original, starts, 6 * H, { hoursUntilStart: 12, newServiceCents: SERVICE }, R);
-    expect(options[options.length - 1]!.result.changeFeeCents).toBeGreaterThan(0);
-  });
-
-  it("says what each option would cost before anyone commits", () => {
-    const options = bestFit(original, starts, 4 * H, { hoursUntilStart: 12, newServiceCents: SERVICE }, R);
-    for (const o of options) expect(typeof o.result.explanation).toBe("string");
+  it("ranks a shift above a completely different slot, both being chargeable", () => {
+    const options = bestFit(
+      original,
+      starts,
+      4 * H,
+      { hoursUntilStart: 20, newServiceCents: BOTH, originalServiceCents: INTERIOR },
+      R,
+    );
+    expect(options[options.length - 1]!.startMs).toBe(TEN + 8 * H);
   });
 });
