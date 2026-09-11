@@ -1029,6 +1029,17 @@ var PROMOS = [
     percentBp: 1e3,
     active: true,
     blurb: "10% off your service."
+  },
+  {
+    // Not advertised anywhere on the site. It works when somebody types it,
+    // which is the point: Elijah hands it out to friends, family and anyone
+    // working for him, and nothing on the page invites a stranger to guess
+    // at it. If it ever leaks, set active to false and it stops that minute.
+    code: "FRIANDFAM",
+    label: "FRIANDFAM, 25% off",
+    percentBp: 2500,
+    active: true,
+    blurb: "Friends and family rate, 25% off your service."
   }
 ];
 function normalisePromo(code) {

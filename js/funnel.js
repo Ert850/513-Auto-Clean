@@ -69,7 +69,11 @@
       quotedSlot: null,
       slotTaken: false,
       promoCode: '',
-      promoOpen: false,
+      // True while the "are you sure" panel is up.
+      leaving: false,
+      // True when this session was restored from a saved draft, so the page
+      // can say so rather than silently remembering a stranger's answers.
+      resumed: false,
       notes: '',
       sending: false,
       done: false,
@@ -97,7 +101,7 @@
     { id: 'more',     tab: 'Vehicles', title: 'Add another vehicle?',      auto: false, render: rMore,    valid: ok,       sum: sMore },
     { id: 'time',     tab: 'Time',     title: 'Pick your time',            auto: true,  render: rTime,    valid: vTime,    sum: sTime },
     { id: 'location', tab: 'Where',    title: 'Where are we detailing?',   auto: false, render: rLoc,     valid: vLoc,     sum: sLoc },
-    { id: 'contact',  tab: 'You',      title: 'How do we reach you?',      auto: false, render: rContact, valid: vContact, sum: sContact },
+    { id: 'contact',  tab: 'Accept',   title: 'Your details, and what you agree to', auto: false, render: rContact, valid: vContact, sum: sContact },
     { id: 'pay',      tab: 'Confirm',  title: 'Confirm your booking',      auto: false, render: rPay,     valid: vPay,     sum: sPay }
   ];
 
@@ -124,6 +128,9 @@
   }
   function sContact() { return state.contact.name ? state.contact.name.split(' ')[0] : ''; }
   function sPay() { return $(q().totalCents); }
+
+  /** "50%", "10%". Basis points are for the engine, not for a customer. */
+  function pctOf(bp) { return (bp / 100) + '%'; }
 
   function ok() { return null; }
   function step() { return STEPS[state.step]; }
@@ -218,7 +225,58 @@
   function q() { return P.quote(cart(), RULES); }
 
   /** Showroom is priced from a floor, so its card has to say so. */
-  function pkgPrice(p) { return $(p.priceCents) + (p.pricePlus ? '+' : ''); }
+  /* ---------------- prices under a promo code ---------------- */
+
+  /**
+   * The live percentage off, or null.
+   *
+   * ONLY percentage codes strike prices through. A flat "$20 off" cannot be
+   * shown against each line, because a quarter of it is not a quarter off
+   * every package: the numbers on screen would stop adding up to the number
+   * in the footer. Flat codes show their saving once, on the total.
+   *
+   * Cached per render because it is read once per package, add-on and tier,
+   * and recomputing the promo lookup a few dozen times a paint is waste.
+   */
+  var _rate;
+
+  function clearPromoRate() { _rate = undefined; }
+
+  function promoRate() {
+    if (_rate !== undefined) return _rate;
+    _rate = null;
+    if (state.promoCode) {
+      var hit = P.findPromo(state.promoCode, { serviceCents: q().serviceSubtotalCents });
+      if (hit.promo && hit.promo.percentBp) _rate = hit.promo.percentBp;
+    }
+    return _rate;
+  }
+
+  /**
+   * A service price, struck through when a code is taking a slice off it.
+   *
+   * `$215` on its own, or `$215 $161.25` with the first one crossed out. The
+   * point of the strike is that the discount is visible at the moment someone
+   * is choosing, not discovered at checkout, which is where it does the least
+   * good for them and for us.
+   */
+  function svc(cents, suffix) {
+    var bp = promoRate();
+    var tail = suffix || '';
+    if (!bp || !cents || cents <= 0) return $(cents) + tail;
+    var off = Math.round((cents * bp) / 10000);
+    return '<s>' + $(cents) + tail + '</s> <span class="bk-cut">' + $(cents - off) + tail + '</span>';
+  }
+
+  /** The same, for a figure written as an addition: "+$50". */
+  function svcPlus(cents) {
+    var bp = promoRate();
+    if (!bp || !cents || cents <= 0) return '+' + $(cents);
+    var off = Math.round((cents * bp) / 10000);
+    return '<s>+' + $(cents) + '</s> <span class="bk-cut">+' + $(cents - off) + '</span>';
+  }
+
+  function pkgPrice(p) { return svc(p.priceCents, p.pricePlus ? '+' : ''); }
 
   function pkgDuration(p) {
     return p.durationMaxMin
@@ -329,6 +387,7 @@
 
   function render() {
     if (state.done) return;
+    clearPromoRate();
     var s = step();
     var pct = Math.round(((state.step + 1) / STEPS.length) * 100);
 
@@ -348,6 +407,17 @@
         ? (isInquiry() ? 'Send request' : state.payInFull ? 'Pay and confirm' : 'Confirm booking')
         : 'Continue';
 
+    if (state.resumed) {
+      // Once, on the step they come back to. Repeating it on every step
+      // afterwards would be nagging about something they already know.
+      state.resumed = false;
+      var back = document.createElement('p');
+      back.className = 'bk-resumed';
+      back.innerHTML = 'Picked up where you left off. ' +
+        '<button type="button" id="bkFresh">Start fresh instead</button>';
+      el('bkBody').insertBefore(back, el('bkBody').firstChild);
+    }
+
     renderTotal();
     var focusable = el('bkBody').querySelector('[data-focus]');
     if (focusable) focusable.focus();
@@ -356,6 +426,7 @@
   }
 
   function renderTotal() {
+    clearPromoRate();
     var quote = q();
     var box = el('bkTotal');
     if (!quote.lines.length) { box.hidden = true; return; }
@@ -363,7 +434,18 @@
     box.querySelector('.bk-total-amt').textContent = $(quote.totalCents);
     var dur = quote.serviceDurationMin;
     var sub = box.querySelector('.bk-total-sub');
-    if (quote.multiVehicleDiscountCents > 0) {
+
+    if (quote.promoDiscountCents > 0) {
+      // Re-priced without the code rather than adding the discount back by
+      // hand, so the struck figure includes the tax that came off with it and
+      // the two numbers on screen really do subtract to the saving beside
+      // them.
+      var plain = cart();
+      plain.promoCode = null;
+      var before = P.quote(plain, RULES);
+      sub.innerHTML = '<s>' + $(before.totalCents) + '</s> ' +
+        esc(quote.promoCode) + ' saves you ' + $(before.totalCents - quote.totalCents);
+    } else if (quote.multiVehicleDiscountCents > 0) {
       // Lead with the saving, not the duration: this is the moment the second
       // vehicle has to look like a good idea.
       // Quote the visible gap, not the pre-tax discount, so the two numbers
@@ -381,15 +463,97 @@
     return (h ? h + ' hr' + (h > 1 ? 's' : '') : '') + (m ? (h ? ' ' : '') + m + ' min' : '');
   }
 
-  function flash(msg) {
-    var old = el('bkBody').querySelector('.bk-err');
+  /** A brief word after the funnel has already closed. */
+  function toast(msg) {
+    var old = document.getElementById('bkToast');
     if (old) old.remove();
+    var t = document.createElement('div');
+    t.id = 'bkToast';
+    t.className = 'bk-toast';
+    t.setAttribute('role', 'status');
+    t.textContent = msg;
+    document.body.appendChild(t);
+    setTimeout(function () { t.classList.add('out'); }, 4200);
+    setTimeout(function () { if (t.parentNode) t.remove(); }, 4800);
+  }
+
+  /**
+   * Say what is wrong, next to the thing that is wrong.
+   *
+   * `near` is the control at fault. The message is planted beside it rather
+   * than at the foot of the step, because a message at the bottom of a long
+   * form is a message about nothing in particular: the reader has to go
+   * hunting for the field it means.
+   */
+  function flash(msg, near) {
+    var body = el('bkBody');
+    var old = body.querySelector('.bk-err');
+    if (old) old.remove();
+
     var p = document.createElement('p');
     p.className = 'bk-err';
     p.setAttribute('role', 'alert');
     p.textContent = msg;
-    el('bkBody').appendChild(p);
-    p.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+
+    var box = near && (near.closest('.bk-field,.bk-consent,.bk-check,.bk-band,.bk-cards') || near);
+    if (box && box.parentNode) box.parentNode.insertBefore(p, box.nextSibling);
+    else body.appendChild(p);
+
+    (box || p).scrollIntoView({ block: 'center', behavior: 'smooth' });
+  }
+
+  /**
+   * A validation failure, and the control that caused it.
+   *
+   * Validators used to return a bare sentence, which told someone WHAT was
+   * missing but not WHERE. On a step with three text fields and three yes or
+   * no questions, "Please answer yes or no on filming" meant scrolling back
+   * up to find which of the three was blank.
+   */
+  function fail(msg, focus) {
+    return { msg: msg, focus: focus || null };
+  }
+
+  /** Validators may return a plain string or a fail(). Normalise both. */
+  function asProblem(r, stepIndex) {
+    if (!r) return null;
+    return typeof r === 'string'
+      ? { step: stepIndex, msg: r, focus: null }
+      : { step: stepIndex, msg: r.msg, focus: r.focus };
+  }
+
+  /**
+   * The first thing standing between here and Continue.
+   *
+   * Looks at every step up to and including this one, not just this one. If
+   * someone jumped back, changed a package and jumped forward again, the gap
+   * they opened is behind them, and sending them on would only fail later at
+   * the payment step where it is far more annoying.
+   */
+  function firstProblem() {
+    for (var i = 0; i <= state.step; i++) {
+      var found = asProblem(STEPS[i].valid(), i);
+      if (found) return found;
+    }
+    return null;
+  }
+
+  /** Take them to it, point at it, and put the cursor in it. */
+  function showProblem(prob) {
+    if (prob.step !== state.step) {
+      state.step = prob.step;
+      render();
+    }
+    var node = prob.focus ? el('bkBody').querySelector(prob.focus) : null;
+    flash(prob.msg, node);
+    if (node) {
+      var box = node.closest('.bk-field,.bk-consent,.bk-check') || node;
+      box.classList.add('bk-invalid');
+      setTimeout(function () { box.classList.remove('bk-invalid'); }, 3000);
+      // preventScroll, because flash has already scrolled to the right place
+      // and a second scroll from the focus call fights it.
+      try { node.focus({ preventScroll: true }); } catch (e) { node.focus(); }
+    }
   }
 
   function go(n) {
@@ -399,8 +563,8 @@
   }
 
   function advance() {
-    var err = step().valid();
-    if (err) { flash(err); return; }
+    var prob = firstProblem();
+    if (prob) { showProblem(prob); return; }
     if (state.step === STEPS.length - 1) { submit(); return; }
 
     // Skip past anything already answered, which is what happens when someone
@@ -424,7 +588,7 @@
           '</button>';
       }).join('') + '</div>';
   }
-  function vSize() { return veh().size ? null : 'Pick a vehicle size to continue.'; }
+  function vSize() { return veh().size ? null : fail('Pick a vehicle size to continue.', '[data-size]'); }
 
   /* ================= step 2: intent ================= */
 
@@ -594,7 +758,7 @@
           '<span class="bk-pkg-r">' +
           (i.unavailable
             ? '<b class="bk-soon">Soon</b><i>' + esc(i.unavailable) + '</i>'
-            : '<b>' + $(i.priceCents) + (i.pricePlus ? '+' : '') + '</b>' + (dur ? '<i>' + dur + '</i>' : '')) +
+            : '<b>' + svc(i.priceCents, i.pricePlus ? '+' : '') + '</b>' + (dur ? '<i>' + dur + '</i>' : '')) +
           '</span>' +
           '</button>' +
           (i.note
@@ -607,14 +771,17 @@
     html += '<button type="button" class="bk-morelink" id="bkBrowseBack">Back to the quick picker</button>';
     return html;
   }
-  function vIntent() { return veh().intent ? null : 'Pick interior, exterior, or both.'; }
+  function vIntent() { return veh().intent ? null : fail('Pick interior, exterior, or both.', '[data-intent]'); }
 
   /* ================= step 3: package ================= */
 
   function rPackage() {
     var v = veh();
     var cats = v.intent === 'both' ? ['interior', 'exterior'] : [v.intent];
-    var html = '';
+    // Prices first appear on this screen, so the code goes here rather than
+    // waiting for checkout. Somebody holding a code should watch it come off
+    // while they choose, not find out afterwards that they could have.
+    var html = promoBox(q(), true);
 
     cats.forEach(function (cat) {
       if (v.intent === 'both') {
@@ -715,7 +882,7 @@
         '<span class="bk-pkg-l"><b>' + esc(t.label) + (t.asterisk ? '<sup>*</sup>' : '') + '</b>' +
         '<span class="bk-pkg-tag">' + esc(t.result) + '</span>' +
         '<span class="bk-pkg-feat">' + esc(t.detail) + '</span></span>' +
-        '<span class="bk-pkg-r"><b>+' + $(t.addCents) + '</b><i>' + fmtDur(t.addMin) + '</i></span>' +
+        '<span class="bk-pkg-r"><b>' + svcPlus(t.addCents) + '</b><i>' + fmtDur(t.addMin) + '</i></span>' +
         '</button>';
     }).join('');
 
@@ -725,7 +892,7 @@
           return '<button type="button" class="bk-tier' + (v.coatingTerm === c.id ? ' on' : '') +
             '" data-coating="' + c.id + '">' +
             '<span class="bk-tier-l">' + esc(c.label) + (c.asterisk ? '*' : '') + '</span>' +
-            '<span class="bk-tier-p">' + (c.addCents ? '+' + $(c.addCents) : 'included') + '</span>' +
+            '<span class="bk-tier-p">' + (c.addCents ? svcPlus(c.addCents) : 'included') + '</span>' +
             '</button>';
         }).join('') + '</div>';
 
@@ -747,12 +914,12 @@
 
   function vPackage() {
     var v = veh();
-    if (!v.packageIds.length) return 'Choose a package to continue.';
-    if (needsCorrection(v) && !v.correctionTier) return 'Pick a correction level to continue.';
+    if (!v.packageIds.length) return fail('Choose a package to continue.', '[data-pkg]');
+    if (needsCorrection(v) && !v.correctionTier) return fail('Pick a correction level to continue.', '[data-corr]');
     if (v.intent === 'both') {
       var cats = v.packageIds.map(function (id) { return P.findPackage(id).category; });
-      if (cats.indexOf('interior') < 0) return 'Pick an interior package too.';
-      if (cats.indexOf('exterior') < 0) return 'Pick an exterior package too.';
+      if (cats.indexOf('interior') < 0) return fail('Pick an interior package too.', '[data-pkg]');
+      if (cats.indexOf('exterior') < 0) return fail('Pick an exterior package too.', '[data-pkg]');
     }
     return null;
   }
@@ -820,7 +987,7 @@
             html += '<button type="button" class="bk-tier' + (sel ? ' on' : '') + '" data-addon="' + a.id + '" data-tier="' + t.id + '">' +
               '<span class="bk-tier-l">' + esc(t.label) +
               (t.description ? '<i>' + esc(t.description) + '</i>' : '') + '</span>' +
-              '<span class="bk-tier-p">' + $(t.priceCents) + (t.asterisk ? '*' : '') + '</span>' +
+              '<span class="bk-tier-p">' + svc(t.priceCents, t.asterisk ? '*' : '') + '</span>' +
               '</button>';
           });
           html += '</div>';
@@ -1034,9 +1201,9 @@
 
   function vLoc() {
     var a = state.address;
-    if (!a.line1.trim()) return 'We need a street address.';
-    if (!a.city.trim()) return 'We need a city.';
-    if (!/^\d{5}$/.test(a.zip.trim())) return 'We need a 5 digit ZIP so we can work out tax and travel.';
+    if (!a.line1.trim()) return fail('We need a street address.', '#bkL1');
+    if (!a.city.trim()) return fail('We need a city.', '#bkCity');
+    if (!/^\d{5}$/.test(a.zip.trim())) return fail('We need a 5 digit ZIP so we can work out tax and travel.', '#bkZip');
     return null;
   }
 
@@ -1696,7 +1863,7 @@
   function vTime() {
     if (state.slot) return null;
     if (isInquiry()) return null;
-    return 'Pick a time, or tell us when suits.';
+    return fail('Pick a time, or tell us when suits.', '[data-band],[data-prefday],[data-prefpart]');
   }
 
   /* ================= step 8: contact ================= */
@@ -1728,16 +1895,20 @@
       // see what the customer was shown at the moment they agreed, and
       // "there was a link" is a weak answer. The full terms are one tap away
       // for anyone who wants them.
+      // Four short facts, built from the same rules the policy and the
+      // charge are built from. This used to be a nine line paragraph that
+      // explained the reasoning as well as the numbers; nobody reads a
+      // paragraph at a consent checkbox. The reasoning is on the terms page,
+      // one tap away, for anyone who wants it.
       yesNo('terms',
         'Do you accept our terms and privacy policy?',
-        '<b>Moving a booking always beats cancelling it.</b> ' +
-        'More than 72 hours notice and either is free. Inside that 50% applies, and inside ' +
-        '24 hours the full booking does, but <b>if you reschedule, every cent goes onto your ' +
-        'new date</b> rather than being kept. Moving inside 24 hours adds a flat 10% each time. ' +
-        'We waive all of it for ' +
-        'emergencies. This is why we take a card now, though nothing is charged today. ' +
-        '<b>If your vehicle needs more work than the package covers, we tell you the new price before we start</b>, ' +
-        'and you can say no and pay nothing at all.' +
+        '<b>' + pctOf(RULES.cancelMidWindowBp) + ' cancellation fee inside ' + RULES.refundFullWindowHours + ' hours, ' +
+        pctOf(RULES.cancelLateWindowBp) + ' inside ' + RULES.refundMidWindowHours + ' hours.</b> ' +
+        'Rescheduling instead costs ' + pctOf(RULES.lateRescheduleFeeBp) + ' inside ' + RULES.refundMidWindowHours +
+        ' hours, and anything you are charged goes onto the new date for ' + RULES.rescheduleCreditDays + ' days. ' +
+        'Nothing is charged today. ' +
+        'If your vehicle needs more work than the package covers we tell you the price before we start, ' +
+        'and you can say no and pay nothing.' +
         '<a class="bk-readmore" href="terms.html#cancellation" target="_blank" rel="noopener">Read the full terms and cancellation policy</a>' +
         '<a class="bk-readmore" href="privacy.html" target="_blank" rel="noopener">Read the privacy policy</a>') +
 
@@ -1758,42 +1929,44 @@
   }
 
   function vContact() {
-    if (!state.contact.name.trim()) return 'We need your name.';
-    if (!state.contact.phone.trim()) return 'We need a phone number to confirm your booking.';
+    if (!state.contact.name.trim()) return fail('We need your name.', '#bkName');
+    if (!state.contact.phone.trim()) return fail('We need a phone number to confirm your booking.', '#bkPhone');
     // The same shape the server insists on, checked here so the message
     // arrives while the field still has focus rather than after a round trip.
     var digits = state.contact.phone.replace(/\D/g, '');
     if (digits.length === 11 && digits.charAt(0) === '1') digits = digits.slice(1);
-    if (digits.length !== 10 || /^[01]/.test(digits)) return 'That does not look like a US phone number. Ten digits, area code first.';
-    if (state.contact.name.trim().length > 80) return 'That name is too long for our form.';
-    if (state.contact.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(state.contact.email.trim())) {
-      return 'That email address does not look right.';
+    if (digits.length !== 10 || /^[01]/.test(digits)) {
+      return fail('That does not look like a US phone number. Ten digits, area code first.', '#bkPhone');
     }
-    if (state.consent.terms === null) return 'Please answer yes or no on the terms.';
-    if (state.consent.terms === false) return 'We cannot take a booking without accepting the terms. You can still send us a question instead.';
-    if (state.consent.sms === null) return 'Please answer yes or no on text messages.';
-    if (state.consent.media === null) return 'Please answer yes or no on filming.';
+    if (state.contact.name.trim().length > 80) return fail('That name is too long for our form.', '#bkName');
+    if (state.contact.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(state.contact.email.trim())) {
+      return fail('That email address does not look right.', '#bkEmail');
+    }
+    if (state.consent.terms === null) return fail('Please answer yes or no on the terms.', '[data-consent="terms"]');
+    if (state.consent.terms === false) {
+      return fail('We cannot take a booking without accepting the terms. You can still send us a question instead.', '[data-consent="terms"]');
+    }
+    if (state.consent.sms === null) return fail('Please answer yes or no on text messages.', '[data-consent="sms"]');
+    if (state.consent.media === null) return fail('Please answer yes or no on filming.', '[data-consent="media"]');
     return null;
   }
 
   /* ================= step 9: pay ================= */
 
   /**
-   * Promo code entry.
+   * Promo code entry, on the last screen, visible.
    *
-   * Collapsed behind a link by default. An open "discount code" field is an
-   * invitation to go and hunt for one, and most people do not have a code.
-   * The ones who do will look for it.
+   * It used to be collapsed behind a "Have a promo code?" link, on the theory
+   * that an open discount field sends people off to hunt for one. That theory
+   * cost more than it saved: someone holding a code Elijah texted them could
+   * not find anywhere to type it, which is a worse outcome than a few people
+   * searching the internet for a code that does not exist.
    */
-  function promoBox(quote) {
+  function promoBox(quote, early) {
     var applied = quote.promoCode && quote.promoDiscountCents > 0;
 
-    if (!state.promoOpen && !applied) {
-      return '<button type="button" class="bk-promolink" id="bkPromoOpen">Have a promo code?</button>';
-    }
-
     if (applied) {
-      return '<div class="bk-promo on">' +
+      return '<div class="bk-promo on' + (early ? ' early' : '') + '">' +
         '<span class="bk-promo-tag">' + esc(quote.promoCode) + '</span>' +
         '<span class="bk-promo-msg">' + esc(promoBlurb(quote.promoCode)) +
           ' You saved ' + $(quote.promoDiscountCents) + '.</span>' +
@@ -1801,14 +1974,19 @@
         '</div>';
     }
 
+    // On the package screen, before anything is chosen, an empty discount box
+    // at the top of the page is noise. It appears once there is a price for
+    // it to act on.
+    if (early && !quote.lines.length && !state.promoCode) return '';
+
     var typed = state.promoCode || '';
     var bad = typed && quote.promoRejected ? P.promoMessage(quote.promoRejected) : '';
 
-    return '<div class="bk-promo">' +
-      '<label for="bkPromo">Promo code</label>' +
+    return '<div class="bk-promo' + (early ? ' early' : '') + '">' +
+      '<label for="bkPromo">Promo code <i>(if you have one)</i></label>' +
       '<div class="bk-promo-row">' +
         '<input type="text" id="bkPromo" data-promo value="' + esc(typed) +
-          '" placeholder="Enter a code" autocomplete="off" autocapitalize="characters" spellcheck="false" />' +
+          '" placeholder="Enter a code" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="32" />' +
         '<button type="button" class="bk-promo-go" id="bkPromoApply">Apply</button>' +
       '</div>' +
       (bad ? '<p class="bk-promo-err">' + esc(bad) + '</p>' : '') +
@@ -1930,7 +2108,7 @@
   function vPay() {
     if (state.payState === 'paid') return null;
     if (!state.mandate && !(state.payInFull && state.payMethod === 'paypal')) {
-      return 'Please tick the card authorization to continue.';
+      return fail('Please tick the card authorization to continue.', '#bkMandate');
     }
     if (state.payMethod === 'paypal' && state.payInFull) {
       return 'Use the PayPal button above to finish paying.';
@@ -2156,15 +2334,16 @@
       '[data-kind],[data-paymethod],[data-corr],[data-coating],[data-garage],[data-step],' +
       '[data-prefday],[data-prefpart],[data-interest],[data-band],' +
       '#bkAddVeh,#bkMoreDays,#bkNext,#bkBack,#bkClose,#bkScrim,#bkBrowse,#bkBrowseBack,' +
+      '#bkLeaveStay,#bkLeaveKeep,#bkLeaveAsk,#bkLeaveDrop,#bkFresh,' +
       '#bkCopyQuote,' +
-      '#bkPromoOpen,#bkPromoApply,#bkPromoClear,' +
+      '#bkPromoApply,#bkPromoClear,' +
       '#bkQClear,#bkReset,#bkOther'
     );
     if (!t) return;
     var v = veh();
 
-    if (t.id === 'bkPromoOpen') { state.promoOpen = true; return render(); }
-    if (t.id === 'bkPromoClear') { state.promoCode = ''; state.promoOpen = false; return render(); }
+
+    if (t.id === 'bkPromoClear') { state.promoCode = ''; return render(); }
     if (t.id === 'bkPromoApply') {
       var pbox = el('bkPromo');
       // Normalised on the way in, so "  likenew " and "LIKENEW" are one code.
@@ -2329,7 +2508,18 @@
     if (t.id === 'bkCopyQuote') return copyQuoteLink(t);
     if (t.id === 'bkNext') return advance();
     if (t.id === 'bkBack') return go(state.step - 1);
-    if (t.id === 'bkClose' || t.id === 'bkScrim') return close();
+    if (t.id === 'bkClose' || t.id === 'bkScrim') return requestClose();
+    if (t.id === 'bkLeaveStay') { state.leaving = false; return renderLeave(); }
+    if (t.id === 'bkLeaveKeep') {
+      var kept = saveDraft();
+      close();
+      return toast(kept
+        ? 'Saved. Tap Book Now whenever you are ready and it will be here.'
+        : 'This browser will not let us save it, sorry. Text us and we will hold it for you.');
+    }
+    if (t.id === 'bkLeaveAsk') return askAboutIt();
+    if (t.id === 'bkLeaveDrop') { clearDraft(); return close(); }
+    if (t.id === 'bkFresh') { clearDraft(); reset(); return render(); }
   }
 
   /** Drop add-ons whose requirement no longer holds after a package change. */
@@ -2556,6 +2746,7 @@
 
   function done(quote) {
     state.done = true;
+    clearDraft();
     el('bkBar').style.width = '100%';
     el('bkTitle').textContent = 'You are booked in';
     el('bkNext').hidden = true;
@@ -2589,6 +2780,7 @@
 
   var SHELL =
     '<div class="bk-scrim" id="bkScrim"></div>' +
+    '<div class="bk-leave" id="bkLeave" hidden></div>' +
     '<div class="bk-modal" role="dialog" aria-modal="true" aria-labelledby="bkTitle">' +
       '<div class="bk-progress" id="bkProgress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">' +
         '<div class="bk-bar" id="bkBar"></div>' +
@@ -2617,6 +2809,100 @@
 
   var lastFocus = null;
 
+  /* ---------------- a quote someone left behind ---------------- */
+
+  /**
+   * Saving a half-finished booking, at the customer's request only.
+   *
+   * Nothing is written here unless somebody clicks "Keep my quote" on the way
+   * out. That matters: this holds a name, a phone number and a home address,
+   * and the right default for that is to forget it. It stays in this browser,
+   * never reaches a server, and expires on its own.
+   *
+   * localStorage rather than a cookie, because a cookie would be sent with
+   * every request to the site, and there is no reason for any of this to
+   * leave the device.
+   */
+  var DRAFT_KEY = 'ac-booking-draft-v1';
+  var DRAFT_DAYS = 14;
+
+  /** Answers only. Never the payment state, the card, or the bot token. */
+  var DRAFT_FIELDS = [
+    'step', 'vehicles', 'active', 'address', 'noGoodLocation', 'locationNote',
+    'priority', 'slot', 'daysShown', 'contact', 'consent', 'interest',
+    'prefer', 'promoCode', 'notes', 'separateTimes', 'payInFull'
+  ];
+
+  function saveDraft() {
+    try {
+      var keep = {};
+      DRAFT_FIELDS.forEach(function (k) { keep[k] = state[k]; });
+      localStorage.setItem(DRAFT_KEY, JSON.stringify({ v: 1, at: Date.now(), state: keep }));
+      return true;
+    } catch (e) {
+      // Private windows and blocked site data both throw here. A quote that
+      // cannot be saved is not a broken booking, so say nothing and move on.
+      return false;
+    }
+  }
+
+  function loadDraft() {
+    try {
+      var raw = localStorage.getItem(DRAFT_KEY);
+      if (!raw) return null;
+      var d = JSON.parse(raw);
+      if (!d || d.v !== 1 || !d.state) return null;
+      if (Date.now() - (d.at || 0) > DRAFT_DAYS * 86400000) { clearDraft(); return null; }
+      return d.state;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function clearDraft() {
+    try { localStorage.removeItem(DRAFT_KEY); } catch (e) { /* nothing to do */ }
+  }
+
+  /**
+   * Is there enough here to be worth asking about?
+   *
+   * Someone who opened the funnel and closed it again has lost nothing, and
+   * a confirmation dialog on the way out of an empty form is just a door
+   * that sticks.
+   */
+  function worthKeeping() {
+    if (state.done || state.sending) return false;
+    var v = state.vehicles[0];
+    return Boolean(
+      (v && (v.size || v.packageIds.length || v.addons.length)) ||
+      state.vehicles.length > 1 ||
+      state.slot ||
+      state.address.line1 || state.address.zip ||
+      state.contact.name || state.contact.phone
+    );
+  }
+
+  /** A plain description of where they got to, for the panel and the email. */
+  function draftSummary() {
+    var bits = [];
+    state.vehicles.forEach(function (v) {
+      var names = v.packageIds.map(function (id) { return (P.findPackage(id) || {}).name; }).filter(Boolean);
+      var size = v.size ? P.vehicleSize(v.size) : null;
+      var line = [size ? size.label : '', names.join(' + ')].filter(Boolean).join(', ');
+      if (v.addons.length) line += ' plus ' + v.addons.length + ' add-on' + (v.addons.length === 1 ? '' : 's');
+      if (line) bits.push(line);
+    });
+    if (state.slot) {
+      bits.push(new Date(state.slot).toLocaleString('en-US', {
+        weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit'
+      }));
+    }
+    if (state.address.city || state.address.zip) {
+      bits.push([state.address.city, state.address.zip].filter(Boolean).join(' '));
+    }
+    return bits;
+  }
+
   /**
    * While the funnel is open the rest of the page is inert: a screen reader
    * cannot wander into it and Tab cannot leave the dialog. `inert` is the
@@ -2642,7 +2928,9 @@
 
   function trapTab(e) {
     if (e.key !== 'Tab' || !host || host.hidden) return;
-    var items = Array.prototype.filter.call(host.querySelectorAll(FOCUSABLE), function (n) {
+    // While the leaving panel is up it owns the focus, not the form behind it.
+    var scope = state.leaving ? (el('bkLeave') || host) : host;
+    var items = Array.prototype.filter.call(scope.querySelectorAll(FOCUSABLE), function (n) {
       return n.offsetParent !== null;
     });
     if (!items.length) return;
@@ -2654,6 +2942,31 @@
   function open() {
     if (!host) return;
     reset();
+
+    // Pick up exactly where they left off, including the step they were on,
+    // because that is what they asked for when they kept it.
+    var draft = loadDraft();
+    if (draft) {
+      try {
+        Object.keys(draft).forEach(function (k) {
+          if (draft[k] !== undefined) state[k] = draft[k];
+        });
+        state.resumed = true;
+        state.step = Math.max(0, Math.min(STEPS.length - 1, Number(state.step) || 0));
+        // A draft written by an older build could be shaped differently.
+        // Prove it before trusting it, rather than rendering a broken form.
+        if (!Array.isArray(state.vehicles) || !state.vehicles.length || !state.vehicles[0]) {
+          throw new Error('draft shape');
+        }
+        state.vehicles.forEach(function (v) {
+          if (!Array.isArray(v.packageIds) || !Array.isArray(v.addons)) throw new Error('draft shape');
+        });
+      } catch (e) {
+        clearDraft();
+        reset();
+      }
+    }
+
     host.hidden = false;
     document.body.classList.add('bk-open');
     lastFocus = document.activeElement;
@@ -2663,8 +2976,103 @@
     el('bkClose').focus();
   }
 
+  /**
+   * The way out.
+   *
+   * A tap on the backdrop is as easy to do by accident as on purpose, and
+   * losing eight answered questions to a misplaced thumb is the sort of thing
+   * people do not come back from. So a close with real work behind it asks
+   * first, and offers to keep it.
+   */
+  function requestClose() {
+    if (!worthKeeping()) return close();
+    state.leaving = true;
+    renderLeave();
+  }
+
+  function renderLeave() {
+    var box = el('bkLeave');
+    if (!box) return close();
+
+    if (!state.leaving) {
+      box.hidden = true;
+      box.innerHTML = '';
+      return;
+    }
+
+    var lines = draftSummary();
+    box.hidden = false;
+    box.innerHTML =
+      '<div class="bk-leave-card" role="dialog" aria-modal="true" aria-labelledby="bkLeaveT">' +
+        '<h3 id="bkLeaveT">Abandon your detail quote?</h3>' +
+        (lines.length
+          ? '<ul class="bk-leave-sum">' +
+              lines.map(function (l) { return '<li>' + esc(l) + '</li>'; }).join('') +
+            '</ul>'
+          : '') +
+        '<div class="bk-leave-acts">' +
+          '<button type="button" class="bk-leave-go" id="bkLeaveStay">Back to my booking</button>' +
+          '<button type="button" class="bk-leave-keep" id="bkLeaveKeep">Keep it for next time</button>' +
+          '<button type="button" class="bk-leave-ask" id="bkLeaveAsk">I have a question</button>' +
+          '<button type="button" class="bk-leave-drop" id="bkLeaveDrop">Throw it away</button>' +
+        '</div>' +
+        '<p class="bk-leave-note">Keeping it stores your answers in this browser only, for ' +
+          DRAFT_DAYS + ' days. They never reach us until you book.</p>' +
+      '</div>';
+
+    var first = box.querySelector('#bkLeaveStay');
+    if (first) first.focus();
+  }
+
+  /**
+   * Hand the whole half-finished quote to the question form.
+   *
+   * Someone who stops to ask a question has usually hit something the funnel
+   * did not answer, and making them retype what they already picked is how
+   * that turns into no message at all. The summary and a link that reopens
+   * this exact quote both go into the message, so the reply can be specific.
+   */
+  function askAboutIt() {
+    var url = P.quoteUrl(quotePayload(), location.origin + location.pathname);
+    var lines = draftSummary();
+    var msg =
+      'I was booking and had a question.\n\n' +
+      (lines.length ? 'What I had picked:\n' + lines.map(function (l) { return '  ' + l; }).join('\n') + '\n\n' : '') +
+      'My quote: ' + url + '\n\nMy question: ';
+
+    saveDraft();
+    close();
+
+    var form = document.getElementById('inquiryForm');
+    if (!form) { location.href = 'sms:+15132792915'; return; }
+
+    var set = function (id, val) {
+      var f = document.getElementById(id);
+      if (f && val && !f.value) f.value = val;
+    };
+    set('q-name', state.contact.name);
+    set('q-phone', state.contact.phone);
+    set('q-email', state.contact.email);
+    set('q-zip', state.address.zip);
+    var v = state.vehicles[0];
+    set('q-vehicle', v && v.label);
+
+    var message = document.getElementById('q-message');
+    if (message) {
+      message.value = msg;
+      // The cursor lands after "My question: ", so they can just type.
+      try { message.setSelectionRange(msg.length, msg.length); } catch (e) { /* older browsers */ }
+    }
+
+    var target = document.getElementById('inquiry') || form;
+    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    setTimeout(function () { if (message) message.focus(); }, 420);
+  }
+
   function close() {
     if (!host) return;
+    state.leaving = false;
+    renderLeave();
     host.hidden = true;
     document.body.classList.remove('bk-open');
     setPageInert(false);
@@ -2709,7 +3117,11 @@
     });
 
     document.addEventListener('keydown', function (e) {
-      if (e.key === 'Escape' && !host.hidden) close();
+      if (e.key !== 'Escape' || host.hidden) return;
+      // Escape backs out of the leaving panel before it backs out of the
+      // booking, so the key that means "undo" never destroys anything.
+      if (state.leaving) { state.leaving = false; return renderLeave(); }
+      requestClose();
     });
 
     // Any Book Now link opens the funnel in place rather than navigating.

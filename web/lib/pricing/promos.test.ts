@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { findPromo, normalisePromo, promoDiscountCents, PROMOS } from "./promos.js";
 import { quote, type CartInput, type PackageRef } from "./quote.js";
@@ -138,5 +139,58 @@ describe("promo codes inside a quote", () => {
     expect(both.payInFullSavingsCents).toBeLessThan(
       quote(cart({ payInFull: true }), R).payInFullSavingsCents,
     );
+  });
+});
+
+describe("the friends and family code", () => {
+  it("is a real, live 25% code", () => {
+    const hit = findPromo("FRIANDFAM");
+    expect(hit.rejected).toBeNull();
+    expect(hit.promo?.percentBp).toBe(2500);
+    expect(hit.promo?.active).toBe(true);
+  });
+
+  it("takes a quarter off the service and nothing off the travel", () => {
+    const q = quote(cart({ oneWayMinutes: 40, promoCode: "friandfam" }), R);
+    expect(q.promoCode).toBe("FRIANDFAM");
+    // 25% of the $215 service, not of the service plus the drive.
+    expect(q.promoDiscountCents).toBe(Math.round(21500 * 0.25));
+    expect(q.travelCents).toBeGreaterThan(0);
+  });
+
+  it("beats the public code, which is the point of it", () => {
+    const pub = quote(cart({ promoCode: "LIKENEW" }), R);
+    const fam = quote(cart({ promoCode: "FRIANDFAM" }), R);
+    expect(fam.totalCents).toBeLessThan(pub.totalCents);
+  });
+
+  it("is not advertised anywhere a customer would read", () => {
+    // It is handed out by text, never printed on the site. If this ever
+    // fails, a discount somebody can guess has been put on the page.
+    const pages = ["../../../index.html", "../../../terms.html", "../../../privacy.html"];
+    for (const rel of pages) {
+      const html = readFileSync(new URL(rel, import.meta.url), "utf8");
+      expect(html, rel).not.toContain("FRIANDFAM");
+    }
+  });
+});
+
+describe("every code in the table", () => {
+  it("is worth something, and says what it is worth", () => {
+    for (const p of PROMOS) {
+      expect(p.code, "code is stored uppercase").toBe(normalisePromo(p.code));
+      expect(Boolean(p.percentBp) !== Boolean(p.amountCents), `${p.code} is one or the other`).toBe(true);
+      expect(p.label.length, p.code).toBeGreaterThan(3);
+      expect(p.blurb, p.code).toBeTruthy();
+      expect(p.label, p.code).not.toMatch(/—/);
+    }
+  });
+
+  it("never discounts more than the service is worth", () => {
+    for (const p of PROMOS) {
+      expect(promoDiscountCents(p, 1000)).toBeLessThanOrEqual(1000);
+      expect(promoDiscountCents(p, 0)).toBe(0);
+      expect(promoDiscountCents(p, -500)).toBe(0);
+    }
   });
 });
