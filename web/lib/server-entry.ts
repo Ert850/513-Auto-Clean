@@ -34,46 +34,13 @@ import {
 import { componentsOf } from "./catalog/types.js";
 import { DEFAULT_RULES } from "./pricing/rules.js";
 import { SEED_TAX_TABLE } from "./pricing/tax.js";
-import { minutesOfDay } from "./pricing/surcharge.js";
+import { minutesOfDay, slotNeedsPriority } from "./pricing/surcharge.js";
 import { localMinutesOfDay } from "./availability/slots.js";
 import { estimateOneWayMinutes } from "./travel/zipRanges.js";
 import { quote, type AddonRef, type CartInput, type PackageRef } from "./pricing/quote.js";
 
-/** What the browser is allowed to send: ids and quantities, never money. */
-export interface WireVehicle {
-  label?: string;
-  sizeId?: string;
-  packageIds?: string[];
-  addons?: { addonId: string; tierId: string }[];
-  correction?: { tierId: string; coatingId: string; noGarage?: boolean };
-}
-
-export interface WireCart {
-  vehicles: WireVehicle[];
-  zip?: string | null;
-  /** Epoch ms of the chosen slot, or null. */
-  slot?: number | null;
-  priority?: boolean;
-  /** Separate trips, when two vehicles could not share a slot. */
-  visits?: number;
-  payInFull?: boolean;
-  /**
-   * The code as the customer typed it. NOT an amount. The engine looks it
-   * up in the same table the funnel used and decides what it is worth, so
-   * a request claiming a 90% discount gets repriced at whatever the table
-   * actually says, or at nothing.
-   */
-  promoCode?: string | null;
-  /**
-   * The address, so the server can measure the drive itself.
-   *
-   * NOT a number of minutes. If the browser could name its own drive time it
-   * could name zero, and travel would be free for anyone who read the
-   * request. The payment function measures from this and passes the result
-   * in as `measuredOneWayMinutes` below.
-   */
-  address?: { line1?: string; city?: string; region?: string; zip?: string } | null;
-}
+import type { WireCart, WireVehicle } from "./pricing/wire.js";
+export type { WireCart, WireVehicle };
 
 export interface PriceOptions {
   /**
@@ -83,6 +50,14 @@ export interface PriceOptions {
    * Never populated from a request body.
    */
   measuredOneWayMinutes?: number | null;
+  /** The clock, for the priority window. Defaults to Date.now(). */
+  nowMs?: number;
+  /**
+   * Pay in full, as decided by the PAYMENT MODE the server saw, never by the
+   * cart. A cart that said payInFull:true with a card-only intent used to
+   * get the discount without the payment.
+   */
+  payInFull?: boolean;
 }
 
 export interface PricedCart {
@@ -94,6 +69,8 @@ export interface PricedCart {
   oneWayMinutes: number | null;
   /** "routes" when measured from the address, "estimate" when from ZIP bands. */
   travelSource: "routes" | "estimate" | "none";
+  /** Derived from the slot on the server. The browser's flag is ignored. */
+  priority: boolean;
   /** The code that survived server side lookup. Null when none did. */
   promoCode: string | null;
   promoDiscountCents: number;
@@ -168,6 +145,10 @@ export function priceFromWire(wire: WireCart, opts: PriceOptions = {}): PricedCa
     };
   });
 
+  const nowMs = opts.nowMs ?? Date.now();
+  const priority = wire.slot ? slotNeedsPriority(wire.slot, nowMs, DEFAULT_RULES.window) : false;
+  const payInFull = opts.payInFull ?? false;
+
   const cart: CartInput = {
     vehicles,
     // A measured drive wins. The ZIP band estimate is the fallback for a
@@ -175,13 +156,14 @@ export function priceFromWire(wire: WireCart, opts: PriceOptions = {}): PricedCa
     // rather than guessing.
     oneWayMinutes:
       opts.measuredOneWayMinutes ?? (wire.zip ? estimateOneWayMinutes(wire.zip) : null),
+    // Priority is DERIVED from the slot. The browser used to send a boolean
+    // and this trusted it, which was a 20% discount for anyone who edited one
+    // word of the request. Without a slot there is no window to be inside.
     surchargeContext: wire.slot
-      ? { startMinutesLocal: localMinutesOfDay(wire.slot), priorityBooking: Boolean(wire.priority) }
-      : wire.priority
-        ? { startMinutesLocal: minutesOfDay(12), priorityBooking: true }
-        : null,
+      ? { startMinutesLocal: localMinutesOfDay(wire.slot), priorityBooking: priority }
+      : null,
     zip: wire.zip ?? null,
-    ...(wire.payInFull ? { payInFull: true } : {}),
+    ...(payInFull ? { payInFull: true } : {}),
     ...(wire.promoCode ? { promoCode: wire.promoCode } : {}),
     ...(wire.visits ? { visits: Math.max(1, Math.min(wire.visits, wire.vehicles.length || 1)) } : {}),
   };
@@ -194,6 +176,7 @@ export function priceFromWire(wire: WireCart, opts: PriceOptions = {}): PricedCa
     surchargeBp: q.surchargeBp,
     serviceDurationMin: q.serviceDurationMin,
     oneWayMinutes: cart.oneWayMinutes,
+    priority,
     travelSource:
       opts.measuredOneWayMinutes != null
         ? "routes"
@@ -210,6 +193,11 @@ export function priceFromWire(wire: WireCart, opts: PriceOptions = {}): PricedCa
 import { addonIcon } from "./catalog/icons.js";
 
 export { MAX_ONE_WAY_MINUTES } from "./travel/zipRanges.js";
+export { validateWire, driveTooFar, normalisePhone, WIRE_LIMITS } from "./pricing/wire.js";
+export { MAX_BOOKING_CENTS } from "./pricing/rules.js";
+export { slotNeedsPriority } from "./pricing/surcharge.js";
+export { LEGAL, longDate } from "./site/legal.js";
+export { legalFingerprint } from "./site/legalFingerprint.js";
 export { PROMOS, findPromo, normalisePromo, promoDiscountCents, promoMessage } from "./pricing/promos.js";
 export { parseIcsBusy, mergeBusy } from "./booking/ics.js";
 export { averageOneWayMinutes, mileageFeeCents } from "./pricing/mileage.js";
@@ -218,7 +206,7 @@ export {
   computeReschedule,
   cancellationLadder,
 } from "./pricing/cancellation.js";
-export { CAPABILITIES, GATED_COPY, copyFor, isLive, pending } from "./site/capabilities.js";
+export { CAPABILITIES, GATED_COPY, PROCESSORS, copyFor, dormantProcessors, isLive, liveProcessors, pending } from "./site/capabilities.js";
 export { estimateOneWayMinutes } from "./travel/zipRanges.js";
 
 export {

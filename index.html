@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>513 Auto Clean, Mobile Car Detailing in Cincinnati | At Your Home or Work</title>
-<meta name="description" content="UC student-owned mobile car detailing in Cincinnati. Interior and exterior detailing at your home or office, booked online in under two minutes. Rated 5.0 across 32 Google reviews. Call or text 513-279-2915." />
+<title>513 Auto Clean | Mobile Car Detailing in Cincinnati</title>
+<meta name="description" content="Mobile car detailing at your home or work in Greater Cincinnati. Interior and exterior packages, booked online in minutes. Rated 5.0 across 32 Google reviews." />
 <meta name="theme-color" content="#0b0e13" />
 <link rel="canonical" href="https://513autoclean.com/" />
 
@@ -29,37 +29,15 @@
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230b0e13'/%3E%3Ctext x='32' y='42' font-family='Arial' font-weight='800' font-size='24' fill='%23ff3b3b' text-anchor='middle'%3E513%3C/text%3E%3C/svg%3E" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&family=Hanken+Grotesk:wght@400;500;600;700&display=swap" />
 <link rel="preload" as="image" href="images/hero-exterior.webp" type="image/webp" fetchpriority="high" />
-<link rel="stylesheet" href="styles.css" />
-<!-- Booking funnel configuration.
-     googleApiKey: browser key restricted by HTTP referrer. Reads the PUBLIC
-     availability calendar and powers address autocomplete. Leave empty and the
-     funnel falls back to business hours, clearly labelled as needing
-     confirmation, rather than pretending a time is open.
-     stripePublishableKey: pk_test_... or pk_live_.... Publishable keys are
-     designed to be public; the SECRET key must never appear here. -->
-<script>
-  window.AC_CONFIG = {
-    googleCalendarId: '75726fed82aa92a27201386beda7b3a15f550a3a5691e5e6cfc51382f0f0b9cf@group.calendar.google.com',
-    googleApiKey: '',
-    stripePublishableKey: '',
-    paypalClientId: ''
-  };
-</script>
-<script>
-  // Payment SDKs load only once their key exists, so an unconfigured site
-  // makes no third-party requests and the cookie banner stays honest.
-  (function () {
-    var c = window.AC_CONFIG;
-    function load(src) { var s = document.createElement('script'); s.src = src; s.async = true; document.head.appendChild(s); }
-    if (c.stripePublishableKey) load('https://js.stripe.com/v3/');
-    if (c.paypalClientId) {
-      load('https://www.paypal.com/sdk/js?client-id=' + encodeURIComponent(c.paypalClientId) +
-           '&currency=USD&components=buttons&enable-funding=venmo,paylater');
-    }
-  })();
-</script>
-<link rel="stylesheet" href="book.css" />
+<link rel="stylesheet" href="styles.css?v=5d6b95d81f" />
+<!-- Public configuration and third party loaders live in js/, not inline,
+     so the Content-Security-Policy can forbid inline scripts outright.
+     js/config.js holds publishable keys only. Secret keys never go in a page. -->
+<script src="js/config.js?v=460f0ec111"></script>
+<script src="js/vendors.js?v=15afd8c532"></script>
+<link rel="stylesheet" href="book.css?v=1762af0fed" />
 
 
 <!-- Local Business structured data (SEO) -->
@@ -448,7 +426,7 @@
   ],
   "address": { "@type": "PostalAddress", "addressLocality": "Cincinnati", "addressRegion": "OH", "addressCountry": "US" },
   "aggregateRating": { "@type": "AggregateRating", "ratingValue": "5.0", "reviewCount": "32" },
-  "openingHoursSpecification": [{ "@type": "OpeningHoursSpecification", "dayOfWeek": ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"], "opens": "07:00", "closes": "22:00" }],
+  "openingHoursSpecification": [{ "@type": "OpeningHoursSpecification", "dayOfWeek": ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"], "opens": "06:00", "closes": "22:00" }],
   "geo": { "@type": "GeoCoordinates", "latitude": 39.1031, "longitude": -84.5120 },
   "hasMap": "https://maps.app.goo.gl/PAAdpX7owQmc1cAz9",
   "paymentAccepted": "Cash, Credit Card, Debit Card, Apple Pay, Google Pay, PayPal, Venmo",
@@ -609,6 +587,7 @@
     <!-- CATALOG:OFFERS:END -->
 </head>
 <body>
+<a class="skip-link" href="#services">Skip to content</a>
 
 <!-- ============ TOP BAR ============ -->
 <div class="topbar">
@@ -1444,22 +1423,18 @@
   <a class="mb-quote" href="book.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> Book Now</a>
 </div>
 
-<!-- FullCalendar (commented out, schedule section removed)
-<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@fullcalendar/google-calendar@6.1.15/index.global.min.js"></script>
--->
-<!-- Leaflet, for the service area map. Pinned to an exact version.
-     No integrity hash: a wrong one blocks the file silently, and these
-     were not verified against the CDN. Add real SRI hashes from
-     cdnjs.com/libraries/leaflet when convenient. If it fails to load,
-     js/travel.js falls back to a schematic map drawn in SVG. -->
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
-<script defer src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-<script src="js/pricing.bundle.js"></script>
-<script src="js/gallery.js" defer></script>
-<script src="js/reviews.js" defer></script>
-<script src="js/travel.js" defer></script>
-<script src="js/funnel.js"></script>
-<script src="script.js"></script>
+<!-- Leaflet, for the service area map. Pinned to an exact version with
+     integrity hashes computed from the CDN copies on 11 September 2026. If
+     it fails to load, js/travel.js falls back to a schematic map drawn in
+     SVG. -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" integrity="sha384-c6Rcwz4e4CITMbu/NBmnNS8yN2sC3cUElMEMfP3vqqKFp7GOYaaBBCqmaWBjmkjb" crossorigin="anonymous" referrerpolicy="no-referrer" />
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js" integrity="sha384-NElt3Op+9NBMCYaef5HxeJmU4Xeard/Lku8ek6hoPTvYkQPh3zLIrJP7KiRocsxO" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<!-- Deferred, in order: the pricing bundle must run before the funnel. -->
+<script src="js/pricing.bundle.js?v=76cb363e09" defer></script>
+<script src="js/gallery.js?v=459274924b" defer></script>
+<script src="js/reviews.js?v=1a4ad2201f" defer></script>
+<script src="js/travel.js?v=9c7711b902" defer></script>
+<script src="js/funnel.js?v=1eaa0a50e6" defer></script>
+<script src="script.js?v=1aa5a3d01f" defer></script>
 </body>
 </html>

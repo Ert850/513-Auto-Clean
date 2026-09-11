@@ -60,7 +60,7 @@ import {
   unpricedComponents,
 } from "./catalog/types.js";
 import { averageOneWayMinutes, mileageFeeCents, travelCommitmentMinutes } from "./pricing/mileage.js";
-import { computeRefund, rescheduleFeeCents } from "./pricing/refund.js";
+import { LEGAL } from "./site/legal.js";
 import {
   cancellationLadder,
   computeCancellation,
@@ -72,6 +72,7 @@ import {
   earliestBookableDate,
   minutesOfDay,
   requiresPriorityBooking,
+  slotNeedsPriority,
 } from "./pricing/surcharge.js";
 import { quote } from "./pricing/quote.js";
 import {
@@ -187,8 +188,8 @@ const api = {
   minutesOfDay,
   earliestBookableDate,
   requiresPriorityBooking,
-  computeRefund,
-  rescheduleFeeCents,
+  slotNeedsPriority,
+  LEGAL,
   computeCancellation,
   computeReschedule,
   cancellationLadder,

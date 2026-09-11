@@ -62,7 +62,8 @@ export type ChangeKind =
   | "moved_away_short_notice"
   | "shrank"
   | "owner_moved"
-  | "waived";
+  | "waived"
+  | "needs_review";
 
 export interface ChangeResult {
   kind: ChangeKind;
@@ -136,6 +137,10 @@ export function assessChange(input: ChangeInput, r: PricingRules): ChangeResult 
     return free("owner_moved", "We suggested this, so there is nothing extra to pay.");
   }
   if (input.waived) return free("waived", "Change fee waived.");
+  // Unreadable notice: neither free nor charged, a person decides.
+  if (!Number.isFinite(input.hoursUntilStart)) {
+    return free("needs_review", "We could not work out the notice on this change. Someone will check it by hand.");
+  }
 
   const sameWindow =
     proposed.startMs === original.startMs && proposed.endMs === original.endMs;

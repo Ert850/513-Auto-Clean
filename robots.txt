@@ -11,9 +11,8 @@
 User-agent: *
 Allow: /
 
-# Nothing here needs crawling and none of it should rank.
-Disallow: /netlify/
-Disallow: /web/
-Disallow: /data/
+# Source and functions are not published at all (only dist/ is). data/ IS
+# published and must stay crawlable: the reviews and gallery are rendered
+# from it, and a blocked fetch means Google indexes an empty section.
 
 Sitemap: https://513autoclean.com/sitemap.xml

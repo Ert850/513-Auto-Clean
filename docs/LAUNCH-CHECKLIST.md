@@ -1,6 +1,6 @@
 # What is blocking a fully working site
 
-Last updated 2026-09-10.
+Last updated 2026-09-11, after the stress test.
 
 Everything on the site works today except the parts that need an account in
 your name. This is that list: what you have to do, what you have to send me,
@@ -11,9 +11,14 @@ tracker: what is blocked, by whom, and how bad it is.
 
 **When you finish one of these, flip its switch.** `web/lib/site/capabilities.ts`
 has one line per feature. Set `live: true`, run `npm run build`, and the terms
-page rewrites itself to describe what the site now actually does. A test fails
-the build if the two ever disagree, so the page cannot promise something that
-is not working.
+and the privacy policy rewrite themselves to describe what the site now
+actually does, down to which companies handle customer data. A test fails the
+build if a page and the switches ever disagree, so neither page can promise
+something that is not working or name a processor that is not in use.
+
+The switches, as of today: `cardOnFile`, `digitalWallets`, `liveCalendar`,
+`measuredTravel`, `automatedMessages`, `bookingLink`, `placesAutocomplete`,
+`botCheck`. All off.
 
 **Never paste a secret key into a chat, a commit, or the HTML.** Secrets go in
 `web/.env.local` (gitignored) and into Netlify's environment variables. The
@@ -36,8 +41,11 @@ only things safe to send me are marked "safe to share" below.
 | 8 | PayPal business account | You | 20 min | No PayPal or Venmo at checkout |
 | 9 | Netlify environment variables | You | 10 min | None of the above reaches the live site |
 | 10 | Six add-on prices | You | 0 min | **Done.** All fifteen add-ons are priced |
-| 11 | Terms and Cancellation Policy | Me, then a lawyer | I draft in a day | You are taking cards with no written policy behind it |
-| 12 | Legal review of the Terms | A lawyer, $300 to $800 | 1 to 2 weeks | Chargeback exposure on the cancellation fee |
+| 11 | Terms and Privacy Policy | Done, generated and versioned | 0 min | Nothing. Read them once |
+| 12 | Legal review of both pages | A lawyer, $300 to $800 | 1 to 2 weeks | Chargeback exposure on the cancellation fee |
+| 13 | Daily quota caps on the Google APIs | You | 5 min | A scraper can run up the Maps bill |
+| 14 | Cloudflare Turnstile keys | You | 10 min | Nothing until the first bot books ten times a minute |
+| 15 | CPA: vendor's license, KY and IN, travel taxability | You and a CPA | 1 hour | You are collecting tax you may not be registered to remit |
 
 ---
 
@@ -90,6 +98,13 @@ One project covers four separate things. Enable all of these APIs:
 `513autoclean.com/*`, server key restricted by IP. **Set a $25/month budget
 alert.** An unrestricted key scraped out of the page bundle is how people wake
 up to a $3,000 bill.
+
+**Then cap each API's daily quota** (APIs and Services, the API, Quotas):
+Routes at 500 requests a day and Places Details at 200. The functions have a
+per-client rate limit and a per-booking amount ceiling, but the only cap
+nobody can route around is the one Google enforces. 500 Routes calls is about
+170 travel quotes a day, which is far more than the site will see for a long
+time, and raising it is one click.
 
 **Send me (safe to share):** the service account's email address. Not the JSON.
 
@@ -209,20 +224,54 @@ All fifteen add-ons are priced. Nothing outstanding.
 
 ## 11 and 12. The legal pages
 
-You have a privacy policy. You do **not** have Terms or a Cancellation Policy,
-and you are about to hold cards on file with a cancellation fee and a clause
-letting you adjust the price on arrival after inspection.
+Both exist, both are generated, both are versioned. `terms.html` carries the
+cancellation ladder, the change rules, the on-arrival price adjustment, the
+card-on-file authorisation, what happens when a card declines, a
+liability cap, and a contact-us-before-disputing clause. `privacy.html`
+names every company that touches customer data and only the ones in use.
 
-That is the highest legal exposure in this project. Card networks side with
-cardholders when a service was not rendered, unless you can prove the customer
-affirmatively accepted clear terms.
+The version date in `web/lib/site/legal.ts` is recorded against every
+booking (in the email and in Stripe's metadata), together with the exact
+card-on-file sentence the customer ticked, so a card network asking "what did
+they agree to" gets a date that points at one document. If the wording ever
+changes without that date changing, the test suite fails.
 
-**I will draft both.** A flat-fee small business review runs $300 to $800 and
-is the cheapest insurance here. Get it before you take live payments.
+**Two things only you can do:**
 
-What is already built to support this: the exact sentence shown at the
-checkbox is snapshotted into the consent record, the policy is repeated in the
-confirmation, and the checkbox is not pre-ticked.
+1. **Read both pages once** and correct anything that is wrong about your
+   business. Section 8 of the terms says you carry general liability
+   insurance. If that is not true today, say so and it comes out until it is.
+2. **Get the flat-fee review.** $300 to $800, one to two weeks, before the
+   first live charge. Send the lawyer both pages and
+   `docs/STRESS-TEST-2026-09-11.md` section H8, which lists what was added and
+   why.
+
+## 13. Cloudflare Turnstile
+
+Free. Stops a script from creating a Stripe customer a thousand times a
+minute. Sign up at dash.cloudflare.com, add a Turnstile widget for
+`513autoclean.com`, and you get a site key and a secret key. The site key goes
+in `js/config.js` as `turnstileSiteKey`; the secret goes in Netlify as
+`TURNSTILE_SECRET_KEY`. Then flip `botCheck` in `capabilities.ts`. Until both
+exist the payment step simply does not show the check.
+
+## 14. Before the first live charge: the CPA hour
+
+The site charges sales tax by destination: Ohio counties, 6% in Kentucky, 7%
+in Indiana, with travel in the taxable base. Three questions, each of which
+changes what the code should do, and none of which I can answer for you:
+
+1. **Ohio vendor's license.** You need one before collecting Ohio sales tax.
+   Number goes on the invoice.
+2. **Kentucky and Indiana.** Working there creates nexus. Either register in
+   both, or stop taking bookings there, or stop charging their tax. Charging
+   tax you are not registered to remit is the worst of the four options.
+3. **Travel.** In Ohio, a delivery or service-call charge that is part of a
+   taxable service is generally taxable. Confirm, and if not, one line in
+   `lib/pricing/quote.ts` takes it out of the base.
+
+The tax table also carries the year it was verified. A test fails on 1
+January 2027 until the rates are checked again, which is the alarm.
 
 ---
 
@@ -248,7 +297,12 @@ Worth knowing what you are *not* waiting on:
 - The full booking funnel: vehicle size, service, package, add-ons, location,
   second vehicle, time, contact, payment step
 - All pricing maths, server-recomputed from IDs so a tampered browser cannot
-  pay $1 for a $400 detail. 106 tests
+  pay $1 for a $400 detail, skip the priority surcharge, claim the pay-in-full
+  discount without paying, skip tax, or book a service that is coming soon.
+  300 tests, including one that imports every function with a fake key
+- Only `dist/` is published, so nothing that is not the site can become a URL
+- Every asset URL is content-hashed and cached for a year; a price change
+  reaches every browser on the next page load
 - Travel fee ladder, shown identically in the funnel and charged by the
   payment function
 - Sales tax by county, verified for 2026

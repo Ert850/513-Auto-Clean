@@ -1,4 +1,5 @@
 import type { BookingWindowRules, SurchargeRules } from "./rules.js";
+import { localDayStart } from "../time/zone.js";
 
 export interface SurchargeContext {
   /**
@@ -82,4 +83,26 @@ export function requiresPriorityBooking(
   r: BookingWindowRules,
 ): boolean {
   return slotDate.getTime() < earliestBookableDate(today, r).getTime();
+}
+
+/**
+ * The same question, answered from epoch milliseconds in a named zone.
+ *
+ * This is the one the SERVER uses. The browser used to send a `priority`
+ * boolean and the server believed it, which meant editing one word in the
+ * request removed a 20% surcharge. Now both sides derive it from the slot
+ * and the calendar day in Cincinnati, and nothing the browser sends can
+ * change the answer.
+ */
+export function slotNeedsPriority(
+  slotMs: number,
+  nowMs: number,
+  r: BookingWindowRules,
+  timeZone = "America/New_York",
+): boolean {
+  if (!Number.isFinite(slotMs) || !Number.isFinite(nowMs)) return false;
+  // Whole local days, so a DST day that is 23 or 25 hours long still counts
+  // as exactly one day.
+  const dayIndex = (ms: number) => Math.round(localDayStart(ms, timeZone) / 86_400_000);
+  return dayIndex(slotMs) < dayIndex(nowMs) + r.minLeadDays;
 }

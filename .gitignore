@@ -15,7 +15,7 @@ node_modules/
 .pnp
 .pnp.js
 
-# Build output
+# Build output (dist/ is what Netlify publishes; it is assembled by the build)
 .next/
 out/
 build/

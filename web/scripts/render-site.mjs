@@ -308,6 +308,27 @@ html = splice(html, "FAQPRICE", faqPriceText(), { inline: true });
 // The JSON-LD copy has to survive JSON.stringify, so quotes are escaped.
 html = splice(html, "FAQPRICE_JSON", JSON.stringify(faqPriceText()).slice(1, -1), { inline: true });
 html = splice(html, "OFFERS", offersHtml());
+/* ---------------- the Google rating, from one source ---------------- */
+
+// "5.0 across 32 reviews" used to be typed into the meta description, the
+// JSON-LD and the reviews header separately. The snapshot in data/reviews.json
+// is the source; js/reviews.js prefers the live API at runtime and these are
+// what search engines and no-JS visitors see.
+{
+  const snap = JSON.parse(fs.readFileSync(path.join(root, "data/reviews.json"), "utf8"));
+  const rating = Number(snap.rating);
+  const count = Number(snap.count ?? (snap.reviews ?? []).length);
+  if (Number.isFinite(rating) && rating > 0 && count > 0) {
+    const r1 = rating.toFixed(1);
+    html = html
+      .replace(/Rated [0-9.]+ across \d+ Google reviews/g, `Rated ${r1} across ${count} Google reviews`)
+      .replace(/"ratingValue": "[0-9.]+"/g, `"ratingValue": "${r1}"`)
+      .replace(/"reviewCount": "\d+"/g, `"reviewCount": "${count}"`)
+      .replace(/<span class="num">[0-9.]+<\/span>/g, `<span class="num">${r1}</span>`)
+      .replace(/<b>\d+ reviews<\/b> on Google/g, `<b>${count} reviews</b> on Google`);
+  }
+}
+
 fs.writeFileSync(INDEX, html);
 
 const count =

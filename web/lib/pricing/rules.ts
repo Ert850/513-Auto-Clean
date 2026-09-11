@@ -174,9 +174,19 @@ export const DEFAULT_RULES: PricingRules = {
   refundMidWindowBp: 5000, // 50% of deposit
   cancelMidWindowBp: 5000, // 24 to 72 hrs: half the booking
   cancelLateWindowBp: 10_000, // under 24 hrs: the whole booking
-  lateRescheduleFeeBp: 1000, // 10% per late move, compounding
+  lateRescheduleFeeBp: 1000, // 10% per late move, FLAT, never compounding
   rescheduleCreditDays: 30,
   shortNoticeChangeBp: 2000, // 20%, same as priority booking
   refundFullWindowHours: 72,
   refundMidWindowHours: 24,
 };
+
+/**
+ * The most a single online booking can come to, in cents.
+ *
+ * A sanity ceiling against a runaway cart, not a business rule. It was $2,000
+ * once, and two large vehicles with both full packages and a handful of
+ * add-ons on a premium slot came to $2,060.70 and were refused. Anything past
+ * this is a conversation, not a form.
+ */
+export const MAX_BOOKING_CENTS = 750_000;

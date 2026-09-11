@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import { averageOneWayMinutes, mileageFeeCents, travelCommitmentMinutes } from "./mileage.js";
-import { computeRefund, rescheduleFeeCents } from "./refund.js";
 import { DEFAULT_RULES as R } from "./rules.js";
 import {
   computeSurcharge,
@@ -419,60 +418,5 @@ describe("sales tax", () => {
   it("uses the Kentucky flat rate across the river", () => {
     const q = quote(cart({ zip: "41011" }), R);
     expect(q.taxRateBp).toBe(600);
-  });
-});
-
-describe("refund ladder", () => {
-  const base = { depositPaidCents: 9750, totalPaidCents: 9750, ownerCancelled: false };
-
-  it("refunds everything when Elijah cancels, however late", () => {
-    const r = computeRefund({ ...base, hoursUntilStart: 1, ownerCancelled: true }, R);
-    expect(r.refundCents).toBe(9750);
-    expect(r.retainedCents).toBe(0);
-  });
-
-  it("keeps the $25 booking fee beyond 72 hours", () => {
-    const r = computeRefund({ ...base, hoursUntilStart: 100 }, R);
-    expect(r.bucket).toBe("gt72h");
-    expect(r.refundCents).toBe(9750 - 2500);
-  });
-
-  it("returns half the deposit between 24 and 72 hours", () => {
-    expect(computeRefund({ ...base, hoursUntilStart: 71 }, R).refundCents).toBe(4875);
-    expect(computeRefund({ ...base, hoursUntilStart: 24 }, R).refundCents).toBe(4875);
-  });
-
-  it("returns nothing inside 24 hours", () => {
-    expect(computeRefund({ ...base, hoursUntilStart: 23 }, R).refundCents).toBe(0);
-    expect(computeRefund({ ...base, hoursUntilStart: 0 }, R).refundCents).toBe(0);
-  });
-
-  it("is exact at the tier boundaries", () => {
-    expect(computeRefund({ ...base, hoursUntilStart: 72 }, R).bucket).toBe("gt72h");
-    expect(computeRefund({ ...base, hoursUntilStart: 71.9 }, R).bucket).toBe("24h_to_72h");
-  });
-
-  it("never withholds more than the deposit from a pay-in-full customer", () => {
-    // Paid $195 in full; deposit portion was $97.50.
-    const r = computeRefund(
-      { depositPaidCents: 9750, totalPaidCents: 19500, hoursUntilStart: 2, ownerCancelled: false },
-      R,
-    );
-    expect(r.refundCents).toBe(9750); // the half above the deposit comes back
-    expect(r.retainedCents).toBe(9750); // at most the deposit is kept
-  });
-
-  it("floors the >=72h refund at zero for a tiny deposit", () => {
-    const r = computeRefund(
-      { depositPaidCents: 1000, totalPaidCents: 1000, hoursUntilStart: 100, ownerCancelled: false },
-      R,
-    );
-    expect(r.refundCents).toBe(0); // $10 deposit, $25 fee -> floor, not negative
-  });
-
-  it("charges a reschedule fee equal to what would have been withheld", () => {
-    expect(rescheduleFeeCents({ ...base, hoursUntilStart: 100 }, R)).toBe(2500);
-    expect(rescheduleFeeCents({ ...base, hoursUntilStart: 48 }, R)).toBe(4875);
-    expect(rescheduleFeeCents({ ...base, hoursUntilStart: 5 }, R)).toBe(9750);
   });
 });

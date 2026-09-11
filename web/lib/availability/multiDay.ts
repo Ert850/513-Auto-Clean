@@ -139,7 +139,7 @@ export function planDays(req: DayPlanRequest): PlanResult {
   const after = Math.max(0, req.travelAfterMin ?? 0);
   const maxDoorToDoor = req.maxDoorToDoorMin ?? MAX_DOOR_TO_DOOR_MIN;
   const maxDays = req.maxDays ?? 5;
-  const service = Math.max(0, Math.round(req.serviceMinutes));
+  const service = Number.isFinite(req.serviceMinutes) ? Math.max(0, Math.round(req.serviceMinutes)) : 0;
 
   if (service <= 0) return { ok: false, reason: "Nothing to schedule." };
 

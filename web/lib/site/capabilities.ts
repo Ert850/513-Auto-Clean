@@ -62,7 +62,62 @@ export const CAPABILITIES: Capability[] = [
     live: false,
     blockedBy: "Neon Postgres, so there is a stored booking to point at",
   },
+  {
+    id: "placesAutocomplete",
+    what: "Address suggestions as the customer types, from Google Places",
+    live: false,
+    blockedBy: "Google browser key in js/config.js",
+  },
+  {
+    id: "botCheck",
+    what: "Cloudflare Turnstile in front of the payment step",
+    live: false,
+    blockedBy: "TURNSTILE_SECRET_KEY in Netlify and turnstileSiteKey in js/config.js",
+  },
 ];
+
+/**
+ * Everyone who touches a customer's data, and the switch that decides
+ * whether they do yet.
+ *
+ * The privacy policy's "who we share it with" list is generated from this,
+ * so a processor appears on the page the day its switch flips and not a day
+ * before. The policy used to describe a static quote form with two third
+ * parties while the site had grown six more; nobody had thought to go back
+ * and edit prose.
+ */
+export interface Processor {
+  name: string;
+  /** What they do with the data, in the customer's terms. Starts lower case. */
+  does: string;
+  /** Absent means always on. */
+  capability?: string;
+}
+
+export const PROCESSORS: Processor[] = [
+  { name: "Netlify", does: "hosts the website and runs the code behind the booking form. Keeps standard server logs, including IP addresses." },
+  { name: "Web3Forms", does: "delivers your question or booking request to our email inbox." },
+  { name: "Google (Gmail and Fonts)", does: "is where our email lives, so anything you send us is stored there, and serves the typefaces on this site, which means Google receives your IP address when a page loads." },
+  { name: "OpenStreetMap", does: "provides the service area map tiles and looks up places you type into the map search. Your IP address and that search text go to OpenStreetMap." },
+  { name: "cdnjs (Cloudflare)", does: "serves the map library, so Cloudflare receives your IP address when the map loads." },
+  { name: "Google Places", does: "suggests addresses as you type in the booking form. What you type in that box goes to Google.", capability: "placesAutocomplete" },
+  { name: "Google Maps (Routes)", does: "measures the drive to your address so we can price travel. This happens from our server, with your address, not from your browser.", capability: "measuredTravel" },
+  { name: "Google Calendar", does: "holds our availability. Your browser reads our open times from it.", capability: "liveCalendar" },
+  { name: "Stripe", does: "takes card payments and keeps your card on file. Card details go straight to Stripe over an encrypted connection; we never see or store the card number.", capability: "cardOnFile" },
+  { name: "PayPal", does: "takes PayPal and Venmo payments.", capability: "digitalWallets" },
+  { name: "Twilio", does: "sends our appointment text messages.", capability: "automatedMessages" },
+  { name: "Resend", does: "sends our confirmation and reminder emails.", capability: "automatedMessages" },
+  { name: "Neon", does: "stores bookings in our database so your booking link works.", capability: "bookingLink" },
+  { name: "Cloudflare Turnstile", does: "checks that a booking is being made by a person, before payment. It may set a cookie to do so.", capability: "botCheck" },
+];
+
+export function liveProcessors(): Processor[] {
+  return PROCESSORS.filter((p) => !p.capability || isLive(p.capability));
+}
+
+export function dormantProcessors(): Processor[] {
+  return PROCESSORS.filter((p) => p.capability && !isLive(p.capability));
+}
 
 export function isLive(id: string): boolean {
   return CAPABILITIES.find((c) => c.id === id)?.live ?? false;

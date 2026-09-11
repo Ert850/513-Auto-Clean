@@ -36,7 +36,9 @@ export type CancelBucket =
   | "waived"
   | "gte72h"
   | "24h_to_72h"
-  | "lt24h";
+  | "lt24h"
+  /** The notice could not be worked out. Nothing is charged until a person looks. */
+  | "needs_review";
 
 /** Share of the booking that the notice given puts at stake. */
 export function chargeBpForNotice(hoursUntilStart: number, r: PricingRules): number {
@@ -96,6 +98,13 @@ export function computeCancellation(input: CancelInput, r: PricingRules): Cancel
     );
   }
   if (input.waived) return settle("waived", 0, "Cancellation fee waived.");
+
+  // A NaN here used to fall through every comparison and charge the FULL
+  // booking. A date we cannot read is not a late cancellation; it is a bug,
+  // and bugs do not get to bill customers.
+  if (!Number.isFinite(input.hoursUntilStart)) {
+    return settle("needs_review", 0, "We could not work out the notice on this booking. Someone will check it by hand before anything is charged.");
+  }
 
   const bucket = bucketForNotice(input.hoursUntilStart, r);
   const fee = Math.round((total * chargeBpForNotice(input.hoursUntilStart, r)) / 10_000);
@@ -174,6 +183,9 @@ export function computeReschedule(input: RescheduleInput, r: PricingRules): Resc
     return free("owner_cancelled", "We moved it, so there is nothing to pay and nothing changes.");
   }
   if (input.waived) return free("waived", "Reschedule charge waived.");
+  if (!Number.isFinite(input.hoursUntilStart)) {
+    return free("needs_review", "We could not work out the notice on this booking. Someone will check it by hand before anything is charged.");
+  }
 
   const bucket = bucketForNotice(input.hoursUntilStart, r);
 

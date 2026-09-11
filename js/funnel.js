@@ -46,6 +46,10 @@
       contact: { name: '', phone: '', email: '' },
       consent: { terms: null, sms: null, media: null },
       payInFull: false,
+      // The card-on-file authorization, ticked in words the customer read.
+      // The server refuses to save a card without it.
+      mandate: false,
+      turnstileToken: null,
       // As typed. The engine decides what it is worth, here and again on the
       // server, so this is never a discount amount.
       // Measured drive time, once the address is complete enough to route
@@ -195,12 +199,17 @@
 
   function surchargeCtx() {
     if (state.slot) {
+      // Derived from the slot, never from the checkbox. The checkbox only
+      // reveals nearer dates; whether a date is inside the lead window is a
+      // fact about the calendar, and the server works it out the same way.
       return {
         startMinutesLocal: P.localMinutesOfDay(state.slot),
-        priorityBooking: state.priority
+        priorityBooking: P.slotNeedsPriority(state.slot, Date.now(), RULES.window)
       };
     }
     if (state.priority) {
+      // No slot yet but they have asked to see the next three days: show the
+      // surcharge they are about to pick, so the number does not jump later.
       return { startMinutesLocal: P.minutesOfDay(12), priorityBooking: true };
     }
     return null;
@@ -850,7 +859,7 @@
       '<span>I do not have a good location for a detail near me</span></label>' +
       (state.noGoodLocation
         ? '<div class="bk-panel"><p>No problem, this is usually easy to solve. Local spots like retail parking lots often work well, especially for interior details. Tell us roughly where you are and we will sort somewhere out with you. If we cannot find somewhere near you, we can work out a location closer to us as well.</p>' +
-          '<textarea data-note="loc" rows="3" placeholder="e.g. I live in an apartment with no driveway, but there is a big lot behind the Kroger on Ludlow">' + esc(state.locationNote) + '</textarea></div>'
+          '<textarea data-note="loc" rows="3" maxlength="300" placeholder="e.g. I live in an apartment with no driveway, but there is a big lot behind the Kroger on Ludlow">' + esc(state.locationNote) + '</textarea></div>'
         : '') +
       travelLine();
   }
@@ -1692,12 +1701,12 @@
     var c = state.contact;
     return '<div class="bk-row2">' +
       '<div class="bk-field"><label for="bkName">Name</label>' +
-      '<input type="text" id="bkName" data-c="name" value="' + esc(c.name) + '" autocomplete="name" data-focus /></div>' +
+      '<input type="text" id="bkName" data-c="name" value="' + esc(c.name) + '" autocomplete="name" maxlength="80" data-focus /></div>' +
       '<div class="bk-field"><label for="bkPhone">Phone</label>' +
-      '<input type="tel" id="bkPhone" data-c="phone" value="' + esc(c.phone) + '" inputmode="tel" autocomplete="tel" /></div>' +
+      '<input type="tel" id="bkPhone" data-c="phone" value="' + esc(c.phone) + '" inputmode="tel" autocomplete="tel" maxlength="20" /></div>' +
       '</div>' +
       '<div class="bk-field"><label for="bkEmail">Email</label>' +
-      '<input type="email" id="bkEmail" data-c="email" value="' + esc(c.email) + '" inputmode="email" autocomplete="email" /></div>' +
+      '<input type="email" id="bkEmail" data-c="email" value="' + esc(c.email) + '" inputmode="email" autocomplete="email" maxlength="120" /></div>' +
 
       // The two clauses that actually affect someone are stated HERE, not
       // hidden behind a link. A card network deciding a chargeback wants to
@@ -1719,7 +1728,9 @@
 
       yesNo('sms',
         'Can we text you about this booking?',
-        'Confirmations, reminders, and a heads up when we are on the way. Msg and data rates may apply, reply STOP to opt out. You can say no and we will email or call instead.') +
+        'By saying yes you agree to receive appointment texts from 513 Auto Clean: a confirmation, a reminder or two before the day, and a heads up when we are on the way. ' +
+        'Usually 2 to 5 messages per booking. Msg and data rates may apply. Reply STOP to opt out, HELP for help. ' +
+        'You can say no and we will email or call instead.') +
 
       yesNo('media',
         'Can we film and photograph the detail?',
@@ -1727,13 +1738,22 @@
         '<a href="https://www.instagram.com/513autoclean/" target="_blank" rel="noopener">See the kind of thing we post</a>') +
 
       '<div class="bk-field"><label for="bkNotes">Describe the vehicle&rsquo;s condition, parking situation, etc. <i>(optional)</i></label>' +
-      '<textarea id="bkNotes" data-note="general" rows="3" placeholder="Pet hair, spills, a tight parking spot, anything we should expect">' + esc(state.notes) + '</textarea>' +
+      '<textarea id="bkNotes" data-note="general" rows="3" maxlength="500" placeholder="Pet hair, spills, a tight parking spot, anything we should expect">' + esc(state.notes) + '</textarea>' +
       '<p class="bk-hint">We will ask about water and power access once your time is confirmed.</p></div>';
   }
 
   function vContact() {
     if (!state.contact.name.trim()) return 'We need your name.';
     if (!state.contact.phone.trim()) return 'We need a phone number to confirm your booking.';
+    // The same shape the server insists on, checked here so the message
+    // arrives while the field still has focus rather than after a round trip.
+    var digits = state.contact.phone.replace(/\D/g, '');
+    if (digits.length === 11 && digits.charAt(0) === '1') digits = digits.slice(1);
+    if (digits.length !== 10 || /^[01]/.test(digits)) return 'That does not look like a US phone number. Ten digits, area code first.';
+    if (state.contact.name.trim().length > 80) return 'That name is too long for our form.';
+    if (state.contact.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(state.contact.email.trim())) {
+      return 'That email address does not look right.';
+    }
     if (state.consent.terms === null) return 'Please answer yes or no on the terms.';
     if (state.consent.terms === false) return 'We cannot take a booking without accepting the terms. You can still send us a question instead.';
     if (state.consent.sms === null) return 'Please answer yes or no on text messages.';
@@ -1859,7 +1879,28 @@
         '</div>';
     }
 
-    html += '<div id="bkPayMount" class="bk-stripe"><p class="bk-loading">Loading payment options...</p></div>' +
+    // Card networks require the customer to agree, in words they can read,
+    // before a card is stored for later charges. This is that sentence. It is
+    // recorded against the booking, and the server refuses to save a card
+    // without it.
+    var viaPaypal = now && state.payMethod === 'paypal';
+    if (!viaPaypal) {
+      html += '<label class="bk-check bk-mandate' + (state.mandate ? ' on' : '') + '">' +
+        '<input type="checkbox" id="bkMandate"' + (state.mandate ? ' checked' : '') + ' />' +
+        '<span>I authorize 513 Auto Clean to keep this card on file and to charge it for the balance of this booking once the work is done, ' +
+        'and for any cancellation or late change fee set out in the terms I accepted. Nothing is charged today' +
+        (now ? ' beyond the amount shown.' : '.') + '</span></label>';
+    }
+
+    if (CFG.turnstileSiteKey) {
+      html += '<div id="bkTurnstile" class="bk-turnstile"></div>';
+    }
+
+    html += '<div id="bkPayMount" class="bk-stripe">' +
+      (state.mandate || viaPaypal
+        ? '<p class="bk-loading">Loading payment options...</p>'
+        : '<p class="bk-hint">Tick the authorization above to load the secure payment form.</p>') +
+      '</div>' +
       '</div>';
 
     html += '<p class="bk-fine">Travel is worked out from your address and added when we confirm. ' +
@@ -1873,6 +1914,9 @@
 
   function vPay() {
     if (state.payState === 'paid') return null;
+    if (!state.mandate && !(state.payInFull && state.payMethod === 'paypal')) {
+      return 'Please tick the card authorization to continue.';
+    }
     if (state.payMethod === 'paypal' && state.payInFull) {
       return 'Use the PayPal button above to finish paying.';
     }
@@ -1885,6 +1929,20 @@
   }
 
   /* ---- the wire cart: ids only, never prices ---- */
+  /**
+   * What the customer agreed to, sent with every payment request and kept
+   * against the booking. The terms version is the date the wording last
+   * changed, so it points at exactly one document.
+   */
+  function consentPayload() {
+    return {
+      termsVersion: P.LEGAL.termsEffective,
+      sms: state.consent.sms === true,
+      media: state.consent.media === true,
+      mandateAccepted: state.mandate === true
+    };
+  }
+
   function wireCart() {
     return {
       vehicles: state.vehicles.map(function (v) {
@@ -1920,7 +1978,20 @@
     var mount = root.querySelector('#bkPayMount');
     if (!mount) return;
 
+    var ts = root.querySelector('#bkTurnstile');
+    if (ts && window.turnstile && !ts.dataset.rendered) {
+      ts.dataset.rendered = '1';
+      window.turnstile.render(ts, {
+        sitekey: CFG.turnstileSiteKey,
+        callback: function (token) { state.turnstileToken = token; },
+        'expired-callback': function () { state.turnstileToken = null; }
+      });
+    }
+
     if (state.payInFull && state.payMethod === 'paypal') return mountPayPal(mount);
+    // The card form does not load until the card-on-file authorization is
+    // ticked. PayPal keeps nothing on file, so it needs no such line.
+    if (!state.mandate) return;
     return mountStripe(mount);
   }
 
@@ -1942,6 +2013,8 @@
       body: JSON.stringify({
         cart: wireCart(),
         contact: state.contact,
+        consent: consentPayload(),
+        turnstileToken: state.turnstileToken,
         mode: state.payInFull ? 'pay_now' : 'card_only',
         idempotencyKey: bookingKey()
       })
@@ -1991,7 +2064,13 @@
           return fetch('/api/paypal-order', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action: 'create', cart: wireCart(), contact: state.contact })
+            body: JSON.stringify({
+              action: 'create',
+              cart: wireCart(),
+              contact: state.contact,
+              consent: consentPayload(),
+              turnstileToken: state.turnstileToken
+            })
           }).then(function (r) { return r.json(); }).then(function (j) {
             if (!j.id) throw new Error(j.message || 'PayPal could not start');
             return j.id;
@@ -2263,6 +2342,10 @@
       state.daysShown = 3;
       return render();
     }
+    if (t.id === 'bkMandate') {
+      state.mandate = t.checked;
+      return render();
+    }
     if (t.dataset.addr === 'region') { state.address.region = t.value; return renderTotal(); }
   }
 
@@ -2449,7 +2532,9 @@
       '\n  Paying: ' + (state.payInFull ? 'in full now' : 'after service, card on file') +
       '\n  Travel: added at confirmation' +
       '\n  On site: ' + fmtDur(quote.serviceDurationMin) + '\n\n' +
-      'CONSENT\n  Terms: yes\n  SMS: ' + (state.consent.sms ? 'YES' : 'no') +
+      'CONSENT\n  Terms: yes, version ' + P.LEGAL.termsEffective +
+      '\n  Card authorization: ' + (state.mandate ? 'YES' : 'no') +
+      '\n  SMS: ' + (state.consent.sms ? 'YES' : 'no') +
       '\n  Filming: ' + (state.consent.media ? 'YES' : 'no') + '\n\n' +
       (state.notes ? 'NOTES\n  ' + state.notes + '\n' : '');
   }
@@ -2517,12 +2602,48 @@
 
   var lastFocus = null;
 
+  /**
+   * While the funnel is open the rest of the page is inert: a screen reader
+   * cannot wander into it and Tab cannot leave the dialog. `inert` is the
+   * platform's own way to say that; the keydown trap below covers browsers
+   * that do not have it.
+   */
+  function setPageInert(on) {
+    var kids = document.body.children;
+    for (var i = 0; i < kids.length; i++) {
+      var k = kids[i];
+      if (k === host || k.tagName === 'SCRIPT') continue;
+      if (on) {
+        k.setAttribute('inert', '');
+        k.setAttribute('aria-hidden', 'true');
+      } else {
+        k.removeAttribute('inert');
+        k.removeAttribute('aria-hidden');
+      }
+    }
+  }
+
+  var FOCUSABLE = 'a[href],button:not([disabled]),input:not([disabled]):not([type="hidden"]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
+
+  function trapTab(e) {
+    if (e.key !== 'Tab' || !host || host.hidden) return;
+    var items = Array.prototype.filter.call(host.querySelectorAll(FOCUSABLE), function (n) {
+      return n.offsetParent !== null;
+    });
+    if (!items.length) return;
+    var first = items[0], last = items[items.length - 1];
+    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+  }
+
   function open() {
     if (!host) return;
     reset();
     host.hidden = false;
     document.body.classList.add('bk-open');
     lastFocus = document.activeElement;
+    setPageInert(true);
+    document.addEventListener('keydown', trapTab);
     render();
     el('bkClose').focus();
   }
@@ -2531,6 +2652,8 @@
     if (!host) return;
     host.hidden = true;
     document.body.classList.remove('bk-open');
+    setPageInert(false);
+    document.removeEventListener('keydown', trapTab);
     if (lastFocus && lastFocus.focus) lastFocus.focus();
   }
 

@@ -54,8 +54,20 @@ export function zonedToUtc(
   timeZone: string,
 ): number {
   const guess = Date.UTC(y, mo - 1, d, h, mi, s);
-  const once = guess - zoneOffsetMs(guess, timeZone);
-  return guess - zoneOffsetMs(once, timeZone);
+  const off1 = zoneOffsetMs(guess, timeZone);
+  const once = guess - off1;
+  const off2 = zoneOffsetMs(once, timeZone);
+  const twice = guess - off2;
+  if (off1 === off2) return twice;
+
+  // The two passes disagreed, so this wall-clock time sits on a transition.
+  // If the second answer is self-consistent it is a real instant (the first
+  // of an ambiguous fall-back hour). If it is not, the time does not exist:
+  // it fell in the spring-forward gap, and clocks jumped FORWARD over it, so
+  // 2:30 becomes 3:30, not 1:30.
+  const off3 = zoneOffsetMs(twice, timeZone);
+  if (off3 === off2) return twice;
+  return guess - Math.min(off2, off3);
 }
 
 /** Year, month and day as they read on a wall calendar in that zone. */

@@ -825,3 +825,9 @@ body.bk-open { overflow: hidden; }
 .bk-explain-why { font-style: italic; border-top: 1px solid var(--line); padding-top: .7rem; margin-top: .9rem !important; }
 
 .bk-explain ul.time li::marker { color: var(--amber); }
+
+/* ---------- Card-on-file authorization and bot check ---------- */
+.bk-mandate { align-items: flex-start; margin: .9rem 0 .6rem; font-size: .88rem; line-height: 1.45; }
+.bk-mandate input { margin-top: .2rem; flex: 0 0 auto; }
+.bk-mandate.on span { color: var(--text); }
+.bk-turnstile { margin: .4rem 0 .8rem; min-height: 65px; }
