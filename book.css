@@ -224,6 +224,53 @@ body.bk-open { overflow: hidden; }
 .bk-interest b { display: block; font-size: .92rem; color: #7a5209; }
 .bk-interest span { display: block; font-size: .82rem; color: var(--text-soft); line-height: 1.55; margin-top: .2rem; }
 
+/* ---------- time bands ---------- */
+/* Four parts of the day, then the exact hour inside one. The old flat list
+   of six chips read as a menu of appointment windows, which it never was. */
+.bk-starts {
+  font-size: .84rem; color: var(--text-soft); line-height: 1.55;
+  background: var(--paper); border-radius: var(--r-sm); padding: .65rem .8rem;
+  margin: 0 0 .9rem;
+}
+.bk-starts b { color: var(--text); }
+
+.bk-daygroup { margin-bottom: 1.1rem; }
+.bk-daygroup h4 { font-size: .9rem; font-weight: 800; margin: 0 0 .5rem; }
+
+.bk-band { border: 1.5px solid var(--line); border-radius: var(--r-sm); margin-bottom: .45rem; overflow: hidden; }
+.bk-band.on { border-color: var(--red); }
+
+.bk-band-h {
+  display: flex; align-items: center; justify-content: space-between; gap: .8rem;
+  width: 100%; text-align: left; font: inherit; cursor: pointer;
+  background: var(--paper-2); padding: .7rem .85rem; transition: background .16s;
+}
+.bk-band-h:hover { background: var(--paper); }
+.bk-band-l b { display: block; font-size: .93rem; font-weight: 700; }
+.bk-band-l i { display: block; font-style: normal; font-size: .76rem; color: var(--text-soft); margin-top: .1rem; }
+.bk-band-r { text-align: right; flex: none; }
+.bk-band-r b { display: block; font-family: var(--font-display); font-size: 1.05rem; }
+.bk-band-r i { display: block; font-style: normal; font-size: .72rem; color: var(--text-soft); margin-top: .1rem; }
+.bk-band-std { display: block; font-style: normal; font-size: .7rem; font-weight: 700; color: #1a8a3f; }
+.bk-band-prem { display: block; font-style: normal; font-size: .7rem; font-weight: 800; color: #7a5209; }
+
+.bk-bandtimes {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: .4rem;
+  padding: .6rem .7rem .75rem; background: var(--paper); border-top: 1px solid var(--line);
+}
+.bk-bandtimes .bk-time {
+  display: block; text-align: center; font: inherit; cursor: pointer;
+  background: var(--paper-2); border: 1.5px solid var(--line); border-radius: var(--r-sm);
+  padding: .45rem .3rem; font-size: .88rem; font-weight: 700;
+  transition: border-color .16s, background .16s;
+}
+.bk-bandtimes .bk-time:hover { border-color: var(--red); }
+.bk-bandtimes .bk-time.on { border-color: var(--red); background: var(--red-ghost); }
+.bk-bandtimes .bk-time i {
+  display: block; font-style: normal; font-size: .7rem; font-weight: 400;
+  color: var(--text-soft); margin-top: .1rem;
+}
+
 /* ---------- when we cannot offer a time ---------- */
 /* A dead end here loses a customer who has already chosen a package, given
    an address and reached the last step. So it becomes a request instead. */

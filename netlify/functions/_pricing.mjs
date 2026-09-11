@@ -785,20 +785,56 @@ function applySurchargeCents(baseCents, appliedBp) {
 // lib/availability/slots.ts
 var DEFAULT_BOOKING_WINDOW = {
   earliestStartMin: 6 * 60,
-  latestStartMin: 20 * 60,
-  serviceEndByMin: 24 * 60
+  // 10pm. Which does NOT mean any job can start at 10pm: serviceEndByMin
+  // still has to be met, so a 10pm start is only ever available to a job of
+  // two hours or less. The rule falls out of the arithmetic rather than
+  // needing a clause of its own.
+  latestStartMin: 22 * 60,
+  serviceEndByMin: 24 * 60,
+  // Washing a car you cannot see is how panels get missed and paint gets
+  // marred. Exterior work has a harder cut-off than interior work.
+  latestExteriorStartMin: 20 * 60
 };
 var IGNORE_RETURN_AFTER_MIN = 18 * 60;
-var PREFERRED_STARTS = {
-  weekday: [6 * 60, 8 * 60, 10 * 60, 16 * 60, 18 * 60, 20 * 60],
-  weekend: [6 * 60, 8 * 60, 10 * 60, 16 * 60, 18 * 60, 20 * 60]
-};
-var TIME_WINDOWS = [
-  { id: "early", label: "Early", fromMin: 6 * 60, toMin: 8 * 60, premium: true },
-  { id: "morning", label: "Morning", fromMin: 10 * 60, toMin: 12 * 60, premium: false },
-  { id: "afternoon", label: "Afternoon", fromMin: 12 * 60, toMin: 16 * 60, premium: false },
-  { id: "evening", label: "Evening", fromMin: 16 * 60, toMin: 18 * 60, premium: false },
-  { id: "late", label: "Late", fromMin: 18 * 60, toMin: 20 * 60, premium: true }
+var TIME_BANDS = [
+  {
+    id: "early",
+    label: "Early Morning",
+    fromMin: 6 * 60,
+    toMin: 10 * 60,
+    premium: true,
+    preferMin: 8 * 60,
+    hint: "Starts 6am to 10am"
+  },
+  {
+    id: "midday",
+    label: "Late Morning",
+    fromMin: 10 * 60,
+    toMin: 14 * 60,
+    premium: false,
+    preferMin: 10 * 60,
+    hint: "Starts 10am to 2pm"
+  },
+  {
+    id: "afternoon",
+    label: "Afternoon",
+    fromMin: 14 * 60,
+    toMin: 18 * 60,
+    premium: false,
+    preferMin: 16 * 60,
+    hint: "Starts 2pm to 6pm"
+  },
+  {
+    id: "evening",
+    label: "Late Evening",
+    fromMin: 18 * 60,
+    toMin: 22 * 60 + 1,
+    premium: true,
+    // Earliest in the band rather than a fixed hour: a late job should be as
+    // early as it can be, not as late as it is allowed to be.
+    preferMin: 18 * 60,
+    hint: "Starts 6pm to 10pm"
+  }
 ];
 function localMinutesOfDay(ms, timeZone = "America/New_York") {
   const parts = new Intl.DateTimeFormat("en-US", {
