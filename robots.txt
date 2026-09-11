@@ -1,0 +1,18 @@
+# 513 Auto Clean, https://513autoclean.com
+#
+# NOTE: the town list below is a comment. Crawlers ignore it and it does
+# nothing for ranking. The list that matters is the one printed in the
+# Service Area section of index.html, and it is kept identical to this.
+#
+# Ohio: Cincinnati, Clifton, Corryville, Northside, Norwood, Hyde Park, Oakley, Mount Lookout, Pleasant Ridge, Kenwood, Blue Ash, Montgomery, Symmes, Deer Park, Madeira, Mariemont, Indian Hill, Newtown, Anderson Township, Cherry Grove, Milford, Loveland, Mason, West Chester, Liberty Township, Sharonville, Springdale, Forest Park, Wyoming, Reading, Evendale, College Hill, Mount Healthy, Colerain Township, Groesbeck, Monfort Heights, Westwood, Bridgetown, Dent, Delhi Township, Price Hill, Sayler Park, Harrison, Fairfield, Hamilton, Middletown, Lebanon, Springboro, Franklin, Oxford, Batavia
+# Northern Kentucky: Covington, Newport, Bellevue, Fort Thomas, Fort Mitchell, Edgewood, Crestview Hills, Erlanger, Florence, Independence, Union, Burlington, Hebron, Cold Spring, Highland Heights, Alexandria, Walton
+# Southeast Indiana: Lawrenceburg, Aurora, Greendale, West Harrison, Brookville, Batesville
+
+User-agent: *
+Allow: /
+
+# Source and functions are not published at all (only dist/ is). data/ IS
+# published and must stay crawlable: the reviews and gallery are rendered
+# from it, and a blocked fetch means Google indexes an empty section.
+
+Sitemap: https://513autoclean.com/sitemap.xml

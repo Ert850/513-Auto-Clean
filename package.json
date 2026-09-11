@@ -1,0 +1,14 @@
+{
+  "name": "513-auto-clean-site",
+  "private": true,
+  "type": "module",
+  "description": "Static site plus Netlify functions. The app source lives in web/. Run `npm install` here once: the functions resolve their dependencies from this directory.",
+  "scripts": {
+    "build": "cd web && npm ci && npm run build:funnel && npm run build:server && npm run build:site && npm run build:legal && npm run build:stamp && npm run build:dist",
+    "test": "cd web && npm test",
+    "typecheck": "cd web && npm run typecheck"
+  },
+  "dependencies": {
+    "stripe": "^22.6.1"
+  }
+}
