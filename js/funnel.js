@@ -19,8 +19,8 @@
 
   var WEB3FORMS_KEY = '8a502fe3-2a53-4904-98e9-b18dabb1f579';
 
-  /** Everything we can take standing in a driveway. Mirrors capabilities.ts. */
-  var IN_PERSON = 'cash, check, card, tap to pay, Venmo, Apple Pay, Cash App or Zelle';
+  /** Everything we can take standing in a driveway. From capabilities.ts. */
+  var IN_PERSON = P.IN_PERSON;
   var DAY = 86400000;
 
   /* ================= state ================= */
@@ -67,6 +67,11 @@
       // has not launched instead of guessing at it.
       interest: [],
       prefer: { parts: [], days: [] },
+      // What we need to know before loading the van. Asked on the last step
+      // rather than promised as "a few quick questions" in a list of things
+      // that will happen later, which is how it used to read and meant
+      // turning up to find a locked gate and no outdoor tap.
+      access: { water: null, power: null, parking: '' },
       // Which band's times are expanded, as 'dayKey|bandId'.
       openBand: '',
       // Set when the funnel was opened from a shared quote link.
@@ -2007,6 +2012,84 @@
     return null;
   }
 
+  /* ================= step 9: confirm ================= */
+
+  /**
+   * Three states, not two.
+   *
+   * "Not sure" is the honest answer for most people about their own outdoor
+   * tap, and forcing a yes or a no turns a useful answer into a guess. We
+   * bring our own water and power anyway; knowing in advance is the
+   * difference between topping up a tank the night before and finding out in
+   * a driveway.
+   */
+  function askAccess(name, label, help) {
+    var v = state.access[name];
+    var opt = function (val, text) {
+      return '<button type="button" class="bk-acc-b' + (v === val ? ' on' : '') +
+        '" data-access="' + name + '" data-accval="' + val + '">' + text + '</button>';
+    };
+    return '<div class="bk-acc' + (v === null ? '' : ' answered') + '">' +
+      '<p class="bk-acc-q">' + label + '</p>' +
+      '<p class="bk-acc-h">' + help + '</p>' +
+      '<div class="bk-acc-opts">' + opt('yes', 'Yes') + opt('no', 'No') + opt('unsure', 'Not sure') + '</div>' +
+      '</div>';
+  }
+
+  function accessBlock() {
+    return '<div class="bk-accbox">' +
+      '<h4>Getting set up on the day</h4>' +
+      '<p class="bk-hint">We carry our own water and power, so none of these stop the detail. ' +
+      'Knowing beforehand just means we arrive loaded for your driveway rather than working it out there.</p>' +
+      askAccess('water', 'Is there an outdoor tap we could use?',
+        'Saves filling the tank, and it is the one that matters most for an exterior.') +
+      askAccess('power', 'Is there an outdoor outlet we could use?',
+        'For the extractor and the polisher. We bring a generator otherwise.') +
+      '<div class="bk-field"><label for="bkParking">Where should we park, and how do we reach the vehicle? ' +
+      '<i>(optional)</i></label>' +
+      '<textarea id="bkParking" data-note="parking" rows="2" maxlength="300" ' +
+      'placeholder="e.g. driveway on the left, gate code 4821, car is usually out front">' +
+      esc(state.access.parking) + '</textarea></div>' +
+      '</div>';
+  }
+
+  /* ---- what actually happens next, as of today ---- */
+
+  /**
+   * The steps after Confirm, generated from what is switched on.
+   *
+   * This used to promise automatic reminders two days before and on the
+   * morning, and an on-the-way text, none of which exist: Elijah texts an
+   * ETA himself before he sets off. Promising software you have not built is
+   * the fastest way to look unreliable while doing everything right.
+   */
+  function nextSteps() {
+    var auto = P.isLive('automatedEmail');
+    var texts = P.isLive('automatedTexts');
+    var out = [];
+
+    out.push(auto
+      ? '<li><b>A confirmation lands in your inbox now.</b> It has your time, your total and everything you picked.</li>'
+      : '<li><b>Elijah confirms it himself, usually within a few hours.</b> By text or email, whichever you said. ' +
+        'Until you hear back, treat the time as requested rather than locked in.</li>');
+
+    out.push('<li><b>We work out the exact drive.</b> Travel is measured from your address and added to the total, ' +
+      'and you see the number before anything is charged.</li>');
+
+    out.push(texts
+      ? '<li><b>A reminder before the day</b>, and a text when we are on the way.</li>'
+      : '<li><b>A text before we set off</b>, with an ETA. Elijah sends that one by hand, so if you need to ' +
+        'move anything, replying to it reaches a person.</li>');
+
+    out.push('<li><b>Pay when it is done.</b> ' +
+      (state.payInFull
+        ? 'Already paid, so there is nothing to do.'
+        : 'By ' + IN_PERSON + ', or ask us to put it on the card on file. The card is only authorized for a ' +
+          'late cancellation.') + '</li>');
+
+    return '<ol>' + out.join('') + '</ol>';
+  }
+
   /* ================= step 9: pay ================= */
 
   /**
@@ -2111,6 +2194,8 @@
         '</button>' +
         '</div>';
     }
+
+    html += accessBlock();
 
     html += '<div class="bk-cardbox">' +
       '<h4>' + (now ? 'How would you like to pay?' : 'Card on file') + '</h4>' +
@@ -2226,6 +2311,7 @@
       // A request, not a booking. The server must not take money for a time
       // that does not exist yet.
       kind: isInquiry() ? 'inquiry' : 'booking',
+      access: state.access,
       interest: state.interest.slice(),
       prefer: isInquiry() ? state.prefer : null,
       payInFull: isInquiry() ? false : state.payInFull
@@ -2397,9 +2483,10 @@
       '[data-size],[data-intent],[data-pkg],[data-addon],[data-clear],[data-win],[data-slot],' +
       '[data-consent],[data-pay],[data-delveh],[data-browsepick],[data-max],[data-sort],' +
       '[data-kind],[data-paymethod],[data-corr],[data-coating],[data-garage],[data-step],' +
-      '[data-prefday],[data-prefpart],[data-interest],[data-band],' +
+      '[data-prefday],[data-prefpart],[data-interest],[data-band],[data-access],' +
       '#bkAddVeh,#bkMoreDays,#bkNext,#bkBack,#bkClose,#bkScrim,#bkBrowse,#bkBrowseBack,' +
       '#bkLeaveStay,#bkLeaveKeep,#bkLeaveAsk,#bkLeaveDrop,#bkFresh,' +
+      '#bkDoneClose,#bkDoneAsk,#bkDoneCopy,#bkDoneAgain,' +
       '#bkCopyQuote,' +
       '#bkPromoApply,#bkPromoClear,' +
       '#bkQClear,#bkReset,#bkOther'
@@ -2512,6 +2599,17 @@
       return loadSlots();
     }
 
+    if (t.dataset.access) {
+      state.access[t.dataset.access] = t.dataset.accval;
+      // In place, so the page does not jump back to the top of a long step.
+      var accGroup = t.closest('.bk-acc');
+      accGroup.classList.add('answered');
+      accGroup.querySelectorAll('[data-access]').forEach(function (b) {
+        b.classList.toggle('on', b === t);
+      });
+      return;
+    }
+
     if (t.dataset.consent) {
       state.consent[t.dataset.consent] = t.dataset.val === '1';
       // Update in place. A full re-render would refocus the name field and
@@ -2598,6 +2696,19 @@
         : 'This browser will not let us save it, sorry. Text us and we will hold it for you.');
     }
     if (t.id === 'bkLeaveAsk') return askAboutIt();
+    if (t.id === 'bkDoneAsk') return amendBooking();
+    if (t.id === 'bkDoneCopy') return copyQuoteLink(t);
+    if (t.id === 'bkDoneAgain') {
+      // Same person, same address, same day if they picked one. Only the
+      // vehicle changes, so everything else stays put.
+      var keep = { address: state.address, contact: state.contact, access: state.access };
+      reset();
+      state.address = keep.address;
+      state.contact = keep.contact;
+      state.access = keep.access;
+      state.step = 0;
+      return render();
+    }
     if (t.id === 'bkLeaveDrop') { clearDraft(); return close(); }
     if (t.id === 'bkFresh') { clearDraft(); reset(); return render(); }
   }
@@ -2661,6 +2772,7 @@
     if (t.dataset.c) { state.contact[t.dataset.c] = t.value; return; }
     if (t.dataset.label !== undefined) { state.vehicles[Number(t.dataset.label)].label = t.value; return; }
     if (t.dataset.note === 'loc') { state.locationNote = t.value; return; }
+    if (t.dataset.note === 'parking') { state.access.parking = t.value; return; }
     if (t.dataset.note === 'general') { state.notes = t.value; return; }
     if (t.hasAttribute('data-browseq')) {
       state.browseQ = t.value;
@@ -2819,6 +2931,9 @@
       '\n  Paying: ' + (state.payInFull ? 'in full now' : 'on the day; card on file is cancellation cover only') +
       '\n  Travel: added at confirmation' +
       '\n  On site: ' + fmtDur(quote.serviceDurationMin) + '\n\n' +
+      'ACCESS\n  Water: ' + (state.access.water || 'not answered') +
+      '\n  Power: ' + (state.access.power || 'not answered') +
+      (state.access.parking ? '\n  Parking: ' + state.access.parking : '') + '\n\n' +
       'CONSENT\n  Terms: yes, version ' + P.LEGAL.termsEffective +
       '\n  Card authorization: ' + (state.mandate ? 'YES' : 'no') +
       '\n  SMS: ' + (state.consent.sms ? 'YES' : 'no') +
@@ -2826,36 +2941,136 @@
       (state.notes ? 'NOTES\n  ' + state.notes + '\n' : '');
   }
 
+  /**
+   * Everything they just sent, in a table they can read back.
+   *
+   * A confirmation that only says "thanks" asks the customer to trust that
+   * the right thing arrived. This is the receipt: every answer, in the order
+   * they gave it, so a mistake is spotted in the ten seconds when it is still
+   * easy to fix rather than on the doorstep.
+   */
+  function receiptRows(quote) {
+    var rows = [];
+    var add = function (k, v) { if (v) rows.push([k, v]); };
+
+    state.vehicles.forEach(function (v, i) {
+      var size = v.size ? P.vehicleSize(v.size) : null;
+      var names = v.packageIds.map(function (id) { return (P.findPackage(id) || {}).name; }).filter(Boolean);
+      var label = state.vehicles.length > 1 ? 'Vehicle ' + (i + 1) : 'Vehicle';
+      add(label, [v.label, size && size.label, names.join(' + ')].filter(Boolean).join(', '));
+      if (v.addons.length) {
+        add('Add-ons', v.addons.map(function (a) {
+          var d = P.findAddon(a.addonId);
+          return d ? d.name : a.addonId;
+        }).join(', '));
+      }
+    });
+
+    add('When', state.slot
+      ? new Date(state.slot).toLocaleString('en-US', {
+          weekday: 'long', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit'
+        })
+      : (isInquiry() ? preferenceSummary() || 'Times requested' : ''));
+    add('Where', [state.address.line1, state.address.city, state.address.region, state.address.zip]
+      .filter(Boolean).join(', '));
+    add('You', [state.contact.name, state.contact.phone, state.contact.email].filter(Boolean).join(' · '));
+    add('Water', state.access.water);
+    add('Power', state.access.power);
+    add('Parking', state.access.parking);
+    add('Notes', state.notes);
+    if (quote.promoCode && quote.promoDiscountCents > 0) {
+      add('Promo', quote.promoCode + ', ' + $(quote.promoDiscountCents) + ' off');
+    }
+    add('Paying', state.payInFull ? 'In full, now' : 'On the day');
+    add('Total', $(quote.totalCents) + (state.travel.source === 'routes' ? '' : ', before travel'));
+
+    return '<dl class="bk-receipt">' + rows.map(function (r) {
+      return '<dt>' + esc(r[0]) + '</dt><dd>' + esc(String(r[1])) + '</dd>';
+    }).join('') + '</dl>';
+  }
+
   function done(quote) {
     state.done = true;
     clearDraft();
     el('bkBar').style.width = '100%';
-    el('bkTitle').textContent = 'You are booked in';
+    el('bkTitle').textContent = isInquiry() ? 'Request sent' : 'You are booked in';
     el('bkNext').hidden = true;
     el('bkBack').hidden = true;
     el('bkTotal').hidden = true;
+
+    // The step tabs are still on screen from the last render and every one of
+    // them is dead: go() calls render(), and render() returns early once
+    // state.done is set. A row of buttons that look clickable and do nothing
+    // is worse than no buttons, so they become a finished-state line.
+    el('bkNav').innerHTML = '<span class="bk-nav-done">' +
+      (isInquiry() ? 'Request sent' : 'Booked') + ' &middot; ' +
+      esc(new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })) +
+      '</span>';
 
     el('bkBody').innerHTML =
       '<div class="bk-done"><div class="bk-done-ic">' +
       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 6L9 17l-5-5"/></svg></div>' +
       '<h3>Thanks, ' + esc(state.contact.name.split(' ')[0]) + '.</h3>' +
-      '<p>We have your booking' + (state.slot ? ' for <b>' +
-        new Date(state.slot).toLocaleString('en-US', { weekday: 'long', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit' }) +
-        '</b>' : '') + '. Your total is <b>' + $(quote.totalCents) + '</b> before travel.</p>' +
-      '<button type="button" class="bk-next-steps" id="bkSteps">Learn more about next steps</button>' +
-      '<div class="bk-steps" id="bkStepsBody" hidden>' +
-        '<ol>' +
-        '<li><b>We confirm within a few hours.</b> We check the drive from our base, add the travel fee, and text you the final number.</li>' +
-        '<li><b>You get a reminder.</b> Two days before, and again the morning of.</li>' +
-        '<li><b>A few quick questions.</b> Water access, power access, and where to park. Takes a minute and means we arrive ready.</li>' +
-        '<li><b>On the day.</b> We text when we are on the way. You do not need to be there, as long as we can reach the vehicle.</li>' +
-        '<li><b>After.</b> ' + (state.payInFull ? 'Already paid, nothing more to do.' : 'We charge the card on file once the work is done.') +
-        ' We will ask how it went before asking for a review.</li>' +
-        '</ol>' +
-        '<p>Need to change anything? Call or text <a href="tel:+15132792915">(513) 279-2915</a>.</p>' +
+      '<p>' + (isInquiry()
+        ? 'We have your request and the times that suit you. Elijah will come back with a time to confirm.'
+        : 'We have your booking' + (state.slot ? ' for <b>' +
+            new Date(state.slot).toLocaleString('en-US', { weekday: 'long', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit' }) +
+            '</b>' : '') + '. Your total is <b>' + $(quote.totalCents) + '</b> before travel.') +
+      '</p>' +
+
+      '<h4 class="bk-done-h">What you sent us</h4>' +
+      receiptRows(quote) +
+
+      '<button type="button" class="bk-next-steps" id="bkSteps">What happens next</button>' +
+      '<div class="bk-steps" id="bkStepsBody" hidden>' + nextSteps() + '</div>' +
+
+      '<div class="bk-done-acts">' +
+        '<button type="button" class="bk-done-fix" id="bkDoneAsk">Something needs changing</button>' +
+        '<button type="button" class="bk-done-copy" id="bkDoneCopy">Copy my booking link</button>' +
+        '<button type="button" class="bk-done-again" id="bkDoneAgain">Book another vehicle</button>' +
       '</div>' +
+      '<p class="bk-done-call">Or call or text <a href="tel:+15132792915">(513) 279-2915</a>. ' +
+      'A booking is only really settled once you have heard back from us.</p>' +
+
       '<button type="button" class="bk-doneclose" id="bkDoneClose">Close</button>' +
       '</div>';
+  }
+
+  /**
+   * Send a correction after the booking has gone.
+   *
+   * There is no customer booking link yet, so "go back and change it" cannot
+   * mean editing a stored record: the booking is an email that has already
+   * left. What it CAN mean is a follow-up that carries the whole thing, so
+   * Elijah reads the change next to what it changes rather than hunting for
+   * the original.
+   */
+  function amendBooking() {
+    var lines = draftSummary();
+    var url = P.quoteUrl(quotePayload(), location.origin + location.pathname);
+    var msg =
+      'I just booked and something needs changing.\n\n' +
+      (lines.length ? 'What I booked:\n' + lines.map(function (l) { return '  ' + l; }).join('\n') + '\n\n' : '') +
+      'My booking: ' + url + '\n\nWhat needs changing: ';
+
+    close();
+
+    var form = document.getElementById('inquiryForm');
+    if (!form) { location.href = 'sms:+15132792915'; return; }
+
+    var set = function (id, val) { var f = document.getElementById(id); if (f && val) f.value = val; };
+    set('q-name', state.contact.name);
+    set('q-phone', state.contact.phone);
+    set('q-email', state.contact.email);
+    set('q-zip', state.address.zip);
+
+    var message = document.getElementById('q-message');
+    if (message) {
+      message.value = msg;
+      try { message.setSelectionRange(msg.length, msg.length); } catch (e) { /* older browsers */ }
+    }
+    (document.getElementById('inquiry') || form).scrollIntoView({ behavior: 'smooth', block: 'start' });
+    setTimeout(function () { if (message) message.focus(); }, 420);
   }
 
   /* ================= mount ================= */
@@ -2912,7 +3127,7 @@
   var DRAFT_FIELDS = [
     'step', 'vehicles', 'active', 'address', 'noGoodLocation', 'locationNote',
     'priority', 'slot', 'daysShown', 'contact', 'consent', 'interest',
-    'prefer', 'promoCode', 'notes', 'separateTimes', 'payInFull'
+    'prefer', 'promoCode', 'notes', 'separateTimes', 'payInFull', 'access'
   ];
 
   function saveDraft() {

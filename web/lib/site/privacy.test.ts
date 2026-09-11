@@ -50,7 +50,8 @@ describe("privacy.html is generated and current", () => {
       expect(text).not.toMatch(/card details/i);
     }
     if (!isLive("bookingLink")) expect(text).not.toMatch(/our database/i);
-    if (!isLive("automatedMessages")) expect(text).not.toMatch(/Twilio|Resend/);
+    if (!isLive("automatedTexts")) expect(text).not.toMatch(/Twilio/);
+    if (!isLive("automatedEmail")) expect(text).not.toMatch(/Resend/);
   });
 
   it("no longer promises a future update instead of describing the present", () => {
