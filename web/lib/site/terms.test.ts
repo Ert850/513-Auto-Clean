@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { CAPABILITIES, GATED_COPY, copyFor, isLive } from "./capabilities.js";
+import { CAPABILITIES, GATED_COPY, IN_PERSON, copyFor, isLive } from "./capabilities.js";
 import { cancellationLadder } from "../pricing/cancellation.js";
 import { DEFAULT_RULES as R } from "../pricing/rules.js";
 
@@ -86,12 +86,36 @@ describe("no claim outruns the build", () => {
     }
   });
 
-  it("does not promise wallets we cannot take", () => {
-    if (!isLive("digitalWallets")) {
-      for (const w of ["Apple Pay", "Google Pay", "PayPal", "Venmo"]) {
-        expect(text, w).not.toContain(w);
+  it("does not promise ONLINE wallet checkout we cannot take", () => {
+    // Two different claims wear the same brand names, and only one of them
+    // depends on a Stripe key.
+    //
+    //   "pay by Apple Pay on the day"  is Elijah holding a phone reader. True
+    //                                  now, true with no integration at all.
+    //   "pay by Apple Pay at checkout" is a wallet button on this website.
+    //
+    // The first version of this test banned the words outright, which was
+    // right while the only mention was the checkout one, and became wrong the
+    // moment the terms started listing what he can take in a driveway. So it
+    // now reads the sentence around the name.
+    if (isLive("digitalWallets")) return;
+
+    for (const w of ["Apple Pay", "Google Pay", "PayPal", "Venmo"]) {
+      const sentences = text.split(/(?<=[.!?])\s+/).filter((x) => x.includes(w));
+      for (const sentence of sentences) {
+        expect(
+          sentence,
+          `"${w}" is offered as online checkout, but digitalWallets is off`,
+        ).not.toMatch(/at checkout|when you book|pay (?:in full )?online|on this (?:page|site|website)/i);
       }
     }
+  });
+
+  it("says in-person payment is in person", () => {
+    // The list only means anything if it is pinned to the day of the detail.
+    // "We take Venmo" on its own reads as a checkout button.
+    expect(text).toMatch(/On the day you can pay by/);
+    expect(text).toContain(IN_PERSON);
   });
 
   it("keeps a reason on every capability that is not live", () => {

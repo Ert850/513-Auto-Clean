@@ -18,6 +18,9 @@
   var $ = P.formatCents;
 
   var WEB3FORMS_KEY = '8a502fe3-2a53-4904-98e9-b18dabb1f579';
+
+  /** Everything we can take standing in a driveway. Mirrors capabilities.ts. */
+  var IN_PERSON = 'cash, check, card, tap to pay, Venmo, Apple Pay, Cash App or Zelle';
   var DAY = 86400000;
 
   /* ================= state ================= */
@@ -43,6 +46,8 @@
       preferredWindows: [],
       slot: null,
       daysShown: 3,
+      // Set for one render when a near-term day ticks the box for them.
+      flashPrio: false,
       contact: { name: '', phone: '', email: '' },
       consent: { terms: null, sms: null, media: null },
       payInFull: false,
@@ -416,6 +421,16 @@
       back.innerHTML = 'Picked up where you left off. ' +
         '<button type="button" id="bkFresh">Start fresh instead</button>';
       el('bkBody').insertBefore(back, el('bkBody').firstChild);
+    }
+
+    if (state.flashPrio) {
+      state.flashPrio = false;
+      var prio = el('bkPrioBox');
+      if (prio) {
+        prio.classList.add('bk-juston');
+        prio.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        setTimeout(function () { prio.classList.remove('bk-juston'); }, 3200);
+      }
     }
 
     renderTotal();
@@ -1266,19 +1281,23 @@
     }
 
     html += hasCorrection() ? '' :
-      '<label class="bk-check bk-prio' + (state.priority ? ' on' : '') + '">' +
+      '<label class="bk-check bk-prio' + (state.priority ? ' on' : '') + '" id="bkPrioBox">' +
       '<input type="checkbox" id="bkPrio"' + (state.priority ? ' checked' : '') + ' />' +
-      '<span><b>I need it within the next 3 days</b>' +
-      '<i>Opens our soonest slots.</i></span></label>';
+      '<span><b>I need it within the next ' + RULES.window.minLeadDays + ' days</b>' +
+      '<i>Those days are marked <b>Soonest</b> below. They cost <b>+' +
+      (RULES.surcharge.priorityBp / 100) + '%</b>, because taking one means moving work we have already ' +
+      'planned. Pick one and this ticks itself.</i></span></label>';
 
     if (hasCorrection()) {
       var lead = new Date(startOfToday().getTime() + P.CORRECTION_RULES.minLeadDays * DAY);
       html += '<p class="bk-note">Correction work starts on a weekend morning from <b>' +
         lead.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }) +
         '</b>, and runs across consecutive days.</p>';
-    } else if (!state.priority) {
-      html += '<p class="bk-note">Standard bookings start from <b>' +
-        earliest.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }) + '</b>.</p>';
+    } else {
+      html += '<p class="bk-note">Standard prices start from <b>' +
+        earliest.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }) +
+        '</b>. Anything sooner than that is marked below and carries the +' +
+        (RULES.surcharge.priorityBp / 100) + '% shown beside it.</p>';
     }
 
     html += '<div class="bk-slots" id="bkSlots"><p class="bk-loading">Checking the calendar...</p></div>';
@@ -1461,9 +1480,14 @@
     var corr = hasCorrection();
     var CR = P.CORRECTION_RULES;
 
-    var from = state.priority
-      ? Date.now()
-      : P.earliestBookableDate(startOfToday(), RULES.window).getTime();
+    // ALWAYS from now, whether or not the near-term box is ticked.
+    //
+    // It used to start at the standard lead date unless somebody found and
+    // ticked "I need it within the next 3 days", which meant the checkbox
+    // revealed nothing: there was no sign those days existed, so there was no
+    // reason to tick it. The soonest days are listed now, marked with what
+    // they cost, and touching one ticks the box for you.
+    var from = Date.now();
     if (corr && CR.minLeadDays > 0) {
       var lead = startOfToday().getTime() + CR.minLeadDays * DAY;
       if (lead > from) from = lead;
@@ -1682,6 +1706,18 @@
         '<a href="sms:+15132792915">(513) 279-2915</a>.</p>';
   }
 
+  /**
+   * The first start on the day a band key belongs to.
+   *
+   * Band keys look like "2026-8-14|midday". Only the day matters here, and
+   * only enough of it to ask whether that day is inside the lead window.
+   */
+  var _dayFirst = {};
+
+  function byDayFirst(bandKey) {
+    return _dayFirst[String(bandKey).split('|')[0]] || 0;
+  }
+
   function paintSlotsInner(box, win, from, to, dur, errMsg) {
     var drive = travelAllowanceMin();
 
@@ -1760,14 +1796,18 @@
     // Day by day, because "which day" is the first thing anyone decides.
     var byDay = {};
     var order = [];
+    _dayFirst = {};
     slots.forEach(function (ms) {
       var d = new Date(ms);
       var key = d.getFullYear() + '-' + d.getMonth() + '-' + d.getDate();
-      if (!byDay[key]) { byDay[key] = []; order.push(key); }
+      if (!byDay[key]) { byDay[key] = []; order.push(key); _dayFirst[key] = ms; }
       byDay[key].push(ms);
     });
 
-    var shown = state.showDays || 3;
+    // state.showDays never existed: the field is daysShown, so this read
+    // undefined every time and "Show more days" added four days to a number
+    // nothing looked at. The button has been dead since it was written.
+    var shown = state.daysShown || 3;
 
     html += '<p class="bk-starts">These are <b>start times</b>, not how long we stay. ' +
       'A ' + fmtDur(dur) + ' detail beginning at 10am runs until about ' +
@@ -1776,8 +1816,12 @@
     order.slice(0, shown).forEach(function (key) {
       var dayMs = byDay[key];
       var d = new Date(dayMs[0]);
-      html += '<div class="bk-daygroup"><h4>' +
+      var soon = needsPriority(dayMs[0]);
+      html += '<div class="bk-daygroup' + (soon ? ' soon' : '') + '"><h4>' +
         d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }) +
+        (soon
+          ? '<em class="bk-soonest">Soonest &middot; +' + (RULES.surcharge.priorityBp / 100) + '%</em>'
+          : '') +
         '</h4>';
 
       P.groupIntoBands(dayMs).forEach(function (g) {
@@ -1852,9 +1896,21 @@
     });
   }
 
+  /** Does this start fall inside the lead window, whatever the box says? */
+  function needsPriority(ms) {
+    return P.slotNeedsPriority(ms, Date.now(), RULES.window);
+  }
+
+  /**
+   * What a given start costs on top, in money.
+   *
+   * Both surcharges, judged on the slot itself rather than on the state of a
+   * checkbox, so the figure beside a time is the figure that time is charged
+   * at. They are capped together, so a 7am slot tomorrow is +30%, not +40%.
+   */
   function deltaFor(ms) {
     var bp = P.computeSurcharge(
-      { startMinutesLocal: P.localMinutesOfDay(ms), priorityBooking: state.priority },
+      { startMinutesLocal: P.localMinutesOfDay(ms), priorityBooking: needsPriority(ms) },
       RULES.surcharge
     ).appliedBp;
     return Math.round((q().serviceSubtotalCents * bp) / 10000);
@@ -2044,7 +2100,8 @@
       html += '<div class="bk-payopts">' +
         '<button type="button" class="bk-pay' + (!now ? ' on' : '') + '" data-pay="later">' +
           '<b>Pay after the detail</b>' +
-          '<span>Settle up once the work is finished. We may still need a card on file in case of cancellations or payment issues.</span>' +
+          '<span>Pay when the work is finished, by ' + IN_PERSON + ', or ask us to put it on the card on file. ' +
+            'The card is only authorized for a late cancellation.</span>' +
           '<i>' + $(quote.totalCents) + '</i>' +
         '</button>' +
         '<button type="button" class="bk-pay' + (now ? ' on' : '') + '" data-pay="now">' +
@@ -2060,7 +2117,8 @@
       '<p class="bk-hint">' +
         (now
           ? 'Card, Apple Pay, Google Pay, bank transfer, PayPal or Venmo.'
-          : 'Nothing is charged now. Your card holds the time slot and covers a late cancellation.') +
+          : 'Nothing is charged now, and nothing will be unless you cancel or move the booking late. ' +
+            'On the day, pay however suits: ' + IN_PERSON + '.') +
       '</p>';
 
     if (now) {
@@ -2078,11 +2136,18 @@
     // without it.
     var viaPaypal = now && state.payMethod === 'paypal';
     if (!viaPaypal) {
+      // The narrow thing the card is actually for. Claiming permission to
+      // charge the whole detail, when the customer may well hand over cash in
+      // the driveway, is both wrong and the sort of overreach that gets a
+      // chargeback decided against you.
       html += '<label class="bk-check bk-mandate' + (state.mandate ? ' on' : '') + '">' +
         '<input type="checkbox" id="bkMandate"' + (state.mandate ? ' checked' : '') + ' />' +
-        '<span>I authorize 513 Auto Clean to keep this card on file and to charge it for the balance of this booking once the work is done, ' +
-        'and for any cancellation or late change fee set out in the terms I accepted. Nothing is charged today' +
-        (now ? ' beyond the amount shown.' : '.') + '</span></label>';
+        '<span>I authorize 513 Auto Clean to keep this card on file and to charge it <b>if I cancel or ' +
+        'move this booking late</b>, for the fee set out in the terms I accepted. ' +
+        (now
+          ? 'The detail itself I am paying for now.'
+          : 'It is not permission to charge me for the detail, which I can pay for however I like on the day.') +
+        '</span></label>';
     }
 
     if (CFG.turnstileSiteKey) {
@@ -2468,6 +2533,21 @@
       renderTotal();
       return;
     }
+    // A day inside the lead window costs more, and saying so AFTER someone
+    // has picked it is how a surprise feels like a trick. The first touch on
+    // one of those days ticks the opt-in, scrolls up so they watch it happen,
+    // and leaves the time unpicked. The second touch books it.
+    if ((t.dataset.band || t.dataset.slot) && !state.priority && !hasCorrection()) {
+      var when = t.dataset.slot
+        ? Number(t.dataset.slot)
+        : Number((byDayFirst(t.dataset.band) || 0));
+      if (when && needsPriority(when)) {
+        state.priority = true;
+        state.flashPrio = true;
+        return render();
+      }
+    }
+
     if (t.dataset.band) {
       state.openBand = state.openBand === t.dataset.band ? '' : t.dataset.band;
       return render();
@@ -2543,7 +2623,9 @@
     }
     if (t.id === 'bkPrio') {
       state.priority = t.checked;
-      state.slot = null;
+      // Unticking it while a near-term time is selected would leave them
+      // holding a slot they have just said they do not want.
+      if (!t.checked && state.slot && needsPriority(state.slot)) state.slot = null;
       state.daysShown = 3;
       return render();
     }
@@ -2734,7 +2816,7 @@
         return '  ' + l.label + ': ' + $(l.amountCents);
       }).join('\n') +
       '\n  TOTAL: ' + $(quote.totalCents) +
-      '\n  Paying: ' + (state.payInFull ? 'in full now' : 'after service, card on file') +
+      '\n  Paying: ' + (state.payInFull ? 'in full now' : 'on the day; card on file is cancellation cover only') +
       '\n  Travel: added at confirmation' +
       '\n  On site: ' + fmtDur(quote.serviceDurationMin) + '\n\n' +
       'CONSENT\n  Terms: yes, version ' + P.LEGAL.termsEffective +
@@ -3108,13 +3190,67 @@
     host.addEventListener('change', onChange);
     host.addEventListener('input', onInput);
 
+    /**
+      * Enter means "done with this, what is next".
+      *
+      * The funnel is not a <form>, so Enter did nothing at all: someone
+      * filling in three address fields had to reach for the mouse between
+      * each one and again to continue. Now it walks to the next field in the
+      * step and, from the last one, does what Continue does.
+      *
+      * A textarea is left alone, because there Enter means a new line, and a
+      * button is left alone, because the browser already clicks it.
+      */
     host.addEventListener('keydown', function (e) {
-      if (e.key !== 'Enter') return;
-      if (!e.target || !e.target.dataset || e.target.dataset.promo === undefined) return;
+      if (e.key !== 'Enter' || e.shiftKey) return;
+      var t = e.target;
+      if (!t || t.tagName === 'TEXTAREA' || t.tagName === 'BUTTON' || t.tagName === 'A') return;
+
+      // The promo box applies the code rather than moving on. Someone who
+      // just typed a code wants to see it land, not skip past it.
+      if (t.dataset && t.dataset.promo !== undefined) {
+        e.preventDefault();
+        state.promoCode = P.normalisePromo(t.value);
+        return render();
+      }
+
+      if (t.tagName !== 'INPUT' || t.type === 'checkbox' || t.type === 'radio') return;
       e.preventDefault();
-      state.promoCode = P.normalisePromo(e.target.value);
-      render();
+
+      var fields = Array.prototype.filter.call(
+        el('bkBody').querySelectorAll('input[type="text"],input[type="tel"],input[type="email"]'),
+        function (n) { return !n.disabled && n.offsetParent !== null; }
+      );
+      var i = fields.indexOf(t);
+      if (i > -1 && i < fields.length - 1) {
+        var next = fields[i + 1];
+        next.focus();
+        if (next.select) next.select();
+        return;
+      }
+      advance();
     });
+
+    /**
+      * Opening a panel should reveal the panel.
+      *
+      * Only scrolls when it has to. A "How it works" near the top of the
+      * screen opens into space the reader can already see, and yanking the
+      * page for it would be worse than doing nothing. One that opens below
+      * the fold gets moved up just far enough to read.
+      */
+    host.addEventListener('toggle', function (e) {
+      var d = e.target;
+      if (!d || d.tagName !== 'DETAILS' || !d.open) return;
+      var scroller = el('bkScroll');
+      if (!scroller) return;
+      var box = d.getBoundingClientRect();
+      var view = scroller.getBoundingClientRect();
+      // Already fully visible: leave the page exactly where it is.
+      if (box.bottom <= view.bottom && box.top >= view.top) return;
+      var summary = d.querySelector('summary') || d;
+      summary.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }, true);
 
     document.addEventListener('keydown', function (e) {
       if (e.key !== 'Escape' || host.hidden) return;

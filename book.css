@@ -936,3 +936,21 @@ body.bk-open { overflow: hidden; }
 .bk-promo.early { margin: 0 0 1.1rem; }
 .bk-promo.early label { color: var(--text-soft); font-weight: 500; }
 .bk-promo.early label i { font-style: normal; }
+
+/* ---------- The soonest days, and the box they tick ---------- */
+.bk-soonest {
+  font-style: normal; font-size: .68rem; font-weight: 800;
+  letter-spacing: .05em; text-transform: uppercase;
+  color: #7a5209; background: rgba(240, 169, 63, .16);
+  padding: .18rem .45rem; border-radius: 5px; margin-left: .5rem;
+  vertical-align: 2px; white-space: nowrap;
+}
+.bk-daygroup.soon > h4 { display: flex; align-items: baseline; flex-wrap: wrap; gap: .1rem; }
+
+/* The checkbox, for the three seconds after it ticks itself. */
+.bk-check.bk-juston {
+  border-color: var(--red);
+  box-shadow: 0 0 0 3px var(--red-ghost);
+  animation: bkNudge .45s var(--ease);
+}
+@media (prefers-reduced-motion: reduce) { .bk-check.bk-juston { animation: none; } }

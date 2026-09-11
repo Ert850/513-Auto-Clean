@@ -22,6 +22,25 @@
   window.addEventListener('scroll', onScroll, { passive: true });
   onScroll();
 
+  /**
+   * Opening a "How it works" or an FAQ answer should show the answer.
+   *
+   * Same rule as the booking funnel: move the page only when the thing that
+   * just opened is not already readable. Capture phase, because `toggle`
+   * does not bubble.
+   */
+  document.addEventListener('toggle', function (e) {
+    var d = e.target;
+    if (!d || d.tagName !== 'DETAILS' || !d.open) return;
+    var box = d.getBoundingClientRect();
+    var h = window.innerHeight || document.documentElement.clientHeight;
+    // A header floats over the top of the page, so "visible" starts below it.
+    var headerH = 72;
+    if (box.bottom <= h && box.top >= headerH) return;
+    var summary = d.querySelector('summary') || d;
+    summary.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  }, true);
+
   /* ---------- Mobile menu ---------- */
   var navToggle = document.getElementById('navToggle');
   var mobileMenu = document.getElementById('mobileMenu');
