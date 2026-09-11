@@ -114,6 +114,28 @@ export interface PricingRules {
    */
   cancelMidWindowBp: number;
   cancelLateWindowBp: number;
+  /**
+   * Added to the new booking for moving inside 24 hours. FLAT, and charged
+   * again at the same rate on each further late move.
+   *
+   * Flat matters: 10% every time, never 10 then 20 then 30. Free last-minute
+   * shuffling is how one customer changing their mind three times destroys a
+   * day, and a charge that lands every time is enough to make the third move
+   * deliberate without punishing the first.
+   */
+  lateRescheduleFeeBp: number;
+  /** How long a prepaid amount stays usable against a new date. */
+  rescheduleCreditDays: number;
+  /**
+   * Added when a change at short notice takes a DIFFERENT slot rather than
+   * growing the one they had.
+   *
+   * Deliberately the same rate as the priority booking surcharge, because it
+   * is the same thing: claiming a near-term slot somebody else could have
+   * taken. Adding services in place is always free, and every branch in
+   * bookingChange.ts is built to keep it that way.
+   */
+  shortNoticeChangeBp: number;
   /** Hours before the appointment that bound the refund tiers. */
   refundFullWindowHours: number;
   refundMidWindowHours: number;
@@ -152,6 +174,9 @@ export const DEFAULT_RULES: PricingRules = {
   refundMidWindowBp: 5000, // 50% of deposit
   cancelMidWindowBp: 5000, // 24 to 72 hrs: half the booking
   cancelLateWindowBp: 10_000, // under 24 hrs: the whole booking
+  lateRescheduleFeeBp: 1000, // 10% per late move, compounding
+  rescheduleCreditDays: 30,
+  shortNoticeChangeBp: 2000, // 20%, same as priority booking
   refundFullWindowHours: 72,
   refundMidWindowHours: 24,
 };

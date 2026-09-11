@@ -5,144 +5,224 @@ import type { PricingRules } from "./rules.js";
  *
  * Pure: amounts and hours in, amounts out. No clock, no network.
  *
- * THE POLICY, and the reasoning behind each rung, because the reasoning is
- * what makes it defensible to a customer and to a card network:
+ * ONE LADDER, TWO OUTCOMES. The amount is the same either way; what differs
+ * is where the money goes.
  *
- *   72 hours or more   nothing. There is time to fill the slot.
- *   24 to 72 hours     half. The day is half committed and hard to refill.
- *   under 24 hours     the full amount. That slot is gone; the people who
- *                      wanted it have booked elsewhere.
+ *   72 hours or more   nothing charged. There is time to refill the slot.
+ *   24 to 72 hours     half the booking.
+ *   under 24 hours     the whole booking. That day is gone: everyone who
+ *                      wanted it has booked elsewhere.
  *
- * RESCHEDULING IS ALWAYS FREE, at any notice, and that is the whole design.
- * The fee is not there to earn money from cancellations; it is there to make
- * moving a booking obviously better than dropping it. Someone whose morning
- * falls apart should reach for "move it" and not think twice, and the pricing
- * should make that the easy choice rather than a negotiation.
+ * CANCEL and the charge is kept. RESCHEDULE and the identical charge becomes
+ * CREDIT against the new date, so the customer loses nothing by moving a
+ * booking they cannot keep. That is the point of the whole design: moving is
+ * always better than dropping, and the money follows you.
  *
- * This is also why a card is collected at booking: not to charge it up front,
- * but so a late cancellation is not simply free to the person cancelling and
- * expensive to everyone still waiting for a slot.
+ * The one exception is a reschedule inside 24 hours, which adds a FLAT 10% to
+ * the detail. Flat, and charged again at the same 10% on each further late
+ * move: it is 10% every time, not 10% then 20% then 30%. Being able to
+ * shuffle a slot on the morning at no cost is how a day gets destroyed by one
+ * customer changing their mind three times, and a charge that lands every
+ * time makes the third move something you think about first.
  *
- * Elijah waives it at his discretion for emergencies. That is stated in the
- * terms and is deliberately not encoded here: discretion is a judgement, and
- * a rule that tried to define "emergency" would get it wrong in exactly the
- * cases that matter.
+ * Elijah waives any of it at his discretion for emergencies. That is stated
+ * in the terms and is deliberately NOT encoded here: discretion is a
+ * judgement, and a rule that tried to define "emergency" would get it wrong
+ * in exactly the cases that matter.
  */
 
 export type CancelBucket =
   | "owner_cancelled"
-  | "rescheduled"
   | "waived"
   | "gte72h"
   | "24h_to_72h"
   | "lt24h";
 
+/** Share of the booking that the notice given puts at stake. */
+export function chargeBpForNotice(hoursUntilStart: number, r: PricingRules): number {
+  if (hoursUntilStart >= r.refundFullWindowHours) return 0;
+  if (hoursUntilStart >= r.refundMidWindowHours) return r.cancelMidWindowBp;
+  return r.cancelLateWindowBp;
+}
+
+export function bucketForNotice(hoursUntilStart: number, r: PricingRules): CancelBucket {
+  if (hoursUntilStart >= r.refundFullWindowHours) return "gte72h";
+  if (hoursUntilStart >= r.refundMidWindowHours) return "24h_to_72h";
+  return "lt24h";
+}
+
+/* ================= cancelling ================= */
+
 export interface CancelInput {
-  /** The full price of the booking, in cents. The fee is a share of this. */
+  /** The full price of the booking, in cents. */
   totalCents: number;
-  /** Anything already captured, which is usually zero until the work is done. */
+  /** Anything already captured. Usually zero until the work is done. */
   paidCents?: number;
   /** Hours between now and the appointment. Negative once it has passed. */
   hoursUntilStart: number;
-  /** Elijah cancelled rather than the customer. */
   ownerCancelled?: boolean;
-  /** Moving the booking rather than dropping it. Always free. */
-  rescheduling?: boolean;
-  /** Discretion, for the emergencies that a rule cannot anticipate. */
+  /** Discretion, for the emergencies a rule cannot anticipate. */
   waived?: boolean;
 }
 
 export interface CancelResult {
   bucket: CancelBucket;
-  /** What the customer owes for cancelling. Zero on a reschedule. */
+  /** Kept by 513 Auto Clean. Gone, unlike a reschedule credit. */
   feeCents: number;
   /** Still to collect from the card on file. */
   dueCents: number;
-  /** Going back to the customer, when they had already paid. */
+  /** Going back, where they had already paid more than the fee. */
   refundCents: number;
-  /** One line, shown to the customer and in the admin dialog. */
   explanation: string;
-}
-
-function settle(
-  bucket: CancelBucket,
-  feeCents: number,
-  paidCents: number,
-  explanation: string,
-): CancelResult {
-  return {
-    bucket,
-    feeCents,
-    dueCents: Math.max(0, feeCents - paidCents),
-    refundCents: Math.max(0, paidCents - feeCents),
-    explanation,
-  };
 }
 
 export function computeCancellation(input: CancelInput, r: PricingRules): CancelResult {
   const total = Math.max(0, Math.round(input.totalCents));
   const paid = Math.max(0, Math.round(input.paidCents ?? 0));
 
+  const settle = (bucket: CancelBucket, fee: number, explanation: string): CancelResult => ({
+    bucket,
+    feeCents: fee,
+    dueCents: Math.max(0, fee - paid),
+    refundCents: Math.max(0, paid - fee),
+    explanation,
+  });
+
   if (input.ownerCancelled) {
     return settle(
       "owner_cancelled",
       0,
-      paid,
       "We cancelled, so there is no charge and anything you paid comes back in full.",
     );
   }
+  if (input.waived) return settle("waived", 0, "Cancellation fee waived.");
 
-  // Checked before the clock: a reschedule is free however late it is, and
-  // that has to be true even at an hour's notice or the incentive collapses
-  // exactly when it is needed most.
-  if (input.rescheduling) {
+  const bucket = bucketForNotice(input.hoursUntilStart, r);
+  const fee = Math.round((total * chargeBpForNotice(input.hoursUntilStart, r)) / 10_000);
+
+  if (bucket === "gte72h") {
     return settle(
-      "rescheduled",
+      bucket,
       0,
-      paid,
-      "Rescheduled at no charge. Anything you have paid moves to the new booking.",
-    );
-  }
-
-  if (input.waived) {
-    return settle("waived", 0, paid, "Cancellation fee waived.");
-  }
-
-  const hrs = input.hoursUntilStart;
-
-  if (hrs >= r.refundFullWindowHours) {
-    return settle(
-      "gte72h",
-      0,
-      paid,
       `Cancelled more than ${r.refundFullWindowHours} hours ahead, so there is no charge.`,
     );
   }
-
-  if (hrs >= r.refundMidWindowHours) {
-    const fee = Math.round((total * r.cancelMidWindowBp) / 10_000);
+  if (bucket === "24h_to_72h") {
     return settle(
-      "24h_to_72h",
+      bucket,
       fee,
-      paid,
       `Cancelled inside ${r.refundFullWindowHours} hours, so ${r.cancelMidWindowBp / 100}% of the booking applies. ` +
-        "Rescheduling instead is free.",
+        "Rescheduling instead puts the same amount toward your new date.",
     );
   }
-
-  const fee = Math.round((total * r.cancelLateWindowBp) / 10_000);
   return settle(
-    "lt24h",
+    bucket,
     fee,
-    paid,
     `Cancelled inside ${r.refundMidWindowHours} hours, so the booking is charged in full. ` +
-      "Rescheduling instead is free, at any notice.",
+      "Rescheduling instead puts the whole amount toward your new date.",
   );
 }
 
-/** Rescheduling is free. Here so calling code reads as the policy does. */
-export function rescheduleFeeCents(): number {
-  return 0;
+/* ================= rescheduling ================= */
+
+export interface RescheduleInput {
+  totalCents: number;
+  paidCents?: number;
+  hoursUntilStart: number;
+  /**
+   * How many times this booking has ALREADY been moved at under 24 hours
+   * notice. Used to say which move this is, NOT to change the rate.
+   */
+  lateMoves?: number;
+  ownerInitiated?: boolean;
+  waived?: boolean;
+}
+
+export interface RescheduleResult {
+  bucket: CancelBucket;
+  /** Collected now, and credited in full against the new date. */
+  prepayCents: number;
+  /** Still to take from the card, given what is already paid. */
+  dueNowCents: number;
+  /** What the new booking starts with already covered. */
+  creditCents: number;
+  /** Added for moving inside 24 hours. Flat rate, charged each time. */
+  lateFeeCents: number;
+  lateFeeBp: number;
+  /** Days the credit stays good. Zero when nothing was prepaid. */
+  creditValidDays: number;
+  explanation: string;
+}
+
+export function computeReschedule(input: RescheduleInput, r: PricingRules): RescheduleResult {
+  const total = Math.max(0, Math.round(input.totalCents));
+  const paid = Math.max(0, Math.round(input.paidCents ?? 0));
+  const priorLate = Math.max(0, Math.floor(input.lateMoves ?? 0));
+
+  const free = (bucket: CancelBucket, explanation: string): RescheduleResult => ({
+    bucket,
+    prepayCents: 0,
+    dueNowCents: 0,
+    creditCents: paid,
+    lateFeeCents: 0,
+    lateFeeBp: 0,
+    creditValidDays: paid > 0 ? r.rescheduleCreditDays : 0,
+    explanation,
+  });
+
+  if (input.ownerInitiated) {
+    return free("owner_cancelled", "We moved it, so there is nothing to pay and nothing changes.");
+  }
+  if (input.waived) return free("waived", "Reschedule charge waived.");
+
+  const bucket = bucketForNotice(input.hoursUntilStart, r);
+
+  if (bucket === "gte72h") {
+    return free(
+      "gte72h",
+      `Moved with more than ${r.refundFullWindowHours} hours notice, so there is nothing to pay.`,
+    );
+  }
+
+  const prepay = Math.round((total * chargeBpForNotice(input.hoursUntilStart, r)) / 10_000);
+
+  if (bucket === "24h_to_72h") {
+    return {
+      bucket,
+      prepayCents: prepay,
+      dueNowCents: Math.max(0, prepay - paid),
+      creditCents: Math.max(prepay, paid),
+      lateFeeCents: 0,
+      lateFeeBp: 0,
+      creditValidDays: r.rescheduleCreditDays,
+      explanation:
+        `Moved inside ${r.refundFullWindowHours} hours, so ${r.cancelMidWindowBp / 100}% is taken now ` +
+        "and goes straight onto your new booking. No fee for moving it.",
+    };
+  }
+
+  // Inside 24 hours. Prepay the lot, and pay the late move fee. The rate is
+  // FLAT: the same 10% applies to a third late move as to a first. It is
+  // charged each time rather than escalating, so the total someone has paid
+  // across three moves is three lots of 10%, never 10 then 20 then 30.
+  const lateFeeBp = r.lateRescheduleFeeBp;
+  const lateFeeCents = Math.round((total * lateFeeBp) / 10_000);
+
+  return {
+    bucket,
+    prepayCents: prepay,
+    dueNowCents: Math.max(0, prepay - paid),
+    creditCents: Math.max(prepay, paid),
+    lateFeeCents,
+    lateFeeBp,
+    creditValidDays: r.rescheduleCreditDays,
+    explanation:
+      `Moved inside ${r.refundMidWindowHours} hours, so the booking is taken in full now and held ` +
+      `as credit for ${r.rescheduleCreditDays} days. A ${r.lateRescheduleFeeBp / 100}% late move fee applies` +
+      (priorLate > 0
+        ? `, the same ${lateFeeBp / 100}% as last time. This is late move number ${priorLate + 1}.`
+        : "."),
+  };
 }
 
 /** The ladder as rows, for the terms page and the admin panel. */
@@ -151,19 +231,22 @@ export function cancellationLadder(r: PricingRules) {
     {
       id: "gte72h",
       when: `${r.refundFullWindowHours} hours or more before`,
-      charge: "No charge",
+      cancel: "No charge",
+      reschedule: "Free, nothing to pay",
       bp: 0,
     },
     {
       id: "24h_to_72h",
       when: `${r.refundMidWindowHours} to ${r.refundFullWindowHours} hours before`,
-      charge: `${r.cancelMidWindowBp / 100}% of the booking`,
+      cancel: `${r.cancelMidWindowBp / 100}% of the booking, kept`,
+      reschedule: `${r.cancelMidWindowBp / 100}% taken now, all of it credited to the new date`,
       bp: r.cancelMidWindowBp,
     },
     {
       id: "lt24h",
       when: `Less than ${r.refundMidWindowHours} hours before`,
-      charge: "The full booking",
+      cancel: "The full booking, kept",
+      reschedule: `Paid in full now, credited for ${r.rescheduleCreditDays} days, plus a flat ${r.lateRescheduleFeeBp / 100}% late move fee`,
       bp: r.cancelLateWindowBp,
     },
   ];

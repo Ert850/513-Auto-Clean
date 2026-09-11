@@ -60,6 +60,10 @@
       prefer: { parts: [], days: [] },
       // Which band's times are expanded, as 'dayKey|bandId'.
       openBand: '',
+      // Set when the funnel was opened from a shared quote link.
+      fromQuote: false,
+      quotedSlot: null,
+      slotTaken: false,
       promoCode: '',
       promoOpen: false,
       notes: '',
@@ -1106,6 +1110,130 @@
     return html;
   }
 
+  /* ================= shareable quotes ================= */
+
+  /**
+   * The current booking as a payload small enough to live in a URL.
+   *
+   * Ids and a slot only. No prices: everything is recomputed from the catalog
+   * when the link opens and again on the server before anything is charged,
+   * so a link edited by hand cannot buy a cheap detail.
+   */
+  function quotePayload() {
+    var a = state.address;
+    var c = state.contact;
+
+    var payload = {
+      v: 1,
+      ts: Math.floor(Date.now() / 1000),
+      vs: state.vehicles.map(function (v) {
+        var out = {};
+        if (v.size) out.z = v.size;
+        if (v.intent) out.i = v.intent;
+        if (v.packageIds.length) out.p = v.packageIds.slice();
+        if (v.addons.length) {
+          out.a = v.addons.map(function (x) { return [x.addonId, x.tierId]; });
+        }
+        if (v.label) out.l = v.label;
+        if (v.correctionTier) out.c = v.correctionTier;
+        if (v.coatingTerm) out.t = v.coatingTerm;
+        if (v.noGarage) out.g = 1;
+        return out;
+      })
+    };
+
+    if (a.line1 || a.city || a.zip) payload.ad = [a.line1 || '', a.city || '', a.region || 'OH', a.zip || ''];
+    if (c.name || c.phone || c.email) payload.ct = [c.name || '', c.phone || '', c.email || ''];
+    if (state.slot) payload.sl = state.slot;
+    if (state.promoCode) payload.pc = state.promoCode;
+    if (state.interest.length) payload.in = state.interest.slice();
+    if (state.notes) payload.nt = state.notes;
+
+    return payload;
+  }
+
+  /**
+   * Put a decoded quote back into state.
+   *
+   * The SLOT is treated as a request rather than a reservation, because it
+   * never was one: nothing is held until someone pays. It is kept here and
+   * checked against live availability when the times load, so a slot that
+   * went to somebody else in the meantime drops out rather than being sold
+   * twice.
+   */
+  function applyQuote(payload) {
+    var vs = payload.vs || [];
+    state.vehicles = vs.map(function (raw, i) {
+      var v = newVehicle();
+      if (raw.z) v.size = raw.z;
+      if (raw.i) v.intent = raw.i;
+      if (raw.p) v.packageIds = raw.p.filter(function (id) { return P.findPackage(id); });
+      if (raw.a) {
+        v.addons = raw.a
+          .filter(function (pair) { return P.findAddon(pair[0]); })
+          .map(function (pair) { return { addonId: pair[0], tierId: pair[1] }; });
+      }
+      if (raw.l) v.label = raw.l;
+      if (raw.c) v.correctionTier = raw.c;
+      if (raw.t) v.coatingTerm = raw.t;
+      if (raw.g) v.noGarage = true;
+      return v;
+    });
+    if (!state.vehicles.length) state.vehicles = [newVehicle()];
+
+    if (payload.ad) {
+      state.address.line1 = payload.ad[0] || '';
+      state.address.city = payload.ad[1] || '';
+      state.address.region = payload.ad[2] || 'OH';
+      state.address.zip = payload.ad[3] || '';
+    }
+    if (payload.ct) {
+      state.contact.name = payload.ct[0] || '';
+      state.contact.phone = payload.ct[1] || '';
+      state.contact.email = payload.ct[2] || '';
+    }
+    if (payload.sl) { state.slot = payload.sl; state.quotedSlot = payload.sl; }
+    if (payload.pc) state.promoCode = payload.pc;
+    if (payload.in) state.interest = payload.in.slice();
+    if (payload.nt) state.notes = payload.nt;
+
+    state.fromQuote = true;
+  }
+
+  /** Copy the link, with a spoken confirmation rather than a silent success. */
+  function copyQuoteLink(btn) {
+    var url = P.quoteUrl(quotePayload(), location.origin + location.pathname);
+    var say = function (msg) {
+      btn.textContent = msg;
+      setTimeout(function () { btn.textContent = 'Copy quote link'; }, 2600);
+    };
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(url).then(
+        function () { say('Copied, good for ' + P.QUOTE_TTL_HOURS + ' hours'); },
+        function () { fallbackCopy(url, say); }
+      );
+    } else {
+      fallbackCopy(url, say);
+    }
+  }
+
+  function fallbackCopy(url, say) {
+    // Clipboard API needs a secure context and a permission. A textarea does
+    // not, and this has to work on whatever phone Elijah is holding.
+    var box = document.createElement('textarea');
+    box.value = url;
+    box.setAttribute('readonly', '');
+    box.style.cssText = 'position:fixed;opacity:0;pointer-events:none';
+    document.body.appendChild(box);
+    box.select();
+    var ok = false;
+    try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+    document.body.removeChild(box);
+    say(ok ? 'Copied, good for ' + P.QUOTE_TTL_HOURS + ' hours' : 'Press and hold to copy');
+    if (!ok) window.prompt('Copy this link', url);
+  }
+
   /** Readable names for whatever they ticked, packages and add-ons alike. */
   function interestNames() {
     return state.interest.map(function (id) {
@@ -1412,6 +1540,20 @@
 
     var slots = P.computeSlots(req);
 
+    // A quoted time was never reserved, so it has to earn its place in the
+    // live list. Gone means gone, and the customer hears it here rather than
+    // discovering it at the payment step.
+    if (state.quotedSlot) {
+      var stillFree = slots.indexOf(state.quotedSlot) > -1;
+      if (!stillFree && state.slot === state.quotedSlot) {
+        state.slot = null;
+        state.slotTaken = true;
+        renderQuoteBanner();
+      } else if (stillFree) {
+        state.slotTaken = false;
+      }
+    }
+
     if (!slots.length) {
       box.innerHTML = inquiryPanel('Nothing open in that range for a ' + fmtDur(dur) + ' job.');
       return;
@@ -1564,10 +1706,12 @@
       // for anyone who wants them.
       yesNo('terms',
         'Do you accept our terms and privacy policy?',
-        '<b>Rescheduling is always free, at any notice.</b> ' +
-        'Cancelling outright is free with 72 hours notice, 50% inside that, ' +
-        'and the full booking inside 24 hours. We waive it for emergencies. ' +
-        'This is why we take a card now, though nothing is charged today. ' +
+        '<b>Moving a booking always beats cancelling it.</b> ' +
+        'More than 72 hours notice and either is free. Inside that 50% applies, and inside ' +
+        '24 hours the full booking does, but <b>if you reschedule, every cent goes onto your ' +
+        'new date</b> rather than being kept. Moving inside 24 hours adds a flat 10% each time. ' +
+        'We waive all of it for ' +
+        'emergencies. This is why we take a card now, though nothing is charged today. ' +
         '<b>If your vehicle needs more work than the package covers, we tell you the new price before we start</b>, ' +
         'and you can say no and pay nothing at all.' +
         '<a class="bk-readmore" href="terms.html#cancellation" target="_blank" rel="noopener">Read the full terms and cancellation policy</a>' +
@@ -1918,6 +2062,7 @@
       '[data-kind],[data-paymethod],[data-corr],[data-coating],[data-garage],[data-step],' +
       '[data-prefday],[data-prefpart],[data-interest],[data-band],' +
       '#bkAddVeh,#bkMoreDays,#bkNext,#bkBack,#bkClose,#bkScrim,#bkBrowse,#bkBrowseBack,' +
+      '#bkCopyQuote,' +
       '#bkPromoOpen,#bkPromoApply,#bkPromoClear,' +
       '#bkQClear,#bkReset,#bkOther'
     );
@@ -2087,6 +2232,7 @@
       if (want <= Math.max(state.step, furthestValid())) return go(want);
       return;
     }
+    if (t.id === 'bkCopyQuote') return copyQuoteLink(t);
     if (t.id === 'bkNext') return advance();
     if (t.id === 'bkBack') return go(state.step - 1);
     if (t.id === 'bkClose' || t.id === 'bkScrim') return close();
@@ -2355,7 +2501,10 @@
         '<h2 id="bkTitle"></h2>' +
         '<button type="button" class="bk-close" id="bkClose" aria-label="Close booking">&times;</button>' +
       '</header>' +
-      '<div class="bk-scroll" id="bkScroll"><div class="bk-body" id="bkBody"></div></div>' +
+      '<div class="bk-scroll" id="bkScroll">' +
+        '<div class="bk-quotenote" id="bkQuoteNote" hidden></div>' +
+        '<div class="bk-body" id="bkBody"></div>' +
+      '</div>' +
       '<footer class="bk-foot">' +
         '<div class="bk-total" id="bkTotal" hidden>' +
           '<span class="bk-total-amt"></span><span class="bk-total-sub"></span>' +
@@ -2464,6 +2613,27 @@
         }
       });
     });
+
+    // A shared quote link. Fragment, not query, so a customer's name and
+    // address never reach a server log on the way in.
+    var frag = /[#&]q=([A-Za-z0-9_-]+)/.exec(location.hash || '');
+    if (frag) {
+      var decoded = P.decodeQuote(frag[1]);
+      open();
+      if (decoded.ok) {
+        applyQuote(decoded.payload);
+        // Straight to the confirm step: they were sent a finished quote, not
+        // an invitation to fill in a form.
+        state.step = STEPS.length - 1;
+        render();
+      } else {
+        el('bkBody').innerHTML = '<div class="bk-noslots"><b>This link has expired</b><span>' +
+          esc(decoded.reason || 'Ask us to send a fresh one.') +
+          '</span></div><p class="bk-pref-call">Text or call ' +
+          '<a href="sms:+15132792915">(513) 279-2915</a> and we will send another.</p>';
+      }
+      return;
+    }
 
     if (host.dataset.autoOpen === 'true' || location.hash === '#book') open();
   }

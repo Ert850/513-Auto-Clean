@@ -224,6 +224,25 @@ body.bk-open { overflow: hidden; }
 .bk-interest b { display: block; font-size: .92rem; color: #7a5209; }
 .bk-interest span { display: block; font-size: .82rem; color: var(--text-soft); line-height: 1.55; margin-top: .2rem; }
 
+/* ---------- shareable quotes ---------- */
+.bk-quotebar { margin: .5rem 0 0; text-align: right; }
+.bk-copyquote {
+  font: inherit; font-size: .78rem; font-weight: 700; cursor: pointer;
+  background: none; border: 0; padding: .2rem 0; color: var(--text-soft);
+  text-decoration: underline; text-underline-offset: 3px;
+}
+.bk-copyquote:hover { color: var(--red); }
+
+.bk-quotenote {
+  background: var(--ink); color: #fff; border-radius: var(--r-md);
+  padding: .85rem 1rem; margin: 0 0 .9rem;
+}
+.bk-quotenote b { display: block; font-family: var(--font-display); font-size: 1rem; }
+.bk-quotenote span { display: block; font-size: .84rem; color: rgba(255,255,255,.78); line-height: 1.55; margin-top: .25rem; }
+.bk-quotenote.taken { background: rgba(240,169,63,.15); border: 1px solid rgba(240,169,63,.45); }
+.bk-quotenote.taken b { color: #7a5209; }
+.bk-quotenote.taken span { color: var(--text-soft); }
+
 /* ---------- time bands ---------- */
 /* Four parts of the day, then the exact hour inside one. The old flat list
    of six chips read as a menu of appointment windows, which it never was. */
