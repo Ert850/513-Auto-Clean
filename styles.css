@@ -792,6 +792,15 @@ html.scrolling-fast .reveal { transition: none; transition-delay: 0s; }
   padding: 1rem 1.1rem; border-radius: 0 8px 8px 0; margin: 0 0 1.4rem;
 }
 .legal .callout p:last-child { margin-bottom: 0; }
+.legal table.policy { width: 100%; border-collapse: collapse; margin: 0 0 1.4rem; font-size: .95rem; }
+.legal table.policy th {
+  text-align: left; font-size: .72rem; font-weight: 800; letter-spacing: .08em;
+  text-transform: uppercase; color: var(--text-soft); padding: 0 0 .5rem;
+  border-bottom: 2px solid var(--line);
+}
+.legal table.policy td { padding: .7rem 0; border-bottom: 1px solid var(--line); color: var(--text-soft); }
+.legal table.policy td:last-child { text-align: right; }
+.legal table.policy strong { color: var(--text); }
 .legal .contact-list { margin: 0; padding: 0; list-style: none; display: grid; gap: .5rem; }
 .legal .contact-list li { color: var(--text-soft); }
 .legal .contact-list strong { color: var(--text); margin-right: .3rem; }

@@ -1564,8 +1564,10 @@
       // for anyone who wants them.
       yesNo('terms',
         'Do you accept our terms and privacy policy?',
-        '<b>Cancel or move your booking any time before we arrive and you owe nothing.</b> ' +
-        'No deposit, no cancellation fee, and a full refund if you paid in full. ' +
+        '<b>Rescheduling is always free, at any notice.</b> ' +
+        'Cancelling outright is free with 72 hours notice, 50% inside that, ' +
+        'and the full booking inside 24 hours. We waive it for emergencies. ' +
+        'This is why we take a card now, though nothing is charged today. ' +
         '<b>If your vehicle needs more work than the package covers, we tell you the new price before we start</b>, ' +
         'and you can say no and pay nothing at all.' +
         '<a class="bk-readmore" href="terms.html#cancellation" target="_blank" rel="noopener">Read the full terms and cancellation policy</a>' +
