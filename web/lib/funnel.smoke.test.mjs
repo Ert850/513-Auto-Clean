@@ -290,6 +290,44 @@ describe("the booking funnel opens", () => {
     expect(body).not.toMatch(/Pay now and save/);
   });
 
+  it("only one free-text box, and it is on the confirm screen", () => {
+    const P = env.window.ACPricing;
+    const url = P.quoteUrl(
+      {
+        v: 1,
+        ts: Math.floor(Date.now() / 1000),
+        vs: [{ z: "small", i: "interior", p: ["basic-interior"] }],
+        ad: ["1 Main St", "Cincinnati", "OH", "45220"],
+        ct: ["Ada", "5135551212", ""],
+        sl: Date.now() + 6 * 86_400_000,
+      },
+      "https://513autoclean.com/",
+    );
+    const body = loadFunnel(url.slice(url.indexOf("#"))).lookup("bkBody").innerHTML;
+    expect(body, "the notes box belongs with the other day-of questions").toContain("bkNotes");
+    expect(body).toContain("Anything else we should know");
+  });
+
+  it("the promo box is optional, so nothing ever jumps back to it", () => {
+    // It sits near the top of the confirm screen and is empty for almost
+    // everybody. Treating it as unanswered hauled the page back up to it
+    // every time something below was filled in.
+    const src = fs.readFileSync(path.join(ROOT, "js/funnel.js"), "utf8");
+    const promo = src.slice(src.indexOf('id="bkPromo"'), src.indexOf('id="bkPromo"') + 200);
+    expect(promo, "bkPromo needs data-optional").toContain("data-optional");
+  });
+
+  it("what happens next depends on whether a time was actually booked", () => {
+    const src = fs.readFileSync(path.join(ROOT, "js/funnel.js"), "utf8");
+    const fn = src.slice(src.indexOf("function nextSteps()"), src.indexOf("function nextSteps()") + 2200);
+    // A request and a booking are different stories, and the calendar being
+    // live decides whether anybody confirms by hand.
+    expect(fn).toContain("isInquiry()");
+    expect(fn).toContain("liveCalendar");
+    // The mileage estimator is good enough; we do not promise a measurement.
+    expect(fn).not.toMatch(/work out the exact drive/i);
+  });
+
   it("puts the chrome in the right state for step one", () => {
     env.window.ACFunnel.open();
     // Both of these are set AFTER the body renders, so if the render throws
