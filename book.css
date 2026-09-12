@@ -1065,3 +1065,80 @@ body.bk-open { overflow: hidden; }
   margin: 0; font-size: .85rem; line-height: 1.5; color: var(--text);
   background: var(--red-ghost); border-radius: var(--r-sm); padding: .5rem .65rem;
 }
+
+/* ---------- Extras, edited from the confirm screen ---------- */
+.bk-extras {
+  background: var(--paper-2); border: 1.5px solid var(--line); border-radius: var(--r-md);
+  padding: 1rem 1.05rem; margin: 1.1rem 0;
+}
+.bk-extras h4 { margin: 0 0 .25rem; font-family: var(--font-display); font-size: 1.02rem; }
+.bk-extra-sub { margin: 0 0 .9rem; font-size: .86rem; color: var(--text-soft); line-height: 1.5; }
+
+/* Nothing added yet: the one thing on the screen worth noticing. */
+.bk-extras.empty { background: var(--ink); border-color: var(--ink); color: #fff; }
+.bk-extras.empty h4 { color: #fff; }
+.bk-extras.empty .bk-extra-sub { color: rgba(255, 255, 255, .78); }
+.bk-extras.empty .bk-extra-add span { color: rgba(255, 255, 255, .78); }
+.bk-extras.empty select { border-color: rgba(255, 255, 255, .28); background: var(--ink-3); color: #fff; }
+.bk-extras.empty .bk-hint { color: rgba(255, 255, 255, .7); }
+.bk-extras.empty .bk-extra-veh { color: rgba(255, 255, 255, .9); }
+
+.bk-extra-veh {
+  margin: .9rem 0 .4rem; font-size: .78rem; font-weight: 800;
+  letter-spacing: .06em; text-transform: uppercase; color: var(--text-soft);
+}
+.bk-extra-list { list-style: none; margin: 0 0 .8rem; padding: 0; display: grid; gap: .35rem; }
+.bk-extra-list li {
+  display: flex; align-items: baseline; gap: .6rem;
+  font-size: .9rem; padding: .45rem .6rem;
+  background: var(--paper); border-radius: var(--r-sm);
+}
+.bk-extra-list li span { flex: 1; min-width: 0; }
+.bk-extra-list li b { font-weight: 800; white-space: nowrap; }
+.bk-extra-x {
+  font: inherit; font-size: .78rem; font-weight: 700; color: var(--text-soft);
+  background: none; border: 0; padding: 0; cursor: pointer;
+  text-decoration: underline; text-underline-offset: 3px; white-space: nowrap;
+}
+.bk-extra-x:hover { color: var(--red); }
+
+.bk-extra-add { display: block; }
+.bk-extra-add span {
+  display: block; font-size: .78rem; font-weight: 700;
+  color: var(--text-soft); margin-bottom: .3rem;
+}
+.bk-extra-add select {
+  width: 100%; font: inherit; font-size: .92rem;
+  border: 1.5px solid var(--line); border-radius: var(--r-sm);
+  padding: .6rem .7rem; background: var(--paper); color: var(--text);
+}
+.bk-extra-add select:focus { outline: 2px solid var(--red); outline-offset: 1px; }
+
+/* ---------- The browse list on a phone ---------- */
+/* `.bk-pkg-r i` is nowrap, which is right for "2 hrs" and wrong for the
+   sentence explaining why something is not bookable yet. That one paragraph
+   made every row in the list wider than the screen, so the list scrolled
+   sideways and the sticky filter bar above it slid out of view. */
+.bk-soonwhy {
+  white-space: normal !important;
+  display: block; max-width: 22ch; margin-left: auto; line-height: 1.4;
+}
+.bk-pkg-r { min-width: 0; }
+.bk-pkg-l b, .bk-pkg-tag, .bk-pkg-feat { overflow-wrap: anywhere; }
+
+/* Below this the two column row has nowhere left to go, so it stacks, the
+   same shape the extras list already uses. */
+@media (max-width: 560px) {
+  .bk-pkg { flex-direction: column; gap: .5rem; align-items: stretch; }
+  .bk-pkg-r {
+    text-align: left; display: flex; align-items: baseline;
+    flex-wrap: wrap; gap: .2rem .6rem;
+  }
+  .bk-pkg-r b, .bk-pkg-r i, .bk-pkg-r s { display: inline; }
+  .bk-pkg-r i { white-space: normal; }
+  .bk-soonwhy { max-width: none; margin-left: 0; }
+  .bk-pkg-r b { font-size: 1.15rem; }
+  /* The filter rows keep their own line rather than being dragged wide. */
+  .bk-filters { margin-bottom: .3rem; }
+  .bk-browsehead { padding-bottom: .5rem; }
+}
