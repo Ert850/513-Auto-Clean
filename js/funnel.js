@@ -590,6 +590,15 @@
   /**
    * Move on from `from`: to the next unanswered control, or to Continue.
    */
+  /**
+   * Move on from `from`, FORWARD only. Returns true if it moved.
+   *
+   * It used to fall back to scanning backwards for anything still blank,
+   * which sounded helpful and was not: the promo box sits near the top of
+   * the confirm screen and is empty for almost everybody, so answering
+   * anything below it hauled the page back up to ask for a discount code
+   * nobody has. Optional fields are skipped for the same reason.
+   */
   function focusNext(from) {
     var list = answerables();
     var i = -1;
@@ -597,14 +606,10 @@
       if (list[n] === from || (list[n].contains && list[n].contains(from))) { i = n; break; }
     }
     for (var j = i + 1; j < list.length; j++) {
-      if (!isAnswered(list[j])) return reach(list[j]);
-    }
-    // Nothing after it. Anything still open earlier on the screen is next,
-    // so somebody who filled things out of order is not left guessing.
-    for (var k = 0; k <= i && k < list.length; k++) {
-      if (!isAnswered(list[k]) && list[k] !== from) return reach(list[k]);
+      if (!isAnswered(list[j])) { reach(list[j]); return true; }
     }
     pointAtContinue();
+    return false;
   }
 
   function flash(msg, near) {
@@ -621,7 +626,9 @@
     if (box && box.parentNode) box.parentNode.insertBefore(p, box.nextSibling);
     else body.appendChild(p);
 
-    (box || p).scrollIntoView({ block: 'center', behavior: 'smooth' });
+    // 'nearest', not 'center'. Centring drags a field that was already on
+    // screen into the middle of it, which reads as the page lurching.
+    (box || p).scrollIntoView({ block: 'nearest', behavior: 'smooth' });
   }
 
   /**
@@ -1683,7 +1690,23 @@
       });
   }
 
+  /**
+   * The last day list we painted, so opening a band can redraw it without
+   * asking the calendar again.
+   */
+  var lastPaint = null;
+
+  function repaintSlots() {
+    var box = root.querySelector('#bkSlots');
+    if (!box || !lastPaint) return loadSlots();
+    var scroller = el('bkScroll');
+    var at = scroller ? scroller.scrollTop : 0;
+    paintSlots(box, lastPaint.win, lastPaint.from, lastPaint.to, lastPaint.dur, lastPaint.errMsg);
+    if (scroller) scroller.scrollTop = at;
+  }
+
   function paintSlots(box, win, from, to, dur, errMsg) {
+    lastPaint = { win: win, from: from, to: to, dur: dur, errMsg: errMsg };
     try {
       paintSlotsInner(box, win, from, to, dur, errMsg);
     } catch (err) {
@@ -2222,9 +2245,6 @@
         'We record the whole detail, edit it into short clips, and use it for social media and marketing. It is how we reach more customers like you and keep our prices competitive. We always blur children, license plates, and any private information. ' +
         '<a href="https://www.instagram.com/513autoclean/" target="_blank" rel="noopener">See the kind of thing we post</a>') +
 
-      '<div class="bk-field"><label for="bkNotes">Describe the vehicle&rsquo;s condition, parking situation, etc. <i>(optional)</i></label>' +
-      '<textarea id="bkNotes" data-note="general" rows="3" maxlength="500" placeholder="Pet hair, spills, a tight parking spot, anything we should expect">' + esc(state.notes) + '</textarea>' +
-      '<p class="bk-hint">We will ask about water and power access once your time is confirmed.</p></div>' +
       '</form>';
   }
 
@@ -2391,6 +2411,13 @@
       '<textarea id="bkParking" data-note="parking" rows="2" maxlength="300" ' +
       'placeholder="e.g. driveway on the left, gate code 4821, car is usually out front">' +
       esc(state.access.parking) + '</textarea></div>' +
+      // One free-text box, here, rather than one on this screen and another
+      // five screens back asking much the same thing. This is the one that
+      // gets read the morning of the detail.
+      '<div class="bk-field"><label for="bkNotes">Anything else we should know? <i>(optional)</i></label>' +
+      '<textarea id="bkNotes" data-note="general" rows="3" maxlength="500" ' +
+      'placeholder="Pet hair, spills, smoke, a child seat to work around, anything we should expect">' +
+      esc(state.notes) + '</textarea></div>' +
       '</div>';
   }
 
@@ -2405,17 +2432,29 @@
    * the fastest way to look unreliable while doing everything right.
    */
   function nextSteps() {
-    var auto = P.isLive('automatedEmail');
+    var email = P.isLive('automatedEmail');
     var texts = P.isLive('automatedTexts');
+    var calendar = P.isLive('liveCalendar');
+    var requested = isInquiry();
     var out = [];
 
-    out.push(auto
-      ? '<li><b>A confirmation lands in your inbox now.</b> It has your time, your total and everything you picked.</li>'
-      : '<li><b>We confirm it by hand, usually within a few hours.</b> By text or email, whichever you said. ' +
+    // A request and a booking are two different things and were being told
+    // the same story. One has a time on the calendar; the other is waiting
+    // for us to offer one.
+    if (requested) {
+      out.push('<li><b>We come back with a time.</b> Usually within a few hours, ' +
+        (email ? 'by email' : 'by text or email, whichever you said') +
+        '. Nothing is booked and nothing is charged until you say yes to it.</li>');
+      out.push('<li><b>Say yes and it is yours.</b> That is the point the time is held and these terms start.</li>');
+    } else if (calendar) {
+      // The calendar is live, so the slot really was taken when they picked
+      // it. Saying somebody will confirm it by hand would be wrong.
+      out.push('<li><b>Your time is booked.</b> It came off our live calendar as you picked it, so it is yours.' +
+        (email ? ' A confirmation is in your inbox now.' : '') + '</li>');
+    } else {
+      out.push('<li><b>We confirm it, usually within a few hours.</b> By text or email, whichever you said. ' +
         'Until you hear back, treat the time as requested rather than locked in.</li>');
-
-    out.push('<li><b>We work out the exact drive.</b> Travel is measured from your address and added to the total, ' +
-      'and you see the number before anything is charged.</li>');
+    }
 
     out.push(texts
       ? '<li><b>A reminder before the day</b>, and a text when we are on the way.</li>'
@@ -2465,7 +2504,7 @@
     return '<div class="bk-promo' + (early ? ' early' : '') + '">' +
       '<label for="bkPromo">Promo code <i>(if you have one)</i></label>' +
       '<div class="bk-promo-row">' +
-        '<input type="text" id="bkPromo" data-promo value="' + esc(typed) +
+        '<input type="text" id="bkPromo" data-promo data-optional value="' + esc(typed) +
           '" placeholder="Enter a code" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="32" />' +
         '<button type="button" class="bk-promo-go" id="bkPromoApply">Apply</button>' +
       '</div>' +
@@ -3009,8 +3048,21 @@
       // A new time means a new drive, so the measured figure is stale.
       state.travel = blankTravel();
       state.slot = Number(t.dataset.slot);
-      // Select, do not advance. Continue does that, and now exists.
-      return render();
+
+      // IN PLACE. No render at all. Re-rendering this step tears the day
+      // list down, rebuilds it, and asks the calendar for it again, which
+      // threw the reader to the top every time they tried a time on for
+      // size. Comparing times means tapping several of them, and the page
+      // has to hold still while somebody does that.
+      root.querySelectorAll('[data-slot]').forEach(function (b) {
+        b.classList.toggle('on', b === t);
+      });
+      var owner = t.closest('.bk-band');
+      root.querySelectorAll('.bk-band').forEach(function (b) {
+        b.classList.toggle('on', b === owner);
+      });
+      renderTotal();
+      return;
     }
     if (t.id === 'bkMoreDays') {
       // More DAYS at the same start times, never more times within a day.
@@ -3069,7 +3121,9 @@
 
     if (t.dataset.band) {
       state.openBand = state.openBand === t.dataset.band ? '' : t.dataset.band;
-      return render();
+      // Repaint the day list from what is already loaded. A render() here
+      // would refetch the calendar to show times that are sitting in memory.
+      return repaintSlots();
     }
     if (t.dataset.interest) {
       toggle(state.interest, t.dataset.interest);
@@ -3909,11 +3963,11 @@
       if (t.tagName !== 'INPUT' || t.type === 'checkbox' || t.type === 'radio') return;
       e.preventDefault();
 
-      // If the whole step is satisfied, Enter means Continue. Otherwise it
-      // means "take me to the next thing you want from me", which is the
-      // same rule every other control on the screen now follows.
-      if (!step().valid()) return advance();
-      focusNext(t);
+      // Next box if there is one, next page if there is not. Checking
+      // step().valid() FIRST was backwards: a half-filled step is exactly
+      // when somebody wants the next field, and instead they got a
+      // validation error scrolled to the middle of the screen.
+      if (!focusNext(t)) advance();
     });
 
     /**
