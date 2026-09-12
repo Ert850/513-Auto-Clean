@@ -76,20 +76,41 @@ season, not before launch.**
 
 ---
 
-## 2. Stripe
+## 2. Stripe. This is the next thing to do.
 
-**Blocks:** all payment. This is the single biggest blocker to taking money.
+**The card step is already written and waiting for a key.** The Payment
+Element, Apple Pay, Google Pay and Link all appear the moment one exists.
+Nothing else has to change.
 
-**Do:** create the account, get the test keys, then the live keys once the
-business details are verified.
+### Get a test key, today, in about twenty minutes
 
-**Send me (safe to share):** which mode you are in, test or live. Nothing else.
+1. dashboard.stripe.com, sign up. You do not need business verification to
+   get test keys.
+2. Developers, API keys, copy the **Publishable key**. It starts `pk_test_`.
+3. Paste it into `js/config.js` as `stripePublishableKey`.
+4. Copy the **Secret key** (`sk_test_`) into Netlify as `STRIPE_SECRET_KEY`.
+   That one never goes in the page, ever.
 
-**Put in `.env.local` and Netlify:** `STRIPE_SECRET_KEY`,
-`STRIPE_WEBHOOK_SECRET`. The publishable key goes in `window.AC_CONFIG` in
-`index.html`, which is fine, publishable keys are designed to be public.
+That is it. The card field appears on the confirm screen with a banner
+saying it is test mode, and **4242 4242 4242 4242** with any future date and
+any CVC will go through. Book yourself three times end to end and watch what
+lands in the Stripe dashboard.
 
----
+### Then go live
+
+1. Finish Stripe's business verification.
+2. Swap both keys for the `pk_live_` and `sk_live_` versions.
+3. Set `cardOnFile: true` in `web/lib/site/capabilities.ts` and rebuild, so
+   the terms and the privacy policy start naming Stripe.
+
+**The site reads the key prefix itself**, so a test key can never switch on
+"pay now and save 5%": now would mean a test card that moves nothing, and
+the discount would come off a bill nobody paid. That needs a live key AND
+the capability switch, which is the one place the two have to agree.
+
+**Never paste the secret key into a chat, a commit, or the HTML.**
+
+**Send me (safe to share):** the publishable key, or just say it is in.
 
 ## 3. Google Cloud
 
