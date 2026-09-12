@@ -1142,3 +1142,18 @@ body.bk-open { overflow: hidden; }
   .bk-filters { margin-bottom: .3rem; }
   .bk-browsehead { padding-bottom: .5rem; }
 }
+
+/* Continue, for the moment after the last box is ticked. */
+.bk-nextbtn.bk-ready {
+  box-shadow: 0 0 0 4px var(--red-ghost);
+  animation: bkReady .5s var(--ease);
+}
+@keyframes bkReady {
+  0%, 100% { transform: scale(1); }
+  45% { transform: scale(1.045); }
+}
+@media (prefers-reduced-motion: reduce) { .bk-nextbtn.bk-ready { animation: none; } }
+
+/* The contact form is a layout-neutral wrapper: it exists so browsers and
+   password managers see a form and offer to fill the whole card at once. */
+.bk-form { display: contents; }

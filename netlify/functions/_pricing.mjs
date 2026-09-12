@@ -1158,7 +1158,7 @@ function quote(cart, r, taxTable = SEED_TAX_TABLE, year = (/* @__PURE__ */ new D
     if (anyWork && vehicle.sizeUpchargeCents && vehicle.sizeUpchargeCents > 0) {
       vLines.push({
         kind: "size_upcharge",
-        label: (vehicle.sizeLabel ?? "Vehicle size") + " vehicle",
+        label: "Size, " + (vehicle.sizeLabel ?? "vehicle").toLowerCase() + " vehicle",
         vehicleIndex: vi,
         amountCents: vehicle.sizeUpchargeCents,
         durationMin: 0
@@ -2121,7 +2121,7 @@ var GATED_COPY = [
     id: "messages",
     capability: "automatedTexts",
     live: "We ask when you book whether we can text you about your detail. If you say yes we will confirm the booking, remind you beforehand and let you know when we are on the way.",
-    notYet: "We ask when you book whether we can text you about your detail. If you say yes, Elijah texts you himself: to confirm, to check anything he needs to know, and with an ETA before he sets off. There is no automated messaging behind it yet, so you are texting a person."
+    notYet: "We ask when you book whether we can text you about your detail. If you say yes, those texts are sent by hand: to confirm, to check anything we need to know, and with an ETA before we set off. There is no automated messaging behind it yet, so you are texting a person."
   }
 ];
 function copyFor(id) {

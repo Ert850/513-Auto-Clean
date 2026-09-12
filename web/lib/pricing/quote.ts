@@ -227,9 +227,12 @@ export function quote(
     // interior and exterior pays the $25 once.
     const anyWork = vLines.length > 0;
     if (anyWork && vehicle.sizeUpchargeCents && vehicle.sizeUpchargeCents > 0) {
+      // Reads as an adjustment to what was booked, not as a fourth thing
+      // somebody ordered. "Medium vehicle $10" sitting under two packages
+      // looks like a third package; "Size, medium vehicle" does not.
       vLines.push({
         kind: "size_upcharge",
-        label: (vehicle.sizeLabel ?? "Vehicle size") + " vehicle",
+        label: "Size, " + (vehicle.sizeLabel ?? "vehicle").toLowerCase() + " vehicle",
         vehicleIndex: vi,
         amountCents: vehicle.sizeUpchargeCents,
         durationMin: 0,
