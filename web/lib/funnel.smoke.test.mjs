@@ -58,7 +58,12 @@ function makeDom() {
       insertBefore(c) { kids.unshift(c); c.parentNode = el; return c; },
       removeChild(c) { const i = kids.indexOf(c); if (i > -1) kids.splice(i, 1); return c; },
       remove() {},
-      addEventListener() {}, removeEventListener() {},
+      _on: {},
+      // Recorded, not discarded, so a test can click something and watch the
+      // real handler run. Everything below this line used to be reachable
+      // only by a person with a phone.
+      addEventListener(type, fn) { (el._on[type] = el._on[type] || []).push(fn); },
+      removeEventListener() {},
       // Ids resolve through the shared map, so el('bkBody') returns the SAME
       // node every call and what the funnel writes can be read back. That is
       // the whole point: a querySelector that invents a fresh element makes
@@ -121,9 +126,13 @@ function makeDom() {
   return { window, document, lookup };
 }
 
-function loadFunnel(hash = "") {
+function loadFunnel(hash = "", config = null) {
   const { window, document, lookup } = makeDom();
   window.location.hash = hash;
+  // js/config.js is not loaded here, so the funnel sees no keys at all, which
+  // is exactly the state the live site is in today. Pass a config to render
+  // the screen a customer will see once Stripe is wired in.
+  if (config) window.AC_CONFIG = config;
   const run = (rel) => {
     const code = fs.readFileSync(path.join(ROOT, rel), "utf8");
     new Function(
@@ -140,6 +149,69 @@ function loadFunnel(hash = "") {
   run("js/pricing.bundle.js");
   run("js/funnel.js");
   return { window, document, lookup };
+}
+
+/**
+ * A click on a control carrying these attributes, through the funnel's own
+ * delegated handler.
+ *
+ * `closest` is selector-aware on purpose: the handler asks several times
+ * whether the thing clicked was some OTHER control, and a closest() that
+ * always says yes would take the first branch every time.
+ */
+function click(env, attrs) {
+  const dataset = attrs.dataset || {};
+  const target = {
+    id: attrs.id || "",
+    dataset,
+    value: attrs.value || "",
+    checked: !!attrs.checked,
+    firstChild: null,
+    classList: { add() {}, remove() {}, toggle() {}, contains() { return false; } },
+    closest(sel) {
+      const s = String(sel);
+      if (target.id && s.includes("#" + target.id)) return target;
+      for (const k of Object.keys(dataset)) {
+        const attr = "[data-" + k.replace(/[A-Z]/g, (c) => "-" + c.toLowerCase());
+        if (s.includes(attr + "]") || s.includes(attr + "=")) return target;
+      }
+      // The consent and access handlers walk up to the group they live in and
+      // repaint it. A group stub is enough for them to finish.
+      if (/^\.[\w-]+$/.test(s)) {
+        return {
+          classList: { add() {}, remove() {}, toggle() {}, contains() { return false; } },
+          querySelectorAll() { return []; },
+          querySelector() { return null; },
+          contains() { return false; },
+        };
+      }
+      return null;
+    },
+    querySelector() { return null; },
+    querySelectorAll() { return []; },
+    remove() {},
+    focus() {},
+  };
+  const host = env.lookup("bookFunnel");
+  (host._on.click || []).forEach((fn) =>
+    fn({ target, preventDefault() {}, stopPropagation() {} }),
+  );
+}
+
+/** Typing into a field, through the funnel's own input handler. */
+function type(env, attrs, value) {
+  const target = {
+    id: attrs.id || "",
+    dataset: attrs.dataset || {},
+    value,
+    hasAttribute: (a) => a in (attrs.dataset || {}) || a === attrs.has,
+    closest() { return null; },
+    querySelector() { return null; },
+    querySelectorAll() { return []; },
+    focus() {},
+  };
+  const host = env.lookup("bookFunnel");
+  (host._on.input || []).forEach((fn) => fn({ target }));
 }
 
 /* ---------------- the tests ---------------- */
@@ -206,13 +278,125 @@ describe("the booking funnel opens", () => {
     expect(body.length, "the confirm step rendered nothing").toBeGreaterThan(200);
     expect(body, "the promo field should be on the confirm step").toContain("bkPromo");
     expect(body, "the access questions should be on the confirm step").toContain("data-access");
-    expect(body, "the card authorization should be on the confirm step").toContain("bkMandate");
+
+    // NO STRIPE KEY, SO NO CARD STEP AT ALL. This screen used to ask for a
+    // card authorization, then load a form that announced online payment was
+    // not switched on. A customer read that as a broken site and did not
+    // book. With no processor there is nothing to authorize, and the screen
+    // says what does happen instead.
+    expect(body, "there is no card to authorize without a key").not.toContain("bkMandate");
+    expect(body, "the screen should say what does happen").toContain("Nothing to pay today");
+
+    // Add-ons are editable from here, so nobody has to walk five screens
+    // back to change one while looking at the total.
 
     // Add-ons are editable from here, so nobody has to walk five screens
     // back to change one while looking at the total.
     expect(body, "the extras picker should be on the confirm step").toContain("data-extraadd");
     // This quote has no add-ons on it, so the picker gets the dark treatment.
     expect(body, "with nothing added it should be the dark panel").toContain("bk-extras empty");
+  });
+
+  it("Help me decide asks for a recommendation instead of a package", () => {
+    /*
+     * Somebody who does not know what they want had nothing to press. Every
+     * route through the intent step demanded an answer they did not have, and
+     * the fallback was to close the funnel. This walks the path they take
+     * now: no package, no price, no slot, and a request at the end of it.
+     */
+    const fresh = loadFunnel();
+    fresh.window.ACFunnel.open();
+
+    click(fresh, { dataset: { size: "small" } });
+    const intent = fresh.lookup("bkBody").innerHTML;
+    expect(intent, "the intent step should offer it").toContain('data-intent="advice"');
+    expect(intent, "and point at the services list").toContain("See all services and prices");
+
+    click(fresh, { dataset: { intent: "advice" } });
+
+    // Package, Extras and Vehicles are not in this customer's path, so they
+    // are not tabs they can see either.
+    const nav = fresh.lookup("bkNav").innerHTML;
+    expect(nav, "the package tab should be gone").not.toContain("Package");
+    expect(nav, "and the extras tab with it").not.toContain("Extras");
+    expect(nav, "the summary should say which path they are on").toContain("Help me decide");
+
+    // It lands on the time step, which under advice is the preference picker:
+    // there is no duration, so there is no honest list of start times.
+    const body = fresh.lookup("bkBody").innerHTML;
+    expect(body, "it should ask which days could work").toContain("data-prefday");
+    expect(body, "and offer no start times to pick from").not.toContain("data-slot");
+
+    // Walk the rest of it. The last screen is the one that has broken twice,
+    // and on this path it renders with no price, no promo box and no card.
+    const day = /data-prefday="([^"]+)"/.exec(body)[1];
+    click(fresh, { dataset: { prefday: day } });
+
+    click(fresh, { id: "bkNext" });
+    type(fresh, { dataset: { addr: "line1" } }, "1 Main St");
+    type(fresh, { dataset: { addr: "city" } }, "Cincinnati");
+    type(fresh, { dataset: { addr: "zip" } }, "45220");
+
+    click(fresh, { id: "bkNext" });
+    type(fresh, { dataset: { c: "name" } }, "Ada");
+    type(fresh, { dataset: { c: "phone" } }, "5135551212");
+    for (const name of ["terms", "sms", "media"]) {
+      click(fresh, { dataset: { consent: name, val: "1" } });
+    }
+
+    click(fresh, { id: "bkNext" });
+    const last = fresh.lookup("bkBody").innerHTML;
+
+    expect(last.length, "the last screen rendered nothing").toBeGreaterThan(200);
+    expect(last, "it should say what it is").toContain("request for a recommendation");
+    expect(last, "there is nothing priced, so no receipt").not.toContain("bk-review");
+    expect(last, "and no promo box to apply to it").not.toContain("bkPromo");
+    expect(last, "and no card to authorize").not.toContain("bkMandate");
+    expect(last, "it should ask about the vehicle instead").toContain("bkNotes");
+  });
+
+  it("brings the card step back the moment a Stripe key exists", () => {
+    const P = env.window.ACPricing;
+    const url = P.quoteUrl(
+      {
+        v: 1,
+        ts: Math.floor(Date.now() / 1000),
+        vs: [{ z: "small", i: "interior", p: ["basic-interior"] }],
+        ad: ["1 Main St", "Cincinnati", "OH", "45220"],
+        ct: ["Ada", "5135551212", "ada@example.com"],
+      },
+      "https://513autoclean.com/",
+    );
+    const body = loadFunnel(url.slice(url.indexOf("#")), {
+      stripePublishableKey: "pk_test_smoke",
+    }).lookup("bkBody").innerHTML;
+
+    expect(body, "a key means there is a card to authorize").toContain("bkMandate");
+    expect(body, "and a form to mount it in").toContain("bkPayMount");
+    // A TEST key is still not a live one, so paying up front stays shut.
+    expect(body, "pay now needs a live key, not a test one").not.toContain('data-pay="now"');
+  });
+
+  it("never narrates its own failures to a customer", () => {
+    /*
+     * Somebody reached the last screen, read that online payment was not
+     * switched on and that we could not reach our calendar, decided the site
+     * was broken, and did not book. Every one of those sentences was true and
+     * every one of them cost a job.
+     *
+     * Comments are stripped first: the reasoning above is allowed to name the
+     * thing it is there to prevent. What is left is what a customer could be
+     * shown.
+     */
+    const src = fs
+      .readFileSync(path.join(ROOT, "js/funnel.js"), "utf8")
+      .replace(/\/\*[\s\S]*?\*\//g, " ")
+      .replace(/^\s*\/\/.*$/gm, " ")
+      .toLowerCase();
+
+    for (const phrase of ["could not load", "could not reach", "not switched on", "couldn't"]) {
+      expect(src, `"${phrase}" can reach a customer's screen`).not.toContain(phrase);
+    }
   });
 
   it("offers real add-ons in the confirm-step picker, and no unbookable ones", () => {
