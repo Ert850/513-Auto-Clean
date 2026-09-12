@@ -43,9 +43,13 @@ Nothing else matters until a stranger can pay at 11pm.
   **When this ships, set `bookingLink: true` in
   `web/lib/site/capabilities.ts` and rebuild.** The terms page picks up the
   self-service wording on its own.
-- [ ] **On-site price adjustment.** You keep the right to revise the price
-  after inspecting the vehicle. Needs a line in the booking UI, a clause in
-  the Terms, and an admin control to revise the total before charging.
+- [ ] **Agreeing a bigger job on site.** NOT a right to revise the price: the
+  booked price stands whatever the vehicle turns out to be like, and you work
+  to the time it bought. This is the other path, where the customer would
+  rather you went further than the booking covers. Needs an admin control
+  that records what was agreed and by whom before it changes any total, so
+  the new figure is evidence of a conversation rather than a number that
+  moved on its own.
 - [x] Server-side price recomputation, so amounts cannot be tampered with
 - [x] Travel fee ladder, sales tax, multi-vehicle discount, combo discount
 - [x] Live availability reader that works with your calendar as it is today
