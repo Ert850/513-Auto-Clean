@@ -127,16 +127,22 @@ describe("promo codes inside a quote", () => {
     const promo = quote(cart({ ...two, promoCode: "LIKENEW" }), R);
 
     expect(plain.multiVehicleDiscountCents).toBeGreaterThan(0);
+    // Adding a code does not shrink the vehicle discount, because they are
+    // not applied one after the other any more.
     expect(promo.multiVehicleDiscountCents).toBe(plain.multiVehicleDiscountCents);
-    // 10% of what is left AFTER the vehicle discount, not of the list price.
-    expect(promo.promoDiscountCents).toBe(Math.round(plain.serviceSubtotalCents * 0.1));
+    // 10% of the LIST price, the same base the vehicle discount used.
+    const list = 2 * 21500;
+    expect(promo.promoDiscountCents).toBe(Math.round(list * 0.1));
+    expect(promo.multiVehicleDiscountCents).toBe(Math.round(list * 0.1));
   });
 
-  it("comes off before the pay in full discount, so they compound honestly", () => {
+  it("every rate comes off the same base, so paying in full is worth the same either way", () => {
     const both = quote(cart({ promoCode: "LIKENEW", payInFull: true }), R);
     const promoOnly = quote(cart({ promoCode: "LIKENEW" }), R);
     expect(both.totalCents).toBeLessThan(promoOnly.totalCents);
-    expect(both.payInFullSavingsCents).toBeLessThan(
+    // It used to be worth less once a code was on, because it was charged
+    // against whatever the code had left behind. 5% is 5%.
+    expect(both.payInFullSavingsCents).toBe(
       quote(cart({ payInFull: true }), R).payInFullSavingsCents,
     );
   });
@@ -220,21 +226,52 @@ describe("discounts stack, and in the right order", () => {
     expect(coded.totalCents).toBeLessThan(plain.totalCents);
   });
 
-  it("the code comes off AFTER the vehicle discount, not before", () => {
-    // Order matters to the cent. 10% off two vehicles then 10% off the rest
-    // is not the same as 20% off the lot, and the customer should be able to
-    // add the two figures on screen and land on the total.
-    const q = two("LIKENEW");
-    const gross = 2 * 21500;
-    const afterMulti = gross - q.multiVehicleDiscountCents;
-    expect(q.promoDiscountCents).toBe(Math.round(afterMulti * 0.1));
-    expect(q.serviceSubtotalCents).toBe(afterMulti - q.promoDiscountCents);
+  it("adds the rates rather than compounding them: 10 + 10 + 5 is 25% off", () => {
+    // The whole point. Three discounts off one base, so the figures on screen
+    // add up to the total and the headline percentages are the real ones.
+    // Compounded they would be 0.9 x 0.9 x 0.95, which is 23.05% and not what
+    // anybody was promised.
+    const list = 2 * 21500;
+    const q = quote(
+      cart({
+        vehicles: [
+          { label: "Car one", packages: [FULL_INT], addons: [] },
+          { label: "Car two", packages: [FULL_INT], addons: [] },
+        ],
+        promoCode: "LIKENEW",
+        payInFull: true,
+      }),
+      R,
+    );
+
+    expect(q.multiVehicleDiscountCents).toBe(Math.round(list * 0.1));
+    expect(q.promoDiscountCents).toBe(Math.round(list * 0.1));
+    expect(q.payInFullDiscountCents).toBe(Math.round(list * 0.05));
+    expect(q.serviceSubtotalCents).toBe(Math.round(list * 0.75));
+
+    // And every one of them is its own line, because a customer given three
+    // discounts should be able to count three discounts.
+    const kinds = q.lines.filter((l) => l.amountCents < 0).map((l) => l.kind);
+    expect(kinds).toContain("additional_vehicle_discount");
+    expect(kinds).toContain("promo_discount");
+    expect(kinds).toContain("pay_in_full_discount");
   });
 
-  it("stacks with the friends and family rate too", () => {
-    const q = two("FRIANDFAM");
-    expect(q.multiVehicleDiscountCents).toBeGreaterThan(0);
-    expect(q.promoDiscountCents).toBe(Math.round((2 * 21500 - q.multiVehicleDiscountCents) * 0.25));
+  it("stacks with the friends and family rate too, at 10 + 25 + 5", () => {
+    const list = 2 * 21500;
+    const q = quote(
+      cart({
+        vehicles: [
+          { label: "Car one", packages: [FULL_INT], addons: [] },
+          { label: "Car two", packages: [FULL_INT], addons: [] },
+        ],
+        promoCode: "FRIANDFAM",
+        payInFull: true,
+      }),
+      R,
+    );
+    expect(q.promoDiscountCents).toBe(Math.round(list * 0.25));
+    expect(q.serviceSubtotalCents).toBe(Math.round(list * 0.6));
   });
 
   it("stacks on top of a premium time surcharge without eating it", () => {

@@ -2829,27 +2829,24 @@
   /* ================= summary table ================= */
 
   /**
-   * What this booking would cost with no discount of any kind.
+   * What every discount on this booking is worth, together.
    *
-   * The same cart, re-priced with every reduction switched off: the second
-   * vehicle rate, the interior-and-exterior combo, any promo code, and the
-   * pay-in-full discount. Re-quoting rather than adding four numbers up means
-   * it stays correct for any combination of them, including ones nobody has
-   * tried, and it will still be correct when a fifth discount exists.
+   * Summed from the lines the customer is already looking at, so the figure
+   * at the bottom is the arithmetic of the rows above it rather than a
+   * second calculation that might disagree with them.
+   *
+   * The percentage is against the SERVICE list price, not the grand total.
+   * Travel is never discounted, so including it would quietly shrink the
+   * number: a 25% discount would read as 19% because of a drive.
    */
-  function listPriceCents() {
-    var plain = cart();
-    plain.promoCode = null;
-    plain.payInFull = false;
-    // Copy the real rules and switch off only the discounts. Listing the
-    // other twenty fields by hand would mean a rule added next year quietly
-    // going missing from this one calculation.
-    var listRules = Object.assign({}, RULES, {
-      comboDiscountCents: 0,
-      additionalVehicleDiscountBp: 0,
-      payInFullDiscountBp: 0
+  function savings(quote) {
+    var off = 0, list = 0;
+    quote.lines.forEach(function (l) {
+      if (l.kind === 'travel' || l.kind === 'tax' || l.kind === 'surcharge') return;
+      if (l.amountCents < 0) off -= l.amountCents;
+      else list += l.amountCents;
     });
-    return P.quote(plain, listRules).totalCents;
+    return { cents: off, pct: list > 0 ? Math.round((off / list) * 100) : 0 };
   }
 
   function lineTable(quote) {
@@ -2873,12 +2870,10 @@
     // code, and paying in full. Priced by re-quoting rather than by adding
     // four figures together, so it is right whatever combination applies and
     // stays right when a fifth is added.
-    var listCents = listPriceCents();
-    var savedCents = listCents - quote.totalCents;
-    var savedPct = listCents > 0 ? Math.round((savedCents / listCents) * 100) : 0;
-    var saved = savedCents > 0
-      ? '<tr class="saved"><td>You saved</td><td>' + $(savedCents) +
-        (savedPct >= 1 ? ' <i>(' + savedPct + '% off)</i>' : '') + '</td></tr>'
+    var won = savings(quote);
+    var saved = won.cents > 0
+      ? '<tr class="saved"><td>You saved</td><td>' + $(won.cents) +
+        (won.pct >= 1 ? ' <i>(' + won.pct + '% off)</i>' : '') + '</td></tr>'
       : '';
     return '<table class="bk-lines">' + rows + travel + tax +
       '<tr class="tot"><td>Total</td><td>' + $(quote.totalCents) + '</td></tr>' + saved + when + '</table>';

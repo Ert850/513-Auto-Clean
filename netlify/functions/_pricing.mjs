@@ -1177,34 +1177,44 @@ function quote(cart, r, taxTable = SEED_TAX_TABLE, year = (/* @__PURE__ */ new D
     }
     lines.push(...vLines);
   });
-  if (cart.vehicles.length > 1 && r.additionalVehicleDiscountBp > 0) {
-    const gross = lines.reduce((s, l) => s + l.amountCents, 0);
-    const d = Math.round(gross * r.additionalVehicleDiscountBp / 1e4);
-    if (d > 0) {
+  const serviceListCents = lines.reduce((s, l) => s + l.amountCents, 0);
+  const promoLookup = cart.promoCode ? findPromo(cart.promoCode, { serviceCents: serviceListCents }) : { promo: null, rejected: null };
+  const takePercent = (bp, kind, label) => {
+    if (bp <= 0 || serviceListCents <= 0) return 0;
+    const cents = Math.round(serviceListCents * bp / 1e4);
+    if (cents <= 0) return 0;
+    lines.push({ kind, label, vehicleIndex: null, amountCents: -cents, durationMin: 0 });
+    return cents;
+  };
+  const multiVehicleDiscountCents = cart.vehicles.length > 1 ? takePercent(
+    r.additionalVehicleDiscountBp,
+    "additional_vehicle_discount",
+    cart.vehicles.length + " vehicles, " + r.additionalVehicleDiscountBp / 100 + "% off"
+  ) : 0;
+  const promoBp = promoLookup.promo?.percentBp ?? 0;
+  let promoDiscountCents2 = 0;
+  if (promoLookup.promo && promoBp > 0) {
+    promoDiscountCents2 = takePercent(promoBp, "promo_discount", promoLookup.promo.label);
+  } else if (promoLookup.promo) {
+    promoDiscountCents2 = promoDiscountCents(promoLookup.promo, serviceListCents);
+    if (promoDiscountCents2 > 0) {
       lines.push({
-        kind: "additional_vehicle_discount",
-        label: r.additionalVehicleDiscountBp / 100 + "% off, " + cart.vehicles.length + " vehicles",
+        kind: "promo_discount",
+        label: promoLookup.promo.label,
         vehicleIndex: null,
-        amountCents: -d,
+        amountCents: -promoDiscountCents2,
         durationMin: 0
       });
     }
   }
-  const beforePromoCents = lines.reduce((s, l) => s + l.amountCents, 0);
-  const promoLookup = cart.promoCode ? findPromo(cart.promoCode, { serviceCents: beforePromoCents }) : { promo: null, rejected: null };
-  const promoDiscountCents2 = promoDiscountCents(promoLookup.promo, beforePromoCents);
-  if (promoDiscountCents2 > 0 && promoLookup.promo) {
-    lines.push({
-      kind: "promo_discount",
-      label: promoLookup.promo.label,
-      vehicleIndex: null,
-      amountCents: -promoDiscountCents2,
-      durationMin: 0
-    });
-  }
+  const payInFullSavingsCents = serviceListCents > 0 ? Math.round(serviceListCents * r.payInFullDiscountBp / 1e4) : 0;
+  const payInFullDiscountCents = cart.payInFull ? takePercent(
+    r.payInFullDiscountBp,
+    "pay_in_full_discount",
+    "Paid in full, " + r.payInFullDiscountBp / 100 + "% off"
+  ) : 0;
   const serviceSubtotalCents = lines.reduce((s, l) => s + l.amountCents, 0);
   const serviceDurationMin = lines.reduce((s, l) => s + l.durationMin, 0);
-  const multiVehicleDiscountCents = -lines.filter((l) => l.kind === "additional_vehicle_discount").reduce((s, l) => s + l.amountCents, 0);
   const bd = cart.surchargeContext ? computeSurcharge(cart.surchargeContext, r.surcharge) : { timeOfDayBp: 0, priorityBp: 0, appliedBp: 0, capped: false };
   const surchargeCents = applySurchargeCents(serviceSubtotalCents, bd.appliedBp);
   if (surchargeCents > 0) {
@@ -1241,19 +1251,7 @@ function quote(cart, r, taxTable = SEED_TAX_TABLE, year = (/* @__PURE__ */ new D
       durationMin: 0
     });
   }
-  const grossTotalCents = taxableBase + t.taxCents;
-  const payInFullSavingsCents = Math.round(grossTotalCents * r.payInFullDiscountBp / 1e4);
-  const payInFullDiscountCents = cart.payInFull ? payInFullSavingsCents : 0;
-  if (payInFullDiscountCents > 0) {
-    lines.push({
-      kind: "pay_in_full_discount",
-      label: "Paid in full, " + r.payInFullDiscountBp / 100 + "% off",
-      vehicleIndex: null,
-      amountCents: -payInFullDiscountCents,
-      durationMin: 0
-    });
-  }
-  const totalCents = grossTotalCents - payInFullDiscountCents;
+  const totalCents = taxableBase + t.taxCents;
   const grossBeforeMultiCents = multiVehicleDiscountCents > 0 ? quote(cart, { ...r, additionalVehicleDiscountBp: 0 }, taxTable, year).totalCents : totalCents;
   const depositCents = Math.round(totalCents * r.depositBp / 1e4);
   return {
