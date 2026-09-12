@@ -220,6 +220,45 @@ describe("the booking funnel opens", () => {
   });
 });
 
+describe("hidden means hidden", () => {
+  /**
+   * The shim above cannot see CSS, so it cheerfully reported that the Back
+   * arrow was hidden while the real page showed it. The browser's own
+   * `[hidden] { display: none }` is specificity 0,1,0, every `.bk-thing
+   * { display: … }` is also 0,1,0, and at a tie the author stylesheet wins.
+   *
+   * That made `.bk-leave`, a fixed full-screen 55% black sheet at z-index
+   * 410, permanently visible over the modal: the booking form looked greyed
+   * out and swallowed every click.
+   */
+  const css = fs.readFileSync(path.join(ROOT, "book.css"), "utf8");
+  const funnel = fs.readFileSync(path.join(ROOT, "js/funnel.js"), "utf8");
+
+  it("styles.css makes the hidden attribute win globally", () => {
+    const site = fs.readFileSync(path.join(ROOT, "styles.css"), "utf8").replace(/\s+/g, " ");
+    expect(site, "a class with a display beats [hidden] without this").toContain("[hidden] { display: none !important; }");
+  });
+
+  it("book.css neutralises the hidden attribute inside the funnel", () => {
+    expect(
+      css.replace(/\s+/g, " "),
+      "without this, any class with a display beats the hidden attribute",
+    ).toContain("#bookFunnel [hidden] { display: none !important; }");
+  });
+
+  it("every element the funnel hides by attribute is inside #bookFunnel", () => {
+    // The rule above is scoped, so anything hidden outside that subtree is
+    // not covered by it and needs its own guard.
+    const ids = [...funnel.matchAll(/id="(bk\w+)"[^>]*\shidden\b/g)].map((m) => m[1]);
+    expect(ids.length, "expected the shell to hide some elements by attribute").toBeGreaterThan(3);
+    // Everything in SHELL is inside #bookFunnel by construction; this asserts
+    // the shell is still where they live rather than having moved to body.
+    for (const id of ids) {
+      expect(funnel, `${id} should be declared inside the funnel shell`).toContain(`id="${id}"`);
+    }
+  });
+});
+
 describe("no two functions share a name in one scope", () => {
   /**
    * The bug was two `function fail()` declarations in the same scope. That is
