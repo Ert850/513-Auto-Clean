@@ -252,48 +252,72 @@ export function quote(
     lines.push(...vLines);
   });
 
-  // Two or more vehicles takes the discount off EVERYTHING, first one
-  // included, so adding a car visibly lowers a price already accepted.
-  if (cart.vehicles.length > 1 && r.additionalVehicleDiscountBp > 0) {
-    const gross = lines.reduce((s, l) => s + l.amountCents, 0);
-    const d = Math.round((gross * r.additionalVehicleDiscountBp) / 10_000);
-    if (d > 0) {
+  /* ---------------- percentage discounts: STACKED, NOT COMPOUNDED ----------
+   *
+   * Every percentage comes off the SAME base, the service list price after
+   * the flat interior-and-exterior discount. Two vehicles, a code and paying
+   * in full is 10 + 10 + 5 = 25% off, not 0.9 x 0.9 x 0.95 = 23.05%.
+   *
+   * They used to be applied in sequence, each to whatever the previous one
+   * left, and the pay-in-full one came off the grand total AFTER travel and
+   * tax. Three different bases, so no combination added up to the numbers on
+   * the buttons, and the last one discounted a pass-through travel cost and
+   * then charged tax on money nobody paid.
+   *
+   * Each rate also gets its own line, because a customer who is given three
+   * discounts should be able to see three discounts.
+   */
+  const serviceListCents = lines.reduce((s, l) => s + l.amountCents, 0);
+
+  const promoLookup: PromoResult = cart.promoCode
+    ? findPromo(cart.promoCode, { serviceCents: serviceListCents })
+    : { promo: null, rejected: null };
+
+  /** One rate off one base. Returns what it is worth, and records the line. */
+  const takePercent = (bp: number, kind: LineKind, label: string): number => {
+    if (bp <= 0 || serviceListCents <= 0) return 0;
+    const cents = Math.round((serviceListCents * bp) / 10_000);
+    if (cents <= 0) return 0;
+    lines.push({ kind, label, vehicleIndex: null, amountCents: -cents, durationMin: 0 });
+    return cents;
+  };
+
+  const multiVehicleDiscountCents =
+    cart.vehicles.length > 1
+      ? takePercent(
+          r.additionalVehicleDiscountBp,
+          "additional_vehicle_discount",
+          cart.vehicles.length + " vehicles, " + r.additionalVehicleDiscountBp / 100 + "% off",
+        )
+      : 0;
+
+  // A flat-money code cannot be a percentage of anything, so it comes off as
+  // itself. Percentage codes join the stack.
+  const promoBp = promoLookup.promo?.percentBp ?? 0;
+  let promoDiscountCents = 0;
+  if (promoLookup.promo && promoBp > 0) {
+    promoDiscountCents = takePercent(promoBp, "promo_discount", promoLookup.promo.label);
+  } else if (promoLookup.promo) {
+    promoDiscountCents = promoValueCents(promoLookup.promo, serviceListCents);
+    if (promoDiscountCents > 0) {
       lines.push({
-        kind: "additional_vehicle_discount",
-        label:
-          r.additionalVehicleDiscountBp / 100 + "% off, " + cart.vehicles.length + " vehicles",
-        vehicleIndex: null,
-        amountCents: -d,
-        durationMin: 0,
+        kind: "promo_discount", label: promoLookup.promo.label,
+        vehicleIndex: null, amountCents: -promoDiscountCents, durationMin: 0,
       });
     }
   }
 
-  // The promo comes off the SERVICE, after every other discount and before
-  // travel and tax. Travel is a pass-through cost rather than margin, so
-  // discounting it would mean paying for the privilege of driving.
-  const beforePromoCents = lines.reduce((s, l) => s + l.amountCents, 0);
-  const promoLookup: PromoResult = cart.promoCode
-    ? findPromo(cart.promoCode, { serviceCents: beforePromoCents })
-    : { promo: null, rejected: null };
-
-  const promoDiscountCents = promoValueCents(promoLookup.promo, beforePromoCents);
-
-  if (promoDiscountCents > 0 && promoLookup.promo) {
-    lines.push({
-      kind: "promo_discount",
-      label: promoLookup.promo.label,
-      vehicleIndex: null,
-      amountCents: -promoDiscountCents,
-      durationMin: 0,
-    });
-  }
+  // What paying in full is worth, whether or not they chose it: the prompt
+  // offering it has to name the same number the line would.
+  const payInFullSavingsCents =
+    serviceListCents > 0 ? Math.round((serviceListCents * r.payInFullDiscountBp) / 10_000) : 0;
+  const payInFullDiscountCents = cart.payInFull
+    ? takePercent(r.payInFullDiscountBp, "pay_in_full_discount",
+        "Paid in full, " + r.payInFullDiscountBp / 100 + "% off")
+    : 0;
 
   const serviceSubtotalCents = lines.reduce((s, l) => s + l.amountCents, 0);
   const serviceDurationMin = lines.reduce((s, l) => s + l.durationMin, 0);
-  const multiVehicleDiscountCents = -lines
-    .filter((l) => l.kind === "additional_vehicle_discount")
-    .reduce((s, l) => s + l.amountCents, 0);
 
   const bd = cart.surchargeContext
     ? computeSurcharge(cart.surchargeContext, r.surcharge)
@@ -333,24 +357,10 @@ export function quote(
     });
   }
 
-  const grossTotalCents = taxableBase + t.taxCents;
-
-  // Paying in full at booking earns a discount off the whole total. Computed
-  // on the gross so the saving matches the headline percentage the customer
-  // was shown, rather than a smaller number they have to reconcile.
-  const payInFullSavingsCents = Math.round((grossTotalCents * r.payInFullDiscountBp) / 10_000);
-  const payInFullDiscountCents = cart.payInFull ? payInFullSavingsCents : 0;
-  if (payInFullDiscountCents > 0) {
-    lines.push({
-      kind: "pay_in_full_discount",
-      label: "Paid in full, " + r.payInFullDiscountBp / 100 + "% off",
-      vehicleIndex: null,
-      amountCents: -payInFullDiscountCents,
-      durationMin: 0,
-    });
-  }
-
-  const totalCents = grossTotalCents - payInFullDiscountCents;
+  // Every discount is already inside the taxable base, so tax is charged on
+  // what the customer actually pays. The pay-in-full discount used to come
+  // off after tax, which meant remitting tax on money nobody handed over.
+  const totalCents = taxableBase + t.taxCents;
 
   // Price the same booking again with the discount switched off, so the
   // struck-through figure is a true like-for-like comparison rather than a

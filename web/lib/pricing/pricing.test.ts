@@ -164,11 +164,20 @@ describe("quote engine", () => {
     expect(paid.lines.some((l) => l.kind === "pay_in_full_discount")).toBe(true);
   });
 
-  it("discounts the whole total including tax and travel, not just service", () => {
+  it("discounts the SERVICE, never the drive, and taxes what is left", () => {
+    // It used to come off the grand total after tax, which discounted a
+    // travel cost that is pass-through rather than margin, and meant
+    // remitting sales tax on money the customer never handed over.
     const gross = quote(cart({ zip: "45220", oneWayMinutes: 60 }), R);
     const paid = quote(cart({ zip: "45220", oneWayMinutes: 60, payInFull: true }), R);
-    expect(paid.payInFullDiscountCents).toBe(Math.round(gross.totalCents * 0.05));
-    expect(paid.totalCents).toBe(gross.totalCents - paid.payInFullDiscountCents);
+
+    expect(paid.payInFullDiscountCents).toBe(Math.round(21500 * 0.05));
+    expect(paid.travelCents).toBe(gross.travelCents);
+    // Tax falls with the discount, because the base it is charged on fell.
+    expect(paid.taxCents).toBeLessThan(gross.taxCents);
+    expect(paid.totalCents).toBe(
+      paid.serviceSubtotalCents + paid.surchargeCents + paid.travelCents + paid.taxCents,
+    );
   });
 
   it("charges the vehicle size upcharge once per vehicle, not per package", () => {
