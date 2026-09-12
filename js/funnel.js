@@ -1900,10 +1900,21 @@
     var slots = P.computeSlots(req);
 
     // A quoted time was never reserved, so it has to earn its place in the
-    // live list. Gone means gone, and the customer hears it here rather than
-    // discovering it at the payment step.
-    if (state.quotedSlot) {
-      var stillFree = slots.indexOf(state.quotedSlot) > -1;
+    // live list. But "gone" is something we have to KNOW, not assume.
+    //
+    // Without a calendar key the list is a generated grid of standard hours
+    // starting from this exact moment, so a time quoted yesterday almost
+    // never lands on it to the millisecond. Every quote link was arriving
+    // with its time silently stripped out, which is the worst possible
+    // outcome: the customer opens a link for Thursday 10am and finds an
+    // empty time step.
+    //
+    // So: only a REAL calendar may take a time away, and even then the match
+    // is to the minute rather than the millisecond.
+    if (state.quotedSlot && win.mode !== 'unconfigured') {
+      var stillFree = slots.some(function (ms) {
+        return Math.abs(ms - state.quotedSlot) < 60000;
+      });
       if (!stillFree && state.slot === state.quotedSlot) {
         state.slot = null;
         state.slotTaken = true;
@@ -2467,16 +2478,41 @@
     return (hit.promo && hit.promo.blurb) || 'Discount applied.';
   }
 
+  /**
+   * Can this booking actually be paid for now?
+   *
+   * Two reasons it cannot, and both have to hold it shut.
+   *
+   * A REQUEST has no agreed time, and taking money for one is how you end up
+   * issuing refunds the same week.
+   *
+   * NO PAYMENT PROCESSOR means the button leads to a form that cannot take a
+   * card. Offering 5% off for doing something the site cannot do yet is a
+   * discount on a promise, and the total quietly changed to match it. When
+   * the Stripe keys land this turns on by itself, for every path including a
+   * shared quote link, because they all read this one function.
+   */
+  function canPayNow() {
+    return !isInquiry() && P.isLive('cardOnFile');
+  }
+
   function rPay() {
     var ask = isInquiry();
 
-    // Paying in full for a time nobody has agreed to is how you end up
-    // issuing refunds. Forced off rather than merely hidden, so it cannot
-    // survive from an earlier pass through this step.
-    if (ask) state.payInFull = false;
+    // Forced off rather than merely hidden, so it cannot survive from an
+    // earlier pass through this step or out of a saved draft.
+    if (!canPayNow()) state.payInFull = false;
 
     var quote = q();
     var now = state.payInFull;
+
+    // Each option priced on its own terms. `quote` reflects whichever is
+    // SELECTED, so reading both figures off it made "Pay after the detail"
+    // display the discounted total the moment somebody chose to pay now.
+    var laterCart = cart(); laterCart.payInFull = false;
+    var nowCart = cart(); nowCart.payInFull = true;
+    var laterTotal = P.quote(laterCart, RULES).totalCents;
+    var nowTotal = P.quote(nowCart, RULES).totalCents;
 
     var html = '';
 
@@ -2500,13 +2536,15 @@
 
     html += promoBox(quote);
 
-    if (ask) {
+    if (!canPayNow()) {
       html += '<div class="bk-payopts">' +
         '<div class="bk-pay on static">' +
           '<b>Pay after the detail</b>' +
-          '<span>We take a card to hold the request. It is not charged until the time is ' +
-          'agreed and the work is done.</span>' +
-          '<i>' + $(quote.totalCents) + '</i>' +
+          '<span>' + (ask
+            ? 'We take a card to hold the request. It is not charged until the time is agreed and the work is done.'
+            : 'Pay when the work is finished, by ' + IN_PERSON + '. The card below is only authorized for a late cancellation.') +
+          '</span>' +
+          '<i>' + $(laterTotal) + '</i>' +
         '</div>' +
         '</div>';
     } else {
@@ -2515,12 +2553,12 @@
           '<b>Pay after the detail</b>' +
           '<span>Pay when the work is finished, by ' + IN_PERSON + ', or ask us to put it on the card on file. ' +
             'The card is only authorized for a late cancellation.</span>' +
-          '<i>' + $(quote.totalCents) + '</i>' +
+          '<i>' + $(laterTotal) + '</i>' +
         '</button>' +
         '<button type="button" class="bk-pay' + (now ? ' on' : '') + '" data-pay="now">' +
           '<b>Pay now and save ' + RULES.payInFullDiscountBp / 100 + '%</b>' +
           '<span>Settle the whole thing today.</span>' +
-          '<i>' + $(now ? quote.totalCents : quote.totalCents - quote.payInFullSavingsCents) + '</i>' +
+          '<i>' + $(nowTotal) + '</i>' +
         '</button>' +
         '</div>';
     }
@@ -2790,6 +2828,30 @@
 
   /* ================= summary table ================= */
 
+  /**
+   * What this booking would cost with no discount of any kind.
+   *
+   * The same cart, re-priced with every reduction switched off: the second
+   * vehicle rate, the interior-and-exterior combo, any promo code, and the
+   * pay-in-full discount. Re-quoting rather than adding four numbers up means
+   * it stays correct for any combination of them, including ones nobody has
+   * tried, and it will still be correct when a fifth discount exists.
+   */
+  function listPriceCents() {
+    var plain = cart();
+    plain.promoCode = null;
+    plain.payInFull = false;
+    // Copy the real rules and switch off only the discounts. Listing the
+    // other twenty fields by hand would mean a rule added next year quietly
+    // going missing from this one calculation.
+    var listRules = Object.assign({}, RULES, {
+      comboDiscountCents: 0,
+      additionalVehicleDiscountBp: 0,
+      payInFullDiscountBp: 0
+    });
+    return P.quote(plain, listRules).totalCents;
+  }
+
   function lineTable(quote) {
     var rows = quote.lines.map(function (l) {
       return '<tr class="' + l.kind + (l.amountCents < 0 ? ' neg' : '') + '">' +
@@ -2806,9 +2868,17 @@
         '</td></tr>'
       : '';
 
-    var saved = quote.multiVehicleDiscountCents > 0
-      ? '<tr class="saved"><td>You saved</td><td>' +
-        $(quote.grossBeforeMultiCents - quote.totalCents) + '</td></tr>'
+    // Every discount, against what the same booking would cost with none of
+    // them: the extra-vehicle rate, the interior-and-exterior combo, a promo
+    // code, and paying in full. Priced by re-quoting rather than by adding
+    // four figures together, so it is right whatever combination applies and
+    // stays right when a fifth is added.
+    var listCents = listPriceCents();
+    var savedCents = listCents - quote.totalCents;
+    var savedPct = listCents > 0 ? Math.round((savedCents / listCents) * 100) : 0;
+    var saved = savedCents > 0
+      ? '<tr class="saved"><td>You saved</td><td>' + $(savedCents) +
+        (savedPct >= 1 ? ' <i>(' + savedPct + '% off)</i>' : '') + '</td></tr>'
       : '';
     return '<table class="bk-lines">' + rows + travel + tax +
       '<tr class="tot"><td>Total</td><td>' + $(quote.totalCents) + '</td></tr>' + saved + when + '</table>';

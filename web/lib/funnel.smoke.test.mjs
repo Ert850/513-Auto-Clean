@@ -244,6 +244,52 @@ describe("the booking funnel opens", () => {
     expect(options).not.toContain("ceramic-coating");
   });
 
+  it("a shared quote link keeps the time it was built with", () => {
+    // The recipient opens a link for a specific hour. Losing it on the way in
+    // is the worst outcome there is: they came for that time.
+    const P = env.window.ACPricing;
+    const slot = Date.now() + 6 * 86_400_000;
+    const url = P.quoteUrl(
+      {
+        v: 1,
+        ts: Math.floor(Date.now() / 1000),
+        vs: [{ z: "small", i: "interior", p: ["basic-interior"] }],
+        ad: ["1 Main St", "Cincinnati", "OH", "45220"],
+        ct: ["Ada", "5135551212", ""],
+        sl: slot,
+      },
+      "https://513autoclean.com/",
+    );
+    const body = loadFunnel(url.slice(url.indexOf("#"))).lookup("bkBody").innerHTML;
+
+    expect(body, "the confirm step should show the quoted time").toContain("Your time");
+    const day = new Date(slot).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    expect(body, `expected ${day} somewhere in the summary`).toContain(day);
+  });
+
+  it("does not offer to take money online while it cannot take money online", () => {
+    const P = env.window.ACPricing;
+    expect(P.isLive("cardOnFile"), "this test assumes payments are still off").toBe(false);
+
+    const url = P.quoteUrl(
+      {
+        v: 1,
+        ts: Math.floor(Date.now() / 1000),
+        vs: [{ z: "small", i: "interior", p: ["basic-interior"] }],
+        ad: ["1 Main St", "Cincinnati", "OH", "45220"],
+        ct: ["Ada", "5135551212", ""],
+        sl: Date.now() + 6 * 86_400_000,
+      },
+      "https://513autoclean.com/",
+    );
+    const body = loadFunnel(url.slice(url.indexOf("#"))).lookup("bkBody").innerHTML;
+
+    // A discount for doing something the site cannot do yet, which also
+    // rewrote the total of the option next to it.
+    expect(body, "the pay-now option should be hidden until Stripe is live").not.toContain('data-pay="now"');
+    expect(body).not.toMatch(/Pay now and save/);
+  });
+
   it("puts the chrome in the right state for step one", () => {
     env.window.ACFunnel.open();
     // Both of these are set AFTER the body renders, so if the render throws
