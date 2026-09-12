@@ -2531,8 +2531,27 @@
    * the Stripe keys land this turns on by itself, for every path including a
    * shared quote link, because they all read this one function.
    */
+  /**
+   * Off, test, or live, read straight off the key.
+   *
+   * Stripe prefixes tell you which one you are in, so the site does not need
+   * a second switch that somebody has to remember to flip in step with the
+   * key. A test key makes the card field real and working, with test cards,
+   * and no money moves.
+   */
+  function stripeMode() {
+    var k = String(CFG.stripePublishableKey || '');
+    if (k.indexOf('pk_live_') === 0) return 'live';
+    if (k.indexOf('pk_test_') === 0) return 'test';
+    return 'off';
+  }
+
   function canPayNow() {
-    return !isInquiry() && P.isLive('cardOnFile');
+    // A LIVE key, not a test one: offering 5% off for paying now, when now
+    // means a test card that moves nothing, is an invoice nobody has paid.
+    // The capability switch has to agree, because it is what the terms page
+    // was generated from and the two must not say different things.
+    return !isInquiry() && stripeMode() === 'live' && P.isLive('cardOnFile');
   }
 
   function rPay() {
@@ -2766,6 +2785,14 @@
       return;
     }
 
+    // Say so, loudly, in test mode. A card field that looks exactly like the
+    // real one and quietly does nothing is how somebody ends up believing a
+    // booking was paid for.
+    var testBanner = stripeMode() === 'test'
+      ? '<p class="bk-warn"><b>Test mode.</b> No card is charged and no card is stored. ' +
+        'Use 4242 4242 4242 4242, any future date, any CVC. Real cards will be declined.</p>'
+      : '';
+
     fetch('/api/create-payment', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -2798,8 +2825,8 @@
           clientSecret: r.j.clientSecret,
           appearance: { theme: 'flat', variables: { colorPrimary: '#e01a1a', borderRadius: '10px' } }
         });
-        mount.innerHTML = '';
-        elements.create('payment', { layout: 'tabs' }).mount(mount);
+        mount.innerHTML = testBanner + '<div id="bkStripeEl"></div>';
+        elements.create('payment', { layout: 'tabs' }).mount(mount.querySelector('#bkStripeEl'));
         root._stripe = { stripe: stripe, elements: elements, kind: r.j.kind };
       })
       .catch(function () {

@@ -328,6 +328,25 @@ describe("the booking funnel opens", () => {
     expect(fn).not.toMatch(/work out the exact drive/i);
   });
 
+  it("reads test against live off the Stripe key, not a second switch", () => {
+    const src = fs.readFileSync(path.join(ROOT, "js/funnel.js"), "utf8");
+    const fn = src.slice(src.indexOf("function stripeMode()"), src.indexOf("function stripeMode()") + 500);
+    expect(fn).toContain("pk_live_");
+    expect(fn).toContain("pk_test_");
+
+    // A test key must never unlock "pay now and save 5%": now means a test
+    // card that moves nothing, so the discount would be off an unpaid bill.
+    const can = src.slice(src.indexOf("function canPayNow()"), src.indexOf("function canPayNow()") + 400);
+    expect(can).toContain("=== 'live'");
+    expect(can).toContain("cardOnFile");
+  });
+
+  it("says test mode out loud when the key is a test key", () => {
+    const src = fs.readFileSync(path.join(ROOT, "js/funnel.js"), "utf8");
+    expect(src, "a card field that silently does nothing is a trap").toMatch(/Test mode\.<\/b> No card is charged/);
+    expect(src).toContain("4242 4242 4242 4242");
+  });
+
   it("puts the chrome in the right state for step one", () => {
     env.window.ACFunnel.open();
     // Both of these are set AFTER the body renders, so if the render throws
