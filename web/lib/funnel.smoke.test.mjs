@@ -451,10 +451,19 @@ describe("the booking funnel opens", () => {
     expect(body, `expected ${day} somewhere in the summary`).toContain(day);
   });
 
-  it("does not offer to take money online while it cannot take money online", () => {
+  it("needs a LIVE key and the capability before it offers to take money", () => {
+    /*
+     * Two locks on the same door, and they are deliberately in different
+     * places: the capability lives in capabilities.ts, which the terms and
+     * the privacy policy are generated from, and the key lives in
+     * js/config.js, which this harness does not load. Either one alone has
+     * to keep it shut.
+     *
+     * "Pay now and save 5%" is a discount for doing something, so offering
+     * it when the site cannot take the money is an invoice nobody can pay.
+     * It also rewrote the total of the option sitting next to it.
+     */
     const P = env.window.ACPricing;
-    expect(P.isLive("cardOnFile"), "this test assumes payments are still off").toBe(false);
-
     const url = P.quoteUrl(
       {
         v: 1,
@@ -466,12 +475,28 @@ describe("the booking funnel opens", () => {
       },
       "https://513autoclean.com/",
     );
-    const body = loadFunnel(url.slice(url.indexOf("#"))).lookup("bkBody").innerHTML;
+    const hash = url.slice(url.indexOf("#"));
+    const render = (config) => loadFunnel(hash, config).lookup("bkBody").innerHTML;
 
-    // A discount for doing something the site cannot do yet, which also
-    // rewrote the total of the option next to it.
-    expect(body, "the pay-now option should be hidden until Stripe is live").not.toContain('data-pay="now"');
-    expect(body).not.toMatch(/Pay now and save/);
+    // No key at all, whatever the capability says.
+    const none = render(null);
+    expect(none, "no key means no pay-now").not.toContain('data-pay="now"');
+    expect(none).not.toMatch(/Pay now and save/);
+
+    // A test key is real enough to take a card and not real enough to take
+    // money, so this one stays shut too.
+    expect(render({ stripePublishableKey: "pk_test_smoke" }), "a test key cannot take money")
+      .not.toContain('data-pay="now"');
+
+    // Both locks open.
+    const live = render({ stripePublishableKey: "pk_live_smoke" });
+    if (P.isLive("cardOnFile")) {
+      expect(live, "a live key and the capability together open it").toContain('data-pay="now"');
+      expect(live).toMatch(/Pay now and save/);
+    } else {
+      expect(live, "the capability is off, so the key alone is not enough")
+        .not.toContain('data-pay="now"');
+    }
   });
 
   it("only one free-text box, and it is on the confirm screen", () => {

@@ -18,7 +18,7 @@ window.AC_CONFIG = {
     //                 and the page says so in a banner
     //   'pk_live_...' real cards, and the pay-now option appears once
     //                 cardOnFile is also switched on in capabilities.ts
-    stripePublishableKey: '',
+    stripePublishableKey: 'pk_live_51TEDiSC1NhJh7XkAOAiwQJqgky8ClFzwhjvpVbR8O7xmQyzI2LJHH9oojIWaZl7L4IOuTWtyhi7QDXZIsJ5eBrSg00sykxIEJA',
     paypalClientId: '',
     // Cloudflare Turnstile site key. Empty means no bot check, which is
     // fine until the first bot.
