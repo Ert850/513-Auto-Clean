@@ -426,11 +426,12 @@
       // Once, on the step they come back to. Repeating it on every step
       // afterwards would be nagging about something they already know.
       state.resumed = false;
-      var back = document.createElement('p');
-      back.className = 'bk-resumed';
-      back.innerHTML = 'Picked up where you left off. ' +
+      // Not `back`: that name already holds the back button in this scope.
+      var note = document.createElement('p');
+      note.className = 'bk-resumed';
+      note.innerHTML = 'Picked up where you left off. ' +
         '<button type="button" id="bkFresh">Start fresh instead</button>';
-      el('bkBody').insertBefore(back, el('bkBody').firstChild);
+      el('bkBody').insertBefore(note, el('bkBody').firstChild);
     }
 
     if (state.flashPrio) {
@@ -535,11 +536,20 @@
    * no questions, "Please answer yes or no on filming" meant scrolling back
    * up to find which of the three was blank.
    */
-  function fail(msg, focus) {
+  /**
+   * A validation failure, and the control that caused it.
+   *
+   * NOT called `fail`. There is already a fail() further down that takes a
+   * DOM node and writes a send error into it, and a second declaration of the
+   * same name in the same scope silently replaces the first: every validator
+   * ended up calling the DOM one with a string, which threw on the first
+   * render and left the funnel a blank box.
+   */
+  function needs(msg, focus) {
     return { msg: msg, focus: focus || null };
   }
 
-  /** Validators may return a plain string or a fail(). Normalise both. */
+  /** Validators may return a plain string or a needs(). Normalise both. */
   function asProblem(r, stepIndex) {
     if (!r) return null;
     return typeof r === 'string'
@@ -613,7 +623,7 @@
           '</button>';
       }).join('') + '</div>';
   }
-  function vSize() { return veh().size ? null : fail('Pick a vehicle size to continue.', '[data-size]'); }
+  function vSize() { return veh().size ? null : needs('Pick a vehicle size to continue.', '[data-size]'); }
 
   /* ================= step 2: intent ================= */
 
@@ -796,7 +806,7 @@
     html += '<button type="button" class="bk-morelink" id="bkBrowseBack">Back to the quick picker</button>';
     return html;
   }
-  function vIntent() { return veh().intent ? null : fail('Pick interior, exterior, or both.', '[data-intent]'); }
+  function vIntent() { return veh().intent ? null : needs('Pick interior, exterior, or both.', '[data-intent]'); }
 
   /* ================= step 3: package ================= */
 
@@ -939,12 +949,12 @@
 
   function vPackage() {
     var v = veh();
-    if (!v.packageIds.length) return fail('Choose a package to continue.', '[data-pkg]');
-    if (needsCorrection(v) && !v.correctionTier) return fail('Pick a correction level to continue.', '[data-corr]');
+    if (!v.packageIds.length) return needs('Choose a package to continue.', '[data-pkg]');
+    if (needsCorrection(v) && !v.correctionTier) return needs('Pick a correction level to continue.', '[data-corr]');
     if (v.intent === 'both') {
       var cats = v.packageIds.map(function (id) { return P.findPackage(id).category; });
-      if (cats.indexOf('interior') < 0) return fail('Pick an interior package too.', '[data-pkg]');
-      if (cats.indexOf('exterior') < 0) return fail('Pick an exterior package too.', '[data-pkg]');
+      if (cats.indexOf('interior') < 0) return needs('Pick an interior package too.', '[data-pkg]');
+      if (cats.indexOf('exterior') < 0) return needs('Pick an exterior package too.', '[data-pkg]');
     }
     return null;
   }
@@ -1226,9 +1236,9 @@
 
   function vLoc() {
     var a = state.address;
-    if (!a.line1.trim()) return fail('We need a street address.', '#bkL1');
-    if (!a.city.trim()) return fail('We need a city.', '#bkCity');
-    if (!/^\d{5}$/.test(a.zip.trim())) return fail('We need a 5 digit ZIP so we can work out tax and travel.', '#bkZip');
+    if (!a.line1.trim()) return needs('We need a street address.', '#bkL1');
+    if (!a.city.trim()) return needs('We need a city.', '#bkCity');
+    if (!/^\d{5}$/.test(a.zip.trim())) return needs('We need a 5 digit ZIP so we can work out tax and travel.', '#bkZip');
     return null;
   }
 
@@ -2035,7 +2045,7 @@
   function vTime() {
     if (state.slot) return null;
     if (isInquiry()) return null;
-    return fail('Pick a time, or tell us when suits.', '[data-band],[data-prefday],[data-prefpart]');
+    return needs('Pick a time, or tell us when suits.', '[data-band],[data-prefday],[data-prefpart]');
   }
 
   /* ================= step 8: contact ================= */
@@ -2101,25 +2111,25 @@
   }
 
   function vContact() {
-    if (!state.contact.name.trim()) return fail('We need your name.', '#bkName');
-    if (!state.contact.phone.trim()) return fail('We need a phone number to confirm your booking.', '#bkPhone');
+    if (!state.contact.name.trim()) return needs('We need your name.', '#bkName');
+    if (!state.contact.phone.trim()) return needs('We need a phone number to confirm your booking.', '#bkPhone');
     // The same shape the server insists on, checked here so the message
     // arrives while the field still has focus rather than after a round trip.
     var digits = state.contact.phone.replace(/\D/g, '');
     if (digits.length === 11 && digits.charAt(0) === '1') digits = digits.slice(1);
     if (digits.length !== 10 || /^[01]/.test(digits)) {
-      return fail('That does not look like a US phone number. Ten digits, area code first.', '#bkPhone');
+      return needs('That does not look like a US phone number. Ten digits, area code first.', '#bkPhone');
     }
-    if (state.contact.name.trim().length > 80) return fail('That name is too long for our form.', '#bkName');
+    if (state.contact.name.trim().length > 80) return needs('That name is too long for our form.', '#bkName');
     if (state.contact.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(state.contact.email.trim())) {
-      return fail('That email address does not look right.', '#bkEmail');
+      return needs('That email address does not look right.', '#bkEmail');
     }
-    if (state.consent.terms === null) return fail('Please answer yes or no on the terms.', '[data-consent="terms"]');
+    if (state.consent.terms === null) return needs('Please answer yes or no on the terms.', '[data-consent="terms"]');
     if (state.consent.terms === false) {
-      return fail('We cannot take a booking without accepting the terms. You can still send us a question instead.', '[data-consent="terms"]');
+      return needs('We cannot take a booking without accepting the terms. You can still send us a question instead.', '[data-consent="terms"]');
     }
-    if (state.consent.sms === null) return fail('Please answer yes or no on text messages.', '[data-consent="sms"]');
-    if (state.consent.media === null) return fail('Please answer yes or no on filming.', '[data-consent="media"]');
+    if (state.consent.sms === null) return needs('Please answer yes or no on text messages.', '[data-consent="sms"]');
+    if (state.consent.media === null) return needs('Please answer yes or no on filming.', '[data-consent="media"]');
     return null;
   }
 
@@ -2371,7 +2381,7 @@
   function vPay() {
     if (state.payState === 'paid') return null;
     if (!state.mandate && !(state.payInFull && state.payMethod === 'paypal')) {
-      return fail('Please tick the card authorization to continue.', '#bkMandate');
+      return needs('Please tick the card authorization to continue.', '#bkMandate');
     }
     if (state.payMethod === 'paypal' && state.payInFull) {
       return 'Use the PayPal button above to finish paying.';
@@ -3022,15 +3032,16 @@
         state.sending = false;
         el('bkNext').disabled = false;
         if (r.ok && r.j.success) done(quote);
-        else fail(msg);
+        else showSendError(msg);
       })
-      .catch(function () { state.sending = false; el('bkNext').disabled = false; fail(msg); });
+      .catch(function () { state.sending = false; el('bkNext').disabled = false; showSendError(msg); });
   }
 
-  function fail(msg) {
-    if (!msg) return;
-    msg.className = 'bk-msg err';
-    msg.textContent = 'Something went wrong sending that. Please call or text (513) 279-2915 and we will get you booked.';
+  /** Writes the send failure into the status line. Takes the NODE, not text. */
+  function showSendError(node) {
+    if (!node) return;
+    node.className = 'bk-msg err';
+    node.textContent = 'Something went wrong sending that. Please call or text (513) 279-2915 and we will get you booked.';
   }
 
   function buildSummary(quote) {
