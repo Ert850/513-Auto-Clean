@@ -1304,9 +1304,8 @@
       '<label class="bk-check bk-prio' + (state.priority ? ' on' : '') + '" id="bkPrioBox">' +
       '<input type="checkbox" id="bkPrio"' + (state.priority ? ' checked' : '') + ' />' +
       '<span><b>I need it within the next ' + RULES.window.minLeadDays + ' days</b>' +
-      '<i>Those days are marked <b>Soonest</b> below. They cost <b>+' +
-      (RULES.surcharge.priorityBp / 100) + '%</b>, because taking one means moving work we have already ' +
-      'planned. Pick one and this ticks itself.</i></span></label>';
+      '<i>Those days are marked <b>Rush</b> below and add a <b>' +
+      (RULES.surcharge.priorityBp / 100) + '% rush fee</b>.</i></span></label>';
 
     if (hasCorrection()) {
       var lead = new Date(startOfToday().getTime() + P.CORRECTION_RULES.minLeadDays * DAY);
@@ -1316,8 +1315,8 @@
     } else {
       html += '<p class="bk-note">Standard prices start from <b>' +
         earliest.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }) +
-        '</b>. Anything sooner than that is marked below and carries the +' +
-        (RULES.surcharge.priorityBp / 100) + '% shown beside it.</p>';
+        '</b>. Anything sooner is marked <b>Rush</b> and adds a ' +
+        (RULES.surcharge.priorityBp / 100) + '% rush fee.</p>';
     }
 
     html += '<div class="bk-slots" id="bkSlots"><p class="bk-loading">Checking the calendar...</p></div>';
@@ -1859,7 +1858,7 @@
       html += '<div class="bk-daygroup' + (soon ? ' soon' : '') + '"><h4>' +
         d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }) +
         (soon
-          ? '<em class="bk-soonest">Soonest &middot; +' + (RULES.surcharge.priorityBp / 100) + '%</em>'
+          ? '<em class="bk-soonest">Rush &middot; +' + (RULES.surcharge.priorityBp / 100) + '% fee</em>'
           : '') +
         '</h4>';
 
@@ -3050,7 +3049,7 @@
       'WHO\n  ' + state.contact.name + '\n  ' + state.contact.phone +
       (state.contact.email ? '\n  ' + state.contact.email : '') + '\n\n' +
       'WHEN\n  ' + (state.slot ? new Date(state.slot).toLocaleString('en-US') : 'not selected') +
-      (state.priority ? '\n  PRIORITY, within 3 days' : '') +
+      (state.priority ? '\n  RUSH, within ' + RULES.window.minLeadDays + ' days' : '') +
       (state.preferredWindows.length ? '\n  Prefers: ' + state.preferredWindows.join(', ') : '') + '\n\n' +
       'WHERE\n  ' + [a.line1, a.city, a.region, a.zip].filter(Boolean).join(', ') +
       (state.noGoodLocation ? '\n  ** NEEDS A LOCATION SORTED **\n  ' + (state.locationNote || '(no note)') : '') + '\n\n' +
