@@ -9,6 +9,28 @@
  */
 window.AC_CONFIG = {
     googleCalendarId: '75726fed82aa92a27201386beda7b3a15f550a3a5691e5e6cfc51382f0f0b9cf@group.calendar.google.com',
+
+    /*
+     * TWO Google keys, not one, because they cost different amounts.
+     *
+     * The Calendar API is a Workspace API. It needs a Google Cloud project
+     * and nothing else: no billing account, no card, no free trial that
+     * expires. This is the key that turns the scheduler from standard hours
+     * into your real openings, and it is free forever at this volume.
+     *
+     * Places is Maps Platform, which requires a billing account with a card
+     * on file even though the free monthly allowance is far more than this
+     * site will ever use. Leave it empty and people type their address,
+     * which is what they do today and works.
+     *
+     * They used to be one value, so switching on the free thing meant
+     * attaching a card for the billed one.
+     */
+    googleCalendarApiKey: '',
+    googlePlacesApiKey: '',
+
+    // Old single-key name. Still read as a fallback for both, so an existing
+    // key keeps working, but prefer the two above.
     googleApiKey: '',
     // Stripe publishable key. Designed to be public; the SECRET key
     // (sk_...) must never appear here or anywhere a browser can read.
