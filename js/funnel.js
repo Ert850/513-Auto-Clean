@@ -530,6 +530,83 @@
    * form is a message about nothing in particular: the reader has to go
    * hunting for the field it means.
    */
+  /**
+   * Everything on this screen that still wants an answer, in reading order.
+   *
+   * One list, so every control behaves the same way when it is satisfied:
+   * move to the next thing that is not, and when there is nothing left, point
+   * at Continue. Before this, each control invented its own idea of what to
+   * do next, which is why answering a consent eased you down the page but
+   * ticking the card box threw you back to the top.
+   *
+   * `querySelectorAll` with a comma-separated list returns DOCUMENT order
+   * regardless of the order of the selectors, which is exactly the order a
+   * person reads them in.
+   */
+  function answerables() {
+    var body = el('bkBody');
+    if (!body) return [];
+    return Array.prototype.slice.call(body.querySelectorAll(
+      'input[type="text"],input[type="tel"],input[type="email"],.bk-consent,.bk-acc,#bkMandate'
+    ));
+  }
+
+  function isAnswered(node) {
+    if (node.classList && node.classList.contains('bk-consent')) return node.classList.contains('answered');
+    if (node.classList && node.classList.contains('bk-acc')) return node.classList.contains('answered');
+    if (node.id === 'bkMandate') return node.checked;
+    // An optional field is never the reason to stop.
+    if (node.hasAttribute && node.hasAttribute('data-optional')) return true;
+    return String(node.value || '').trim() !== '';
+  }
+
+  /** Put the cursor where it belongs, without hauling the page about. */
+  function reach(node) {
+    if (!node) return;
+    // 'nearest' scrolls the least it can. 'center' drags a field that was
+    // already perfectly visible into the middle of the screen, which reads
+    // as the page jumping for no reason.
+    var box = node.classList && (node.classList.contains('bk-consent') || node.classList.contains('bk-acc'))
+      ? node
+      : (node.closest && node.closest('.bk-field,.bk-check')) || node;
+    box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+    var target = node.tagName === 'INPUT' ? node : node.querySelector('button,input,select,textarea');
+    if (target && target.focus) {
+      try { target.focus({ preventScroll: true }); } catch (e) { target.focus(); }
+      if (target.select && target.tagName === 'INPUT' && target.type !== 'checkbox') target.select();
+    }
+  }
+
+  /** Continue is the only thing left. Say so without moving anything else. */
+  function pointAtContinue() {
+    var next = el('bkNext');
+    if (!next || next.hidden) return;
+    next.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    next.classList.add('bk-ready');
+    setTimeout(function () { next.classList.remove('bk-ready'); }, 2400);
+  }
+
+  /**
+   * Move on from `from`: to the next unanswered control, or to Continue.
+   */
+  function focusNext(from) {
+    var list = answerables();
+    var i = -1;
+    for (var n = 0; n < list.length; n++) {
+      if (list[n] === from || (list[n].contains && list[n].contains(from))) { i = n; break; }
+    }
+    for (var j = i + 1; j < list.length; j++) {
+      if (!isAnswered(list[j])) return reach(list[j]);
+    }
+    // Nothing after it. Anything still open earlier on the screen is next,
+    // so somebody who filled things out of order is not left guessing.
+    for (var k = 0; k <= i && k < list.length; k++) {
+      if (!isAnswered(list[k]) && list[k] !== from) return reach(list[k]);
+    }
+    pointAtContinue();
+  }
+
   function flash(msg, near) {
     var body = el('bkBody');
     var old = body.querySelector('.bk-err');
@@ -2085,14 +2162,20 @@
 
   function rContact() {
     var c = state.contact;
-    return '<div class="bk-row2">' +
+    // A real <form> with named fields, because that is what a browser and a
+    // password manager look for before offering to fill a whole contact card
+    // in one tap. Loose inputs get filled one at a time, if at all. Nothing
+    // is ever submitted: the keydown handler intercepts Enter and the submit
+    // listener in mount() cancels the rest.
+    return '<form class="bk-form" id="bkContactForm" autocomplete="on" novalidate>' +
+      '<div class="bk-row2">' +
       '<div class="bk-field"><label for="bkName">Name</label>' +
-      '<input type="text" id="bkName" data-c="name" value="' + esc(c.name) + '" autocomplete="name" maxlength="80" data-focus /></div>' +
+      '<input type="text" id="bkName" name="name" data-c="name" value="' + esc(c.name) + '" autocomplete="name" maxlength="80" data-focus /></div>' +
       '<div class="bk-field"><label for="bkPhone">Phone</label>' +
-      '<input type="tel" id="bkPhone" data-c="phone" value="' + esc(c.phone) + '" inputmode="tel" autocomplete="tel" maxlength="20" /></div>' +
+      '<input type="tel" id="bkPhone" name="tel" data-c="phone" value="' + esc(c.phone) + '" inputmode="tel" autocomplete="tel" maxlength="20" /></div>' +
       '</div>' +
-      '<div class="bk-field"><label for="bkEmail">Email</label>' +
-      '<input type="email" id="bkEmail" data-c="email" value="' + esc(c.email) + '" inputmode="email" autocomplete="email" maxlength="120" /></div>' +
+      '<div class="bk-field"><label for="bkEmail">Email <i>(optional)</i></label>' +
+      '<input type="email" id="bkEmail" name="email" data-c="email" value="' + esc(c.email) + '" inputmode="email" autocomplete="email" maxlength="120" data-optional /></div>' +
 
       // The two clauses that actually affect someone are stated HERE, not
       // hidden behind a link. A card network deciding a chargeback wants to
@@ -2130,7 +2213,8 @@
 
       '<div class="bk-field"><label for="bkNotes">Describe the vehicle&rsquo;s condition, parking situation, etc. <i>(optional)</i></label>' +
       '<textarea id="bkNotes" data-note="general" rows="3" maxlength="500" placeholder="Pet hair, spills, a tight parking spot, anything we should expect">' + esc(state.notes) + '</textarea>' +
-      '<p class="bk-hint">We will ask about water and power access once your time is confirmed.</p></div>';
+      '<p class="bk-hint">We will ask about water and power access once your time is confirmed.</p></div>' +
+      '</form>';
   }
 
   function vContact() {
@@ -2245,6 +2329,19 @@
       picker;
   }
 
+  /**
+   * A package name that says which half of the car it is.
+   *
+   * "Showroom Ready" and "Maintenance" are both interior packages whose names
+   * do not mention it, so a receipt listing one of them leaves the reader
+   * guessing. Names that already carry the word are left alone: "Full
+   * Interior (interior)" helps nobody.
+   */
+  function packageName(p) {
+    if (!p) return '';
+    return /interior|exterior/i.test(p.name) ? p.name : p.name + ' (' + p.category + ')';
+  }
+
   function vehicleName(v, index) {
     if (v.label) return v.label;
     var size = v.size ? P.vehicleSize(v.size) : null;
@@ -2276,7 +2373,8 @@
       askAccess('water', 'Is there an outdoor tap we could use?',
         'Saves filling the tank, and it is the one that matters most for an exterior.') +
       askAccess('power', 'Is there an outdoor outlet we could use?',
-        'For the extractor and the polisher. We bring a generator otherwise.') +
+        'This helps keep our battery charged for the next details, and is helpful for longer more extensive ' +
+        'details. We do not use a generator to be more environmentally friendly.') +
       '<div class="bk-field"><label for="bkParking">Where should we park, and how do we reach the vehicle? ' +
       '<i>(optional)</i></label>' +
       '<textarea id="bkParking" data-note="parking" rows="2" maxlength="300" ' +
@@ -2302,7 +2400,7 @@
 
     out.push(auto
       ? '<li><b>A confirmation lands in your inbox now.</b> It has your time, your total and everything you picked.</li>'
-      : '<li><b>Elijah confirms it himself, usually within a few hours.</b> By text or email, whichever you said. ' +
+      : '<li><b>We confirm it by hand, usually within a few hours.</b> By text or email, whichever you said. ' +
         'Until you hear back, treat the time as requested rather than locked in.</li>');
 
     out.push('<li><b>We work out the exact drive.</b> Travel is measured from your address and added to the total, ' +
@@ -2310,7 +2408,7 @@
 
     out.push(texts
       ? '<li><b>A reminder before the day</b>, and a text when we are on the way.</li>'
-      : '<li><b>A text before we set off</b>, with an ETA. Elijah sends that one by hand, so if you need to ' +
+      : '<li><b>A text before we set off</b>, with an ETA. We send that one by hand, so if you need to ' +
         'move anything, replying to it reaches a person.</li>');
 
     out.push('<li><b>Pay when it is done.</b> ' +
@@ -2568,7 +2666,14 @@
     if (state.payInFull && state.payMethod === 'paypal') return mountPayPal(mount);
     // The card form does not load until the card-on-file authorization is
     // ticked. PayPal keeps nothing on file, so it needs no such line.
-    if (!state.mandate) return;
+    if (!state.mandate) {
+      mount.innerHTML = '<p class="bk-hint">Tick the authorization above to load the secure payment form.</p>';
+      root._stripe = null;
+      return;
+    }
+    // Already mounted: leave it alone rather than rebuilding a live card
+    // field underneath somebody's fingers.
+    if (root._stripe) return;
     return mountStripe(mount);
   }
 
@@ -2863,6 +2968,7 @@
       accGroup.querySelectorAll('[data-access]').forEach(function (b) {
         b.classList.toggle('on', b === t);
       });
+      focusNext(accGroup);
       return;
     }
 
@@ -2877,14 +2983,8 @@
         b.classList.toggle('no', !yes && t.dataset.val === '0');
       });
       group.classList.add('answered');
-      // Then ease down to whatever still needs an answer.
-      var next = null;
-      root.querySelectorAll('.bk-consent').forEach(function (g) {
-        if (!next && !g.classList.contains('answered')) next = g;
-      });
-      var target = next || el('bkNext');
-      if (target) target.scrollIntoView({ behavior: 'smooth', block: next ? 'center' : 'nearest' });
       renderTotal();
+      focusNext(group);
       return;
     }
     // A day inside the lead window costs more, and saying so AFTER someone
@@ -3009,7 +3109,17 @@
 
     if (t.id === 'bkMandate') {
       state.mandate = t.checked;
-      return render();
+      // In place, never a re-render. A full render on the confirm step tears
+      // down the Stripe element and builds it again, which is slow, loses
+      // anything typed into it, and used to throw the reader back to the top
+      // of the longest screen in the funnel. It is also the LAST box, so
+      // there is nowhere to jump to: point at Continue and stop.
+      var label = t.closest('.bk-mandate');
+      if (label) label.classList.toggle('on', t.checked);
+      mountPayment();
+      renderTotal();
+      focusNext(t);
+      return;
     }
     if (t.dataset.addr === 'region') { state.address.region = t.value; return renderTotal(); }
   }
@@ -3232,7 +3342,7 @@
 
     state.vehicles.forEach(function (v, i) {
       var size = v.size ? P.vehicleSize(v.size) : null;
-      var names = v.packageIds.map(function (id) { return (P.findPackage(id) || {}).name; }).filter(Boolean);
+      var names = v.packageIds.map(function (id) { return packageName(P.findPackage(id)); }).filter(Boolean);
       var label = state.vehicles.length > 1 ? 'Vehicle ' + (i + 1) : 'Vehicle';
       add(label, [v.label, size && size.label, names.join(' + ')].filter(Boolean).join(', '));
       if (v.addons.length) {
@@ -3259,7 +3369,15 @@
       add('Promo', quote.promoCode + ', ' + $(quote.promoDiscountCents) + ' off');
     }
     add('Paying', state.payInFull ? 'In full, now' : 'On the day');
-    add('Total', $(quote.totalCents) + (state.travel.source === 'routes' ? '' : ', before travel'));
+
+    // Three figures that add up, rather than one that needs explaining.
+    // "Total, before travel" was a single number doing two jobs and reading
+    // as neither.
+    add('Before travel', $(quote.serviceSubtotalCents + quote.surchargeCents));
+    add('Travel', quote.travelIsEstimate ? 'Added once we have measured the drive' : $(quote.travelCents));
+    if (quote.payInFullDiscountCents > 0) add('Paid in full, saving', '-' + $(quote.payInFullDiscountCents));
+    add('Sales tax', quote.taxIsEstimate ? 'Added with the travel' : $(quote.taxCents));
+    add('Total', $(quote.totalCents) + (quote.travelIsEstimate ? ', so far' : ''));
 
     return '<dl class="bk-receipt">' + rows.map(function (r) {
       return '<dt>' + esc(r[0]) + '</dt><dd>' + esc(String(r[1])) + '</dd>';
@@ -3269,6 +3387,10 @@
   function done(quote) {
     state.done = true;
     clearDraft();
+    // Start at the top. Everything else in the funnel keeps its place on
+    // purpose, but this is a different screen with a different job, and
+    // landing halfway down a receipt is not reading it.
+    lastRenderedStep = null;
     el('bkBar').style.width = '100%';
     el('bkTitle').textContent = isInquiry() ? 'Request sent' : 'You are booked in';
     el('bkNext').hidden = true;
@@ -3289,7 +3411,7 @@
       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 6L9 17l-5-5"/></svg></div>' +
       '<h3>Thanks, ' + esc(state.contact.name.split(' ')[0]) + '.</h3>' +
       '<p>' + (isInquiry()
-        ? 'We have your request and the times that suit you. Elijah will come back with a time to confirm.'
+        ? 'We have your request and the times that suit you. 513 Auto Clean will come back with a time to confirm.'
         : 'We have your booking' + (state.slot ? ' for <b>' +
             new Date(state.slot).toLocaleString('en-US', { weekday: 'long', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit' }) +
             '</b>' : '') + '. Your total is <b>' + $(quote.totalCents) + '</b> before travel.') +
@@ -3311,6 +3433,9 @@
 
       '<button type="button" class="bk-doneclose" id="bkDoneClose">Close</button>' +
       '</div>';
+
+    el('bkBody').scrollTop = 0;
+    el('bkScroll').scrollTop = 0;
   }
 
   /**
@@ -3680,6 +3805,15 @@
       }
       onClick(e);
     });
+    // The contact step is a real <form> so autofill will offer the whole
+    // card at once. It must never actually submit: Enter is already handled
+    // above, and this catches everything else, including the Go key on a
+    // phone keyboard.
+    host.addEventListener('submit', function (e) {
+      e.preventDefault();
+      advance();
+    });
+
     host.addEventListener('change', onChange);
     host.addEventListener('input', onInput);
 
@@ -3710,18 +3844,11 @@
       if (t.tagName !== 'INPUT' || t.type === 'checkbox' || t.type === 'radio') return;
       e.preventDefault();
 
-      var fields = Array.prototype.filter.call(
-        el('bkBody').querySelectorAll('input[type="text"],input[type="tel"],input[type="email"]'),
-        function (n) { return !n.disabled && n.offsetParent !== null; }
-      );
-      var i = fields.indexOf(t);
-      if (i > -1 && i < fields.length - 1) {
-        var next = fields[i + 1];
-        next.focus();
-        if (next.select) next.select();
-        return;
-      }
-      advance();
+      // If the whole step is satisfied, Enter means Continue. Otherwise it
+      // means "take me to the next thing you want from me", which is the
+      // same rule every other control on the screen now follows.
+      if (!step().valid()) return advance();
+      focusNext(t);
     });
 
     /**
