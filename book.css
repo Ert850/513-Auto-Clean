@@ -358,6 +358,31 @@ body.bk-open { overflow: hidden; }
 .bk-pref-call { margin: .9rem 0 0; font-size: .84rem; color: var(--text-soft); }
 .bk-pref-call a { color: var(--red); font-weight: 700; }
 
+/* The way out at the foot of the slot list. Quiet by default: it is for the
+   minority whose day is not on the list, and it must not compete with the
+   times themselves. */
+.bk-askwhen { margin-top: 1.2rem; border-top: 1px solid var(--line); padding-top: .9rem; }
+.bk-askwhen > summary {
+  cursor: pointer; list-style: none; font-size: .88rem; font-weight: 700; color: var(--red);
+  padding: .55rem .2rem; display: flex; align-items: center; gap: .4rem;
+}
+.bk-askwhen > summary::-webkit-details-marker { display: none; }
+.bk-askwhen > summary::before {
+  content: ""; flex: none; width: 7px; height: 7px; border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor; transform: rotate(-45deg); transition: transform .16s;
+}
+.bk-askwhen[open] > summary::before { transform: rotate(45deg); }
+.bk-askwhen > summary:hover { text-decoration: underline; }
+.bk-askwhen-b { padding-top: .2rem; }
+
+/* "Help me decide", beside the three answers somebody might not have. Set
+   apart from them, because it is a different kind of answer rather than a
+   fourth service. */
+.bk-card-ask { border-style: dashed; background: var(--paper); }
+.bk-card-ask.on { border-style: solid; }
+.bk-intentnote { margin-top: .9rem; }
+.bk-intentnote a { color: var(--red); font-weight: 700; }
+
 .bk-asknote {
   background: var(--ink); color: #fff; border-radius: var(--r-md);
   padding: .9rem 1.05rem; margin-bottom: .9rem;

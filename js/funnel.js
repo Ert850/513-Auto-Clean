@@ -52,7 +52,6 @@
       wantTime: '',
       timeNote: '',
       // Set for one render when a near-term day ticks the box for them.
-      flashPrio: false,
       contact: { name: '', phone: '', email: '' },
       consent: { terms: null, sms: null, media: null },
       payInFull: false,
@@ -90,6 +89,12 @@
       // can say so rather than silently remembering a stranger's answers.
       resumed: false,
       notes: '',
+      // "Help me decide". No package, no price, no time: a request for a
+      // recommendation that travels down the same funnel as everything else,
+      // because sending somebody to a separate contact form loses most of
+      // them. It skips the three steps that only make sense once you know
+      // what you want.
+      advice: false,
       sending: false,
       done: false,
       browse: false,
@@ -111,9 +116,9 @@
   var STEPS = [
     { id: 'size',     tab: 'Vehicle',  title: 'How big is your vehicle?',  auto: true,  render: rSize,    valid: vSize,    sum: sSize },
     { id: 'intent',   tab: 'Service',  title: 'What does it need?',        auto: true,  render: rIntent,  valid: vIntent,  sum: sIntent },
-    { id: 'package',  tab: 'Package',  title: 'Choose your package',       auto: true,  render: rPackage, valid: vPackage, sum: sPackage },
-    { id: 'addons',   tab: 'Extras',   title: 'Anything extra?',           auto: false, render: rAddons,  valid: vAddons,  sum: sAddons },
-    { id: 'more',     tab: 'Vehicles', title: 'Add another vehicle?',      auto: false, render: rMore,    valid: ok,       sum: sMore },
+    { id: 'package',  tab: 'Package',  title: 'Choose your package',       auto: true,  render: rPackage, valid: vPackage, sum: sPackage, skip: advising },
+    { id: 'addons',   tab: 'Extras',   title: 'Anything extra?',           auto: false, render: rAddons,  valid: vAddons,  sum: sAddons,  skip: advising },
+    { id: 'more',     tab: 'Vehicles', title: 'Add another vehicle?',      auto: false, render: rMore,    valid: ok,       sum: sMore,    skip: advising },
     // NOT auto. Picking a time used to advance the instant you tapped it,
      // which meant there was no Continue button on the busiest screen in the
      // funnel and no moment to look at what you had chosen.
@@ -123,10 +128,17 @@
     { id: 'pay',      tab: 'Confirm',  title: 'Confirm your booking',      auto: false, render: rPay,     valid: vPay,     sum: sPay }
   ];
 
+  /** True while the customer has asked us to pick the package for them. */
+  function advising() { return state.advice; }
+
   /* Short summaries under each tab, so someone can see at a glance what they
      already answered and jump straight back to it. */
   function sSize() { var z = veh().size ? P.vehicleSize(veh().size) : null; return z ? z.label : ''; }
-  function sIntent() { var i = veh().intent; return i === 'both' ? 'Inside and out' : i ? i.charAt(0).toUpperCase() + i.slice(1) : ''; }
+  function sIntent() {
+    if (state.advice) return 'Help me decide';
+    var i = veh().intent;
+    return i === 'both' ? 'Inside and out' : i ? i.charAt(0).toUpperCase() + i.slice(1) : '';
+  }
   function sPackage() {
     var names = veh().packageIds.map(function (id) { return (P.findPackage(id) || {}).name; }).filter(Boolean);
     return names.join(' + ');
@@ -386,6 +398,10 @@
   function renderNav() {
     var reach = Math.max(state.step, furthestValid());
     el('bkNav').innerHTML = STEPS.map(function (st, i) {
+      // A step that does not apply gets no tab. Showing "Package" greyed out
+      // to somebody who just told us they do not know which package they
+      // want is a reminder of the thing they could not answer.
+      if (skipped(i)) return '';
       var done = i < reach && !st.valid();
       var here = i === state.step;
       var open = i <= reach;
@@ -441,16 +457,6 @@
       note.innerHTML = 'Picked up where you left off. ' +
         '<button type="button" id="bkFresh">Start fresh instead</button>';
       el('bkBody').insertBefore(note, el('bkBody').firstChild);
-    }
-
-    if (state.flashPrio) {
-      state.flashPrio = false;
-      var prio = el('bkPrioBox');
-      if (prio) {
-        prio.classList.add('bk-juston');
-        prio.scrollIntoView({ block: 'center', behavior: 'smooth' });
-        setTimeout(function () { prio.classList.remove('bk-juston'); }, 3200);
-      }
     }
 
     renderTotal();
@@ -548,7 +554,13 @@
     if (!body) return [];
     return Array.prototype.slice.call(body.querySelectorAll(
       'input[type="text"],input[type="tel"],input[type="email"],.bk-consent,.bk-acc,#bkMandate'
-    ));
+    )).filter(function (n) {
+      // An optional box is never a DESTINATION. Marking it answered was not
+      // enough: the walker still counted it as a position in the list, so
+      // anything below it could still be dragged up to an empty promo box.
+      // Dropping it from the list entirely is the only version that holds.
+      return !(n.hasAttribute && n.hasAttribute('data-optional'));
+    });
   }
 
   function isAnswered(node) {
@@ -604,6 +616,17 @@
     var i = -1;
     for (var n = 0; n < list.length; n++) {
       if (list[n] === from || (list[n].contains && list[n].contains(from))) { i = n; break; }
+    }
+    // `from` is not always ON the list: the email box and the promo box are
+    // optional, so they were filtered out of it, and finishing one still has
+    // to mean "what is next". Ask the document where it sits rather than
+    // starting the scan at zero, which would send them back to the top.
+    if (i === -1 && from && from.compareDocumentPosition) {
+      i = list.length - 1;
+      for (var m = 0; m < list.length; m++) {
+        // 4 is DOCUMENT_POSITION_FOLLOWING: list[m] comes after `from`.
+        if (from.compareDocumentPosition(list[m]) & 4) { i = m - 1; break; }
+      }
     }
     // Forward first: the usual case is working down the screen.
     for (var j = i + 1; j < list.length; j++) {
@@ -714,9 +737,20 @@
     if (state.step === STEPS.length - 1) { submit(); return; }
 
     // Skip past anything already answered, which is what happens when someone
-    // picked a package from View Services and only needed the size question.
+    // picked a package from View Services and only needed the size question,
+    // and past anything that does not apply to the path they are on.
     var i = state.step + 1;
-    while (i < STEPS.length - 1 && !STEPS[i].valid() && STEPS[i].auto) i++;
+    while (i < STEPS.length - 1 && (skipped(i) || (!STEPS[i].valid() && STEPS[i].auto))) i++;
+    go(i);
+  }
+
+  /** A step that does not apply at all, rather than one already answered. */
+  function skipped(i) { return !!(STEPS[i].skip && STEPS[i].skip()); }
+
+  /** Back, past anything the forward walk skipped on the way here. */
+  function goBack() {
+    var i = state.step - 1;
+    while (i > 0 && skipped(i)) i--;
     go(i);
   }
 
@@ -749,9 +783,22 @@
 
     return '<p class="bk-sub">We will only show packages that fit.</p><div class="bk-cards">' +
       opts.map(function (o) {
-        return '<button type="button" class="bk-card' + (v.intent === o[0] ? ' on' : '') + '" data-intent="' + o[0] + '">' +
+        return '<button type="button" class="bk-card' +
+          (!state.advice && v.intent === o[0] ? ' on' : '') + '" data-intent="' + o[0] + '">' +
           '<b>' + o[1] + '</b><span>' + o[2] + '</span></button>';
-      }).join('') + '</div>' +
+      }).join('') +
+      // Nobody should have to already know what they want in order to ask.
+      // This turns the booking into a request: no package, no price, no time
+      // to commit to, and we come back with what we would recommend.
+      '<button type="button" class="bk-card bk-card-ask' + (state.advice ? ' on' : '') +
+        '" data-intent="advice">' +
+        '<b>Help me decide</b>' +
+        '<span>Tell us about the vehicle and when suits, and we will recommend one</span>' +
+      '</button>' +
+      '</div>' +
+      '<p class="bk-sub bk-intentnote">Every package says what it includes and what it is for, ' +
+      'so you can also just read them. ' +
+      '<a href="index.html#services" target="_blank" rel="noopener">See all services and prices</a></p>' +
       '<button type="button" class="bk-browsebar" id="bkBrowse">' +
         '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>' +
         '<span><b>Browse through all options</b><i>Every package and price, side by side</i></span>' +
@@ -921,7 +968,10 @@
     html += '<button type="button" class="bk-morelink" id="bkBrowseBack">Back to the quick picker</button>';
     return html;
   }
-  function vIntent() { return veh().intent ? null : needs('Pick interior, exterior, or both.', '[data-intent]'); }
+  function vIntent() {
+    if (state.advice) return null;
+    return veh().intent ? null : needs('Pick interior, exterior, or both.', '[data-intent]');
+  }
 
   /* ================= step 3: package ================= */
 
@@ -1064,6 +1114,8 @@
 
   function vPackage() {
     var v = veh();
+    // Nothing to validate: this step is not in their path at all.
+    if (state.advice) return null;
     if (!v.packageIds.length) return needs('Choose a package to continue.', '[data-pkg]');
     if (needsCorrection(v) && !v.correctionTier) return needs('Pick a correction level to continue.', '[data-corr]');
     if (v.intent === 'both') {
@@ -1401,6 +1453,15 @@
   /* ================= step 7: time ================= */
 
   function rTime() {
+    // No package means no duration, so there is nothing to fit into a day
+    // and no honest list of start times to show. Ask the one question that
+    // still has an answer.
+    if (state.advice) {
+      return '<p class="bk-sub">We will recommend a package once we know a bit more, so there is no ' +
+        'time to lock in yet. Tell us roughly when suits and we will come back with a time and a price.</p>' +
+        preferPicker();
+    }
+
     var earliest = P.earliestBookableDate(startOfToday(), RULES.window);
     var html = '<p class="bk-sub">Pick a time that works. Nothing is charged until the next step.</p>';
 
@@ -1721,7 +1782,11 @@
       // Last line of defence. A customer sees a way forward rather than a
       // spinner, and the console carries the real reason.
       if (window.console) console.error('[513] slot painting failed', err);
-      box.innerHTML = inquiryPanel('We could not load times just now.');
+      // NOT "we could not load times". A customer does not care whose
+      // fault it is, and a booking form that announces its own failure is a
+      // booking form people close. Ask the question we would have asked
+      // anyway, in the same words we use everywhere else.
+      box.innerHTML = inquiryPanel('Tell us when suits and we will confirm a time.');
     }
   }
 
@@ -1797,6 +1862,9 @@
    * says request, and paying in full is off the table.
    */
   function isInquiry() {
+    // Asking us to choose is a request by definition: there is no package to
+    // price and no duration to fit into a day, so there can be no slot.
+    if (state.advice) return true;
     return !state.slot && (state.prefer.parts.length > 0 || state.prefer.days.length > 0);
   }
 
@@ -1813,6 +1881,11 @@
    */
   var DAY_PARTS = P.TIME_BANDS;
 
+  /* One copy of each, because the click handler repaints this line in place
+     and the two versions must not drift apart. */
+  var PREF_OK = 'Good. Carry on and we will confirm a time with you.';
+  var PREF_ASK = 'Pick at least one day or time of day and we will come back with a time.';
+
   /**
    * What to do when we cannot offer a single time.
    *
@@ -1826,6 +1899,21 @@
    * times do not work is a refund.
    */
   function inquiryPanel(why) {
+    return '<div class="bk-noslots">' +
+        '<b>' + esc(why) + '</b>' +
+        '<span>Tell us roughly when suits and we will come back with a time, ' +
+        'usually within a few hours. Nothing is charged until you have agreed to it.</span>' +
+      '</div>' + preferPicker();
+  }
+
+  /**
+   * Which days and which part of the day, on its own.
+   *
+   * Split out of inquiryPanel because the slot list needs it too. The list
+   * used to end with "if none of it works, tell us when suits below" and
+   * then nothing below, which is a dead end dressed up as an instruction.
+   */
+  function preferPicker() {
     var today = startOfToday();
 
     var days = '';
@@ -1852,19 +1940,14 @@
         '</button>';
     }).join('');
 
-    return '<div class="bk-noslots">' +
-        '<b>' + esc(why) + '</b>' +
-        '<span>Tell us roughly when suits and we will come back with a time, ' +
-        'usually within a few hours. Nothing is charged until you have agreed to it.</span>' +
-      '</div>' +
-      '<div class="bk-pref">' +
+    return '<div class="bk-pref">' +
         '<h4>Which days could work?</h4>' +
         '<div class="bk-pref-days">' + days + '</div>' +
         '<h4>And what time of day could you start?</h4>' +
         '<div class="bk-pref-parts">' + parts + '</div>' +
         (isInquiry()
-          ? '<p class="bk-pref-ok">Good. Carry on and we will confirm a time with you.</p>'
-          : '<p class="bk-pref-hint">Pick at least one day or time of day to carry on.</p>') +
+          ? '<p class="bk-pref-ok">' + PREF_OK + '</p>'
+          : '<p class="bk-pref-hint">' + PREF_ASK + '</p>') +
       '</div>' +
       '<p class="bk-pref-call">Rather just talk to us? Text or call ' +
         '<a href="sms:+15132792915">(513) 279-2915</a>.</p>';
@@ -1964,9 +2047,13 @@
     if (win.mode === 'unconfigured') {
       // TEMPORARY. Delete this branch once the calendar key is live: with a
       // real feed these are genuine openings and need no caveat.
-      html += '<p class="bk-warn">We could not reach our calendar just now, so these are our standard times. ' +
+      // A note, not a warning. These ARE our hours, and saying so plainly
+      // converts; saying "we could not reach our calendar" in amber makes a
+      // working booking form look like a broken one, which is exactly how a
+      // customer talked themselves out of booking.
+      html += '<p class="bk-note">These are our <b>standard start times</b>. ' +
         'Pick whichever suits and we will confirm it, usually within a few hours. ' +
-        'Occasionally a time needs adjusting, and we will text you if so.</p>';
+        'If a time ever needs moving we will text you first.</p>';
     }
     if (errMsg && window.console) console.warn('[513] calendar:', errMsg);
 
@@ -2048,6 +2135,14 @@
       html += '<p class="bk-hint">That is everything we have open in the next year. ' +
         'If none of it works, tell us when suits below.</p>';
     }
+
+    // The way out for anybody whose day is not on this list. Without it the
+    // only move left was the close button, and closing is what someone does
+    // when a form appears to have nothing for them.
+    html += '<details class="bk-askwhen"' + (isInquiry() ? ' open' : '') + '>' +
+      '<summary>None of these work? Tell us when does</summary>' +
+      '<div class="bk-askwhen-b">' + preferPicker() + '</div>' +
+      '</details>';
 
     box.innerHTML = html;
   }
@@ -2184,6 +2279,13 @@
   }
 
   function vTime() {
+    // isInquiry() is already true on this path, so without this the step
+    // would pass with nothing answered at all.
+    if (state.advice) {
+      return (state.prefer.days.length || state.prefer.parts.length)
+        ? null
+        : needs('Pick at least one day or time of day that could work.', '[data-prefday],[data-prefpart]');
+    }
     if (state.slot) return null;
     if (isInquiry()) return null;
     return needs('Pick a time, or tell us when suits.', '[data-band],[data-prefday],[data-prefpart]');
@@ -2449,7 +2551,11 @@
     // A request and a booking are two different things and were being told
     // the same story. One has a time on the calendar; the other is waiting
     // for us to offer one.
-    if (requested) {
+    if (state.advice) {
+      out.push('<li><b>We come back with a recommendation.</b> Usually within a few hours: the package ' +
+        'we would suggest, what it costs, and a time from the days you picked.</li>');
+      out.push('<li><b>You decide.</b> Nothing is booked and nothing is charged until you say yes to it.</li>');
+    } else if (requested) {
       out.push('<li><b>We come back with a time.</b> Usually within a few hours, ' +
         (email ? 'by email' : 'by text or email, whichever you said') +
         '. Nothing is booked and nothing is charged until you say yes to it.</li>');
@@ -2469,11 +2575,15 @@
       : '<li><b>A text before we set off</b>, with an ETA. We send that one by hand, so if you need to ' +
         'move anything, replying to it reaches a person.</li>');
 
-    out.push('<li><b>Pay when it is done.</b> ' +
-      (state.payInFull
-        ? 'Already paid, so there is nothing to do.'
-        : 'By ' + IN_PERSON + ', or ask us to put it on the card on file. The card is only authorized for a ' +
-          'late cancellation.') + '</li>');
+    if (!state.advice) {
+      out.push('<li><b>Pay when it is done.</b> ' +
+        (state.payInFull
+          ? 'Already paid, so there is nothing to do.'
+          : state.mandate
+            ? 'By ' + IN_PERSON + ', or ask us to put it on the card on file. The card is only ' +
+              'authorized for a late cancellation.'
+            : 'By ' + IN_PERSON + '. Nothing is taken beforehand.') + '</li>');
+    }
 
     return '<ol>' + out.join('') + '</ol>';
   }
@@ -2582,7 +2692,14 @@
 
     var html = '';
 
-    if (ask) {
+    if (state.advice) {
+      html += '<div class="bk-asknote">' +
+        '<b>This is a request for a recommendation</b>' +
+        '<span>' + esc(preferenceSummary()) + ' We will read what you have told us, come back with the ' +
+        'package we would suggest and what it costs, and you decide from there. ' +
+        '<strong>Nothing is charged, and nothing is booked until you say yes.</strong>' +
+        '</span></div>';
+    } else if (ask) {
       html += '<div class="bk-asknote">' +
         '<b>This is a request, not a confirmed time</b>' +
         '<span>' + esc(preferenceSummary()) + ' We will come back with a time that works, ' +
@@ -2590,7 +2707,9 @@
         '</span></div>';
     }
 
-    html += '<div class="bk-review">' + lineTable(quote) + '</div>';
+    // Nothing is priced on the advice path, so an empty receipt would be the
+    // first thing they saw on the last screen.
+    if (!state.advice) html += '<div class="bk-review">' + lineTable(quote) + '</div>';
 
     if (state.interest.length) {
       html += '<div class="bk-interest">' +
@@ -2600,9 +2719,11 @@
         '</div>';
     }
 
-    html += promoBox(quote);
+    if (!state.advice) html += promoBox(quote);
 
-    if (!canPayNow()) {
+    if (state.advice) {
+      // Nothing priced, so there is nothing to choose between.
+    } else if (!canPayNow()) {
       html += '<div class="bk-payopts">' +
         '<div class="bk-pay on static">' +
           '<b>Pay after the detail</b>' +
@@ -2629,69 +2750,114 @@
         '</div>';
     }
 
-    html += extrasBlock();
-    html += accessBlock();
+    if (state.advice) {
+      html += '<div class="bk-accbox">' +
+        '<h4>Tell us about the vehicle</h4>' +
+        '<p class="bk-hint">This is what the recommendation is based on, so the more you say the closer ' +
+        'the quote will be. Photos help too, and you can text those to us afterwards.</p>' +
+        '<div class="bk-field"><label for="bkNotes">What condition is it in, and what bothers you most?</label>' +
+        '<textarea id="bkNotes" data-note="general" rows="4" maxlength="500" ' +
+        'placeholder="e.g. two dogs, the carpets are the worst of it, and it has not been washed since spring">' +
+        esc(state.notes) + '</textarea></div>' +
+        '</div>';
+    } else {
+      html += extrasBlock();
+      html += accessBlock();
+    }
 
-    html += '<div class="bk-cardbox">' +
-      '<h4>' + (now ? 'How would you like to pay?' : 'Card on file') + '</h4>' +
-      '<p class="bk-hint">' +
-        (now
-          ? 'Card, Apple Pay, Google Pay, bank transfer, PayPal or Venmo.'
-          : 'Nothing is charged now, and nothing will be unless you cancel or move the booking late. ' +
-            'On the day, pay however suits: ' + IN_PERSON + '.') +
-      '</p>';
+    /*
+     * NOTHING TO PAY WITH, SO NOTHING TO FILL IN.
+     *
+     * Until Stripe is wired in, this screen asked the customer to tick a
+     * card authorization so that a payment form could load and tell them
+     * online payment was not switched on. That is a working booking flow
+     * impersonating a broken one, and it is the likeliest reason somebody
+     * reached the last screen and did not send. The card step is simply not
+     * here until there is a card to take, and the screen says what actually
+     * happens instead.
+     */
+    var wantCard = !state.advice && stripeMode() !== 'off';
 
-    if (now) {
-      html += '<div class="bk-methods">' +
-        '<button type="button" class="bk-method' + (state.payMethod === 'card' ? ' on' : '') + '" data-paymethod="card">' +
-          'Card, Apple Pay, bank</button>' +
-        '<button type="button" class="bk-method' + (state.payMethod === 'paypal' ? ' on' : '') + '" data-paymethod="paypal">' +
-          'PayPal or Venmo</button>' +
+    if (!wantCard) {
+      html += '<div class="bk-cardbox">' +
+        '<h4>Nothing to pay today</h4>' +
+        '<p class="bk-hint">' +
+          (state.advice
+            ? 'There is nothing to pay for a recommendation. When we come back with a package and a ' +
+              'price, you decide whether to book it.'
+            : 'We do not take card details on the site yet, so there is nothing to enter here. ' +
+              'Send your booking and we will confirm it, usually within a few hours. You pay when the ' +
+              'work is done, by ' + IN_PERSON + '. If you would rather settle it beforehand, just ask ' +
+              'and we will send you a secure link.') +
+        '</p></div>';
+    } else {
+      html += '<div class="bk-cardbox">' +
+        '<h4>' + (now ? 'How would you like to pay?' : 'Card on file') + '</h4>' +
+        '<p class="bk-hint">' +
+          (now
+            ? 'Card, Apple Pay, Google Pay, bank transfer, PayPal or Venmo.'
+            : 'Nothing is charged now, and nothing will be unless you cancel or move the booking late. ' +
+              'On the day, pay however suits: ' + IN_PERSON + '.') +
+        '</p>';
+
+      if (now) {
+        html += '<div class="bk-methods">' +
+          '<button type="button" class="bk-method' + (state.payMethod === 'card' ? ' on' : '') + '" data-paymethod="card">' +
+            'Card, Apple Pay, bank</button>' +
+          '<button type="button" class="bk-method' + (state.payMethod === 'paypal' ? ' on' : '') + '" data-paymethod="paypal">' +
+            'PayPal or Venmo</button>' +
+          '</div>';
+      }
+
+      // Card networks require the customer to agree, in words they can read,
+      // before a card is stored for later charges. This is that sentence. It is
+      // recorded against the booking, and the server refuses to save a card
+      // without it.
+      var viaPaypal = now && state.payMethod === 'paypal';
+      if (!viaPaypal) {
+        // The narrow thing the card is actually for. Claiming permission to
+        // charge the whole detail, when the customer may well hand over cash in
+        // the driveway, is both wrong and the sort of overreach that gets a
+        // chargeback decided against you.
+        html += '<label class="bk-check bk-mandate' + (state.mandate ? ' on' : '') + '">' +
+          '<input type="checkbox" id="bkMandate"' + (state.mandate ? ' checked' : '') + ' />' +
+          '<span>I authorize 513 Auto Clean to keep this card on file and to charge it <b>if I cancel or ' +
+          'move this booking late</b>, for the fee set out in the terms I accepted. ' +
+          (now
+            ? 'The detail itself I am paying for now.'
+            : 'It is not permission to charge me for the detail, which I can pay for however I like on the day.') +
+          '</span></label>';
+      }
+
+      if (CFG.turnstileSiteKey) {
+        html += '<div id="bkTurnstile" class="bk-turnstile"></div>';
+      }
+
+      html += '<div id="bkPayMount" class="bk-stripe">' +
+        (state.mandate || viaPaypal
+          ? '<p class="bk-loading">Loading payment options...</p>'
+          : '<p class="bk-hint">Tick the authorization above to load the secure payment form.</p>') +
+        '</div>' +
         '</div>';
     }
 
-    // Card networks require the customer to agree, in words they can read,
-    // before a card is stored for later charges. This is that sentence. It is
-    // recorded against the booking, and the server refuses to save a card
-    // without it.
-    var viaPaypal = now && state.payMethod === 'paypal';
-    if (!viaPaypal) {
-      // The narrow thing the card is actually for. Claiming permission to
-      // charge the whole detail, when the customer may well hand over cash in
-      // the driveway, is both wrong and the sort of overreach that gets a
-      // chargeback decided against you.
-      html += '<label class="bk-check bk-mandate' + (state.mandate ? ' on' : '') + '">' +
-        '<input type="checkbox" id="bkMandate"' + (state.mandate ? ' checked' : '') + ' />' +
-        '<span>I authorize 513 Auto Clean to keep this card on file and to charge it <b>if I cancel or ' +
-        'move this booking late</b>, for the fee set out in the terms I accepted. ' +
-        (now
-          ? 'The detail itself I am paying for now.'
-          : 'It is not permission to charge me for the detail, which I can pay for however I like on the day.') +
-        '</span></label>';
+    if (!state.advice) {
+      html += '<p class="bk-fine">Travel is worked out from your address and added when we confirm. ' +
+        'Sales tax' + (quote.taxIsEstimate ? ' is added once we have your ZIP' : ' at ' + (quote.taxRateBp / 100).toFixed(2) + '% is included') + '.</p>';
     }
-
-    if (CFG.turnstileSiteKey) {
-      html += '<div id="bkTurnstile" class="bk-turnstile"></div>';
-    }
-
-    html += '<div id="bkPayMount" class="bk-stripe">' +
-      (state.mandate || viaPaypal
-        ? '<p class="bk-loading">Loading payment options...</p>'
-        : '<p class="bk-hint">Tick the authorization above to load the secure payment form.</p>') +
-      '</div>' +
-      '</div>';
-
-    html += '<p class="bk-fine">Travel is worked out from your address and added when we confirm. ' +
-      'Sales tax' + (quote.taxIsEstimate ? ' is added once we have your ZIP' : ' at ' + (quote.taxRateBp / 100).toFixed(2) + '% is included') + '.</p>';
 
     html += '<div class="bk-msg" id="bkMsg" role="status" aria-live="polite"></div>';
 
-    setTimeout(mountPayment, 0);
+    if (wantCard) setTimeout(mountPayment, 0);
     return html;
   }
 
   function vPay() {
     if (state.payState === 'paid') return null;
+    // Nothing to authorize: either there is nothing priced yet, or there is
+    // no processor to hold a card. Insisting on a tick for a box that is not
+    // on the screen is a dead end with no way past it.
+    if (state.advice || stripeMode() === 'off') return null;
     if (!state.mandate && !(state.payInFull && state.payMethod === 'paypal')) {
       return needs('Please tick the card authorization to continue.', '#bkMandate');
     }
@@ -2788,8 +2954,9 @@
    */
   function mountStripe(mount) {
     if (!CFG.stripePublishableKey || !window.Stripe) {
-      mount.innerHTML = '<p class="bk-warn">Online payment is not switched on yet. ' +
-        'Your booking still goes through and we will send a secure payment link to confirm it.</p>';
+      mount.innerHTML = '<p class="bk-hint">No card needed today. ' +
+        'Your booking goes through as normal, and if anything is due up front we will send you a ' +
+        'secure link for it.</p>';
       return;
     }
 
@@ -2816,11 +2983,13 @@
       .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
       .then(function (r) {
         if (!r.ok || !r.j.clientSecret) {
-          mount.innerHTML = '<p class="bk-warn">' +
-            (r.j && r.j.error === 'unconfigured'
-              ? 'Online payment is not switched on yet. Your booking still goes through and we will send a secure payment link to confirm it.'
-              : 'We could not load the payment form. Your booking still goes through and we will send a secure payment link.') +
-            '</p>';
+          // Both branches say the same thing, because from the customer's
+          // side they ARE the same thing: there is nothing to type here, and
+          // the booking is unaffected. Naming the failure only invites them
+          // to wonder what else is broken.
+          mount.innerHTML = '<p class="bk-hint">No card needed today. ' +
+            'Your booking goes through as normal, and if anything is due up front we will send you a ' +
+            'secure link for it.</p>';
           return;
         }
         // The server priced this, not the browser. If they disagree, trust the
@@ -2838,16 +3007,17 @@
         root._stripe = { stripe: stripe, elements: elements, kind: r.j.kind };
       })
       .catch(function () {
-        mount.innerHTML = '<p class="bk-warn">We could not reach the payment service. ' +
-          'Your booking still goes through and we will send a secure payment link.</p>';
+        mount.innerHTML = '<p class="bk-hint">No card needed today. ' +
+          'Your booking goes through as normal, and if anything is due up front we will send you a ' +
+          'secure link for it.</p>';
       });
   }
 
   /** PayPal and Venmo. Stripe does not carry Venmo, so PayPal's SDK does. */
   function mountPayPal(mount) {
     if (!CFG.paypalClientId || !window.paypal) {
-      mount.innerHTML = '<p class="bk-warn">PayPal is not switched on yet. ' +
-        'Choose card instead, or we will send you a payment link.</p>';
+      mount.innerHTML = '<p class="bk-hint">PayPal is not available here yet. ' +
+        'Choose card instead, or carry on and we will send you a PayPal link.</p>';
       return;
     }
     mount.innerHTML = '<div id="bkPaypalBtns"></div>';
@@ -2889,7 +3059,8 @@
         }
       }).render('#bkPaypalBtns');
     } catch (e) {
-      mount.innerHTML = '<p class="bk-warn">PayPal could not load. Choose card instead.</p>';
+      mount.innerHTML = '<p class="bk-hint">PayPal is not available here yet. ' +
+        'Choose card instead, or carry on and we will send you a PayPal link.</p>';
     }
   }
 
@@ -3006,12 +3177,16 @@
         // An add-on needs a package under it, so route to the picker for that
         // category with the add-on already selected.
         var def = P.findAddon(t.dataset.browsepick);
+        state.advice = false;
         v.intent = def.scope;
         v.addons = [{ addonId: def.id, tierId: t.dataset.browsetier }];
         state.browse = false;
         return go(v.size ? 2 : 0);
       }
       var picked = P.findPackage(t.dataset.browsepick);
+      // Picking one from the catalogue IS deciding, so the request goes back
+      // to being a booking.
+      state.advice = false;
       v.intent = picked.category;
       v.packageIds = [picked.id];
       v.addons = [];
@@ -3029,6 +3204,14 @@
 
     if (t.dataset.size) { v.size = t.dataset.size; return advance(); }
     if (t.dataset.intent) {
+      if (t.dataset.intent === 'advice') {
+        state.advice = true;
+        v.intent = null;
+        v.packageIds = [];
+        v.addons = [];
+        return advance();
+      }
+      state.advice = false;
       if (v.intent !== t.dataset.intent) { v.intent = t.dataset.intent; v.packageIds = []; v.addons = []; }
       return advance();
     }
@@ -3079,6 +3262,23 @@
       state.slot = null;
       return render();
     }
+    // A day inside the lead window costs more, and the day heading already
+    // says "Rush, +20% fee" before anything is touched. So the opt-in can
+    // simply follow the choice. It used to swallow the first tap, tick the
+    // box, and scroll up to show it happening, which on a phone read as the
+    // page throwing you out of the list you were reading, and made one
+    // choice take two taps.
+    if ((t.dataset.slot || t.dataset.band) && !state.priority && !hasCorrection()) {
+      var rushAt = t.dataset.slot ? Number(t.dataset.slot) : Number(byDayFirst(t.dataset.band) || 0);
+      if (rushAt && needsPriority(rushAt)) {
+        state.priority = true;
+        var prioBox = el('bkPrio');
+        if (prioBox) prioBox.checked = true;
+        var prioLab = el('bkPrioBox');
+        if (prioLab) prioLab.classList.add('on');
+      }
+    }
+
     if (t.dataset.slot) {
       // A new time means a new drive, so the measured figure is stale.
       state.travel = blankTravel();
@@ -3096,6 +3296,13 @@
       root.querySelectorAll('.bk-band').forEach(function (b) {
         b.classList.toggle('on', b === owner);
       });
+      // The band heading carries the chosen time. Without this it kept
+      // showing the SUGGESTED one, so the summary contradicted the button
+      // the reader had just pressed.
+      if (owner && t.firstChild && t.firstChild.nodeValue) {
+        var headTime = owner.querySelector('.bk-band-r b');
+        if (headTime) headTime.textContent = t.firstChild.nodeValue;
+      }
       renderTotal();
       return;
     }
@@ -3139,23 +3346,9 @@
       focusNext(group);
       return;
     }
-    // A day inside the lead window costs more, and saying so AFTER someone
-    // has picked it is how a surprise feels like a trick. The first touch on
-    // one of those days ticks the opt-in, scrolls up so they watch it happen,
-    // and leaves the time unpicked. The second touch books it.
-    if ((t.dataset.band || t.dataset.slot) && !state.priority && !hasCorrection()) {
-      var when = t.dataset.slot
-        ? Number(t.dataset.slot)
-        : Number((byDayFirst(t.dataset.band) || 0));
-      if (when && needsPriority(when)) {
-        state.priority = true;
-        state.flashPrio = true;
-        return render();
-      }
-    }
-
     if (t.dataset.band) {
       state.openBand = state.openBand === t.dataset.band ? '' : t.dataset.band;
+      renderTotal();
       // Repaint the day list from what is already loaded. A render() here
       // would refetch the calendar to show times that are sitting in memory.
       return repaintSlots();
@@ -3164,16 +3357,25 @@
       toggle(state.interest, t.dataset.interest);
       return render();
     }
-    if (t.dataset.prefday) {
-      toggle(state.prefer.days, t.dataset.prefday);
+    if (t.dataset.prefday !== undefined || t.dataset.prefpart !== undefined) {
+      var isDay = t.dataset.prefday !== undefined;
+      toggle(isDay ? state.prefer.days : state.prefer.parts,
+             isDay ? t.dataset.prefday : t.dataset.prefpart);
       // A preference and a fixed slot are different answers to one question.
       state.slot = null;
-      return render();
-    }
-    if (t.dataset.prefpart) {
-      toggle(state.prefer.parts, t.dataset.prefpart);
-      state.slot = null;
-      return render();
+
+      // In place. These sit at the foot of a long list of days, inside a
+      // panel that a render() would have closed on the way to throwing the
+      // reader back to the top of it.
+      t.classList.toggle('on');
+      root.querySelectorAll('[data-slot],.bk-band').forEach(function (b) { b.classList.remove('on'); });
+      root.querySelectorAll('.bk-pref-hint,.bk-pref-ok').forEach(function (p) {
+        var ok = isInquiry();
+        p.className = ok ? 'bk-pref-ok' : 'bk-pref-hint';
+        p.textContent = ok ? PREF_OK : PREF_ASK;
+      });
+      renderTotal();
+      return;
     }
     if (t.dataset.pay) { state.payInFull = t.dataset.pay === 'now'; return render(); }
 
@@ -3195,7 +3397,7 @@
     }
     if (t.id === 'bkCopyQuote') return copyQuoteLink(t);
     if (t.id === 'bkNext') return advance();
-    if (t.id === 'bkBack') return go(state.step - 1);
+    if (t.id === 'bkBack') return goBack();
     if (t.id === 'bkClose' || t.id === 'bkScrim') return requestClose();
     if (t.id === 'bkLeaveStay') { state.leaving = false; return renderLeave(); }
     if (t.id === 'bkLeaveKeep') {
@@ -3417,8 +3619,10 @@
     var body = buildSummary(quote);
     var fd = new FormData();
     fd.append('access_key', WEB3FORMS_KEY);
-    fd.append('subject', 'BOOKING, ' + state.contact.name + ', ' + $(quote.totalCents) +
-      (state.slot ? ', ' + new Date(state.slot).toLocaleString('en-US') : ''));
+    fd.append('subject', state.advice
+      ? 'HELP ME DECIDE, ' + state.contact.name + ', ' + (state.address.zip || 'no zip')
+      : (isInquiry() ? 'REQUEST, ' : 'BOOKING, ') + state.contact.name + ', ' + $(quote.totalCents) +
+        (state.slot ? ', ' + new Date(state.slot).toLocaleString('en-US') : ''));
     fd.append('from_name', '513 Auto Clean Booking');
     fd.append('name', state.contact.name);
     fd.append('phone', state.contact.phone);
@@ -3447,7 +3651,7 @@
 
   function buildSummary(quote) {
     var a = state.address;
-    return 'BOOKING\n\n' +
+    return (state.advice ? 'HELP ME DECIDE, no package chosen\n\n' : 'BOOKING\n\n') +
       'WHO\n  ' + state.contact.name + '\n  ' + state.contact.phone +
       (state.contact.email ? '\n  ' + state.contact.email : '') + '\n\n' +
       'WHEN\n  ' + (state.slot ? new Date(state.slot).toLocaleString('en-US') : 'not selected') +
@@ -3965,6 +4169,14 @@
     // phone keyboard.
     host.addEventListener('submit', function (e) {
       e.preventDefault();
+      // Go on a phone keyboard submits the form. It has to mean what Enter
+      // means: the next box if there is one, the next page if there is not.
+      // Calling advance() straight off meant typing a name and pressing Go
+      // produced "We need a phone number" in red, which reads as the form
+      // arguing with somebody who was already doing the right thing.
+      var here = document.activeElement;
+      var inBody = el('bkBody');
+      if (here && inBody && inBody.contains(here) && focusNext(here)) return;
       advance();
     });
 
