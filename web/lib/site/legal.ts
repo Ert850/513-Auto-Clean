@@ -15,8 +15,13 @@
  * one document.
  */
 export const LEGAL = {
-  termsEffective: "2026-09-11",
-  privacyEffective: "2026-09-11",
+  // Bumped when the Stripe publishable key landed: the privacy policy now
+  // names Stripe as a processor and the terms now describe paying online and
+  // a card held on file. Somebody agreeing today is agreeing to different
+  // words than 2026-09-11 carried, and the consent record has to point at
+  // the right document.
+  termsEffective: "2026-09-12",
+  privacyEffective: "2026-09-12",
 } as const;
 
 export function longDate(iso: string): string {

@@ -1549,8 +1549,13 @@ function driveTooFar(oneWayMinutes) {
 
 // lib/site/legal.ts
 var LEGAL = {
-  termsEffective: "2026-09-11",
-  privacyEffective: "2026-09-11"
+  // Bumped when the Stripe publishable key landed: the privacy policy now
+  // names Stripe as a processor and the terms now describe paying online and
+  // a card held on file. Somebody agreeing today is agreeing to different
+  // words than 2026-09-11 carried, and the consent record has to point at
+  // the right document.
+  termsEffective: "2026-09-12",
+  privacyEffective: "2026-09-12"
 };
 function longDate(iso) {
   const [y, m, d] = iso.split("-").map(Number);
@@ -1995,7 +2000,13 @@ var CAPABILITIES = [
   {
     id: "cardOnFile",
     what: "Taking a card at booking and charging it when the work is done",
-    live: false,
+    // Live, because js/config.js now carries a pk_live_ key. These two move
+    // TOGETHER and must not drift: the moment the funnel sends card details
+    // to Stripe, the privacy policy has to name Stripe as a processor. The
+    // card field itself stays inert until STRIPE_SECRET_KEY is set in
+    // Netlify, so switching this on early is safe and switching it on late
+    // is not.
+    live: true,
     blockedBy: "Stripe keys"
   },
   {

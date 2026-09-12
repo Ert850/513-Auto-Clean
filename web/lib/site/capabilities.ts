@@ -29,7 +29,13 @@ export const CAPABILITIES: Capability[] = [
   {
     id: "cardOnFile",
     what: "Taking a card at booking and charging it when the work is done",
-    live: false,
+    // Live, because js/config.js now carries a pk_live_ key. These two move
+    // TOGETHER and must not drift: the moment the funnel sends card details
+    // to Stripe, the privacy policy has to name Stripe as a processor. The
+    // card field itself stays inert until STRIPE_SECRET_KEY is set in
+    // Netlify, so switching this on early is safe and switching it on late
+    // is not.
+    live: true,
     blockedBy: "Stripe keys",
   },
   {
