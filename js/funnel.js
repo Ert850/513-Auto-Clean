@@ -1708,7 +1708,7 @@
     // what used to happen and left the rest to a phone call.
     var dur = totalDurationMin();
 
-    var cfg = { calendarId: CFG.googleCalendarId, apiKey: CFG.googleApiKey };
+    var cfg = { calendarId: CFG.googleCalendarId, apiKey: calendarKey() };
     var load = P.calendarConfigured(cfg)
       ? P.loadWindow(cfg, from, to)
       : Promise.resolve(P.unconfiguredWindow(from, to));
@@ -2657,6 +2657,17 @@
    * key. A test key makes the card field real and working, with test cards,
    * and no money moves.
    */
+  /*
+   * The two Google keys, each falling back to the old single one.
+   *
+   * Kept apart because only one of them costs anything: Calendar is free and
+   * needs no billing account, Places is Maps Platform and needs a card. One
+   * shared value meant switching on the free feature required signing up for
+   * the billed one.
+   */
+  function calendarKey() { return CFG.googleCalendarApiKey || CFG.googleApiKey || ''; }
+  function placesKey() { return CFG.googlePlacesApiKey || CFG.googleApiKey || ''; }
+
   function stripeMode() {
     var k = String(CFG.stripePublishableKey || '');
     if (k.indexOf('pk_live_') === 0) return 'live';
@@ -3536,7 +3547,8 @@
   function maybeAutocomplete(text) {
     var box = root.querySelector('#bkAc');
     if (!box) return;
-    if (!CFG.googleApiKey || text.length < 4) { box.hidden = true; return; }
+    var key = placesKey();
+    if (!key || text.length < 4) { box.hidden = true; return; }
 
     clearTimeout(acTimer);
     acTimer = setTimeout(function () {
@@ -3545,7 +3557,7 @@
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-Goog-Api-Key': CFG.googleApiKey,
+          'X-Goog-Api-Key': key,
           'X-Goog-FieldMask': 'suggestions.placePrediction.text,suggestions.placePrediction.placeId'
         },
         body: JSON.stringify({
