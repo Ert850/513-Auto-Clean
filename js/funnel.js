@@ -2088,8 +2088,9 @@
         'Rescheduling instead costs ' + pctOf(RULES.lateRescheduleFeeBp) + ' inside ' + RULES.refundMidWindowHours +
         ' hours, and anything you are charged goes onto the new date for ' + RULES.rescheduleCreditDays + ' days. ' +
         'Nothing is charged today. ' +
-        'If your vehicle needs more work than the package covers we tell you the price before we start, ' +
-        'and you can say no and pay nothing.' +
+        'If your vehicle needs more than the package covers, we do the best we can in the time you booked, ' +
+        'at the price you booked. A bigger number only comes up if you would rather we went further, and only ' +
+        'if you agree to it first.' +
         '<a class="bk-readmore" href="terms.html#cancellation" target="_blank" rel="noopener">Read the full terms and cancellation policy</a>' +
         '<a class="bk-readmore" href="privacy.html" target="_blank" rel="noopener">Read the privacy policy</a>') +
 
