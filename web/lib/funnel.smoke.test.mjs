@@ -308,13 +308,21 @@ describe("the booking funnel opens", () => {
     expect(body).toContain("Anything else we should know");
   });
 
-  it("the promo box is optional, so nothing ever jumps back to it", () => {
-    // It sits near the top of the confirm screen and is empty for almost
-    // everybody. Treating it as unanswered hauled the page back up to it
-    // every time something below was filled in.
+  it("every optional field is flagged, so nothing jumps back to one", () => {
+    // The walker goes forward and then back, which is what you want for a
+    // gap somebody skipped. It is not what you want for an empty promo box
+    // near the top of the confirm screen, which is almost everybody. The
+    // only thing keeping those apart is this flag.
     const src = fs.readFileSync(path.join(ROOT, "js/funnel.js"), "utf8");
-    const promo = src.slice(src.indexOf('id="bkPromo"'), src.indexOf('id="bkPromo"') + 200);
-    expect(promo, "bkPromo needs data-optional").toContain("data-optional");
+    const inputs = [...src.matchAll(/<input type="(?:text|tel|email)" id="(\w+)"([^>]*)/g)];
+    expect(inputs.length, "expected to find the funnel's text inputs").toBeGreaterThan(5);
+
+    const optional = ["bkEmail", "bkPromo", "bkLabel"];
+    for (const [, id, attrs] of inputs) {
+      const flagged = attrs.includes("data-optional");
+      expect(flagged, `${id} is ${optional.includes(id) ? "optional but not flagged" : "required but flagged optional"}`)
+        .toBe(optional.includes(id));
+    }
   });
 
   it("what happens next depends on whether a time was actually booked", () => {

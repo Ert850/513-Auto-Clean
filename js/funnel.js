@@ -605,8 +605,16 @@
     for (var n = 0; n < list.length; n++) {
       if (list[n] === from || (list[n].contains && list[n].contains(from))) { i = n; break; }
     }
+    // Forward first: the usual case is working down the screen.
     for (var j = i + 1; j < list.length; j++) {
       if (!isAnswered(list[j])) { reach(list[j]); return true; }
+    }
+    // Then back, for anything genuinely still missing. Somebody who answered
+    // out of order should be shown the gap rather than left to hunt for it.
+    // isAnswered() treats anything marked data-optional as done, which is
+    // what stops this dragging the page up to an empty promo box.
+    for (var k = 0; k < i && k < list.length; k++) {
+      if (!isAnswered(list[k])) { reach(list[k]); return true; }
     }
     pointAtContinue();
     return false;
@@ -1387,7 +1395,7 @@
       '<div class="bk-vehs">' + list + '</div>' +
       '<button type="button" class="bk-addveh" id="bkAddVeh">Add another vehicle</button>' +
       '<div class="bk-field" style="margin-top:1.2rem"><label for="bkLabel">What are we detailing? <i>(optional)</i></label>' +
-      '<input type="text" id="bkLabel" data-label="' + state.active + '" value="' + esc(veh().label) + '" placeholder="e.g. 2018 Honda CR-V" /></div>';
+      '<input type="text" id="bkLabel" data-label="' + state.active + '" value="' + esc(veh().label) + '" placeholder="e.g. 2018 Honda CR-V" data-optional /></div>';
   }
 
   /* ================= step 7: time ================= */
