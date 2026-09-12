@@ -9,6 +9,24 @@
    start until this file has arrived. */
 
 /* ---------- Tokens ---------- */
+/* ---------------------------------------------------------------
+   `hidden` means hidden, everywhere.
+
+   The browser's own `[hidden] { display: none }` is specificity 0,1,0, and
+   so is every `.thing { display: … }` below. At a tie the author stylesheet
+   wins, so any class that sets a display silently defeats the attribute.
+
+   That is not theoretical. `.bk-leave { display: grid }` put a fixed,
+   full-screen, 55% black sheet permanently over the booking modal, which
+   looked like a greyed-out form that would not respond to a click. `.btn
+   { display: inline-flex }` did the quieter version of the same thing to the
+   map's "Drop a pin" button, which is meant to appear only once a search has
+   run.
+
+   One rule, before anything else, so the attribute always wins.
+   --------------------------------------------------------------- */
+[hidden] { display: none !important; }
+
 :root {
   --ink:        #0b0e13;
   --ink-2:      #111620;

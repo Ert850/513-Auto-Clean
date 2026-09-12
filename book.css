@@ -5,6 +5,27 @@
    ============================================================ */
 
 #bookFunnel[hidden] { display: none; }
+
+/* ---------------------------------------------------------------
+   `hidden` means hidden.
+
+   The browser's own rule is `[hidden] { display: none }`, specificity 0,1,0.
+   Every class below that sets a `display` is also 0,1,0, and at equal
+   specificity an author stylesheet beats the user agent. So `.bk-leave
+   { display: grid }` quietly won against the hidden attribute, and the
+   leaving panel, which is `position: fixed; inset: 0` with a 55% black
+   background at z-index 410, rendered permanently on top of the booking
+   modal: the whole thing looked dimmed and every click landed on an
+   invisible sheet instead of a button.
+
+   The same was true, less visibly, of the Back arrow, the Continue button,
+   the running total and the quote note, all of which the funnel hides by
+   setting `.hidden` and none of which were obeying it.
+
+   One rule, once, for anything inside the funnel. `!important` because it
+   has to beat any class anyone adds later without knowing this.
+   --------------------------------------------------------------- */
+#bookFunnel [hidden] { display: none !important; }
 body.bk-open { overflow: hidden; }
 
 .bk-scrim {
