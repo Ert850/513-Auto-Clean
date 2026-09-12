@@ -114,7 +114,10 @@
     { id: 'package',  tab: 'Package',  title: 'Choose your package',       auto: true,  render: rPackage, valid: vPackage, sum: sPackage },
     { id: 'addons',   tab: 'Extras',   title: 'Anything extra?',           auto: false, render: rAddons,  valid: vAddons,  sum: sAddons },
     { id: 'more',     tab: 'Vehicles', title: 'Add another vehicle?',      auto: false, render: rMore,    valid: ok,       sum: sMore },
-    { id: 'time',     tab: 'Time',     title: 'Pick your time',            auto: true,  render: rTime,    valid: vTime,    sum: sTime },
+    // NOT auto. Picking a time used to advance the instant you tapped it,
+     // which meant there was no Continue button on the busiest screen in the
+     // funnel and no moment to look at what you had chosen.
+     { id: 'time',     tab: 'Time',     title: 'Pick your time',            auto: false, render: rTime,    valid: vTime,    sum: sTime },
     { id: 'location', tab: 'Where',    title: 'Where are we detailing?',   auto: false, render: rLoc,     valid: vLoc,     sum: sLoc },
     { id: 'contact',  tab: 'Accept',   title: 'Your details, and what you agree to', auto: false, render: rContact, valid: vContact, sum: sContact },
     { id: 'pay',      tab: 'Confirm',  title: 'Confirm your booking',      auto: false, render: rPay,     valid: vPay,     sum: sPay }
@@ -400,10 +403,16 @@
     if (now && now.scrollIntoView) now.scrollIntoView({ block: 'nearest', inline: 'center' });
   }
 
+  /** Which step the last paint drew, and where the reader was in it. */
+  var lastRenderedStep = null;
+  var keptScroll = 0;
+
   function render() {
     if (state.done) return;
     clearPromoRate();
     var s = step();
+    var scroller = el('bkScroll');
+    keptScroll = scroller ? scroller.scrollTop : 0;
     var pct = Math.round(((state.step + 1) / STEPS.length) * 100);
 
     el('bkBar').style.width = pct + '%';
@@ -447,8 +456,18 @@
     renderTotal();
     var focusable = el('bkBody').querySelector('[data-focus]');
     if (focusable) focusable.focus();
-    el('bkBody').scrollTop = 0;
-    el('bkScroll').scrollTop = 0;
+    // Only jump to the top when the STEP changed. Re-rendering in place,
+     // which is what expanding a time band or picking a slot does, used to
+     // throw the reader back to the top of a long list of days every time
+     // they touched one.
+     var sameStep = lastRenderedStep === s.id;
+     lastRenderedStep = s.id;
+     if (sameStep) {
+       el('bkScroll').scrollTop = keptScroll;
+     } else {
+       el('bkBody').scrollTop = 0;
+       el('bkScroll').scrollTop = 0;
+     }
   }
 
   function renderTotal() {
@@ -792,7 +811,11 @@
           '</span>' +
           '<span class="bk-pkg-r">' +
           (i.unavailable
-            ? '<b class="bk-soon">Soon</b><i>' + esc(i.unavailable) + '</i>'
+            // Its own class: .bk-pkg-r i is nowrap, which is right for
+            // "2 hrs" and catastrophic for a sentence. A whole paragraph set
+            // to nowrap made every row wider than a phone, so the list
+            // scrolled sideways and the filters above it did not.
+            ? '<b class="bk-soon">Soon</b><i class="bk-soonwhy">' + esc(i.unavailable) + '</i>'
             : '<b>' + svc(i.priceCents, i.pricePlus ? '+' : '') + '</b>' + (dur ? '<i>' + dur + '</i>' : '')) +
           '</span>' +
           '</button>' +
@@ -2157,6 +2180,92 @@
       '</div>';
   }
 
+  /**
+   * Add-ons, on the screen where somebody is looking at the total.
+   *
+   * The extras step is five screens back by the time anyone sees a price they
+   * want to change, and the only way to alter it was to walk back through the
+   * funnel. This is the same list, as a dropdown, next to the number it
+   * moves.
+   *
+   * When nothing has been added it is a dark panel rather than another
+   * outlined box, because at that point it is the one thing on the screen
+   * worth noticing.
+   */
+  function extraOptions(v) {
+    var ctx = { packageIds: v.packageIds, addonTiers: v.addons.map(function (a) { return { addonId: a.addonId, tierId: a.tierId }; }) };
+    var scopes = v.intent === 'both' ? ['interior', 'exterior'] : [v.intent];
+    var out = [];
+
+    scopes.forEach(function (scope) {
+      P.addonsFor(scope).forEach(function (a) {
+        // Same gates as the extras step: nothing coming soon, nothing whose
+        // requirement is unmet, nothing already on this vehicle.
+        if (!P.isSelectable(a)) return;
+        if (P.addonBlockedReason(a, ctx)) return;
+        if (v.addons.some(function (x) { return x.addonId === a.id; })) return;
+
+        a.tiers.forEach(function (t) {
+          if (t.priceCents === null) return;
+          out.push({
+            value: a.id + '|' + t.id,
+            label: a.name + (a.tiers.length > 1 ? ', ' + t.label : '') +
+              '  +' + $(t.priceCents) + (t.asterisk ? '*' : ''),
+          });
+        });
+      });
+    });
+    return out;
+  }
+
+  function extrasForVehicle(v, index, showLabel) {
+    var opts = extraOptions(v);
+    var chosen = v.addons.map(function (a) {
+      var def = P.findAddon(a.addonId);
+      if (!def) return '';
+      var tier = def.tiers.filter(function (t) { return t.id === a.tierId; })[0];
+      return '<li><span>' + esc(def.name) +
+        (def.tiers.length > 1 && tier ? ', ' + esc(tier.label) : '') + '</span>' +
+        '<b>' + (tier ? svc(tier.priceCents) : '') + '</b>' +
+        '<button type="button" class="bk-extra-x" data-extrarm="' + index + '|' + esc(a.addonId) + '">Remove</button></li>';
+    }).filter(Boolean).join('');
+
+    var picker = opts.length
+      ? '<label class="bk-extra-add"><span>Add something</span>' +
+          '<select data-extraadd="' + index + '">' +
+            '<option value="">Choose an extra...</option>' +
+            opts.map(function (o) {
+              return '<option value="' + esc(o.value) + '">' + esc(o.label) + '</option>';
+            }).join('') +
+          '</select></label>'
+      : '<p class="bk-hint">Everything we can add to this one is already on it.</p>';
+
+    return (showLabel ? '<h5 class="bk-extra-veh">' + esc(vehicleName(v, index)) + '</h5>' : '') +
+      (chosen ? '<ul class="bk-extra-list">' + chosen + '</ul>' : '') +
+      picker;
+  }
+
+  function vehicleName(v, index) {
+    if (v.label) return v.label;
+    var size = v.size ? P.vehicleSize(v.size) : null;
+    return 'Vehicle ' + (index + 1) + (size ? ', ' + size.label : '');
+  }
+
+  function extrasBlock() {
+    var none = state.vehicles.every(function (v) { return !v.addons.length; });
+    var many = state.vehicles.length > 1;
+
+    return '<div class="bk-extras' + (none ? ' empty' : '') + '">' +
+      '<h4>' + (none ? 'Want to add anything?' : 'Your extras') + '</h4>' +
+      '<p class="bk-extra-sub">' +
+        (none
+          ? 'You have not added any extras. If something below would help, add it here and the total updates.'
+          : 'Add or drop anything here and the total updates straight away.') +
+      '</p>' +
+      state.vehicles.map(function (v, i) { return extrasForVehicle(v, i, many); }).join('') +
+      '</div>';
+  }
+
   function accessBlock() {
     return '<div class="bk-accbox">' +
       '<h4>Getting set up on the day <i class="bk-opt">Optional</i></h4>' +
@@ -2318,6 +2427,7 @@
         '</div>';
     }
 
+    html += extrasBlock();
     html += accessBlock();
 
     html += '<div class="bk-cardbox">' +
@@ -2606,7 +2716,7 @@
       '[data-size],[data-intent],[data-pkg],[data-addon],[data-clear],[data-win],[data-slot],' +
       '[data-consent],[data-pay],[data-delveh],[data-browsepick],[data-max],[data-sort],' +
       '[data-kind],[data-paymethod],[data-corr],[data-coating],[data-garage],[data-step],' +
-      '[data-prefday],[data-prefpart],[data-interest],[data-band],[data-access],' +
+      '[data-prefday],[data-prefpart],[data-interest],[data-band],[data-access],[data-extrarm],' +
       '#bkAddVeh,#bkMoreDays,#bkJumpClear,#bkNext,#bkBack,#bkClose,#bkScrim,#bkBrowse,#bkBrowseBack,' +
       '#bkLeaveStay,#bkLeaveKeep,#bkLeaveAsk,#bkLeaveDrop,#bkFresh,' +
       '#bkDoneClose,#bkDoneAsk,#bkDoneCopy,#bkDoneAgain,' +
@@ -2701,6 +2811,18 @@
       pruneAddons(v);
       return render();
     }
+    if (t.dataset.extrarm) {
+      // "1|pet-hair": the vehicle index matters here, because the confirm
+      // screen shows every vehicle at once rather than the active one.
+      var rm = t.dataset.extrarm.split('|');
+      var rmVeh = state.vehicles[Number(rm[0])];
+      if (rmVeh) {
+        rmVeh.addons = rmVeh.addons.filter(function (a) { return a.addonId !== rm[1]; });
+        pruneAddons(rmVeh);
+      }
+      return render();
+    }
+
     if (t.dataset.clear) {
       v.addons = v.addons.filter(function (a) { return a.addonId !== t.dataset.clear; });
       pruneAddons(v);
@@ -2715,7 +2837,11 @@
     }
     if (t.dataset.slot) {
       // A new time means a new drive, so the measured figure is stale.
-      state.travel = blankTravel(); state.slot = Number(t.dataset.slot); return advance(); }
+      state.travel = blankTravel();
+      state.slot = Number(t.dataset.slot);
+      // Select, do not advance. Continue does that, and now exists.
+      return render();
+    }
     if (t.id === 'bkMoreDays') {
       // More DAYS at the same start times, never more times within a day.
       state.daysShown = Math.min(MAX_BOOK_DAYS, (state.daysShown || 3) + 7);
@@ -2870,6 +2996,17 @@
       state.daysShown = 3;
       return render();
     }
+    if (t.dataset.extraadd !== undefined) {
+      var addVeh = state.vehicles[Number(t.dataset.extraadd)];
+      var picked = String(t.value || '').split('|');
+      if (addVeh && picked.length === 2 && picked[0]) {
+        addVeh.addons = addVeh.addons.filter(function (a) { return a.addonId !== picked[0]; });
+        addVeh.addons.push({ addonId: picked[0], tierId: picked[1] });
+        pruneAddons(addVeh);
+      }
+      return render();
+    }
+
     if (t.id === 'bkMandate') {
       state.mandate = t.checked;
       return render();

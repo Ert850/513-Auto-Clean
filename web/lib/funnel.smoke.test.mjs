@@ -207,6 +207,41 @@ describe("the booking funnel opens", () => {
     expect(body, "the promo field should be on the confirm step").toContain("bkPromo");
     expect(body, "the access questions should be on the confirm step").toContain("data-access");
     expect(body, "the card authorization should be on the confirm step").toContain("bkMandate");
+
+    // Add-ons are editable from here, so nobody has to walk five screens
+    // back to change one while looking at the total.
+    expect(body, "the extras picker should be on the confirm step").toContain("data-extraadd");
+    // This quote has no add-ons on it, so the picker gets the dark treatment.
+    expect(body, "with nothing added it should be the dark panel").toContain("bk-extras empty");
+  });
+
+  it("offers real add-ons in the confirm-step picker, and no unbookable ones", () => {
+    const P = env.window.ACPricing;
+    const url = P.quoteUrl(
+      {
+        v: 1,
+        ts: Math.floor(Date.now() / 1000),
+        vs: [{ z: "small", i: "exterior", p: ["basic-exterior"] }],
+        ad: ["1 Main St", "Cincinnati", "OH", "45220"],
+        ct: ["Ada", "5135551212", ""],
+      },
+      "https://513autoclean.com/",
+    );
+    const body = loadFunnel(url.slice(url.indexOf("#"))).lookup("bkBody").innerHTML;
+
+    const options = [...body.matchAll(/<option value="([^"|]+)\|([^"]+)"/g)].map((m) => m[1]);
+    expect(options.length, "the picker should offer something").toBeGreaterThan(2);
+
+    // Everything offered has to be bookable. Scratch work and coatings are
+    // switched off in the catalog and must not appear here just because this
+    // is a different screen from the extras step.
+    for (const id of options) {
+      const a = P.findAddon(id);
+      expect(a, `${id} is not a real add-on`).toBeTruthy();
+      expect(P.isSelectable(a), `${id} is not bookable but was offered`).toBe(true);
+    }
+    expect(options).not.toContain("scratch-reduction");
+    expect(options).not.toContain("ceramic-coating");
   });
 
   it("puts the chrome in the right state for step one", () => {
