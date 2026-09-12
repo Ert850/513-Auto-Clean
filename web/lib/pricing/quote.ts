@@ -161,6 +161,22 @@ export interface Quote {
  * of the price of a taxable service are generally taxable too, so travel sits
  * inside the tax base rather than outside it.
  */
+/**
+ * What the surcharge line is actually for.
+ *
+ * Two different things can raise it and they are not the same thing to the
+ * person reading the line. Booking at 7am is premium time. Booking for
+ * tomorrow at 10am is a rush, and 10am is explicitly a standard hour: a line
+ * reading "Premium time" against a mid-morning slot is a line that invites
+ * an argument, and deserves one.
+ */
+export function surchargeLabel(bd: { timeOfDayBp: number; priorityBp: number; appliedBp: number }): string {
+  const pct = "+" + bd.appliedBp / 100 + "%";
+  if (bd.priorityBp > 0 && bd.timeOfDayBp > 0) return "Rush booking and premium time, " + pct;
+  if (bd.priorityBp > 0) return "Rush booking, " + pct;
+  return "Premium time, " + pct;
+}
+
 export function quote(
   cart: CartInput,
   r: PricingRules,
@@ -283,7 +299,7 @@ export function quote(
   const surchargeCents = applySurchargeCents(serviceSubtotalCents, bd.appliedBp);
   if (surchargeCents > 0) {
     lines.push({
-      kind: "surcharge", label: "Premium time, +" + bd.appliedBp / 100 + "%",
+      kind: "surcharge", label: surchargeLabel(bd),
       vehicleIndex: null, amountCents: surchargeCents, durationMin: 0,
     });
   }

@@ -1098,6 +1098,12 @@ function averageOneWayMinutes(outboundMinutes, returnMinutes) {
 }
 
 // lib/pricing/quote.ts
+function surchargeLabel(bd) {
+  const pct = "+" + bd.appliedBp / 100 + "%";
+  if (bd.priorityBp > 0 && bd.timeOfDayBp > 0) return "Rush booking and premium time, " + pct;
+  if (bd.priorityBp > 0) return "Rush booking, " + pct;
+  return "Premium time, " + pct;
+}
 function quote(cart, r, taxTable = SEED_TAX_TABLE, year = (/* @__PURE__ */ new Date()).getFullYear()) {
   const lines = [];
   cart.vehicles.forEach((vehicle, vi) => {
@@ -1204,7 +1210,7 @@ function quote(cart, r, taxTable = SEED_TAX_TABLE, year = (/* @__PURE__ */ new D
   if (surchargeCents > 0) {
     lines.push({
       kind: "surcharge",
-      label: "Premium time, +" + bd.appliedBp / 100 + "%",
+      label: surchargeLabel(bd),
       vehicleIndex: null,
       amountCents: surchargeCents,
       durationMin: 0
