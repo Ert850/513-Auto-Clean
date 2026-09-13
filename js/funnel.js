@@ -790,7 +790,9 @@
           notBefore: from,
           notAfter: to,
           hasExterior: hasExterior(),
-          ignoreReturnAfterMin: P.IGNORE_RETURN_AFTER_MIN
+          ignoreReturnAfterMin: P.IGNORE_RETURN_AFTER_MIN,
+          ignoreOutboundBeforeMin:
+            travelAllowanceMin() <= 60 ? P.IGNORE_OUTBOUND_BEFORE_MIN : undefined
         });
         // To the minute, not the millisecond: the grid is rebuilt from a
         // different `now` and need not land on the same instant.
@@ -2170,7 +2172,11 @@
       hasExterior: hasExterior(),
       // A 6pm or later job is the last of the day, so the drive home does not
       // need to fit inside the calendar and should not shorten what is offered.
-      ignoreReturnAfterMin: P.IGNORE_RETURN_AFTER_MIN
+      ignoreReturnAfterMin: P.IGNORE_RETURN_AFTER_MIN,
+      // And the first job of the day is reached by leaving home earlier, so
+      // the drive out does not eat the first hour the calendar is open.
+      // Only for a drive short enough to absorb before the day starts.
+      ignoreOutboundBeforeMin: drive <= 60 ? P.IGNORE_OUTBOUND_BEFORE_MIN : undefined
     };
     if (corr) {
       req.preferredStartsMin = { weekday: P.CORRECTION_RULES.allowedStartsMin, weekend: P.CORRECTION_RULES.allowedStartsMin };
@@ -2242,9 +2248,10 @@
     noteWantedTime(slots);
     html += jumpBox();
 
-    html += '<p class="bk-starts">These are <b>start times</b>, not how long we stay. ' +
-      'A ' + fmtDur(dur) + ' detail beginning at 10am runs until about ' +
-      endLabel(10 * 60 + dur) + '. Pick a part of the day, then fine tune the hour.</p>';
+    html += '<p class="bk-starts">The time you pick is the start of a <b>one hour arrival ' +
+      'window</b>: choose 10am and we arrive between 10 and 11. It is a start time, not how ' +
+      'long we stay. A ' + fmtDur(dur) + ' detail beginning at 10am runs until about ' +
+      endLabel(10 * 60 + dur) + '.</p>';
 
     order.slice(0, shown).forEach(function (key) {
       var dayMs = byDay[key];
@@ -2257,13 +2264,50 @@
           : '') +
         '</h4>';
 
+      /*
+       * TWO GOOD TIMES, and everything else one tap away.
+       *
+       * A customer picking freely from forty half hours picks the one that
+       * suits them and leaves the day in pieces: a 1pm start makes both 10am
+       * and 4pm impossible, so one booking costs two. Recommending the starts
+       * that pack the day, and putting the rest behind "See additional
+       * times", keeps most days sellable twice without ever refusing somebody
+       * who genuinely needs 11:30.
+       *
+       * The recommendation is not a guess. It prefers a start that begins
+       * exactly when an existing job ends plus the drive, then the day's
+       * anchors, then simply the earliest thing there is.
+       */
+      var recs = P.recommendStarts({
+        starts: dayMs,
+        busy: win.busy || [],
+        travelGapMin: buffer,
+        limit: 2
+      });
+
+      if (recs.length) {
+        html += '<div class="bk-recs">' +
+          recs.map(function (r) {
+            var d = deltaFor(r.ms);
+            return '<button type="button" class="bk-rec' + (state.slot === r.ms ? ' on' : '') +
+              '" data-slot="' + r.ms + '">' +
+              '<b>' + timeLabel(r.ms) + '</b>' +
+              '<i>' + esc(r.why) + '</i>' +
+              '<em>' + (d ? '+' + $(d) : 'Standard price') + '</em>' +
+              '<u>to ' + endLabel(localMin(r.ms) + dur) + '</u>' +
+              '</button>';
+          }).join('') +
+          '</div>';
+      }
+
+      var bands = '';
       P.groupIntoBands(dayMs).forEach(function (g) {
         var openBand = state.openBand === key + '|' + g.band.id;
         var pick = state.slot && dayMs.indexOf(state.slot) > -1 &&
           P.bandOf(localMin(state.slot)) && P.bandOf(localMin(state.slot)).id === g.band.id
           ? state.slot : null;
 
-        html += '<div class="bk-band' + (pick ? ' on' : '') + (g.band.premium ? ' premium' : '') + '">' +
+        bands += '<div class="bk-band' + (pick ? ' on' : '') + (g.band.premium ? ' premium' : '') + '">' +
           '<button type="button" class="bk-band-h" data-band="' + key + '|' + g.band.id + '">' +
             // "Starts", because a band is when the work BEGINS, not how long
             // it runs. A four hour detail booked in the 10am to 2pm band can
@@ -2280,16 +2324,27 @@
           '</button>';
 
         if (openBand) {
-          html += '<div class="bk-bandtimes">';
+          bands += '<div class="bk-bandtimes">';
           g.starts.forEach(function (ms) {
-            html += '<button type="button" class="bk-time' + (state.slot === ms ? ' on' : '') +
+            bands += '<button type="button" class="bk-time' + (state.slot === ms ? ' on' : '') +
               '" data-slot="' + ms + '">' + timeLabel(ms) +
               '<i>to ' + endLabel(localMin(ms) + dur) + '</i></button>';
           });
-          html += '</div>';
+          bands += '</div>';
         }
-        html += '</div>';
+        bands += '</div>';
       });
+
+      // Open when they are already inside it, so repainting after a tap does
+      // not fold the list they are reading back up.
+      var inThisDay = state.openBand && state.openBand.indexOf(key + '|') === 0;
+      var chosenHere = state.slot && dayMs.indexOf(state.slot) > -1 &&
+        !recs.some(function (r) { return r.ms === state.slot; });
+
+      html += '<details class="bk-moretimes"' + (inThisDay || chosenHere ? ' open' : '') + '>' +
+        '<summary>See additional times <i>' + dayMs.length + ' in total</i></summary>' +
+        bands +
+        '</details>';
 
       html += '</div>';
     });
@@ -3234,6 +3289,25 @@
    */
   function noCardMessage(mount) {
     state.cardUnavailable = true;
+
+    /*
+     * AND IT IS NO LONGER PAID IN FULL, because nothing was collected.
+     *
+     * Choosing "pay now and save 5%" set payInFull, which took 5% off the
+     * total, wrote "PAID IN FULL" onto the confirmation and told Elijah the
+     * money was in. Then the payment form failed to load and nobody was ever
+     * asked for a card. A booking that says it is paid and is not is worse
+     * than one that plainly is not: he turns up expecting nothing, the
+     * customer expects to owe nothing, and one of them is wrong on a
+     * driveway.
+     *
+     * So the option comes off, the total goes back up, and the screen says
+     * what will actually happen.
+     */
+    if (state.payInFull) {
+      state.payInFull = false;
+      renderTotal();
+    }
     var html = '<h4>Nothing to pay today</h4>' +
       '<p class="bk-hint">We do not take card details on this site yet, so there is nothing to ' +
       'enter here. Send your booking and we will confirm it, usually within a few hours. You pay ' +

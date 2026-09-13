@@ -866,6 +866,7 @@ var DEFAULT_BOOKING_WINDOW = {
   latestExteriorStartMin: 20 * 60
 };
 var IGNORE_RETURN_AFTER_MIN = 18 * 60;
+var IGNORE_OUTBOUND_BEFORE_MIN = 10 * 60;
 var TIME_BANDS = [
   {
     id: "early",
@@ -918,6 +919,14 @@ function localMinutesOfDay(ms, timeZone = "America/New_York") {
   const m = Number(parts.find((p) => p.type === "minute")?.value ?? "0");
   return h % 24 * 60 + m;
 }
+var DAY_ANCHORS_MIN = {
+  weekday: [10 * 60, 16 * 60],
+  // Three on a weekend, because those are the days worth filling hardest.
+  // All inside standard hours: recommending 8am would be steering somebody
+  // into a 20% early-start premium they never asked for, which is the one
+  // thing a recommendation must never do.
+  weekend: [10 * 60, 13 * 60, 16 * 60]
+};
 
 // lib/travel/zipRanges.ts
 var MAX_ONE_WAY_MINUTES = 12 * 60;
