@@ -756,44 +756,25 @@ body.bk-open { overflow: hidden; }
   border-radius: 0 var(--r-sm) var(--r-sm) 0;
 }
 
-/* The recommended starts. Two per day, and the reason for each.
+/* "Expand to select other times", inside the band box.
 
-   A customer choosing freely from forty half hours picks the one that suits
-   them and leaves the day in pieces: a 1pm start makes both 10am and 4pm
-   impossible, so one booking costs two. These are the starts that pack the
-   day, offered first; everything else is one tap away and stays available. */
-.bk-recs { display: grid; gap: .45rem; margin: .55rem 0 .35rem; }
-@media (min-width: 480px) { .bk-recs { grid-template-columns: 1fr 1fr; } }
-.bk-rec {
-  text-align: left; width: 100%; cursor: pointer; font: inherit;
-  background: var(--paper); border: 2px solid var(--line); border-radius: var(--r-md);
-  padding: .7rem .8rem; display: grid; gap: .1rem;
-  transition: border-color .16s, box-shadow .16s;
+   The box itself books the time we recommend. This is the way out for
+   somebody who genuinely needs 11:30, deliberately quieter than the box it
+   sits in: friction, not a wall. */
+.bk-bandmore {
+  width: 100%; font: inherit; font-size: .78rem; font-weight: 700; cursor: pointer;
+  background: none; border: 0; border-top: 1px solid var(--line);
+  color: var(--red); text-align: left; padding: .5rem .9rem;
+  display: flex; align-items: center; gap: .4rem;
 }
-.bk-rec:hover { border-color: var(--red); }
-.bk-rec.on { border-color: var(--red); box-shadow: 0 0 0 3px var(--red-ghost); }
-.bk-rec b { font-family: var(--font-display); font-size: 1.08rem; }
-.bk-rec i { font-style: normal; font-size: .78rem; color: var(--text-soft); }
-.bk-rec em {
-  font-style: normal; font-size: .76rem; font-weight: 800; color: var(--red);
+.bk-bandmore::before {
+  content: ""; flex: none; width: 6px; height: 6px; border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor; transform: rotate(-45deg);
 }
-.bk-rec u { text-decoration: none; font-size: .74rem; color: var(--text-soft); }
-
-/* Everything else, deliberately one step further away. */
-.bk-moretimes { margin: .25rem 0 .2rem; }
-.bk-moretimes > summary {
-  cursor: pointer; list-style: none; font-size: .84rem; font-weight: 700;
-  color: var(--red); padding: .45rem 0; display: flex; align-items: center; gap: .4rem;
+.bk-bandmore span {
+  margin-left: auto; font-weight: 600; color: var(--text-soft);
 }
-.bk-moretimes > summary::-webkit-details-marker { display: none; }
-.bk-moretimes > summary::before {
-  content: ""; flex: none; width: 7px; height: 7px; border-right: 2px solid currentColor;
-  border-bottom: 2px solid currentColor; transform: rotate(-45deg); transition: transform .16s;
-}
-.bk-moretimes[open] > summary::before { transform: rotate(45deg); }
-.bk-moretimes > summary i {
-  font-style: normal; font-weight: 600; font-size: .76rem; color: var(--text-soft);
-}
+.bk-bandmore:hover { text-decoration: underline; }
 
 /* premium start times, flagged on the slot itself */
 .bk-time.prem { border-style: dashed; }
@@ -1147,50 +1128,18 @@ body.bk-open { overflow: hidden; }
 .bk-extras.empty .bk-hint { color: rgba(255, 255, 255, .7); }
 .bk-extras.empty .bk-extra-veh { color: rgba(255, 255, 255, .9); }
 
-/* The extras list on the confirm screen.
+.bk-extra-veh { color: rgba(255, 255, 255, .9); }
 
-   It used to be a <select> of names and prices, which reads fine to somebody
-   who already knows what Ozone Odor Reset is and to nobody else. Each one now
-   carries the same description and the same "How it works" the extras step
-   gives it, because the last screen is exactly where somebody decides whether
-   to spend another fifty dollars. */
-.bk-xpick > summary {
-  cursor: pointer; list-style: none; font-size: .88rem; font-weight: 700;
-  color: var(--red); padding: .5rem 0; display: flex; align-items: center; gap: .4rem;
+/* "How it works" on an extra that has already been chosen. Collapsed, one
+   line, and only on what they picked: somebody deciding needs a short list,
+   somebody who has decided sometimes wants to know what they bought. */
+.bk-extra-list .bk-how { margin: .2rem 0 0; grid-column: 1 / -1; }
+.bk-extra-list .bk-how summary { font-size: .76rem; }
+.bk-extras.empty .bk-extra-list .bk-how summary { color: #ff8b8b; }
+.bk-extras.empty .bk-extra-list .bk-how p {
+  background: var(--ink-3); border-left-color: rgba(255, 255, 255, .2);
+  color: rgba(255, 255, 255, .82);
 }
-.bk-xpick > summary::-webkit-details-marker { display: none; }
-.bk-xpick > summary::before {
-  content: ""; flex: none; width: 7px; height: 7px; border-right: 2px solid currentColor;
-  border-bottom: 2px solid currentColor; transform: rotate(-45deg); transition: transform .16s;
-}
-.bk-xpick[open] > summary::before { transform: rotate(45deg); }
-.bk-xpick > summary i {
-  font-style: normal; font-weight: 600; font-size: .78rem; color: var(--text-soft);
-}
-
-.bk-xcards { display: grid; gap: .5rem; padding-top: .3rem; }
-.bk-xcard {
-  background: var(--paper); border: 1px solid var(--line);
-  border-radius: var(--r-sm); padding: .7rem .8rem;
-}
-.bk-xcard-h b { display: block; font-size: .92rem; font-family: var(--font-display); }
-.bk-xcard-h span {
-  display: block; font-size: .82rem; color: var(--text-soft);
-  line-height: 1.5; margin-top: .1rem;
-}
-.bk-xcard .bk-how { margin: .45rem 0 .1rem; }
-.bk-xcard-buy { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: .55rem; }
-.bk-xadd {
-  font: inherit; font-size: .82rem; font-weight: 700; cursor: pointer;
-  background: var(--red); color: #fff; border: 0;
-  border-radius: var(--r-sm); padding: .45rem .75rem;
-}
-.bk-xadd:hover { background: var(--red-deep, #b31212); }
-
-/* Inside the dark "nothing added yet" panel, the cards keep their own
-   light ground so the descriptions stay readable. */
-.bk-extras.empty .bk-xpick > summary { color: #fff; }
-.bk-extras.empty .bk-xpick > summary i { color: rgba(255, 255, 255, .7); }
 
 .bk-extra-veh {
   margin: .9rem 0 .4rem; font-size: .78rem; font-weight: 800;
