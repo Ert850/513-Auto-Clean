@@ -377,6 +377,48 @@ describe("the booking funnel opens", () => {
     expect(body, "pay now needs a live key, not a test one").not.toContain('data-pay="now"');
   });
 
+  it("renders real time slots, not the fallback that means it crashed", async () => {
+    /*
+     * THE TEST THAT WAS MISSING, and it cost a live booking flow.
+     *
+     * paintSlotsInner read a variable called `corr` that belongs to
+     * loadSlots, which calls it rather than containing it. Every paint threw
+     * a ReferenceError, one frame up the throw was caught and turned into
+     * the "tell us when suits" panel, and that panel is a real screen that
+     * looks entirely deliberate. So the calendar was read correctly, 336
+     * valid starts were computed, and every customer was shown a form asking
+     * what day might suit.
+     *
+     * It also made every booking an inquiry, which silently removed "pay now
+     * and save 5%", because that option is correctly hidden when no time has
+     * been agreed. Two reported bugs, one undeclared variable.
+     *
+     * No calendar key here, so this paints the generated standard hours.
+     * That is enough: the crash was in the painter, not in the data.
+     */
+    const fresh = loadFunnel();
+    fresh.window.ACFunnel.open();
+
+    click(fresh, { dataset: { size: "small" } });
+    click(fresh, { dataset: { intent: "interior" } });
+    click(fresh, { dataset: { pkg: "basic-interior", cat: "interior" } });
+    click(fresh, { id: "bkNext" });   // past extras
+    click(fresh, { id: "bkNext" });   // past more vehicles
+
+    expect(fresh.lookup("bkTitle").textContent).toBe("Pick your time");
+
+    // loadSlots resolves on a microtask; let the promises settle.
+    await new Promise((r) => setTimeout(r, 0));
+    await new Promise((r) => setTimeout(r, 0));
+
+    const slots = fresh.lookup("bkSlots").innerHTML;
+
+    expect(slots, "the painter crashed and fell back to the inquiry panel")
+      .not.toContain("bk-noslots");
+    expect(slots, "no parts of the day to choose from").toContain("data-band");
+    expect(slots, "no days rendered").toContain("bk-daygroup");
+  });
+
   it("actually loads the payment SDKs it checks for", () => {
     /*
      * The card form checked `window.Stripe` and nothing on the entire site
