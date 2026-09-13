@@ -2970,8 +2970,8 @@
         '<div class="bk-pay on static">' +
           '<b>Pay after the detail</b>' +
           '<span>' + (ask
-            ? 'We take a card to hold the request. It is not charged until the time is agreed and the work is done.'
-            : 'Pay when the work is finished, by ' + IN_PERSON + '. The card below is only authorized for a late cancellation.') +
+            ? 'Nothing is charged until the time is agreed and the work is done.'
+            : 'Pay in full once the detail is finished, by ' + IN_PERSON + '. Nothing is taken beforehand.') +
           '</span>' +
           '<i>' + $(laterTotal) + '</i>' +
         '</div>' +
@@ -3018,7 +3018,16 @@
      * here until there is a card to take, and the screen says what actually
      * happens instead.
      */
-    var wantCard = !state.advice && stripeMode() !== 'off';
+    /*
+     * ONE TEST FOR "DO WE ASK FOR A CARD AT ALL".
+     *
+     * The capability is the mute switch. Stripe is refusing the secret key,
+     * so cardOnFile is off, and a booking screen that asks for a card and
+     * then cannot take one is worse than one that never mentions a card. Off
+     * means off everywhere: no field, no authorization box, no pay-in-full,
+     * and the terms stop describing a card being taken.
+     */
+    var wantCard = !state.advice && stripeMode() !== 'off' && P.isLive('cardOnFile');
 
     if (!wantCard) {
       html += '<div class="bk-cardbox">' +
@@ -3027,10 +3036,9 @@
           (state.advice
             ? 'There is nothing to pay for a recommendation. When we come back with a package and a ' +
               'price, you decide whether to book it.'
-            : 'We do not take card details on the site yet, so there is nothing to enter here. ' +
-              'Send your booking and we will confirm it, usually within a few hours. You pay when the ' +
-              'work is done, by ' + IN_PERSON + '. If you would rather settle it beforehand, just ask ' +
-              'and we will send you a secure link.') +
+            : 'You pay in full once the detail is finished, by ' + IN_PERSON + '. ' +
+              'Nothing is taken beforehand. Send your booking and we will confirm it, usually ' +
+              'within a few hours.') +
         '</p></div>';
     } else {
       html += '<div class="bk-cardbox">' +
@@ -3100,6 +3108,7 @@
     // no processor to hold a card. Insisting on a tick for a box that is not
     // on the screen is a dead end with no way past it.
     if (state.advice || stripeMode() === 'off' || state.cardUnavailable) return null;
+    if (!P.isLive('cardOnFile')) return null;
     if (!state.mandate && !(state.payInFull && state.payMethod === 'paypal')) {
       return needs('Please tick the card authorization to continue.', '#bkMandate');
     }
@@ -3270,10 +3279,8 @@
       renderTotal();
     }
     var html = '<h4>Nothing to pay today</h4>' +
-      '<p class="bk-hint">We do not take card details on this site yet, so there is nothing to ' +
-      'enter here. Send your booking and we will confirm it, usually within a few hours. You pay ' +
-      'when the work is done, by ' + IN_PERSON + '. If you would rather settle it beforehand, just ' +
-      'ask and we will send you a secure link.</p>';
+      '<p class="bk-hint">You pay in full once the detail is finished, by ' + IN_PERSON + '. ' +
+      'Nothing is taken beforehand.</p>';
     var box = mount.closest ? mount.closest('.bk-cardbox') : null;
     if (box) box.innerHTML = html;
     else mount.innerHTML = html;
@@ -4096,7 +4103,11 @@
         return '  ' + l.label + ': ' + $(l.amountCents);
       }).join('\n') +
       '\n  TOTAL: ' + $(quote.totalCents) +
-      '\n  Paying: ' + (state.payInFull ? 'in full now' : 'on the day; card on file is cancellation cover only') +
+      '\n  Paying: ' + (state.payInFull
+        ? 'in full now'
+        : state.mandate
+          ? 'on the day; card on file is cancellation cover only'
+          : 'in full when the detail is finished; no card taken') +
       '\n  Travel: added at confirmation' +
       '\n  On site: ' + fmtDur(quote.serviceDurationMin) + '\n\n' +
       'ACCESS\n  Water: ' + (state.access.water || 'not answered') +
