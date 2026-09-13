@@ -1,4 +1,5 @@
-import { priceFromWire, validateWire } from "./_pricing.mjs";
+import { priceFromWire, validateWire, findPackage, findAddon, vehicleSize } from "./_pricing.mjs";
+import { createBookingEvent, gcalConfigured } from "./_gcal.mjs";
 import { limited } from "./_ratelimit.mjs";
 import { verifyTurnstile } from "./_turnstile.mjs";
 
@@ -18,10 +19,18 @@ import { verifyTurnstile } from "./_turnstile.mjs";
  * receipt in the customer's inbox is the server's arithmetic, and it agrees
  * with the Stripe intent by construction rather than by luck.
  *
- * FAILURE IS NEVER FATAL. No key, a Resend outage, a bad address: all of it
- * comes back 200 with sent:false. The booking already reached Elijah through
- * the existing path, and a funnel that announces an email problem is a funnel
- * that loses the job it had already won.
+ * IT ALSO WRITES THE JOB ONTO THE CALENDAR, which is the thing that stops
+ * the same afternoon being sold twice. Until now a booking lived in an inbox
+ * and nowhere else: Elijah read the email and typed it into his calendar by
+ * hand, which works until the evening he does not, and then the site offers
+ * that slot to somebody else. The scheduler already treats any non-OPEN event
+ * as busy, so writing the job IS closing the slot.
+ *
+ * FAILURE IS NEVER FATAL. No key, a Resend outage, a calendar not shared with
+ * the service account: all of it comes back 200 with the detail of what did
+ * and did not happen. The booking already reached Elijah through the existing
+ * path, and a funnel that announces an email problem is a funnel that loses
+ * the job it had already won.
  */
 
 const json = (status, body) => ({
@@ -40,6 +49,25 @@ function esc(s) {
     { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]
   ));
 }
+
+/**
+ * Free text from the browser: notes, parking, access answers.
+ *
+ * validateWire deliberately drops these. It is the gate that decides what a
+ * booking COSTS, and free text cannot change a price, so it has no business
+ * passing through it. But the calendar event and the email both want it, so
+ * it is taken from the raw payload here, capped, and stripped of anything
+ * that is not printable. It reaches an inbox and a calendar we own, and
+ * nothing else.
+ */
+function text(v, max) {
+  return String(v ?? "")
+    .replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g, " ")
+    .trim()
+    .slice(0, max);
+}
+
+const ACCESS = { yes: "yes", no: "no", unsure: "not sure" };
 
 function whenLabel(slot) {
   if (!slot) return null;
@@ -131,6 +159,74 @@ ${receiptRows(priced)}`,
 
 /* ------------------------------------------------------------------ */
 
+/**
+ * The job, written out the way Elijah reads it at seven in the morning.
+ *
+ * Everything he needs before setting off, in the order he needs it: where he
+ * is going, who he is meeting, what he is doing, what he is owed, and what to
+ * expect when he gets there.
+ */
+function eventDescription({ contact, cart, priced, extras, payInFull }) {
+  const a = cart.address ?? {};
+  const lines = [];
+
+  lines.push(`WHO  ${contact.name}  ${contact.phone}${contact.email ? `  ${contact.email}` : ""}`);
+  lines.push(`WHERE  ${[a.line1, a.city, a.region, a.zip].filter(Boolean).join(", ")}`);
+  lines.push("");
+
+  for (const [i, v] of (cart.vehicles ?? []).entries()) {
+    const size = v.sizeId ? vehicleSize(v.sizeId) : null;
+    const pkgs = (v.packageIds ?? []).map((id) => findPackage(id)?.name).filter(Boolean);
+    lines.push(
+      `VEHICLE ${i + 1}  ${v.label || "(not named)"}${size ? `  [${size.label}]` : ""}`,
+    );
+    if (pkgs.length) lines.push(`  ${pkgs.join(" + ")}`);
+    for (const ad of v.addons ?? []) {
+      const def = findAddon(ad.addonId);
+      const tier = def?.tiers.find((t) => t.id === ad.tierId);
+      if (def) lines.push(`  + ${def.name}${tier && def.tiers.length > 1 ? `, ${tier.label}` : ""}`);
+    }
+  }
+
+  lines.push("");
+  lines.push("PRICE");
+  for (const l of priced.lines ?? []) lines.push(`  ${l.label}: ${$(l.amountCents)}`);
+  lines.push(`  TOTAL: ${$(priced.totalCents)}`);
+  lines.push(`  ${payInFull ? "PAID IN FULL online" : "TO COLLECT on the day"}`);
+  lines.push(`  Travel: added at confirmation, not in the figure above`);
+  lines.push(`  On site: about ${Math.round((priced.serviceDurationMin ?? 0) / 60 * 10) / 10} hours`);
+
+  lines.push("");
+  lines.push("ON ARRIVAL");
+  lines.push(`  Outdoor tap: ${ACCESS[extras.water] ?? "not answered"}`);
+  lines.push(`  Outdoor outlet: ${ACCESS[extras.power] ?? "not answered"}`);
+  if (extras.parking) lines.push(`  Parking: ${extras.parking}`);
+  if (extras.notes) lines.push(`  Notes: ${extras.notes}`);
+  if (extras.locationNote) lines.push(`  ** NEEDS A LOCATION SORTED ** ${extras.locationNote}`);
+
+  return lines.join("\n");
+}
+
+async function writeCalendar({ contact, cart, priced, extras, payInFull, key }) {
+  if (!gcalConfigured()) return { ok: false, reason: "unconfigured" };
+  if (!cart.slot) return { ok: false, reason: "no_slot" };
+
+  const names = (cart.vehicles ?? [])
+    .flatMap((v) => (v.packageIds ?? []).map((id) => findPackage(id)?.name))
+    .filter(Boolean);
+
+  return createBookingEvent({
+    summary: `${names.join(" + ") || "Detail"}, ${contact.name}`,
+    description: eventDescription({ contact, cart, priced, extras, payInFull }),
+    location: [cart.address?.line1, cart.address?.city, cart.address?.region, cart.address?.zip]
+      .filter(Boolean)
+      .join(", "),
+    startMs: cart.slot,
+    endMs: cart.slot + (priced.serviceDurationMin ?? 120) * 60_000,
+    key,
+  });
+}
+
 async function send(apiKey, from, to, { subject, html }, replyTo) {
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
@@ -159,7 +255,6 @@ export async function handler(event) {
   if (limited(event, "send-confirmation", 6)) return json(429, { error: "slow_down" });
 
   const apiKey = process.env.RESEND_API_KEY;
-  if (!apiKey) return json(200, { sent: false, reason: "unconfigured" });
 
   const from = process.env.RESEND_FROM || "513 Auto Clean <onboarding@resend.dev>";
   const owner = process.env.OWNER_EMAIL || "elijahthackerllc@gmail.com";
@@ -183,10 +278,37 @@ export async function handler(event) {
   const when = whenLabel(cart.slot);
   const ctx = { contact, when, priced, kind, cart };
 
+  const rawCart = payload?.cart ?? {};
+  const rawAccess = rawCart.access ?? {};
+  const extras = {
+    water: text(rawAccess.water, 10),
+    power: text(rawAccess.power, 10),
+    parking: text(rawAccess.parking, 300),
+    notes: text(rawCart.notes ?? payload?.notes, 500),
+    locationNote: text(rawCart.locationNote, 300),
+  };
+
+  // THE CALENDAR FIRST. It is the half that stops the slot being sold again,
+  // and it is the half nobody can reconstruct from memory at 11pm.
+  const calendar =
+    kind === "inquiry"
+      ? { ok: false, reason: "inquiry" }
+      : await writeCalendar({
+          contact, cart, priced, extras, payInFull,
+          key: text(payload?.idempotencyKey, 120),
+        }).catch((err) => {
+          console.error("calendar write", err);
+          return { ok: false, reason: "threw" };
+        });
+
+  if (!apiKey) {
+    return json(200, { sent: false, reason: "unconfigured", calendar });
+  }
+
   // Elijah's copy first. If only one of the two can get through, it has to be
   // the one that means the job happens.
   const toOwner = await send(apiKey, from, owner, ownerEmail(ctx), contact.email);
   const toCustomer = contact.email ? await send(apiKey, from, contact.email, customerEmail(ctx)) : false;
 
-  return json(200, { sent: toOwner || toCustomer, owner: toOwner, customer: toCustomer });
+  return json(200, { sent: toOwner || toCustomer, owner: toOwner, customer: toCustomer, calendar });
 }

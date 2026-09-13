@@ -112,7 +112,10 @@ async function fetchOne(
     // Expands recurrence server side, so we never implement RRULE ourselves.
     `&singleEvents=true&orderBy=startTime&maxResults=2500`;
 
-  const res = await fetch(url);
+  // NEVER from the browser cache. Availability is the one thing on this site
+  // where a thirty second old answer is a double booking, and the customer
+  // reloading the step has to be asking Google again, not asking memory.
+  const res = await fetch(url, { cache: "no-store" });
   if (!res.ok) {
     throw new Error(`Google Calendar ${res.status}: ${await res.text()}`);
   }
