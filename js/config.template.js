@@ -16,8 +16,22 @@
  * standard time slots, a stored review snapshot, no payment SDK.
  */
 window.AC_CONFIG = {
-    // Not a key. Safe in the repo, and overridable per deploy anyway.
+    /*
+     * The calendars the scheduler reads. Ids, not keys, so they are safe here.
+     *
+     * Every one is read the same way and the results are pooled: events
+     * titled OPEN are bookable hours, everything else is a commitment that
+     * blocks. So it does not matter which calendar a block or a job lives
+     * on, and splitting them later changes nothing.
+     *
+     * To keep something on one of these calendars WITHOUT closing the time,
+     * mark it Free in Google Calendar rather than Busy.
+     */
     googleCalendarId: '{{GOOGLE_CALENDAR_ID}}',
+    googleExtraCalendarIds: [
+        // 513 Availability
+        '9f26a370ac8629b6df3f7f4e8181aa1086f3acb2b47866e01a1b868cd4ab8161@group.calendar.google.com'
+    ],
 
     /*
      * TWO Google keys, not one, because they cost different amounts.
