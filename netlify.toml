@@ -61,6 +61,11 @@
   to = "/.netlify/functions/paypal-order"
   status = 200
 
+[[redirects]]
+  from = "/api/send-confirmation"
+  to = "/.netlify/functions/send-confirmation"
+  status = 200
+
 # ---------------------------------------------------------------------------
 # Headers
 # ---------------------------------------------------------------------------

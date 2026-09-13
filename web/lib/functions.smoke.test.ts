@@ -12,7 +12,9 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { resetRateLimits } from "../../netlify/functions/_ratelimit.mjs";
 
-const FUNCS = ["travel", "create-payment", "paypal-order", "personal-busy", "reviews"] as const;
+const FUNCS = [
+  "travel", "create-payment", "paypal-order", "personal-busy", "reviews", "send-confirmation",
+] as const;
 
 const ENV: Record<string, string> = {
   GOOGLE_MAPS_SERVER_KEY: "fake-key",
@@ -22,6 +24,8 @@ const ENV: Record<string, string> = {
   PAYPAL_CLIENT_SECRET: "fake",
   GOOGLE_PLACE_ID: "fake",
   PERSONAL_CALENDAR_ICS: "https://127.0.0.1:9/nothing.ics",
+  RESEND_API_KEY: "re_fake",
+  OWNER_EMAIL: "owner@example.com",
 };
 const saved: Record<string, string | undefined> = {};
 
@@ -120,6 +124,45 @@ describe("every function survives hostile input with its key present", () => {
     expect(r.statusCode).toBe(400);
     expect(JSON.parse(r.body).error).toBe("mandate_required");
   });
+
+  it("send-confirmation: no key is not a failure", async () => {
+    // The rule the whole confirm screen was rebuilt around: a missing key is
+    // a feature that is off, never an error a customer hears about. The
+    // booking already reached Elijah by another path.
+    const had = process.env.RESEND_API_KEY;
+    delete process.env.RESEND_API_KEY;
+    try {
+      const { handler } = await load("send-confirmation");
+      const r = await handler({ httpMethod: "POST", headers: {}, body: "{}" });
+      expect(r.statusCode).toBe(200);
+      expect(JSON.parse(r.body)).toMatchObject({ sent: false, reason: "unconfigured" });
+    } finally {
+      process.env.RESEND_API_KEY = had;
+    }
+  });
+
+  it("send-confirmation: cannot be told what to charge or what to say", async () => {
+    // The receipt is repriced here, so a browser claiming a $1 total gets an
+    // email with the real one. And every field lands in the template escaped,
+    // so a name cannot carry markup into an inbox.
+    const { handler } = await load("send-confirmation");
+    const r = await handler({
+      httpMethod: "POST",
+      headers: {},
+      body: JSON.stringify({
+        cart: {
+          vehicles: [{ sizeId: "small", packageIds: ["basic-interior"] }],
+          address: { line1: "1 Main St", city: "Cincinnati", region: "OH", zip: "45220" },
+          totalCents: 100,
+        },
+        contact: { name: "<script>alert(1)</script>", phone: "5135551212" },
+        mode: "card_only",
+      }),
+    });
+    // A fake key means Resend refuses it, which is reported, not thrown.
+    expect(r.statusCode).toBe(200);
+    expect(JSON.parse(r.body).sent).toBe(false);
+  }, 30_000);
 
   it("paypal-order: refuses an order id that is not an order id", async () => {
     const { handler } = await load("paypal-order");
