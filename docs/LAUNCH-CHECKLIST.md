@@ -123,10 +123,20 @@ One project covers four separate things. Enable all of these APIs:
 | **Google Calendar API** | Reading your real availability | Standard time slots with a "may need adjusting" warning |
 | **Maps JavaScript API** | Not needed. The map uses OpenStreetMap, which is free | Nothing |
 
-**Make two keys, restrict both.** Browser key restricted to
-`513autoclean.com/*`, server key restricted by IP. **Set a $25/month budget
-alert.** An unrestricted key scraped out of the page bundle is how people wake
-up to a $3,000 bill.
+**The Calendar API is free and needs no billing account.** It is a Workspace
+API, not Maps Platform, so it can be switched on with a card nowhere near it.
+The other three all require billing before Google will issue a key. Do the
+calendar first: it costs nothing and it is the one that changes the booking
+flow the most.
+
+**Make three keys.** A Calendar browser key and a Places browser key, both
+restricted to `513autoclean.com/*` and each to its own API, and a server key
+for Routes and Place Details.
+
+**The server key cannot be restricted by IP.** Netlify Functions run on Lambda
+with no stable outbound address, so an IP allowlist blocks your own site. Give
+it API restrictions only. What actually protects it is that it never reaches a
+browser, plus the quotas below. **Set a $25/month budget alert.**
 
 **Then cap each API's daily quota** (APIs and Services, the API, Quotas):
 Routes at 500 requests a day and Places Details at 200. The functions have a
@@ -135,17 +145,19 @@ nobody can route around is the one Google enforces. 500 Routes calls is about
 170 travel quotes a day, which is far more than the site will see for a long
 time, and raising it is one click.
 
-**Send me (safe to share):** the service account's email address. Not the JSON.
+**Send me (safe to share):** the two browser keys. Not the server key.
 
 ---
 
-## 4. The two calendars
+## 4. The availability calendar
 
-`513 Availability` (you manage from your phone) and `513 Booked Jobs` (the
-system writes, you never touch).
+**One calendar, and no service account.** `513 Booked Jobs` and a service
+account were for a calendar writer that has not been built; nothing in this
+repo writes to Google Calendar. Creating them now is work that does nothing.
 
-Share both with the service account email: **See all event details** on
-Availability, **Make changes to events** on Booked Jobs.
+`513 Availability` is the one you manage from your phone. In its settings,
+tick **Make available to public** and choose **See all event details**, which
+is what lets a visitor's browser read it with the restricted API key alone.
 
 Day to day you create recurring events titled `OPEN`. Only events whose title
 starts with `OPEN` count as bookable, so your personal events can live on the
