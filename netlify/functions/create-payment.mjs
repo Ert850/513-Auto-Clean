@@ -194,6 +194,21 @@ export async function handler(event) {
     });
   } catch (err) {
     console.error("create-payment", err?.type, err?.code, err?.message);
-    return json(502, { error: "stripe_error", message: safeMessage(err) });
+    /*
+     * The CODE comes back, the message does not.
+     *
+     * Stripe's error codes name the configuration problem in one word:
+     * account_invalid for an account that has not finished verification,
+     * api_key_expired for a rotated key, testmode_charges_only for a live
+     * key on an account that cannot yet take live money. None of them is a
+     * secret, none of them is shown to a customer, and without them a
+     * failure here is indistinguishable from any other failure here, which
+     * cost an afternoon of guessing.
+     */
+    return json(502, {
+      error: "stripe_error",
+      code: err?.code ?? err?.type ?? null,
+      message: safeMessage(err),
+    });
   }
 }

@@ -95,6 +95,9 @@
       // them. It skips the three steps that only make sense once you know
       // what you want.
       advice: false,
+      // Set when the payment form could not load, whatever the reason. The
+      // card section removes itself and stops being a requirement.
+      cardUnavailable: false,
       sending: false,
       done: false,
       browse: false,
@@ -2483,6 +2486,54 @@
    * outlined box, because at that point it is the one thing on the screen
    * worth noticing.
    */
+  /**
+   * Every extra still available on this vehicle, with the words that sell it.
+   *
+   * The confirm screen used to offer these as a bare <select> of name and
+   * price. That is fine for somebody who already knows what Ozone Odor Reset
+   * is and useless for everybody else, which is most people: the extras STEP
+   * gives each one a description and a "How it works", and the last screen
+   * threw all of it away at exactly the moment somebody is deciding whether
+   * to spend another fifty dollars.
+   */
+  function extraCards(v, index) {
+    var ctx = { packageIds: v.packageIds, addonTiers: v.addons.map(function (a) { return { addonId: a.addonId, tierId: a.tierId }; }) };
+    var scopes = v.intent === 'both' ? ['interior', 'exterior'] : [v.intent];
+    var out = [];
+
+    scopes.forEach(function (scope) {
+      P.addonsFor(scope).forEach(function (a) {
+        if (!P.isSelectable(a)) return;
+        if (P.addonBlockedReason(a, ctx)) return;
+        if (v.addons.some(function (x) { return x.addonId === a.id; })) return;
+
+        var buys = a.tiers.filter(function (t) { return t.priceCents !== null; });
+        if (!buys.length) return;
+
+        out.push(
+          '<div class="bk-xcard">' +
+            '<div class="bk-xcard-h"><b>' + esc(a.name) + '</b>' +
+              (a.description ? '<span>' + esc(a.description) + '</span>' : '') +
+            '</div>' +
+            (a.note
+              ? '<details class="bk-how"><summary>How it works</summary><p>' + esc(a.note) + '</p></details>'
+              : '') +
+            '<div class="bk-xcard-buy">' +
+              buys.map(function (t) {
+                return '<button type="button" class="bk-xadd" data-extrabuy="' +
+                  index + '|' + esc(a.id) + '|' + esc(t.id) + '">' +
+                  (buys.length > 1 ? esc(t.label) + ', ' : 'Add ') +
+                  '+' + $(t.priceCents) + (t.asterisk ? '*' : '') +
+                  '</button>';
+              }).join('') +
+            '</div>' +
+          '</div>',
+        );
+      });
+    });
+    return out;
+  }
+
   function extraOptions(v) {
     var ctx = { packageIds: v.packageIds, addonTiers: v.addons.map(function (a) { return { addonId: a.addonId, tierId: a.tierId }; }) };
     var scopes = v.intent === 'both' ? ['interior', 'exterior'] : [v.intent];
@@ -2510,7 +2561,6 @@
   }
 
   function extrasForVehicle(v, index, showLabel) {
-    var opts = extraOptions(v);
     var chosen = v.addons.map(function (a) {
       var def = P.findAddon(a.addonId);
       if (!def) return '';
@@ -2521,14 +2571,16 @@
         '<button type="button" class="bk-extra-x" data-extrarm="' + index + '|' + esc(a.addonId) + '">Remove</button></li>';
     }).filter(Boolean).join('');
 
-    var picker = opts.length
-      ? '<label class="bk-extra-add"><span>Add something</span>' +
-          '<select data-extraadd="' + index + '">' +
-            '<option value="">Choose an extra...</option>' +
-            opts.map(function (o) {
-              return '<option value="' + esc(o.value) + '">' + esc(o.label) + '</option>';
-            }).join('') +
-          '</select></label>'
+    var cards = extraCards(v, index);
+    // Open when nothing has been added, because that is the moment the list
+    // is worth reading. Closed once something is on, so the last screen does
+    // not grow by a page every time somebody adds a fifty dollar extra.
+    var picker = cards.length
+      ? '<details class="bk-xpick"' + (v.addons.length ? '' : ' open') + '>' +
+          '<summary>' + (v.addons.length ? 'Add something else' : 'See what we can add') +
+            ' <i>' + cards.length + ' available</i></summary>' +
+          '<div class="bk-xcards">' + cards.join('') + '</div>' +
+        '</details>'
       : '<p class="bk-hint">Everything we can add to this one is already on it.</p>';
 
     return (showLabel ? '<h5 class="bk-extra-veh">' + esc(vehicleName(v, index)) + '</h5>' : '') +
@@ -2934,7 +2986,7 @@
     // Nothing to authorize: either there is nothing priced yet, or there is
     // no processor to hold a card. Insisting on a tick for a box that is not
     // on the screen is a dead end with no way past it.
-    if (state.advice || stripeMode() === 'off') return null;
+    if (state.advice || stripeMode() === 'off' || state.cardUnavailable) return null;
     if (!state.mandate && !(state.payInFull && state.payMethod === 'paypal')) {
       return needs('Please tick the card authorization to continue.', '#bkMandate');
     }
@@ -3065,13 +3117,35 @@
     return _scripts[src];
   }
 
+  /**
+   * The card form cannot load, so the whole card section goes.
+   *
+   * It used to replace only the mount, which left a heading saying "Card on
+   * file", a paragraph explaining what the card would be used for, and a
+   * checkbox authorizing it, sitting directly above a line saying no card is
+   * needed. A screen that contradicts itself in three sentences, and the
+   * checkbox above was still required to continue, so it contradicted itself
+   * in a way you could not get past.
+   *
+   * `cardUnavailable` is what tells vPay to stop asking for a tick that is no
+   * longer on the screen.
+   */
   function noCardMessage(mount) {
-    mount.innerHTML = '<p class="bk-hint">No card needed today. ' +
-      'Your booking goes through as normal, and if anything is due up front we will send you a ' +
-      'secure link for it.</p>';
+    state.cardUnavailable = true;
+    var html = '<h4>Nothing to pay today</h4>' +
+      '<p class="bk-hint">We do not take card details on this site yet, so there is nothing to ' +
+      'enter here. Send your booking and we will confirm it, usually within a few hours. You pay ' +
+      'when the work is done, by ' + IN_PERSON + '. If you would rather settle it beforehand, just ' +
+      'ask and we will send you a secure link.</p>';
+    var box = mount.closest ? mount.closest('.bk-cardbox') : null;
+    if (box) box.innerHTML = html;
+    else mount.innerHTML = html;
   }
 
   function mountStripe(mount) {
+    // A fresh attempt, so a problem that has since been fixed is not
+    // remembered for the life of the page.
+    state.cardUnavailable = false;
     if (!CFG.stripePublishableKey) return noCardMessage(mount);
 
     if (!window.Stripe) {
@@ -3288,7 +3362,7 @@
   function onClick(e) {
     var t = e.target.closest(
       '[data-size],[data-intent],[data-pkg],[data-addon],[data-clear],[data-win],[data-slot],' +
-      '[data-consent],[data-pay],[data-delveh],[data-browsepick],[data-max],[data-sort],' +
+      '[data-consent],[data-pay],[data-delveh],[data-browsepick],[data-max],[data-sort],[data-extrabuy],' +
       '[data-kind],[data-paymethod],[data-corr],[data-coating],[data-garage],[data-step],' +
       '[data-prefday],[data-prefpart],[data-interest],[data-band],[data-access],[data-extrarm],' +
       '#bkAddVeh,#bkMoreDays,#bkJumpClear,#bkNext,#bkBack,#bkClose,#bkScrim,#bkBrowse,#bkBrowseBack,' +
@@ -3405,6 +3479,17 @@
       if (rmVeh) {
         rmVeh.addons = rmVeh.addons.filter(function (a) { return a.addonId !== rm[1]; });
         pruneAddons(rmVeh);
+      }
+      return render();
+    }
+
+    if (t.dataset.extrabuy) {
+      var buy = t.dataset.extrabuy.split('|');
+      var buyVeh = state.vehicles[Number(buy[0])];
+      if (buyVeh && buy[1] && buy[2]) {
+        buyVeh.addons = buyVeh.addons.filter(function (a) { return a.addonId !== buy[1]; });
+        buyVeh.addons.push({ addonId: buy[1], tierId: buy[2] });
+        pruneAddons(buyVeh);
       }
       return render();
     }

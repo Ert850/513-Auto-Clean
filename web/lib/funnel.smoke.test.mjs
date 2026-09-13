@@ -292,7 +292,10 @@ describe("the booking funnel opens", () => {
 
     // Add-ons are editable from here, so nobody has to walk five screens
     // back to change one while looking at the total.
-    expect(body, "the extras picker should be on the confirm step").toContain("data-extraadd");
+    expect(body, "the extras picker should be on the confirm step").toContain("data-extrabuy");
+    // And each one explains itself, which a dropdown of names could not.
+    expect(body, "an extra should carry its description").toContain("bk-xcard-h");
+    expect(body, "and its How it works").toContain("How it works");
     // This quote has no add-ons on it, so the picker gets the dark treatment.
     expect(body, "with nothing added it should be the dark panel").toContain("bk-extras empty");
   });
@@ -473,7 +476,8 @@ describe("the booking funnel opens", () => {
     );
     const body = loadFunnel(url.slice(url.indexOf("#"))).lookup("bkBody").innerHTML;
 
-    const options = [...body.matchAll(/<option value="([^"|]+)\|([^"]+)"/g)].map((m) => m[1]);
+    // data-extrabuy is "vehicleIndex|addonId|tierId".
+    const options = [...body.matchAll(/data-extrabuy="\d+\|([^"|]+)\|([^"]+)"/g)].map((m) => m[1]);
     expect(options.length, "the picker should offer something").toBeGreaterThan(2);
 
     // Everything offered has to be bookable. Scratch work and coatings are
