@@ -47,7 +47,11 @@ export const CAPABILITIES: Capability[] = [
   {
     id: "liveCalendar",
     what: "Reading real availability, so a chosen time is genuinely open",
-    live: false,
+    // Live with the key in js/config.js. Moves WITH it: the browser now
+    // fetches the availability calendar directly, so Google Calendar has to
+    // appear in the privacy policy's list of who sees what, and the funnel
+    // stops calling its own time slots standard guesses.
+    live: true,
     blockedBy: "Google Calendar API key and a public availability calendar",
   },
   {

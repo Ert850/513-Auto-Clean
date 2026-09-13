@@ -20,8 +20,13 @@ export const LEGAL = {
   // a card held on file. Somebody agreeing today is agreeing to different
   // words than 2026-09-11 carried, and the consent record has to point at
   // the right document.
+  // These move independently, because they change for different reasons.
+  // Switching the calendar on added a processor to the privacy policy and
+  // left the terms word for word identical, so only the privacy date moved.
+  // Bumping both would point every consent record at a "new" document that
+  // says exactly what the old one said.
   termsEffective: "2026-09-12",
-  privacyEffective: "2026-09-12",
+  privacyEffective: "2026-09-13",
 } as const;
 
 export function longDate(iso: string): string {
