@@ -65,6 +65,23 @@ export interface SlotRequest {
    */
   ignoreReturnAfterMin?: number;
   /**
+   * Local start minute at and before which the OUTBOUND drive stops counting.
+   *
+   * The mirror of ignoreReturnAfterMin, and it was missing. An OPEN block
+   * from 6am did not offer 6am: the hour of drive time had to fit INSIDE the
+   * block, so the earliest bookable start was 7am and the first hour of every
+   * working day was unsellable.
+   *
+   * That is the wrong model for the first job. Nobody is waiting on the drive
+   * out either: Elijah leaves home earlier and arrives at six. The calendar
+   * says when he can be WORKING, not when he has to be awake.
+   *
+   * Deliberately capped by the caller at a drive short enough to absorb
+   * before the day starts. An hour out to a first job is a normal morning; a
+   * two hour drive is a different decision and should still show its cost.
+   */
+  ignoreOutboundBeforeMin?: number;
+  /**
    * Restrict to these weekdays, 0 Sun to 6 Sat. Correction work uses it to
    * offer weekend starts only, since it runs across several days.
    */
@@ -108,6 +125,12 @@ export const DEFAULT_BOOKING_WINDOW: BookingWindow = {
 
 /** From 6pm on, a booking is the last of the day. */
 export const IGNORE_RETURN_AFTER_MIN = 18 * 60;
+
+/**
+ * Start at or before this and the drive out is treated as happening before
+ * the day, not inside it. 10am, which covers the whole early band.
+ */
+export const IGNORE_OUTBOUND_BEFORE_MIN = 10 * 60;
 
 /**
  * How much clearance a booking needs either side of the work itself.
@@ -178,18 +201,45 @@ export function computeSlots(req: SlotRequest): number[] {
   if (commitmentMs <= 0) return [];
 
   const free = subtractIntervals(req.openBlocks, req.busy);
+  // Where the working day actually opens, as opposed to where a gap happens
+  // to open after a job. Only the former lets the drive out sit outside it.
+  const dayOpens = new Set(req.openBlocks.map((b) => b.start));
   const step = Math.max(1, req.granularityMin) * MIN;
   const out: number[] = [];
   const wanted = req.preferredStartsMin;
   const win = req.bookingWindow ?? DEFAULT_BOOKING_WINDOW;
 
   for (const f of free) {
-    // Earliest the CUSTOMER-FACING start can be: the drive out has to fit
-    // inside the free interval ahead of it.
-    let t = ceilTo(Math.max(f.start + req.travelBeforeMin * MIN, req.notBefore), step);
+    /**
+     * Is `start` early enough that the drive out happens before the day?
+     *
+     * Only at the very front of a free interval. A gap that opens at 1pm
+     * because a morning job ended is not "the start of the day", and the
+     * drive to it genuinely does have to fit.
+     */
+    const outboundFree = (start: number): boolean =>
+      req.ignoreOutboundBeforeMin !== undefined &&
+      localMinutesOfDay(start, req.timeZone) <= req.ignoreOutboundBeforeMin &&
+      // This free interval has to BEGIN where availability begins. A gap that
+      // opens at 9am because a job finished is not the start of the day, and
+      // the drive to the next customer genuinely does have to fit in it:
+      // without this check, two jobs could be booked back to back with no
+      // time to drive between them.
+      dayOpens.has(f.start) &&
+      // And only for a start the drive could not have fitted in front of.
+      // 7am with an hour's drive fits inside a 6am opening on its own.
+      start - f.start < req.travelBeforeMin * MIN;
+
+    // Earliest the CUSTOMER-FACING start can be. The drive out normally has to
+    // fit inside the free interval ahead of it; at the very start of the day
+    // it does not, because it happened before the day began.
+    const earliest = outboundFree(ceilTo(Math.max(f.start, req.notBefore), step))
+      ? Math.max(f.start, req.notBefore)
+      : Math.max(f.start + req.travelBeforeMin * MIN, req.notBefore);
+    let t = ceilTo(earliest, step);
 
     while (true) {
-      const commitmentStart = t - req.travelBeforeMin * MIN;
+      const commitmentStart = outboundFree(t) ? t : t - req.travelBeforeMin * MIN;
       // Last job of the day: nobody is waiting on the drive home, so it does
       // not need to fit inside the availability block.
       const returnMin =
@@ -412,4 +462,124 @@ export function localMinutesOfDay(ms: number, timeZone = "America/New_York"): nu
   const h = Number(parts.find((p) => p.type === "hour")?.value ?? "0");
   const m = Number(parts.find((p) => p.type === "minute")?.value ?? "0");
   return (h % 24) * 60 + m;
+}
+
+/* ------------------------------------------------------------------ *
+ * Recommending a start, rather than offering forty of them
+ * ------------------------------------------------------------------ */
+
+/**
+ * The start times a day is built around.
+ *
+ * A customer picking freely from every half hour picks the one that suits
+ * them and leaves the day in pieces: a 1pm start makes both 10am and 4pm
+ * impossible, so one booking costs two. Offering two good starts, with
+ * everything else one tap further away, keeps most days packable without
+ * ever refusing somebody who genuinely needs 11:30.
+ *
+ * Weekends get three, closer together, because they are the days worth
+ * filling hardest.
+ */
+export const DAY_ANCHORS_MIN = {
+  weekday: [10 * 60, 16 * 60],
+  // Three on a weekend, because those are the days worth filling hardest.
+  // All inside standard hours: recommending 8am would be steering somebody
+  // into a 20% early-start premium they never asked for, which is the one
+  // thing a recommendation must never do.
+  weekend: [10 * 60, 13 * 60, 16 * 60],
+} as const;
+
+export interface Recommendation {
+  ms: number;
+  /** Why this one, in the customer's terms. */
+  why: string;
+}
+
+/**
+ * Pick the few starts worth putting in front of somebody.
+ *
+ * In order of preference:
+ *
+ *   1. STRAIGHT AFTER AN EXISTING JOB, travel included. This is the one that
+ *      actually condenses a day: a booking that begins when the last one ends
+ *      costs no extra dead time at all.
+ *   2. THE DAY'S ANCHORS, 10am and 4pm on a weekday. Two jobs, no gap worth
+ *      selling in between.
+ *   3. THE EARLIEST THING AVAILABLE, so a day with an awkward shape still
+ *      offers something rather than nothing.
+ *
+ * Returns at most `limit`, in time order, deduplicated. Every one is taken
+ * from `starts`, so nothing is ever recommended that cannot be booked.
+ */
+export function recommendStarts(req: {
+  starts: number[];
+  busy?: Interval[];
+  /** Minutes to allow between the end of one job and the start of the next. */
+  travelGapMin: number;
+  limit?: number;
+  timeZone?: string;
+}): Recommendation[] {
+  const all = [...new Set(req.starts)].sort((a, b) => a - b);
+  if (!all.length) return [];
+
+  /*
+   * NEVER RECOMMEND A PREMIUM START while a standard one exists.
+   *
+   * Early mornings and late evenings carry 20%. They are genuinely bookable
+   * and stay one tap away under "See additional times", which is what somebody
+   * who actually wants 7am is looking for. But putting one at the top of the
+   * screen, labelled as our recommendation, is steering a customer into a
+   * surcharge to suit our day. That is the one thing this must not do.
+   *
+   * The rush fee is different and is not filtered here: it applies to every
+   * hour of a near-term day, so no choice within that day avoids it.
+   */
+  const standard = all.filter((ms) => !bandOf(localMinutesOfDay(ms, req.timeZone))?.premium);
+  const starts = standard.length ? standard : all;
+
+  const limit = req.limit ?? 2;
+  const gapMs = Math.max(0, req.travelGapMin) * MIN;
+  const scored = new Map<number, { rank: number; why: string }>();
+
+  const offer = (ms: number | undefined, rank: number, why: string) => {
+    if (ms === undefined) return;
+    const seen = scored.get(ms);
+    if (!seen || rank < seen.rank) scored.set(ms, { rank, why });
+  };
+
+  /** The start closest to a target, within half an hour of it. */
+  const nearest = (target: number): number | undefined => {
+    let best: number | undefined;
+    let bestGap = Infinity;
+    for (const s of starts) {
+      const d = Math.abs(s - target);
+      if (d < bestGap && d <= 30 * MIN) { best = s; bestGap = d; }
+    }
+    return best;
+  };
+
+  // 1. Back to back with something already booked.
+  for (const b of req.busy ?? []) {
+    if (b.end <= starts[0]! - 12 * 60 * MIN || b.end >= starts[starts.length - 1]! + 12 * 60 * MIN) {
+      continue;
+    }
+    offer(nearest(b.end + gapMs), 0, "Fits neatly into this day");
+  }
+
+  // 2. The anchors for this weekday.
+  const day = new Date(starts[0]!).getDay();
+  const anchors = day === 0 || day === 6 ? DAY_ANCHORS_MIN.weekend : DAY_ANCHORS_MIN.weekday;
+  for (const mins of anchors) {
+    const hit = starts.find((s) => localMinutesOfDay(s, req.timeZone) === mins);
+    offer(hit, 1, "Our usual start time");
+  }
+
+  // 3. Something, rather than nothing.
+  offer(starts[0], 2, "Earliest we can be there");
+
+  return [...scored.entries()]
+    .sort((a, b) => a[1].rank - b[1].rank || a[0] - b[0])
+    .slice(0, limit)
+    .map(([ms, v]) => ({ ms, why: v.why }))
+    .sort((a, b) => a.ms - b.ms);
 }
