@@ -87,7 +87,10 @@ export const CAPABILITIES: Capability[] = [
   {
     id: "placesAutocomplete",
     what: "Address suggestions as the customer types, from Google Places",
-    live: false,
+    // Live with googlePlacesApiKey. What the customer types into the address
+    // box now goes to Google as they type it, which is exactly the sort of
+    // thing a privacy policy exists to say out loud.
+    live: true,
     blockedBy: "Google browser key in js/config.js",
   },
   {
