@@ -1243,6 +1243,7 @@
   function blankTravel() {
     return {
       minutes: null,   // averaged, the figure the fee is built on
+      miles: null,     // one way, as driven, not as the crow flies
       out: null,       // the drive there, leaving in time to arrive
       back: null,      // the drive home, leaving when the job ends
       heavy: false,    // measurably worse than this area's normal
@@ -1313,6 +1314,7 @@
             t.tooFar = true;
           } else {
             t.minutes = d.minutes;
+            t.miles = typeof d.miles === 'number' ? d.miles : null;
             t.out = d.outboundMin != null ? d.outboundMin : d.minutes;
             t.back = d.returnMin != null ? d.returnMin : d.minutes;
             t.heavy = Boolean(d.heavyTraffic);
@@ -1343,6 +1345,25 @@
     if (box) box.outerHTML = travelLine();
   }
 
+  /**
+   * The drive, as a person would say it: distance and time.
+   *
+   * Miles round UP to the whole mile, always. 14.1 is "15 miles". Rounding a
+   * distance down flatters the quote and invites the reply "that is not what
+   * my satnav said", which is a conversation worth a few tenths of a mile to
+   * avoid. Minutes are already whole and are the honest average of the two
+   * legs, so they are left alone.
+   */
+  function driveSummary(t, mins) {
+    var parts = [];
+    if (typeof t.miles === 'number' && t.miles > 0) {
+      var mi = Math.ceil(t.miles);
+      parts.push(mi + ' mile' + (mi === 1 ? '' : 's'));
+    }
+    if (mins) parts.push(mins + ' minute' + (mins === 1 ? '' : 's'));
+    return parts.join(', ');
+  }
+
   function travelLine() {
     var hit = state.address.zip ? P.lookupZip(state.address.zip) : null;
     if (!hit) {
@@ -1369,7 +1390,9 @@
     if (fee === 0) {
       return '<div class="bk-travel free bk-travel-slot"><b>No travel fee</b>' +
         '<span>' + esc(measured ? 'Your address is' : hit.area + ' is') +
-        ' inside our free radius.</span></div>';
+        ' inside our free radius' +
+        (measured && driveSummary(t, mins) ? ', ' + driveSummary(t, mins) + ' each way' : '') +
+        '.</span></div>';
     }
 
     if (measured) {
@@ -1391,7 +1414,7 @@
         : '';
 
       return '<div class="bk-travel exact bk-travel-slot"><b>' + $(fee) + ' travel</b>' +
-        '<span>' + mins + ' minutes each way from us, measured from your address' +
+        '<span>' + driveSummary(t, mins) + ' each way from us, measured from your address' +
         (state.slot ? ' for the time you picked' : '') + ', and already in your total.' +
         legs + ' This is the figure you pay.</span>' + why + '</div>';
     }
@@ -1831,6 +1854,10 @@
    * offering it.
    */
   function paintMultiDay(box, win, from, to, dur, plan) {
+    // Correction work has its own weekend-morning rules. This used to read a
+    // `corr` from loadSlots, which is a DIFFERENT FUNCTION: the reference
+    // resolved to nothing and threw on every paint.
+    var corr = hasCorrection();
     var found = P.findMultiDayStarts({
       plan: plan,
       openBlocks: win.open,
@@ -1988,6 +2015,26 @@
     /* `to` is used at the foot of this function to decide whether there is
        anything further to show. */
     var drive = travelAllowanceMin();
+
+    /*
+     * THE BUG THAT EMPTIED THE TIME STEP.
+     *
+     * `corr` was read here and twice more below, and it was never declared in
+     * this function. It belongs to loadSlots, which CALLS this one rather
+     * than containing it, so the name resolved to nothing and every single
+     * paint threw a ReferenceError before drawing a slot.
+     *
+     * The throw was caught one frame up and turned into the "tell us when
+     * suits" panel, which is a real screen that looks entirely intentional.
+     * So the calendar was read correctly, 336 valid starts were computed, and
+     * the customer was shown a form asking what day might work. It also made
+     * every booking an inquiry, which is why "pay now and save 5%" had
+     * vanished: that option is correctly hidden when no time has been agreed.
+     *
+     * Two symptoms, one undeclared variable, and no test in 357 could see it
+     * because none of them rendered this step.
+     */
+    var corr = hasCorrection();
 
     // Past a day's work this stops being a slot search and becomes a plan.
     if (!P.fitsOneDay(dur, P.LONGEST_DAY, drive, drive)) {
@@ -3200,7 +3247,21 @@
         '</td><td>' + $(l.amountCents) + '</td></tr>';
     }).join('');
 
-    var travel = '<tr class="pending"><td>Travel <i>from your address</i></td><td>added at confirmation</td></tr>';
+    /*
+     * Travel, with the drive behind it.
+     *
+     * "added at confirmation" beside a blank is the line a customer squints
+     * at. Once the drive has been measured there is a real distance and a
+     * real time to show, and showing them is what makes the fee look like
+     * arithmetic rather than a number we picked.
+     */
+    var tr = state.travel;
+    var trMins = tr.source === 'routes' && tr.minutes !== null ? tr.minutes : null;
+    var trSummary = trMins !== null ? driveSummary(tr, trMins) : '';
+    var travel = trSummary
+      ? '<tr class="pending"><td>Travel <i>' + esc(trSummary) + ' each way</i></td>' +
+        '<td>' + $(P.mileageFeeCents(trMins, RULES.mileage)) + '</td></tr>'
+      : '<tr class="pending"><td>Travel <i>from your address</i></td><td>added at confirmation</td></tr>';
     var tax = quote.taxIsEstimate ? '<tr class="pending"><td>Sales tax</td><td>added at confirmation</td></tr>' : '';
     var when = state.slot
       ? '<tr class="when"><td>Your time</td><td>' +
