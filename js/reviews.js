@@ -358,8 +358,39 @@
     });
   }
 
+  /**
+   * The headline figure everywhere it appears outside the reviews grid.
+   *
+   * The hero badge and the block at the foot of the section both carry a
+   * rating and a count. The build stamps them from data/reviews.json so the
+   * page reads correctly before any of this runs and for anyone without
+   * JavaScript; this rewrites them from whatever Google last said, so the
+   * day the 33rd review lands the number moves on its own.
+   *
+   * Deliberately not inside renderGrid: that returns early when there is
+   * nothing worth drawing, and the count is still true on a day when no
+   * review has text.
+   */
+  function syncBadges(rating, total) {
+    var n = Number(total);
+    var r = Number(rating);
+    if (!Number.isFinite(n) || n <= 0 || !Number.isFinite(r) || r <= 0) return;
+    var r1 = r.toFixed(1);
+    var word = n === 1 ? ' review' : ' reviews';
+
+    var hero = document.querySelector('#google-badge .g-text');
+    if (hero) hero.textContent = 'Rated ' + r1 + ' from ' + n + word + ' on Google & Yelp';
+
+    var num = document.querySelector('#revFallback .rf-score .num');
+    if (num) num.textContent = r1;
+
+    var foot = document.querySelector('#revFallback .rf-text');
+    if (foot) foot.innerHTML = '<b>' + n + word + '</b> on Google';
+  }
+
   load()
     .then(function (d) {
+      syncBadges(d.rating, d.total);
       renderGrid(d);
       renderTicker(d);
     })

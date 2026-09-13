@@ -325,7 +325,14 @@ html = splice(html, "OFFERS", offersHtml());
       .replace(/"ratingValue": "[0-9.]+"/g, `"ratingValue": "${r1}"`)
       .replace(/"reviewCount": "\d+"/g, `"reviewCount": "${count}"`)
       .replace(/<span class="num">[0-9.]+<\/span>/g, `<span class="num">${r1}</span>`)
-      .replace(/<b>\d+ reviews<\/b> on Google/g, `<b>${count} reviews</b> on Google`);
+      .replace(/<b>\d+ reviews<\/b> on Google/g, `<b>${count} reviews</b> on Google`)
+      // The hero badge. It said "Rated 5.0 on Google & Yelp" with no count at
+      // all, which is the weaker claim: the rating says the work is good, the
+      // count says enough people have checked.
+      .replace(
+        /Rated [0-9.]+ from \d+ reviews on Google/g,
+        `Rated ${r1} from ${count} reviews on Google`,
+      );
   }
 }
 
