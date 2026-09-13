@@ -6,6 +6,7 @@
   "scripts": {
     "build": "cd web && npm ci && npm run build:funnel && npm run build:server && npm run build:site && npm run build:legal && npm run build:stamp && npm run build:dist",
     "test": "cd web && npm test",
+    "check:live": "node web/scripts/check-live.mjs",
     "typecheck": "cd web && npm run typecheck"
   },
   "dependencies": {
