@@ -17,6 +17,21 @@
 [build.environment]
   NODE_VERSION = "22"
 
+  # js/config.js is the ONE file here that is supposed to contain keys.
+  #
+  # Netlify's secret scanner spots the `AIza...` shape and fails the build,
+  # which is the right instinct and the wrong call for this file: a Google
+  # browser key and a Stripe publishable key only work because the browser
+  # can read them. They are restricted by HTTP referrer to 513autoclean.com,
+  # which is what makes them ours rather than anybody's.
+  #
+  # This omits that one path and nothing else, so the scanner keeps doing its
+  # real job: catching the day somebody pastes an sk_live_ key, a service
+  # account JSON or the iCloud calendar URL into the repo. Turning smart
+  # detection off site-wide, which is the other way to clear this error,
+  # would give that up for free.
+  SECRETS_SCAN_OMIT_PATHS = "js/config.js,dist/js/config.js"
+
 [functions]
   node_bundler = "esbuild"
 
