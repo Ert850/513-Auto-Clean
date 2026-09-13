@@ -56,6 +56,10 @@ for (const f of FILES) {
 for (const d of DIRS) {
   for (const f of fs.readdirSync(path.join(root, d))) {
     if (f.endsWith(".map")) continue;
+    // Source for the build, not part of the site. Publishing it would put a
+    // second copy of the config on the web, with {{PLACEHOLDERS}} in it,
+    // which is only ever confusing.
+    if (f.endsWith(".template.js")) continue;
     bytes += copy(path.join(d, f));
     count++;
   }
