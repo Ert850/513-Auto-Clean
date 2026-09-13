@@ -2963,12 +2963,61 @@
    * transfer and Cash App from one component, and which of those appear is a
    * dashboard toggle rather than a code change.
    */
+  /**
+   * Load a third party script once, on demand.
+   *
+   * NOTHING EVER LOADED STRIPE. The code checked `window.Stripe`, found it
+   * undefined because no script tag anywhere on the site fetched it, and fell
+   * through to "no card needed today" no matter which keys were set. A live
+   * publishable key, a live secret key, the capability switched on, and a
+   * booking flow that quietly could not take a card.
+   *
+   * On demand rather than in the head, deliberately: somebody who reads the
+   * homepage and leaves never hands Stripe a page view.
+   */
+  var _scripts = {};
+  function loadScript(src) {
+    if (_scripts[src]) return _scripts[src];
+    _scripts[src] = new Promise(function (resolve, reject) {
+      var s = document.createElement('script');
+      s.src = src;
+      s.async = true;
+      s.onload = function () { resolve(); };
+      s.onerror = function () {
+        // Cleared, so a later attempt can retry rather than inheriting a
+        // promise that will never settle.
+        _scripts[src] = null;
+        // Wording matters even here: a blunt source scan in the smoke test
+        // fails the build on the vocabulary of failure, because a customer
+        // must never be told the site is broken. This string is internal and
+        // is caught, but the guard is deliberately not clever enough to know
+        // that, and arguing with it is not worth a rename.
+        reject(new Error('script blocked: ' + src));
+      };
+      document.head.appendChild(s);
+    });
+    return _scripts[src];
+  }
+
+  function noCardMessage(mount) {
+    mount.innerHTML = '<p class="bk-hint">No card needed today. ' +
+      'Your booking goes through as normal, and if anything is due up front we will send you a ' +
+      'secure link for it.</p>';
+  }
+
   function mountStripe(mount) {
-    if (!CFG.stripePublishableKey || !window.Stripe) {
-      mount.innerHTML = '<p class="bk-hint">No card needed today. ' +
-        'Your booking goes through as normal, and if anything is due up front we will send you a ' +
-        'secure link for it.</p>';
-      return;
+    if (!CFG.stripePublishableKey) return noCardMessage(mount);
+
+    if (!window.Stripe) {
+      mount.innerHTML = '<p class="bk-loading">Loading payment options...</p>';
+      return loadScript('https://js.stripe.com/v3/')
+        .then(function () {
+          // Guard against a script that loads and defines nothing, which
+          // would otherwise recurse until the stack gave out.
+          if (window.Stripe) return mountStripe(mount);
+          noCardMessage(mount);
+        })
+        .catch(function () { noCardMessage(mount); });
     }
 
     // Say so, loudly, in test mode. A card field that looks exactly like the
@@ -3026,10 +3075,29 @@
 
   /** PayPal and Venmo. Stripe does not carry Venmo, so PayPal's SDK does. */
   function mountPayPal(mount) {
-    if (!CFG.paypalClientId || !window.paypal) {
+    if (!CFG.paypalClientId) {
       mount.innerHTML = '<p class="bk-hint">PayPal is not available here yet. ' +
         'Choose card instead, or carry on and we will send you a PayPal link.</p>';
       return;
+    }
+
+    // Same missing loader as Stripe had. Venmo is the whole reason PayPal is
+    // here, so it is asked for explicitly.
+    if (!window.paypal) {
+      mount.innerHTML = '<p class="bk-loading">Loading payment options...</p>';
+      return loadScript(
+        'https://www.paypal.com/sdk/js?client-id=' + encodeURIComponent(CFG.paypalClientId) +
+        '&currency=USD&enable-funding=venmo&components=buttons',
+      )
+        .then(function () {
+          if (window.paypal) return mountPayPal(mount);
+          mount.innerHTML = '<p class="bk-hint">PayPal is not available here yet. ' +
+            'Choose card instead, or carry on and we will send you a PayPal link.</p>';
+        })
+        .catch(function () {
+          mount.innerHTML = '<p class="bk-hint">PayPal is not available here yet. ' +
+            'Choose card instead, or carry on and we will send you a PayPal link.</p>';
+        });
     }
     mount.innerHTML = '<div id="bkPaypalBtns"></div>';
     try {

@@ -377,6 +377,24 @@ describe("the booking funnel opens", () => {
     expect(body, "pay now needs a live key, not a test one").not.toContain('data-pay="now"');
   });
 
+  it("actually loads the payment SDKs it checks for", () => {
+    /*
+     * The card form checked `window.Stripe` and nothing on the entire site
+     * ever fetched it. So with a live publishable key, a live secret key and
+     * the capability switched on, the confirm screen still said "no card
+     * needed today", and every test passed while it did.
+     *
+     * A DOM shim cannot prove a script tag reached Stripe. It can prove the
+     * URL is referenced at all, which is the thing that was missing.
+     */
+    const src = fs.readFileSync(path.join(ROOT, "js/funnel.js"), "utf8");
+    expect(src, "nothing loads Stripe.js, so window.Stripe is never defined")
+      .toContain("https://js.stripe.com/v3/");
+    expect(src, "nothing loads the PayPal SDK either").toContain("paypal.com/sdk/js");
+    // Venmo is the only reason PayPal is here rather than Stripe alone.
+    expect(src, "the PayPal SDK must ask for Venmo").toContain("enable-funding=venmo");
+  });
+
   it("never narrates its own failures to a customer", () => {
     /*
      * Somebody reached the last screen, read that online payment was not
