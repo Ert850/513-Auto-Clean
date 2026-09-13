@@ -516,6 +516,14 @@ export function recommendStarts(req: {
   busy?: Interval[];
   /** Minutes to allow between the end of one job and the start of the next. */
   travelGapMin: number;
+  /**
+   * The hour this set of starts is built around, when called for one band
+   * rather than a whole day. The early band prefers 8am, midday 10am,
+   * afternoon 4pm, evening 6pm: the times that leave the rest of the day
+   * sellable. Ranks above the day anchors, because within a band the band's
+   * own preference IS the anchor.
+   */
+  preferMin?: number;
   limit?: number;
   timeZone?: string;
 }): Recommendation[] {
@@ -566,16 +574,22 @@ export function recommendStarts(req: {
     offer(nearest(b.end + gapMs), 0, "Fits neatly into this day");
   }
 
-  // 2. The anchors for this weekday.
+  // 2. The hour this band is built around.
+  if (req.preferMin !== undefined) {
+    const exact = starts.find((s2) => localMinutesOfDay(s2, req.timeZone) === req.preferMin);
+    offer(exact, 1, "Our usual start time");
+  }
+
+  // 3. The anchors for this weekday.
   const day = new Date(starts[0]!).getDay();
   const anchors = day === 0 || day === 6 ? DAY_ANCHORS_MIN.weekend : DAY_ANCHORS_MIN.weekday;
   for (const mins of anchors) {
-    const hit = starts.find((s) => localMinutesOfDay(s, req.timeZone) === mins);
-    offer(hit, 1, "Our usual start time");
+    const hit = starts.find((s2) => localMinutesOfDay(s2, req.timeZone) === mins);
+    offer(hit, 2, "Our usual start time");
   }
 
-  // 3. Something, rather than nothing.
-  offer(starts[0], 2, "Earliest we can be there");
+  // 4. Something, rather than nothing.
+  offer(starts[0], 3, "Earliest we can be there");
 
   return [...scored.entries()]
     .sort((a, b) => a[1].rank - b[1].rank || a[0] - b[0])

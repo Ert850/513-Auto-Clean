@@ -1503,9 +1503,6 @@
       //
       // Both legs are named when they differ, because the average is the
       // honest figure and showing only it looks like a rounded guess.
-      var legs = (t.out !== null && t.back !== null && t.out !== t.back)
-        ? ' That is ' + t.out + ' out and ' + t.back + ' back, averaged.'
-        : '';
 
       // A fee above normal for the area deserves a reason. Without one, a
       // customer comparing notes with a neighbour assumes the worse
@@ -1517,8 +1514,8 @@
 
       return '<div class="bk-travel exact bk-travel-slot"><b>' + $(fee) + ' travel</b>' +
         '<span>' + driveSummary(t, mins) + ' each way from us, measured from your address' +
-        (state.slot ? ' for the time you picked' : '') + ', and already in your total.' +
-        legs + ' This is the figure you pay.</span>' + why + '</div>';
+        (state.slot ? ' for the time you picked' : '') + '. It was just added to your total.' +
+        '</span>' + why + '</div>';
     }
 
     return '<div class="bk-travel bk-travel-slot"><b>' + $(fee) + ' travel</b>' +
@@ -2278,37 +2275,41 @@
        * exactly when an existing job ends plus the drive, then the day's
        * anchors, then simply the earliest thing there is.
        */
-      var recs = P.recommendStarts({
-        starts: dayMs,
-        busy: win.busy || [],
-        travelGapMin: buffer,
-        limit: 2
-      });
-
-      if (recs.length) {
-        html += '<div class="bk-recs">' +
-          recs.map(function (r) {
-            var d = deltaFor(r.ms);
-            return '<button type="button" class="bk-rec' + (state.slot === r.ms ? ' on' : '') +
-              '" data-slot="' + r.ms + '">' +
-              '<b>' + timeLabel(r.ms) + '</b>' +
-              '<i>' + esc(r.why) + '</i>' +
-              '<em>' + (d ? '+' + $(d) : 'Standard price') + '</em>' +
-              '<u>to ' + endLabel(localMin(r.ms) + dur) + '</u>' +
-              '</button>';
-          }).join('') +
-          '</div>';
-      }
-
-      var bands = '';
+      /*
+       * THE BOX IS THE CHOICE.
+       *
+       * Tapping a part of the day books the time we would pick for it, which
+       * on a normal weekday is 10am or 4pm: the starts that leave the rest of
+       * the day sellable. Somebody choosing freely from forty half hours
+       * picks whatever suits them and leaves the day in pieces, so a single
+       * 1pm booking costs two.
+       *
+       * Nobody is trapped. "Expand to select other times" sits in the same
+       * box and every start is behind it, one tap away. Friction, not a wall,
+       * and friction is enough: most people take the time already in front of
+       * them.
+       */
       P.groupIntoBands(dayMs).forEach(function (g) {
         var openBand = state.openBand === key + '|' + g.band.id;
         var pick = state.slot && dayMs.indexOf(state.slot) > -1 &&
           P.bandOf(localMin(state.slot)) && P.bandOf(localMin(state.slot)).id === g.band.id
           ? state.slot : null;
 
-        bands += '<div class="bk-band' + (pick ? ' on' : '') + (g.band.premium ? ' premium' : '') + '">' +
-          '<button type="button" class="bk-band-h" data-band="' + key + '|' + g.band.id + '">' +
+        // What this band books on a tap. Adjacency first, so a band that
+        // follows a booked job offers the start that wastes nothing, then the
+        // band's own hour: 8am, 10am, 4pm, 6pm.
+        var rec = P.recommendStarts({
+          starts: g.starts,
+          busy: win.busy || [],
+          travelGapMin: buffer,
+          preferMin: g.band.preferMin,
+          limit: 1
+        })[0];
+        var recMs = rec ? rec.ms : g.suggested;
+        var shownMs = pick || recMs;
+
+        html += '<div class="bk-band' + (pick ? ' on' : '') + (g.band.premium ? ' premium' : '') + '">' +
+          '<button type="button" class="bk-band-h" data-slot="' + recMs + '">' +
             // "Starts", because a band is when the work BEGINS, not how long
             // it runs. A four hour detail booked in the 10am to 2pm band can
             // start at 1pm and finish at 5pm.
@@ -2316,35 +2317,28 @@
               '<i>Starts ' + esc(g.band.range) + '</i></span>' +
             '<span class="bk-band-r">' +
               (g.band.premium
-                ? '<em class="bk-band-prem">+' + $(deltaFor(g.suggested)) + '</em>'
+                ? '<em class="bk-band-prem">+' + $(deltaFor(shownMs)) + '</em>'
                 : '<em class="bk-band-std">Standard price</em>') +
-              '<b>' + (pick ? timeLabel(pick) : timeLabel(g.suggested)) + '</b>' +
-              '<i>' + (openBand ? 'Hide times' : g.starts.length + ' to choose from') + '</i>' +
+              '<b>' + timeLabel(shownMs) + '</b>' +
+              '<i>to ' + endLabel(localMin(shownMs) + dur) + '</i>' +
             '</span>' +
+          '</button>' +
+          '<button type="button" class="bk-bandmore" data-band="' + key + '|' + g.band.id + '">' +
+            (openBand ? 'Hide the other times' : 'Expand to select other times') +
+            '<span>' + g.starts.length + '</span>' +
           '</button>';
 
         if (openBand) {
-          bands += '<div class="bk-bandtimes">';
+          html += '<div class="bk-bandtimes">';
           g.starts.forEach(function (ms) {
-            bands += '<button type="button" class="bk-time' + (state.slot === ms ? ' on' : '') +
+            html += '<button type="button" class="bk-time' + (state.slot === ms ? ' on' : '') +
               '" data-slot="' + ms + '">' + timeLabel(ms) +
               '<i>to ' + endLabel(localMin(ms) + dur) + '</i></button>';
           });
-          bands += '</div>';
+          html += '</div>';
         }
-        bands += '</div>';
+        html += '</div>';
       });
-
-      // Open when they are already inside it, so repainting after a tap does
-      // not fold the list they are reading back up.
-      var inThisDay = state.openBand && state.openBand.indexOf(key + '|') === 0;
-      var chosenHere = state.slot && dayMs.indexOf(state.slot) > -1 &&
-        !recs.some(function (r) { return r.ms === state.slot; });
-
-      html += '<details class="bk-moretimes"' + (inThisDay || chosenHere ? ' open' : '') + '>' +
-        '<summary>See additional times <i>' + dayMs.length + ' in total</i></summary>' +
-        bands +
-        '</details>';
 
       html += '</div>';
     });
@@ -2638,54 +2632,6 @@
    * outlined box, because at that point it is the one thing on the screen
    * worth noticing.
    */
-  /**
-   * Every extra still available on this vehicle, with the words that sell it.
-   *
-   * The confirm screen used to offer these as a bare <select> of name and
-   * price. That is fine for somebody who already knows what Ozone Odor Reset
-   * is and useless for everybody else, which is most people: the extras STEP
-   * gives each one a description and a "How it works", and the last screen
-   * threw all of it away at exactly the moment somebody is deciding whether
-   * to spend another fifty dollars.
-   */
-  function extraCards(v, index) {
-    var ctx = { packageIds: v.packageIds, addonTiers: v.addons.map(function (a) { return { addonId: a.addonId, tierId: a.tierId }; }) };
-    var scopes = v.intent === 'both' ? ['interior', 'exterior'] : [v.intent];
-    var out = [];
-
-    scopes.forEach(function (scope) {
-      P.addonsFor(scope).forEach(function (a) {
-        if (!P.isSelectable(a)) return;
-        if (P.addonBlockedReason(a, ctx)) return;
-        if (v.addons.some(function (x) { return x.addonId === a.id; })) return;
-
-        var buys = a.tiers.filter(function (t) { return t.priceCents !== null; });
-        if (!buys.length) return;
-
-        out.push(
-          '<div class="bk-xcard">' +
-            '<div class="bk-xcard-h"><b>' + esc(a.name) + '</b>' +
-              (a.description ? '<span>' + esc(a.description) + '</span>' : '') +
-            '</div>' +
-            (a.note
-              ? '<details class="bk-how"><summary>How it works</summary><p>' + esc(a.note) + '</p></details>'
-              : '') +
-            '<div class="bk-xcard-buy">' +
-              buys.map(function (t) {
-                return '<button type="button" class="bk-xadd" data-extrabuy="' +
-                  index + '|' + esc(a.id) + '|' + esc(t.id) + '">' +
-                  (buys.length > 1 ? esc(t.label) + ', ' : 'Add ') +
-                  '+' + $(t.priceCents) + (t.asterisk ? '*' : '') +
-                  '</button>';
-              }).join('') +
-            '</div>' +
-          '</div>',
-        );
-      });
-    });
-    return out;
-  }
-
   function extraOptions(v) {
     var ctx = { packageIds: v.packageIds, addonTiers: v.addons.map(function (a) { return { addonId: a.addonId, tierId: a.tierId }; }) };
     var scopes = v.intent === 'both' ? ['interior', 'exterior'] : [v.intent];
@@ -2720,19 +2666,34 @@
       return '<li><span>' + esc(def.name) +
         (def.tiers.length > 1 && tier ? ', ' + esc(tier.label) : '') + '</span>' +
         '<b>' + (tier ? svc(tier.priceCents) : '') + '</b>' +
-        '<button type="button" class="bk-extra-x" data-extrarm="' + index + '|' + esc(a.addonId) + '">Remove</button></li>';
+        '<button type="button" class="bk-extra-x" data-extrarm="' + index + '|' + esc(a.addonId) + '">Remove</button>' +
+        // On what they have ALREADY chosen, and collapsed. Somebody deciding
+        // needs the list short; somebody who has decided sometimes wants to
+        // know what they bought. A plus sign costs one line and asks nothing.
+        (def.note
+          ? '<details class="bk-how"><summary>How it works</summary><p>' + esc(def.note) + '</p></details>'
+          : '') +
+        '</li>';
     }).filter(Boolean).join('');
 
-    var cards = extraCards(v, index);
-    // Open when nothing has been added, because that is the moment the list
-    // is worth reading. Closed once something is on, so the last screen does
-    // not grow by a page every time somebody adds a fifty dollar extra.
-    var picker = cards.length
-      ? '<details class="bk-xpick"' + (v.addons.length ? '' : ' open') + '>' +
-          '<summary>' + (v.addons.length ? 'Add something else' : 'See what we can add') +
-            ' <i>' + cards.length + ' available</i></summary>' +
-          '<div class="bk-xcards">' + cards.join('') + '</div>' +
-        '</details>'
+    /*
+     * One line, not a catalogue.
+     *
+     * A wall of cards here was the wrong answer to the right problem. The
+     * extras STEP already describes every add-on in full; this is the last
+     * screen, where somebody is trying to finish, and a page of options is
+     * decision fatigue at exactly the wrong moment. The dropdown is back, and
+     * what they CHOOSE gets its "How it works" beside it.
+     */
+    var opts = extraOptions(v);
+    var picker = opts.length
+      ? '<label class="bk-extra-add"><span>Add something</span>' +
+          '<select data-extraadd="' + index + '">' +
+            '<option value="">Choose an extra...</option>' +
+            opts.map(function (o) {
+              return '<option value="' + esc(o.value) + '">' + esc(o.label) + '</option>';
+            }).join('') +
+          '</select></label>'
       : '<p class="bk-hint">Everything we can add to this one is already on it.</p>';
 
     return (showLabel ? '<h5 class="bk-extra-veh">' + esc(vehicleName(v, index)) + '</h5>' : '') +
@@ -3538,7 +3499,7 @@
   function onClick(e) {
     var t = e.target.closest(
       '[data-size],[data-intent],[data-pkg],[data-addon],[data-clear],[data-win],[data-slot],' +
-      '[data-consent],[data-pay],[data-delveh],[data-browsepick],[data-max],[data-sort],[data-extrabuy],' +
+      '[data-consent],[data-pay],[data-delveh],[data-browsepick],[data-max],[data-sort],' +
       '[data-kind],[data-paymethod],[data-corr],[data-coating],[data-garage],[data-step],' +
       '[data-prefday],[data-prefpart],[data-interest],[data-band],[data-access],[data-extrarm],' +
       '#bkAddVeh,#bkMoreDays,#bkJumpClear,#bkNext,#bkBack,#bkClose,#bkScrim,#bkBrowse,#bkBrowseBack,' +
@@ -3569,7 +3530,27 @@
     }
     if (t.dataset.sort) { state.browseSort = t.dataset.sort; return render(); }
     if (t.dataset.kind) { cycleFilter(t.dataset.kind); return render(); }
-    if (t.dataset.paymethod) { state.payMethod = t.dataset.paymethod; return render(); }
+    if (t.dataset.paymethod) {
+      /*
+       * In place, never a render.
+       *
+       * A full render rebuilds the confirm screen from the top, and the
+       * optional add-ons panel sits above the payment section. Choosing how
+       * to pay threw the reader back up to a box they had already decided to
+       * skip. Nothing about picking card or PayPal changes a price, so
+       * nothing above it needs redrawing.
+       */
+      state.payMethod = t.dataset.paymethod;
+      root.querySelectorAll('[data-paymethod]').forEach(function (b) {
+        b.classList.toggle('on', b === t);
+      });
+      // The mandate applies to a saved card and not to PayPal, so the box it
+      // lives in is rebuilt by mountPayment rather than left contradicting
+      // the choice just made.
+      root._stripe = null;
+      mountPayment();
+      return;
+    }
     if (t.dataset.corr) {
       v.correctionTier = v.correctionTier === t.dataset.corr ? null : t.dataset.corr;
       state.slot = null; // scheduling rules change with it
@@ -3655,17 +3636,6 @@
       if (rmVeh) {
         rmVeh.addons = rmVeh.addons.filter(function (a) { return a.addonId !== rm[1]; });
         pruneAddons(rmVeh);
-      }
-      return render();
-    }
-
-    if (t.dataset.extrabuy) {
-      var buy = t.dataset.extrabuy.split('|');
-      var buyVeh = state.vehicles[Number(buy[0])];
-      if (buyVeh && buy[1] && buy[2]) {
-        buyVeh.addons = buyVeh.addons.filter(function (a) { return a.addonId !== buy[1]; });
-        buyVeh.addons.push({ addonId: buy[1], tierId: buy[2] });
-        pruneAddons(buyVeh);
       }
       return render();
     }
