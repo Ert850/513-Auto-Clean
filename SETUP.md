@@ -84,55 +84,93 @@ the cancellation policy keeps a $25 booking fee.
 
 ## 3. Google Cloud
 
-One project covers drive time, address autocomplete, and calendar access.
+One project, but **two halves that cost different amounts**. Do the free half
+first: it is also the one that changes the site the most.
+
+### 3a. Calendar, free, no card
+
+The Calendar API is a Workspace API, not Maps Platform. It needs a project and
+nothing else: no billing account, no card, no trial that expires.
 
 1. <https://console.cloud.google.com/> and create a project, "513 Auto Clean".
-2. Link a billing account. Required even for free tier usage.
-3. APIs and Services, Library. Enable:
-   - **Routes API** (drive time)
-   - **Places API (New)** (address autocomplete)
-   - **Google Calendar API**
-4. Credentials, Create credentials, API key. Make **two**:
+2. APIs and Services, Library, enable **Google Calendar API**.
+3. Credentials, **Create credentials**, **API key**. Take this menu item
+   directly.
+4. Restrict it: Websites, `513autoclean.com/*`; API restrictions, Calendar API.
+
+**Do not create a service account, and do not create an OAuth client.** If the
+console pushes you into a "what data will you be accessing" wizard, the answer
+is **Public data**, which produces an API key. The funnel reads a *public*
+calendar from the visitor's browser: OAuth would ask every customer to sign in
+to Google, and a service account needs a private JSON key, which can never be
+put in a browser. Nothing in this repo writes to Google Calendar, so there is
+no second credential to create.
+
+### 3b. Maps Platform, needs a card
+
+Routes (drive time), Places Autocomplete, and Place Details (live reviews) all
+sit here, and Google will not issue a key until a card is on file. There is a
+free monthly allowance far larger than this site's traffic; check the current
+figures in the console rather than trusting a number written down here.
+
+Skipping this half is a real option. Travel stays a ZIP band estimate, people
+type their address, and reviews stay the stored snapshot with true dates. All
+three already work.
+
+1. Billing, link a billing account.
+2. Library, enable **Routes API** and **Places API (New)**.
+3. Two more API keys:
 
    | Key | Restriction | Used by |
    |-----|-------------|---------|
-   | Browser key | HTTP referrers: `513autoclean.com/*` and your Netlify preview domain | Address autocomplete |
-   | Server key | IP addresses, or leave unrestricted only until deploy | Routes API |
+   | Places browser key | Websites: `513autoclean.com/*`; API: Places API (New) | Address autocomplete, in the page |
+   | Server key | **API restrictions only** | Routes and Place Details, server side |
 
-   **Restrict both.** An unrestricted key scraped out of the page bundle is how
-   people wake up to a $3,000 bill.
+   The server key **cannot be restricted by IP**. Netlify Functions run on
+   Lambda with no stable outbound address, so an IP allowlist would block the
+   site itself. What protects it instead is that it never reaches a browser,
+   plus the quota caps below.
 
-5. Billing, Budgets and alerts. Set an alert at **$25/month**. Expected real
-   spend is $0 to $10, so an alert firing means something is wrong.
-
-6. Service account for the calendars: IAM and Admin, Service Accounts, Create.
-   Name it `513-calendar`. Skip role assignment. Open it, Keys, Add key, JSON.
-   Download it and keep it out of the repo.
+4. APIs and Services, each API, Quotas and System Limits. Per day:
+   Routes **500**, Place Details **200**, Autocomplete **1,000**. A quota is
+   the only cap nobody can route around.
+5. Billing, Budgets and alerts, **$25/month**. Expected real spend is $0 to
+   $10, so an alert firing means something is wrong.
 
 ```
-GOOGLE_MAPS_SERVER_KEY=...
-NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY=...
-GOOGLE_SERVICE_ACCOUNT_JSON={"type":"service_account",...}   # the whole file, one line
+GOOGLE_MAPS_SERVER_KEY=...        # Netlify, secret
 ```
+
+The two browser keys go in `js/config.js` as `googleCalendarApiKey` and
+`googlePlacesApiKey`. They are public by design; the restrictions are what
+make them yours.
 
 ---
 
-## 4. The two calendars
+## 4. The availability calendar
+
+**One calendar today, not two.** `513 Booked Jobs` was for a writer that has
+not been built: nothing in this repo writes to Google Calendar. Create it when
+that ships, not before.
 
 In Google Calendar on a desktop browser:
 
 1. Create **513 Availability**. This is the one you manage from your phone.
-2. Create **513 Booked Jobs**. The system writes to this one; you never edit it
-   by hand.
-3. For each, Settings, Share with specific people, add the service account
-   email (it looks like `513-calendar@your-project.iam.gserviceaccount.com`):
+2. Settings for that calendar, **Access permissions**, tick
+   **Make available to public**, and set the dropdown to **See all event
+   details**. That is what lets a visitor's browser read it with nothing but
+   the restricted API key.
 
-   | Calendar | Permission |
-   |----------|------------|
-   | 513 Availability | **See all event details** |
-   | 513 Booked Jobs | **Make changes to events** |
-
-4. From each calendar's settings page, copy the **Calendar ID** near the bottom.
+   The dropdown matters because the reader works two ways. With
+   **See all event details** it can see titles, so events titled `OPEN` become
+   your bookable hours and everything else on that calendar is ignored: the
+   whitelist. With **See only free/busy** it sees times and no titles, so it
+   falls back to standard business hours minus every event on the calendar:
+   the blacklist. Both work. The whitelist is the one worth having, because it
+   lets you keep unrelated events on the same calendar without closing off
+   those hours.
+3. Copy the **Calendar ID** near the bottom of the same page into
+   `js/config.js` as `googleCalendarId`.
 
 **How you actually use it day to day:** on the Availability calendar, create
 recurring events titled `OPEN`. For example `OPEN` Mon to Sat, 9am to 6pm. Only
@@ -202,14 +240,31 @@ Cost: $0 to $19/month. Realistically $0 at your volume.
 ## 6. Resend (email)
 
 1. <https://resend.com/signup>, add the domain `513autoclean.com`.
-2. Add the DNS records it gives you at your registrar.
+2. Add the DNS records it gives you at your registrar. They are the DKIM
+   record and a `send.` subdomain carrying SPF and the bounce return path.
+   **Accept those.** The separate *click and open tracking* subdomain is
+   optional and should be skipped: these are booking confirmations, not
+   marketing, and a tracking pixel would have to be disclosed in the privacy
+   policy for no benefit to anybody.
 3. Create an API key.
+
+It has to be the domain, not a Gmail address. You cannot send "from" a
+gmail.com address through Resend: you do not own the domain, so it will not
+verify, and Gmail's own DMARC policy would reject the mail anyway.
+`OWNER_EMAIL` is a *recipient*, so a Gmail address there is fine.
 
 Free up to 3,000 emails a month, which you will not exceed.
 
 ```
-RESEND_API_KEY=re_...
+RESEND_API_KEY=re_...                              # Netlify, secret
+RESEND_FROM=513 Auto Clean <bookings@513autoclean.com>
+OWNER_EMAIL=elijahthackerllc@gmail.com             # optional, this is the default
 ```
+
+**Until the domain verifies, customers get nothing.** The unverified fallback
+sender `onboarding@resend.dev` only delivers to the address the Resend account
+was opened with, so the owner copy arrives and the customer copy is refused.
+`send-confirmation` reports that as `sent:false` and the booking is unaffected.
 
 ---
 
@@ -244,13 +299,20 @@ place ID and receives back only a drive time and a fee, never your address.
 Nothing secret. Once you have finished a step, just tell me which one, and paste
 back only these non-sensitive values so I can wire them up:
 
-- The two **Calendar IDs** (safe to share)
+- The **Calendar API key** and the **Calendar ID** (both safe; the key is
+  restricted to your domain and sits in the page either way)
+- The **Places browser key** (same reasoning)
+- The **Google Place ID** (public)
+- The **Stripe publishable key** (public by design)
+- The **PayPal client ID** and the **Turnstile site key** (public)
 - That the **personal calendar URL** is set in Netlify. Do not paste the URL itself
-- The **service account email address** (safe, it is not the key)
-- Which **Stripe mode** you are in
+- That **RESEND_API_KEY**, **STRIPE_SECRET_KEY**, **GOOGLE_MAPS_SERVER_KEY**
+  and **SHOP_ORIGIN_ADDRESS** are set. Do not paste any of them
 - Confirmation that the **A2P campaign** is submitted, and its status
 
-Keep every key and the service account JSON in `.env.local` only.
+Everything secret lives in Netlify and nowhere else. Not in this repo, not in
+a chat, not in a file you email yourself. Anything that has been pasted into a
+conversation is burned and should be rotated.
 
 ---
 
