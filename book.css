@@ -1108,6 +1108,51 @@ body.bk-open { overflow: hidden; }
 .bk-extras.empty .bk-hint { color: rgba(255, 255, 255, .7); }
 .bk-extras.empty .bk-extra-veh { color: rgba(255, 255, 255, .9); }
 
+/* The extras list on the confirm screen.
+
+   It used to be a <select> of names and prices, which reads fine to somebody
+   who already knows what Ozone Odor Reset is and to nobody else. Each one now
+   carries the same description and the same "How it works" the extras step
+   gives it, because the last screen is exactly where somebody decides whether
+   to spend another fifty dollars. */
+.bk-xpick > summary {
+  cursor: pointer; list-style: none; font-size: .88rem; font-weight: 700;
+  color: var(--red); padding: .5rem 0; display: flex; align-items: center; gap: .4rem;
+}
+.bk-xpick > summary::-webkit-details-marker { display: none; }
+.bk-xpick > summary::before {
+  content: ""; flex: none; width: 7px; height: 7px; border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor; transform: rotate(-45deg); transition: transform .16s;
+}
+.bk-xpick[open] > summary::before { transform: rotate(45deg); }
+.bk-xpick > summary i {
+  font-style: normal; font-weight: 600; font-size: .78rem; color: var(--text-soft);
+}
+
+.bk-xcards { display: grid; gap: .5rem; padding-top: .3rem; }
+.bk-xcard {
+  background: var(--paper); border: 1px solid var(--line);
+  border-radius: var(--r-sm); padding: .7rem .8rem;
+}
+.bk-xcard-h b { display: block; font-size: .92rem; font-family: var(--font-display); }
+.bk-xcard-h span {
+  display: block; font-size: .82rem; color: var(--text-soft);
+  line-height: 1.5; margin-top: .1rem;
+}
+.bk-xcard .bk-how { margin: .45rem 0 .1rem; }
+.bk-xcard-buy { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: .55rem; }
+.bk-xadd {
+  font: inherit; font-size: .82rem; font-weight: 700; cursor: pointer;
+  background: var(--red); color: #fff; border: 0;
+  border-radius: var(--r-sm); padding: .45rem .75rem;
+}
+.bk-xadd:hover { background: var(--red-deep, #b31212); }
+
+/* Inside the dark "nothing added yet" panel, the cards keep their own
+   light ground so the descriptions stay readable. */
+.bk-extras.empty .bk-xpick > summary { color: #fff; }
+.bk-extras.empty .bk-xpick > summary i { color: rgba(255, 255, 255, .7); }
+
 .bk-extra-veh {
   margin: .9rem 0 .4rem; font-size: .78rem; font-weight: 800;
   letter-spacing: .06em; text-transform: uppercase; color: var(--text-soft);
