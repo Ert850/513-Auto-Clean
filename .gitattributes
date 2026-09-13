@@ -1,0 +1,13 @@
+# One line ending everywhere.
+#
+# Without this, Git checks out CRLF on Windows and LF on the Netlify build
+# box, so the same file hashes differently in the two places. The asset
+# stamps are content hashes, which made check-live report a stale deploy for
+# three files nobody had touched.
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.avif binary
+*.ico binary

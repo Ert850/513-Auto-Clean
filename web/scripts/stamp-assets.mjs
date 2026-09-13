@@ -20,7 +20,15 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..")
 const PAGES = ["index.html", "terms.html", "privacy.html", "404.html"];
 
 const hashOf = (rel) =>
-  crypto.createHash("sha256").update(fs.readFileSync(path.join(root, rel))).digest("hex").slice(0, 10);
+  // Line endings normalised before hashing. Git hands a Windows checkout CRLF
+  // and the Linux build box LF, so without this the same file stamps
+  // differently in the two places and every deploy looks like it changed
+  // three assets nobody touched.
+  crypto
+    .createHash("sha256")
+    .update(fs.readFileSync(path.join(root, rel)).toString("binary").replace(/\r\n/g, "\n"), "binary")
+    .digest("hex")
+    .slice(0, 10);
 
 const cache = new Map();
 function stamp(rel) {
