@@ -371,8 +371,23 @@ describe("the booking funnel opens", () => {
       stripePublishableKey: "pk_test_smoke",
     }).lookup("bkBody").innerHTML;
 
-    expect(body, "a key means there is a card to authorize").toContain("bkMandate");
-    expect(body, "and a form to mount it in").toContain("bkPayMount");
+    /*
+     * TWO LOCKS ON THE CARD STEP, not just on pay-now.
+     *
+     * Stripe is refusing the secret key, so cardOnFile is muted and the card
+     * step is gone even though a publishable key is present. A booking screen
+     * that asks for a card and then cannot take one is worse than one that
+     * never mentions a card at all. This test follows the switch rather than
+     * asserting one half of it, so flipping cardOnFile back on is a one line
+     * change with nothing here to rewrite.
+     */
+    if (env.window.ACPricing.isLive("cardOnFile")) {
+      expect(body, "a key means there is a card to authorize").toContain("bkMandate");
+      expect(body, "and a form to mount it in").toContain("bkPayMount");
+    } else {
+      expect(body, "the capability is muted, so no card is asked for").not.toContain("bkMandate");
+      expect(body, "and the screen says what does happen instead").toContain("Nothing to pay today");
+    }
     // A TEST key is still not a live one, so paying up front stays shut.
     expect(body, "pay now needs a live key, not a test one").not.toContain('data-pay="now"');
   });

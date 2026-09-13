@@ -2014,14 +2014,26 @@ var CAPABILITIES = [
   {
     id: "cardOnFile",
     what: "Taking a card at booking and charging it when the work is done",
-    // Live, because js/config.js now carries a pk_live_ key. These two move
-    // TOGETHER and must not drift: the moment the funnel sends card details
-    // to Stripe, the privacy policy has to name Stripe as a processor. The
-    // card field itself stays inert until STRIPE_SECRET_KEY is set in
-    // Netlify, so switching this on early is safe and switching it on late
-    // is not.
-    live: true,
-    blockedBy: "Stripe keys"
+    /*
+     * MUTED ON PURPOSE, not blocked.
+     *
+     * The Stripe keys are in place and the whole payment path is written and
+     * tested. Stripe is refusing the secret key with an authentication error
+     * that has survived two attempts to fix it, and a booking screen that
+     * asks for a card and then cannot take one is worse than one that never
+     * mentions a card at all.
+     *
+     * So it is off, and everything moves with it: no card field, no
+     * authorization checkbox, no pay-in-full option, Stripe out of the
+     * privacy policy's processor list, and the five sentences in the terms
+     * about taking a card replaced with what actually happens. Payment is in
+     * full when the detail is finished.
+     *
+     * Set this back to true and all of it returns, in one commit, with
+     * nothing to rewrite.
+     */
+    live: false,
+    blockedBy: "Stripe is rejecting the secret key"
   },
   {
     id: "digitalWallets",
@@ -2130,6 +2142,45 @@ var GATED_COPY = [
     capability: "bookingLink",
     live: "Your booking link works this out and shows you the number before you confirm anything.",
     notYet: "Ask us and we will work out the number for you before you agree to anything."
+  },
+  /*
+   * The five sentences in the terms that describe taking a card.
+   *
+   * They were hand written, ungated, and true only while a card was actually
+   * being taken. Muting payment made every one of them a false statement in a
+   * document a customer agrees to, which is a worse problem than the feature
+   * being off. Now they move with the switch, like everything else.
+   */
+  {
+    id: "whoCanBook",
+    capability: "cardOnFile",
+    live: "By booking, you confirm that you are at least 18, that you are the owner of the vehicle or have the owner's permission to have it detailed, and that the card you give us is yours to use.",
+    notYet: "By booking, you confirm that you are at least 18, and that you are the owner of the vehicle or have the owner's permission to have it detailed."
+  },
+  {
+    id: "cardAtBooking",
+    capability: "cardOnFile",
+    live: 'We ask for a card when you book. <strong>Nothing is charged then</strong> unless you choose to pay in full. It is there so that a last-minute cancellation is not free for the person making it. See <a href="#cancellation">cancellation</a>.',
+    notYet: 'Nothing is charged when you book. You pay in full once the detail is finished. See <a href="#cancellation">cancellation</a> for what happens if you cancel late.'
+  },
+  {
+    id: "authorization",
+    capability: "cardOnFile",
+    live: `<p>When you book you give us a card and tick a box. That box authorizes <strong>one</strong> thing: if you cancel or move the booking late, we may charge the fee in section 5 to that card. <strong>It is not permission to charge you for the detail itself.</strong> We record the wording you agreed to and the version of these terms alongside your booking.</p>
+    <p>The detail itself you pay for however you prefer: on the day by ${IN_PERSON}, or by asking us to put it on the card we already hold.</p>`,
+    notYet: "<p>We do not take card details when you book, and nothing is charged before the work is done. We record the version of these terms you agreed to alongside your booking.</p>"
+  },
+  {
+    id: "whyACard",
+    capability: "cardOnFile",
+    live: "It is also why we take card details when you book. We are not charging you up front. We just need a late change to cost the person making it something, rather than costing everyone else the slot.",
+    notYet: "We are not charging you up front. We just need a late change to cost the person making it something, rather than costing everyone else the slot."
+  },
+  {
+    id: "refunds",
+    capability: "cardOnFile",
+    live: "Refunds go back to the card you paid with, the same day. Your bank usually takes 5 to 10 working days to show it. We do not keep a processing fee out of it.",
+    notYet: "There is nothing to refund, because nothing is taken before the work is done. If you have paid us and something needs putting right, we sort it out the same day by whichever method you paid."
   },
   {
     id: "paymentMethods",
