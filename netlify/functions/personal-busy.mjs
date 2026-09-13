@@ -56,6 +56,22 @@ export function coarsen(busy, grainMs = GRAIN_MS) {
 export async function handler(event) {
   if (limited(event, "personal-busy", 20)) return json(429, { error: "slow_down" }, false);
 
+  /*
+   * The off switch, without having to delete the URL.
+   *
+   * Set PERSONAL_CALENDAR_OFF to 1 in Netlify and personal conflicts stop
+   * being consulted: the funnel offers every hour the business calendars say
+   * is open, and Elijah takes responsibility for the overlap. Unset it and
+   * the feed is back, no rotation, no re-pasting a link that is a password in
+   * disguise.
+   *
+   * 200 with an empty list, not an error. The funnel already treats "no
+   * personal conflicts" as a normal answer, and this genuinely is one.
+   */
+  if (/^(1|true|yes|on)$/i.test(String(process.env.PERSONAL_CALENDAR_OFF ?? "").trim())) {
+    return json(200, { busy: [], off: true }, false);
+  }
+
   const raw = process.env.PERSONAL_CALENDAR_ICS;
   if (!raw) return json(503, { error: "unconfigured" }, false);
 
