@@ -1554,8 +1554,13 @@ var LEGAL = {
   // a card held on file. Somebody agreeing today is agreeing to different
   // words than 2026-09-11 carried, and the consent record has to point at
   // the right document.
+  // These move independently, because they change for different reasons.
+  // Switching the calendar on added a processor to the privacy policy and
+  // left the terms word for word identical, so only the privacy date moved.
+  // Bumping both would point every consent record at a "new" document that
+  // says exactly what the old one said.
   termsEffective: "2026-09-12",
-  privacyEffective: "2026-09-12"
+  privacyEffective: "2026-09-13"
 };
 function longDate(iso) {
   const [y, m, d] = iso.split("-").map(Number);
@@ -2018,7 +2023,11 @@ var CAPABILITIES = [
   {
     id: "liveCalendar",
     what: "Reading real availability, so a chosen time is genuinely open",
-    live: false,
+    // Live with the key in js/config.js. Moves WITH it: the browser now
+    // fetches the availability calendar directly, so Google Calendar has to
+    // appear in the privacy policy's list of who sees what, and the funnel
+    // stops calling its own time slots standard guesses.
+    live: true,
     blockedBy: "Google Calendar API key and a public availability calendar"
   },
   {

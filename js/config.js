@@ -26,7 +26,7 @@ window.AC_CONFIG = {
      * They used to be one value, so switching on the free thing meant
      * attaching a card for the billed one.
      */
-    googleCalendarApiKey: '',
+    googleCalendarApiKey: 'AIzaSyAkQTsIuFfNXkejTJ83nPeyLEgucJ0FbH8',
     googlePlacesApiKey: '',
 
     // Old single-key name. Still read as a fallback for both, so an existing
