@@ -25,9 +25,24 @@ const API = "https://www.googleapis.com/calendar/v3/calendars";
 export const AVAILABILITY_PREFIX = "OPEN";
 
 export interface PublicCalendarConfig {
+  /** The calendar carrying OPEN blocks, and usually the jobs too. */
   calendarId: string;
+  /**
+   * Anything else to read: a separate jobs calendar, a second van, whatever.
+   * Every calendar is read the same way and the results are pooled, so it
+   * makes no difference which one an OPEN block or a job lives on.
+   */
+  extraCalendarIds?: string[];
   apiKey: string;
   timeZone?: string;
+}
+
+/** Every calendar id to read, primary first, blanks and duplicates dropped. */
+export function calendarIds(cfg: Partial<PublicCalendarConfig>): string[] {
+  const all = [cfg.calendarId ?? "", ...(cfg.extraCalendarIds ?? [])]
+    .map((s) => String(s ?? "").trim())
+    .filter(Boolean);
+  return all.filter((id, i) => all.indexOf(id) === i);
 }
 
 export interface RawEvent {
@@ -44,7 +59,7 @@ export interface CalendarWindow {
   mode: AvailabilityMode;
   /** Bookable time, already resolved for whichever mode applied. */
   open: Interval[];
-  /** Everything treated as unavailable. Empty in whitelist mode. */
+  /** Everything treated as unavailable, in either mode. */
   busy: Interval[];
   events: RawEvent[];
 }
@@ -58,6 +73,37 @@ export async function fetchEvents(
   fromMs: number,
   toMs: number,
 ): Promise<RawEvent[]> {
+  const ids = calendarIds(cfg);
+  if (ids.length <= 1) return fetchOne(cfg.apiKey, ids[0] ?? "", fromMs, toMs);
+
+  /*
+   * All of them, in parallel, pooled.
+   *
+   * One calendar that fails must not take the others down with it: a booking
+   * offered against slightly stale availability is recoverable, and a
+   * scheduler that shows nothing is not. A failure that loses the JOBS
+   * calendar is the dangerous direction, so it is logged loudly rather than
+   * swallowed silently.
+   */
+  const settled = await Promise.all(
+    ids.map((id) =>
+      fetchOne(cfg.apiKey, id, fromMs, toMs).catch((err: unknown) => {
+        // eslint-disable-next-line no-console
+        console.warn(`[513] calendar ${id} unreadable:`, err);
+        return [] as RawEvent[];
+      }),
+    ),
+  );
+  return settled.flat();
+}
+
+async function fetchOne(
+  apiKey: string,
+  calendarId: string,
+  fromMs: number,
+  toMs: number,
+): Promise<RawEvent[]> {
+  const cfg = { calendarId, apiKey };
   const url =
     `${API}/${encodeURIComponent(cfg.calendarId)}/events` +
     `?key=${encodeURIComponent(cfg.apiKey)}` +
@@ -167,10 +213,27 @@ export function resolveWindow(
   );
 
   if (openEvents.length > 0) {
+    /*
+     * BUSY IS NOT EMPTY HERE ANY MORE, AND THAT WAS A REAL BUG.
+     *
+     * This used to return `busy: []` in whitelist mode, on the theory that an
+     * OPEN block is a positive statement and everything else on the calendar
+     * is Elijah's own business. Then the jobs went on the same calendar as
+     * the OPEN blocks, and a booked "Full Interior" at 4pm stopped blocking
+     * anything: the site would cheerfully sell that hour a second time.
+     *
+     * So anything that is not an OPEN block is busy. The escape hatch is
+     * Google Calendar's own Busy/Free setting: mark an event Free and it is
+     * dropped by the transparency filter above, which is where a career fair
+     * or a birthday belongs. That is a control Elijah already knows, in the
+     * app he already uses, rather than a rule about titles he has to
+     * remember.
+     */
+    const jobs = usable.filter((e) => !openEvents.includes(e));
     return {
       mode: "whitelist",
       open: openEvents.map((e) => ({ start: e.start, end: e.end })),
-      busy: [],
+      busy: jobs.map((e) => ({ start: e.start, end: e.end })),
       events,
     };
   }

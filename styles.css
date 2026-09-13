@@ -546,7 +546,18 @@ section { padding-block: clamp(40px, 5vw, 72px); position: relative; }
   height: 340px; border-radius: var(--r-md); overflow: hidden;
   border: 1px solid var(--line-dark); background: var(--ink-3);
 }
-.leaflet-container { font-family: var(--font-body); background: var(--ink-3); }
+/* Leaflet stacks its own furniture high: panes to 600, popups to 700, and the
+   zoom control to 1000. `.leaflet-container` sets position without a z-index,
+   so it never becomes a stacking context and all of that escapes into the
+   page. The booking modal is fixed at 400, so the +/- buttons rendered on top
+   of it: visible, unclickable, and impossible to get rid of.
+
+   One stacking context keeps the map's layering to itself, at the map's own
+   place in the page, and fixes the popups and markers for the same reason. */
+.leaflet-container {
+  font-family: var(--font-body); background: var(--ink-3);
+  isolation: isolate;
+}
 
 /* The draggable pin. A divIcon, so there is no image to 404. */
 .ac-pin { background: none; border: 0; }

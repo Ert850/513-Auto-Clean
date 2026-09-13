@@ -1708,7 +1708,14 @@
     // what used to happen and left the rest to a phone call.
     var dur = totalDurationMin();
 
-    var cfg = { calendarId: CFG.googleCalendarId, apiKey: calendarKey() };
+    // Both calendars. 513 Auto Clean carries the OPEN blocks and the booked
+    // details; 513 Availability is there for when those get split up. They
+    // are pooled, so which one a block lives on makes no difference.
+    var cfg = {
+      calendarId: CFG.googleCalendarId,
+      extraCalendarIds: CFG.googleExtraCalendarIds || [],
+      apiKey: calendarKey()
+    };
     var load = P.calendarConfigured(cfg)
       ? P.loadWindow(cfg, from, to)
       : Promise.resolve(P.unconfiguredWindow(from, to));
