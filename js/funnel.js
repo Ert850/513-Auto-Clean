@@ -3624,9 +3624,38 @@
     record();
   }
 
+  /**
+   * The confirmation email, to the customer and to Elijah.
+   *
+   * Fire and forget, deliberately. Web3Forms below is the path that must not
+   * fail, and until today it was the ONLY email in the system: the customer
+   * filled in nine screens and got nothing. An email problem is never the
+   * customer's problem, so nothing here can reject, delay or be waited on.
+   *
+   * Ids only. The server reprices the whole thing, so the receipt that lands
+   * in an inbox is its arithmetic rather than the browser's.
+   */
+  function sendConfirmation() {
+    try {
+      fetch('/api/send-confirmation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          cart: wireCart(),
+          contact: state.contact,
+          consent: consentPayload(),
+          turnstileToken: state.turnstileToken,
+          mode: state.payInFull ? 'pay_now' : 'card_only'
+        })
+      }).catch(function () {});
+    } catch (e) { /* an email must never cost us a booking */ }
+  }
+
   function record() {
     var quote = q();
     var msg = root.querySelector('#bkMsg');
+
+    sendConfirmation();
 
     var body = buildSummary(quote);
     var fd = new FormData();
