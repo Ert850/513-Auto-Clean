@@ -1748,7 +1748,19 @@
       .then(function (both) {
         var win = both[0];
         var extra = both[1].filter(function (b) { return b.end > from && b.start < to; });
-        return { open: win.open, busy: (win.busy || []).concat(extra), source: win.source };
+        // `mode` has to survive the merge. It used to be dropped here, in
+        // favour of a `source` field that CalendarWindow does not have, so
+        // every window downstream looked like it had no mode at all. Two
+        // things quietly stopped working: the note explaining that times are
+        // standard rather than real never appeared, and a time carried in on
+        // a quote link was checked against a generated grid it could never
+        // match, which is the exact bug that was fixed once already.
+        return {
+          mode: win.mode,
+          open: win.open,
+          busy: (win.busy || []).concat(extra),
+          events: win.events
+        };
       })
       .then(function (win) {
         if (settled) return;

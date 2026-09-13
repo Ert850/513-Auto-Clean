@@ -139,13 +139,24 @@ if (reviews.status === 200 && Array.isArray(reviews.body?.reviews)) {
     console.log("        \x1b[90mGoogle caps Place Details at 5. The page merges these with the 32 in data/reviews.json.\x1b[0m");
   }
 } else if (reviews.status === 503) {
-  warn("reviews: GOOGLE_MAPS_SERVER_KEY or GOOGLE_PLACE_ID not reaching the function", "falling back to the stored snapshot");
+  warn("reviews: GOOGLE_MAPS_SERVER_KEY or GOOGLE_PLACE_ID not set", "showing the stored reviews");
+} else if (reviews.status === 502) {
+  // Not a failure of the site. Google refusing the Place ID is a known open
+  // item, the page shows all 32 stored reviews either way, and a checker that
+  // shouts about a thing you have decided to live with is a checker you stop
+  // reading.
+  const why = reviews.body?.status === 404 ? "Google does not recognise the Place ID" : `Google said ${reviews.body?.status}`;
+  warn(`reviews: ${why}`, "showing the stored reviews, which is the designed fallback");
 } else {
   fail("reviews: unexpected", `HTTP ${reviews.status} ${reviews.text.slice(0, 120)}`);
 }
 
 const busy = await get("/api/personal-busy");
-if (busy.status === 200 && Array.isArray(busy.body?.busy)) {
+// The off switch returns an empty busy list, so it has to be checked BEFORE
+// the success case, which an empty list also satisfies.
+if (busy.status === 200 && busy.body?.off) {
+  warn("personal calendar: switched OFF by PERSONAL_CALENDAR_OFF", "bookings can land on your own commitments");
+} else if (busy.status === 200 && Array.isArray(busy.body?.busy)) {
   pass("personal calendar: read", `${busy.body.busy.length} busy blocks ahead`);
 } else if (busy.status === 503) {
   warn("personal calendar: PERSONAL_CALENDAR_ICS not reaching the function", "bookings can land on your own commitments");
