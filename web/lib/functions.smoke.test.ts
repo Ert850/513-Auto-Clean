@@ -129,13 +129,30 @@ describe("every function survives hostile input with its key present", () => {
     // The rule the whole confirm screen was rebuilt around: a missing key is
     // a feature that is off, never an error a customer hears about. The
     // booking already reached Elijah by another path.
+    // A REAL booking with the key removed, not an empty body. An empty body
+    // is refused on its own merits, and this is about the key. It also has to
+    // be a real one now: the calendar write happens whether or not email is
+    // configured, so the key must not short-circuit the whole function.
     const had = process.env.RESEND_API_KEY;
     delete process.env.RESEND_API_KEY;
     try {
       const { handler } = await load("send-confirmation");
-      const r = await handler({ httpMethod: "POST", headers: {}, body: "{}" });
+      const r = await handler({
+        httpMethod: "POST",
+        headers: {},
+        body: JSON.stringify({
+          cart: {
+            vehicles: [{ sizeId: "small", packageIds: ["basic-interior"] }],
+            address: { line1: "1 Main St", city: "Cincinnati", region: "OH", zip: "45220" },
+          },
+          contact: { name: "Ada", phone: "5135551212" },
+          mode: "card_only",
+        }),
+      });
       expect(r.statusCode).toBe(200);
       expect(JSON.parse(r.body)).toMatchObject({ sent: false, reason: "unconfigured" });
+      // No service account here either, so it says so rather than throwing.
+      expect(JSON.parse(r.body).calendar).toMatchObject({ ok: false });
     } finally {
       process.env.RESEND_API_KEY = had;
     }

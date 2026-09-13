@@ -98,6 +98,9 @@
       // Set when the payment form could not load, whatever the reason. The
       // card section removes itself and stops being a requirement.
       cardUnavailable: false,
+      // The slot we last confirmed with the calendar. Cleared whenever the
+      // chosen time changes, so a new choice is checked afresh.
+      checkedSlot: null,
       sending: false,
       done: false,
       browse: false,
@@ -734,9 +737,103 @@
     render();
   }
 
+  /**
+   * Is the chosen time STILL free?
+   *
+   * Availability is read when the step opens, and then somebody thinks about
+   * it, talks to their partner, goes to make a coffee. Minutes later they
+   * press Continue against a picture of the calendar that has since moved.
+   * Two customers looking at the same screen at the same time is exactly how
+   * one slot gets sold twice, and it costs an apology and a rescheduled day.
+   *
+   * So the calendar is asked again, right then, for the day in question.
+   *
+   * Our own failure never blocks a booking: a calendar that is slow or down
+   * resolves true and lets them through. The cost of a rare double booking is
+   * a phone call; the cost of refusing a real customer because Google was
+   * briefly unreachable is the whole job.
+   */
+  function verifySlot() {
+    var slot = state.slot;
+    if (!slot) return Promise.resolve(true);
+
+    var cfg = {
+      calendarId: CFG.googleCalendarId,
+      extraCalendarIds: CFG.googleExtraCalendarIds || [],
+      apiKey: calendarKey()
+    };
+    // Nothing authoritative to check against, so nothing to contradict.
+    if (!P.calendarConfigured(cfg)) return Promise.resolve(true);
+
+    var dur = totalDurationMin();
+    var dayStart = new Date(slot);
+    dayStart.setHours(0, 0, 0, 0);
+    var from = dayStart.getTime() - DAY;
+    var to = dayStart.getTime() + 2 * DAY;
+    var buffer = P.travelBufferMin(travelAllowanceMin());
+
+    var personal = fetch('/api/personal-busy', { cache: 'no-cache' })
+      .then(function (r) { return r.ok ? r.json() : { busy: [] }; })
+      .then(function (d) { return (d && d.busy) || []; })
+      .catch(function () { return []; });
+
+    return Promise.all([P.loadWindow(cfg, from, to), personal])
+      .then(function (both) {
+        var win = both[0];
+        var slots = P.computeSlots({
+          openBlocks: win.open,
+          busy: (win.busy || []).concat(both[1]),
+          serviceDurationMin: dur,
+          travelBeforeMin: buffer,
+          travelAfterMin: buffer,
+          granularityMin: 30,
+          notBefore: from,
+          notAfter: to,
+          hasExterior: hasExterior(),
+          ignoreReturnAfterMin: P.IGNORE_RETURN_AFTER_MIN
+        });
+        // To the minute, not the millisecond: the grid is rebuilt from a
+        // different `now` and need not land on the same instant.
+        return slots.some(function (ms) { return Math.abs(ms - slot) < 60000; });
+      })
+      .catch(function () { return true; });
+  }
+
+  /** Continue on the time step: check, then move, or say what happened. */
+  function checkThenAdvance() {
+    var next = el('bkNext');
+    var label = next.querySelector('span');
+    var was = label.textContent;
+    next.disabled = true;
+    label.textContent = 'Checking that time';
+
+    verifySlot().then(function (free) {
+      next.disabled = false;
+      label.textContent = was;
+      if (free) {
+        state.checkedSlot = state.slot;
+        return advance();
+      }
+      // Gone. Reload the step so they are choosing from what is actually
+      // there, and say so plainly rather than letting them find out later.
+      state.slot = null;
+      state.checkedSlot = null;
+      render();
+      flash('Someone booked that time while you were deciding. These are the times still open.');
+    });
+  }
+
   function advance() {
     var prob = firstProblem();
     if (prob) { showProblem(prob); return; }
+
+    // Leaving the time step with a time on it: confirm it is still there.
+    // Checked once per chosen slot, so going back and forth does not ask
+    // Google the same question repeatedly.
+    if (step().id === 'time' && state.slot && state.checkedSlot !== state.slot) {
+      return checkThenAdvance();
+    }
+
     if (state.step === STEPS.length - 1) { submit(); return; }
 
     // Skip past anything already answered, which is what happens when someone
@@ -1754,7 +1851,7 @@
     // The personal feed failing must never block a booking, so it resolves to
     // an empty list rather than rejecting: worst case we offer a time he has
     // to move, which is the same position we are in today.
-    var personal = fetch('/api/personal-busy', { cache: 'default' })
+    var personal = fetch('/api/personal-busy', { cache: 'no-cache' })
       .then(function (r) { return r.ok ? r.json() : { busy: [] }; })
       .then(function (d) { return (d && d.busy) || []; })
       .catch(function () { return []; });
@@ -3042,6 +3139,11 @@
       // that does not exist yet.
       kind: isInquiry() ? 'inquiry' : 'booking',
       access: state.access,
+      // Free text. The pricing gate drops all of it, correctly, because none
+      // of it can change a price. send-confirmation reads it from the raw
+      // payload for the calendar event and the email.
+      notes: state.notes || '',
+      locationNote: state.noGoodLocation ? (state.locationNote || '') : '',
       interest: state.interest.slice(),
       prefer: isInquiry() ? state.prefer : null,
       payInFull: isInquiry() ? false : state.payInFull
@@ -3527,6 +3629,7 @@
       // A new time means a new drive, so the measured figure is stale.
       state.travel = blankTravel();
       state.slot = Number(t.dataset.slot);
+      state.checkedSlot = null;
 
       // IN PLACE. No render at all. Re-rendering this step tears the day
       // list down, rebuilds it, and asks the calendar for it again, which
@@ -3878,7 +3981,9 @@
           contact: state.contact,
           consent: consentPayload(),
           turnstileToken: state.turnstileToken,
-          mode: state.payInFull ? 'pay_now' : 'card_only'
+          mode: state.payInFull ? 'pay_now' : 'card_only',
+          // So a retry writes one calendar event rather than two.
+          idempotencyKey: bookingKey()
         })
       }).catch(function () {});
     } catch (e) { /* an email must never cost us a booking */ }
