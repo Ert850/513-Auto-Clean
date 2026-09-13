@@ -27,7 +27,7 @@ window.AC_CONFIG = {
      * attaching a card for the billed one.
      */
     googleCalendarApiKey: 'AIzaSyAkQTsIuFfNXkejTJ83nPeyLEgucJ0FbH8',
-    googlePlacesApiKey: '',
+    googlePlacesApiKey: 'AIzaSyBVnpAZtQdxEBqeIehC4govqEkkDcEXMDA',
 
     // Old single-key name. Still read as a fallback for both, so an existing
     // key keeps working, but prefer the two above.

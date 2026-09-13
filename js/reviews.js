@@ -1,10 +1,15 @@
 /* ============================================================
    Google reviews: the top ticker and the reviews grid.
 
-   Two sources, in order of preference:
-     1. /api/reviews, which calls the Places API server side. Live, but needs
-        a key and a Place ID that are not configured yet.
-     2. data/reviews.json, a hand-taken snapshot with ABSOLUTE dates.
+   Two sources, MERGED, because each is better at something:
+     1. /api/reviews, which calls the Places API server side. Current, and
+        carries the rating and count straight from Google. Returns at most
+        five reviews, however many you have.
+     2. data/reviews.json, a hand-taken snapshot of all 32, with ABSOLUTE
+        dates.
+
+   Preferring the live feed, which is what this used to do, would have cut
+   the page from 32 reviews to 5 the day the Place ID was configured.
 
    Absolute dates are the point of the snapshot. Copying Google's "2 months
    ago" would be wrong within weeks; storing 2026-07-10 and computing the
@@ -99,18 +104,72 @@
     };
   }
 
+  /**
+   * Same review from two sources? Author plus the opening of the text.
+   *
+   * Not the date: the snapshot stores a day and the API an instant, and not
+   * the full text either, because the API truncates long ones.
+   */
+  function fingerprint(r) {
+    return (r.author || '').trim().toLowerCase() + '|' +
+      (r.text || '').replace(/\s+/g, ' ').trim().slice(0, 40).toLowerCase();
+  }
+
+  /**
+   * BOTH sources, merged, not one or the other.
+   *
+   * Google's Place Details returns at most FIVE reviews, however many you
+   * have. The snapshot holds 32. So preferring the live feed, which is what
+   * this used to do, would have quietly cut the wall of reviews down to five
+   * the day the Place ID landed: a worse page, bought with a billed API call.
+   *
+   * What the live feed is genuinely better at is the rating and the count,
+   * which must never drift from Google, and being current. So it supplies
+   * those and its own reviews go first; the snapshot fills in behind it,
+   * minus anything already shown.
+   */
+  function merge(api, snap) {
+    if (!api) return snap;
+    if (!snap) return api;
+
+    var seen = {};
+    var out = [];
+    api.reviews.concat(snap.reviews).forEach(function (r) {
+      var k = fingerprint(r);
+      if (seen[k]) return;
+      seen[k] = true;
+      out.push(r);
+    });
+
+    return {
+      source: 'api+snapshot',
+      // Google's own figures win: they are the ones a customer can check.
+      rating: api.rating != null ? api.rating : snap.rating,
+      total: api.total || snap.total,
+      mapsUri: api.mapsUri || snap.mapsUri,
+      reviews: out
+    };
+  }
+
   function load() {
-    return fetch('/api/reviews?minRating=5', { cache: 'no-cache' })
+    var live = fetch('/api/reviews?minRating=5', { cache: 'no-cache' })
       .then(function (r) { return r.ok ? r.json() : Promise.reject(new Error(String(r.status))); })
       .then(function (d) {
         if (!d.reviews || !d.reviews.length) throw new Error('empty');
         return fromApi(d);
       })
-      .catch(function () {
-        return fetch('data/reviews.json', { cache: 'no-cache' })
-          .then(function (r) { return r.ok ? r.json() : Promise.reject(new Error(String(r.status))); })
-          .then(fromSnapshot);
-      });
+      .catch(function () { return null; });
+
+    var stored = fetch('data/reviews.json', { cache: 'no-cache' })
+      .then(function (r) { return r.ok ? r.json() : Promise.reject(new Error(String(r.status))); })
+      .then(fromSnapshot)
+      .catch(function () { return null; });
+
+    return Promise.all([live, stored]).then(function (both) {
+      var merged = merge(both[0], both[1]);
+      if (!merged) throw new Error('no reviews from either source');
+      return merged;
+    });
   }
 
   /* ---------- the grid ---------- */
