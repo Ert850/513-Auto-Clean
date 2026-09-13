@@ -25,7 +25,7 @@ export const LEGAL = {
   // left the terms word for word identical, so only the privacy date moved.
   // Bumping both would point every consent record at a "new" document that
   // says exactly what the old one said.
-  termsEffective: "2026-09-12",
+  termsEffective: "2026-09-13",
   privacyEffective: "2026-09-13",
 } as const;
 

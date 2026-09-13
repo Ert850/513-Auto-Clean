@@ -47,6 +47,11 @@ export async function handler(event) {
       },
     );
     if (!res.ok) {
+      // Google's own message, to the function log only. A bare 403 could be
+      // the key, the API restrictions, the Place ID or billing, and guessing
+      // between those cost an afternoon once. It must never reach a browser:
+      // the message can name the key.
+      console.error("places", res.status, (await res.text()).slice(0, 400));
       return json(502, { error: "places_error", status: res.status }, false);
     }
     const p = await res.json();

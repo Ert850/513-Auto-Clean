@@ -1559,7 +1559,7 @@ var LEGAL = {
   // left the terms word for word identical, so only the privacy date moved.
   // Bumping both would point every consent record at a "new" document that
   // says exactly what the old one said.
-  termsEffective: "2026-09-12",
+  termsEffective: "2026-09-13",
   privacyEffective: "2026-09-13"
 };
 function longDate(iso) {
@@ -2033,7 +2033,11 @@ var CAPABILITIES = [
   {
     id: "measuredTravel",
     what: "Measuring the real drive at the appointment time, traffic included",
-    live: false,
+    // Live and verified against production: /api/travel answered
+    // source "routes", 10 minutes, 5 miles. The customer's address now
+    // leaves our server for Google's, which is precisely the kind of thing
+    // the privacy policy exists to state, so this moves with the key.
+    live: true,
     blockedBy: "Google Routes API key and SHOP_ORIGIN_ADDRESS"
   },
   {
