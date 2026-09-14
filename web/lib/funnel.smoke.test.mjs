@@ -812,3 +812,54 @@ describe("what the screen says about money and time", () => {
     }
   });
 });
+
+/**
+ * The first screen must not wait for anything it does not need.
+ *
+ * Lighthouse on a throttled phone measured the headline arriving 8.8 seconds
+ * after the page, because it was held invisible until the LAST deferred
+ * script ran, while the hero image shared the connection with Stripe.js, the
+ * map library, a dozen map tiles and two blocking stylesheets. Every one of
+ * those is easy to put back by accident, so each is pinned here.
+ */
+describe("the first screen owes nothing to the rest of the page", () => {
+  const html = () => fs.readFileSync(path.join(ROOT, "index.html"), "utf8");
+  const head = () => html().slice(0, html().indexOf("</head>"));
+
+  it("shows the hero from CSS, not from script.js", () => {
+    const css = fs.readFileSync(path.join(ROOT, "styles.css"), "utf8");
+    expect(css, "the hero must animate itself in; .reveal alone hides it until the last script runs")
+      .toMatch(/\.hero \.reveal \{ animation:/);
+  });
+
+  it("sends a phone a phone-sized hero image", () => {
+    const h = html();
+    expect(h).toMatch(/<source type="image\/webp" sizes="100vw"\s+srcset="images\/hero-exterior-640\.webp 640w/);
+    expect(h, "the preload has to describe the same candidates or it fetches a second copy")
+      .toMatch(/imagesrcset="images\/hero-exterior-640\.webp 640w/);
+    expect(h, "the 300KB original is not the fallback for anybody").not.toContain('"images/hero-exterior.webp"');
+  });
+
+  it("keeps third-party and modal stylesheets out of the head", () => {
+    const h = head();
+    expect(h, "the Google Fonts stylesheet blocks the first paint from the head").not.toMatch(/<link rel="stylesheet" href="https:\/\/fonts\.googleapis/);
+    expect(h, "book.css styles a modal that is not open at first paint").not.toMatch(/<link rel="stylesheet" href="book\.css/);
+    // Still linked, just after the content they do not affect.
+    expect(html()).toMatch(/<link rel="stylesheet" href="https:\/\/fonts\.googleapis/);
+    expect(html()).toMatch(/<link rel="stylesheet" href="book\.css/);
+  });
+
+  it("does not link Leaflet from the page at all", () => {
+    // js/travel.js fetches it when the map scrolls into reach.
+    expect(html()).not.toMatch(/<(script|link)[^>]+leaflet/);
+    const travel = fs.readFileSync(path.join(ROOT, "js/travel.js"), "utf8");
+    expect(travel).toContain("IntersectionObserver");
+    expect(travel, "the version and its hash must stay pinned when loaded from script").toContain("integrity = 'sha384-");
+  });
+
+  it("never loads a payment SDK just because a key exists", () => {
+    const v = fs.readFileSync(path.join(ROOT, "js/vendors.js"), "utf8");
+    expect(v).not.toContain("js.stripe.com");
+    expect(v).not.toContain("paypal.com/sdk");
+  });
+});
