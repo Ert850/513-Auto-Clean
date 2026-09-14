@@ -231,14 +231,56 @@ Then in Netlify:
 8. **Redeploy.** Netlify injects environment variables into functions at
    deploy time, so the variable does nothing until the next build.
 
+### 4a-alt. When Google will not let you download a key
+
+*"Service account key creation is disabled"* is the org policy
+`iam.disableServiceAccountKeyCreation`. Google now switches it on by default
+for a lot of accounts, including personal ones, so hitting it is normal and
+not something you did wrong.
+
+**Try turning it off first**, which takes two minutes if you have the access:
+<https://console.cloud.google.com/iam-admin/orgpolicies>, find
+**Disable service account key creation**, Manage policy, Customize, set
+enforcement **Off**, Save. If that page says you lack permission, or there is
+no organisation listed, go to the fallback below rather than fighting it.
+
+**The fallback: an OAuth refresh token.** You consent once, in a browser, to
+an app that writes to your own calendar. Google returns a refresh token, which
+mints access tokens forever with nobody present. No key file, no org policy,
+nothing to be blocked from. The code takes either credential; a service
+account wins if both are set.
+
+    npm run gcal:token
+
+The script tells you what to set up in the console first, opens the consent
+screen, and prints three values to paste into Netlify. It writes nothing to
+disk and sends nothing anywhere.
+
+**Publish the consent screen.** The script says so too, because it is the
+step that bites: a refresh token issued while the app is in *Testing* expires
+after **seven days**, so bookings would quietly stop reaching the calendar a
+week later. On the OAuth consent screen page, press **Publish app** so the
+status reads *In production*. You will see an "unverified app" warning when
+you consent. That is expected: you are the only user, and verification only
+exists to remove that screen for strangers.
+
+**No calendar sharing needed on this path.** The token acts as you, and you
+already own the calendar.
+
+```
+GOOGLE_OAUTH_CLIENT_ID=...              # Netlify
+GOOGLE_OAUTH_CLIENT_SECRET=...          # Netlify, secret
+GOOGLE_OAUTH_REFRESH_TOKEN=...          # Netlify, secret
+```
+
 **If a step is blocked.** Service accounts need no billing account and no
 special role on a personal Google account, so the usual cause is being in the
 wrong console section. Two real blockers exist and both announce themselves:
 
 - *"Service account key creation is disabled"* is the org policy
-  `iam.disableServiceAccountKeyCreation`, which only exists if the Google
-  account belongs to a Workspace organisation. A personal Gmail account has
-  no organisation and cannot hit it.
+  `iam.disableServiceAccountKeyCreation`. It is on by default for many
+  accounts now, personal ones included. Section 4a-alt above is the way
+  through it and does not need a key file at all.
 - *"You do not have permission to create service accounts"* means the signed
   in account is not the project owner. Check the account picker top right; it
   must be the one that created the project.
@@ -251,8 +293,8 @@ field:
 |---|---|
 | absent, `ok: true` | The event was written. There is an `id` and a link. |
 | `unconfigured` | `GOOGLE_SERVICE_ACCOUNT_JSON` is not set, or not deployed yet |
-| `auth_failed` | The JSON is malformed, or the private key did not survive the paste |
-| `http_404` | The calendar has not been shared with the service account |
+| `auth_failed` | Service account: the JSON is malformed or the key did not survive the paste. OAuth: `invalid_grant`, which nearly always means the consent screen is still in Testing and the token has expired |
+| `http_404` | The calendar has not been shared with the service account. Cannot happen on the OAuth path |
 | `http_403` | It is shared, but read only. Change it to Make changes to events |
 | `inquiry` | Correct: a request has no agreed time, so there is nothing to write |
 

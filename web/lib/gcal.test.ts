@@ -17,10 +17,17 @@ const load = async () =>
   gcal as unknown as {
     gcalConfigured: () => boolean;
     createBookingEvent: (e: Record<string, unknown>) => Promise<{ ok: boolean; reason?: string }>;
+    gcalAuthMode: () => string;
     TIME_ZONE: string;
   };
 
-const KEYS = ["GOOGLE_SERVICE_ACCOUNT_JSON", "GOOGLE_BOOKED_CALENDAR_ID"] as const;
+const KEYS = [
+  "GOOGLE_SERVICE_ACCOUNT_JSON",
+  "GOOGLE_BOOKED_CALENDAR_ID",
+  "GOOGLE_OAUTH_CLIENT_ID",
+  "GOOGLE_OAUTH_CLIENT_SECRET",
+  "GOOGLE_OAUTH_REFRESH_TOKEN",
+] as const;
 const saved: Record<string, string | undefined> = {};
 
 beforeEach(() => { for (const k of KEYS) { saved[k] = process.env[k]; delete process.env[k]; } });
@@ -56,6 +63,50 @@ describe("do we have what we need to write a booking", () => {
     });
     const { gcalConfigured } = await load();
     expect(gcalConfigured()).toBe(true);
+  });
+});
+
+describe("the OAuth fallback, for when Google will not issue a key file", () => {
+  /*
+   * Google turns on iam.disableServiceAccountKeyCreation by default for a lot
+   * of accounts, and lifting it needs organisation-level access a sole trader
+   * with a Gmail address does not have. Elijah hit exactly that. Being unable
+   * to download a key file must not mean bookings never reach the calendar,
+   * so a refresh token is a first-class second way in.
+   */
+  const oauth = () => {
+    process.env.GOOGLE_OAUTH_CLIENT_ID = "123.apps.googleusercontent.com";
+    process.env.GOOGLE_OAUTH_CLIENT_SECRET = "secret";
+    process.env.GOOGLE_OAUTH_REFRESH_TOKEN = "1//refresh";
+  };
+
+  it("counts as configured with no service account at all", async () => {
+    oauth();
+    const { gcalConfigured, gcalAuthMode } = await load();
+    expect(gcalConfigured()).toBe(true);
+    expect(gcalAuthMode()).toBe("oauth");
+  });
+
+  it("needs all three parts, because two of them are not a credential", async () => {
+    const { gcalConfigured } = await load();
+    process.env.GOOGLE_OAUTH_CLIENT_ID = "123.apps.googleusercontent.com";
+    process.env.GOOGLE_OAUTH_REFRESH_TOKEN = "1//refresh";
+    expect(gcalConfigured(), "no client secret").toBe(false);
+  });
+
+  it("prefers the service account when both are present", async () => {
+    oauth();
+    process.env.GOOGLE_SERVICE_ACCOUNT_JSON = JSON.stringify({
+      client_email: "a@b.iam.gserviceaccount.com",
+      private_key: "-----BEGIN PRIVATE KEY-----\nx\n-----END PRIVATE KEY-----\n",
+    });
+    const { gcalAuthMode } = await load();
+    expect(gcalAuthMode()).toBe("service_account");
+  });
+
+  it("says none when there is neither", async () => {
+    const { gcalAuthMode } = await load();
+    expect(gcalAuthMode()).toBe("none");
   });
 });
 
