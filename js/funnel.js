@@ -581,19 +581,69 @@
   /** Put the cursor where it belongs, without hauling the page about. */
   function reach(node) {
     if (!node) return;
-    // 'nearest' scrolls the least it can. 'center' drags a field that was
-    // already perfectly visible into the middle of the screen, which reads
-    // as the page jumping for no reason.
-    var box = node.classList && (node.classList.contains('bk-consent') || node.classList.contains('bk-acc'))
-      ? node
-      : (node.closest && node.closest('.bk-field,.bk-check')) || node;
-    box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+    var isGroup = node.classList &&
+      (node.classList.contains('bk-consent') || node.classList.contains('bk-acc'));
+    var box = isGroup ? node : (node.closest && node.closest('.bk-field,.bk-check')) || node;
+
+    /*
+     * LEAVING A TEXT BOX FOR A SET OF BUTTONS MEANS CLOSING THE KEYBOARD.
+     *
+     * On a phone the keyboard owns half the screen. Scrolling a yes/no
+     * question into view underneath it put the question where the reader
+     * could see it and the buttons where they could not, which is what
+     * "it jumps halfway down the page" actually was: the page had moved
+     * correctly and then been covered up.
+     *
+     * Blurring first lets the viewport grow back before anything scrolls.
+     */
+    var active = document.activeElement;
+    if (isGroup && active && active.tagName === 'INPUT' && active.blur) active.blur();
+
+    // 'nearest' for a field, because it scrolls the least it can and a box
+    // already on screen should not move. 'center' for a consent group, whose
+    // question and buttons have to be visible together to be answerable.
+    box.scrollIntoView({ behavior: 'smooth', block: isGroup ? 'center' : 'nearest' });
 
     var target = node.tagName === 'INPUT' ? node : node.querySelector('button,input,select,textarea');
     if (target && target.focus) {
       try { target.focus({ preventScroll: true }); } catch (e) { target.focus(); }
       if (target.select && target.tagName === 'INPUT' && target.type !== 'checkbox') target.select();
     }
+  }
+
+  /*
+   * MOVE ON WHEN A BOX IS FILLED, however it got filled.
+   *
+   * Everything used to hang off Enter, and on a phone Enter is often never
+   * pressed: the reader taps an autofill suggestion and the browser fills
+   * name, phone and email at once without a single keystroke. Nothing moved,
+   * so the terms question below stayed out of sight and the step looked
+   * finished when it was not.
+   *
+   * `change` is the right event, not `input`. Input fires per keystroke and
+   * would yank the page away mid-word. Change fires when a field is done
+   * with: on blur after editing, and on autofill in every browser that
+   * matters.
+   *
+   * Debounced, because autofill fires change three times in a few
+   * milliseconds and only the last one knows what is still missing.
+   */
+  var advanceTimer = null;
+  function advanceWhenFilled(node) {
+    if (!node || node.tagName !== 'INPUT') return;
+    var type = String(node.type || 'text').toLowerCase();
+    if (type === 'checkbox' || type === 'radio') return;
+    if (!String(node.value || '').trim()) return;
+
+    clearTimeout(advanceTimer);
+    advanceTimer = setTimeout(function () {
+      // Only if they are still in the box that just fired. If they have
+      // already tapped something else, moving them would be an ambush.
+      if (document.activeElement && document.activeElement !== node &&
+          document.activeElement.tagName === 'INPUT') return;
+      focusNext(node);
+    }, 120);
   }
 
   /** Continue is the only thing left. Say so without moving anything else. */
@@ -2796,6 +2846,13 @@
       // it. Saying somebody will confirm it by hand would be wrong.
       out.push('<li><b>Your time is booked.</b> It came off our live calendar as you picked it, so it is yours.' +
         (email ? ' A confirmation is in your inbox now.' : '') + '</li>');
+      // Inside a day, the calendar is still right but nobody may have read a
+      // phone between this booking and the van needing to leave. Saying so is
+      // better than a booking that quietly needs chasing.
+      if (state.slot && state.slot - Date.now() < 86400000) {
+        out.push('<li><b>Because it is within the next day</b>, we will send a quick message to ' +
+          'double check we can make it. If anything has to move we call you.</li>');
+      }
     } else {
       out.push('<li><b>We confirm it, usually within a few hours.</b> By text or email, whichever you said. ' +
         'Until you hear back, treat the time as requested rather than locked in.</li>');
@@ -2909,9 +2966,14 @@
   function canPayNow() {
     // A LIVE key, not a test one: offering 5% off for paying now, when now
     // means a test card that moves nothing, is an invoice nobody has paid.
-    // The capability switch has to agree, because it is what the terms page
-    // was generated from and the two must not say different things.
-    return !isInquiry() && stripeMode() === 'live' && P.isLive('cardOnFile');
+    // The capability switches have to agree, because they are what the terms
+    // page was generated from and the two must not say different things.
+    //
+    // payInFull is its own switch and is currently off: the pay-now path did
+    // not complete reliably on mobile, and a booking that says it is paid and
+    // is not is worse than one that plainly is not.
+    return !isInquiry() && stripeMode() === 'live' &&
+      P.isLive('cardOnFile') && P.isLive('payInFull');
   }
 
   function rPay() {
@@ -3895,6 +3957,10 @@
       return;
     }
     if (t.dataset.addr === 'region') { state.address.region = t.value; return renderTotal(); }
+
+    // A text box finished, by typing or by autofill. Move to whatever is
+    // still needed. Everything above has already returned.
+    advanceWhenFilled(t);
   }
 
   function onInput(e) {
@@ -3996,6 +4062,31 @@
     state.sending = true;
     if (msg) { msg.className = 'bk-msg ok'; msg.textContent = 'Confirming...'; }
     el('bkNext').disabled = true;
+
+    /*
+     * NEVER RECORD A PAYMENT THAT DID NOT HAPPEN.
+     *
+     * This ran the Stripe confirmation only `if (root._stripe)`, and fell
+     * through to record() when it was null. On mobile the Payment Element
+     * sometimes never mounted, so root._stripe was null, so a pay-in-full
+     * booking went into the inbox and onto the calendar marked PAID with no
+     * money taken and nobody any the wiser until the driveway.
+     *
+     * Prepay is switched off for now, but this guard is what makes turning it
+     * back on safe, so it goes in regardless of the switch.
+     */
+    if (state.payInFull && state.payState !== 'paid' && !root._stripe) {
+      state.sending = false;
+      el('bkNext').disabled = false;
+      state.payInFull = false;
+      renderTotal();
+      if (msg) {
+        msg.className = 'bk-msg err';
+        msg.textContent = 'The payment form did not load, so nothing was charged. ' +
+          'Your booking is set to pay on the day instead. Press confirm again to send it.';
+      }
+      return;
+    }
 
     // Take the payment or save the card first. Recording a booking we could
     // not collect for is worse than failing here with the funnel still open.
