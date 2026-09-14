@@ -1,4 +1,4 @@
-import { priceFromWire, validateWire, findPackage, findAddon, vehicleSize, isLive } from "./_pricing.mjs";
+import { priceFromWire, validateWire, findPackage, findAddon, vehicleSize, isLive, ADVICE_HOLD_MIN } from "./_pricing.mjs";
 import { createBookingEvent, gcalAuthMode, gcalConfigured } from "./_gcal.mjs";
 import { measuredOneWayMinutes } from "./_routes.mjs";
 import { limited } from "./_ratelimit.mjs";
@@ -152,9 +152,26 @@ ${receiptRows(priced)}`,
   const confirmed = isLive("liveCalendar");
   const soon = slot !== null && slot - Date.now() < 24 * 60 * 60 * 1000;
 
-  const opening = confirmed
-    ? `<p style="margin:0 0 14px">This is <strong>confirmed and booked in</strong>. Nothing else is needed from you, and there is nothing left to accept.</p>`
-    : `<p style="margin:0 0 14px">We will confirm this with you shortly, usually within a few hours. Treat the time as requested until you hear back.</p>`;
+  /*
+   * A HELD TIME WITH NO PRICE ON IT.
+   *
+   * They pressed "help me decide", so the appointment is real and the
+   * package is not. Both halves have to be said, in that order: the thing
+   * that is settled first, so the email reads as a confirmation rather than
+   * as a loose end, then the thing that is still open and when it closes.
+   *
+   * There is no receipt, because priced.lines is empty, and receiptRows()
+   * already returns nothing for that. A total of $0.00 would be worse than
+   * no total at all.
+   */
+  const advice = kind === "advice";
+
+  const opening = advice
+    ? `<p style="margin:0 0 14px">Your time is <strong>${confirmed ? "held" : "requested"}</strong>. What we have not settled yet is which detail you want, which is the part you asked us about.</p>` +
+      `<p style="margin:0 0 14px">We will work that out with you: from what you have told us if there is enough to go on, otherwise on the day, looking at the vehicle together. <strong>You hear the price before we start anything</strong>, and if none of it is worth it to you we will leave and there is nothing to pay.</p>`
+    : confirmed
+      ? `<p style="margin:0 0 14px">This is <strong>confirmed and booked in</strong>. Nothing else is needed from you, and there is nothing left to accept.</p>`
+      : `<p style="margin:0 0 14px">We will confirm this with you shortly, usually within a few hours. Treat the time as requested until you hear back.</p>`;
 
   const shortNotice = confirmed && soon
     ? `<p style="margin:0 0 14px;padding:10px 12px;background:#fdf3e3;border-radius:8px;font-size:14px">` +
@@ -163,13 +180,25 @@ ${receiptRows(priced)}`,
     : "";
 
   return {
-    subject: confirmed ? `Booked in for ${when}` : `We have your booking for ${when}`,
+    subject: advice
+      ? `Your time is held for ${when}`
+      : confirmed
+        ? `Booked in for ${when}`
+        : `We have your booking for ${when}`,
     html: SHELL(
-      confirmed ? `Thanks ${name}, you are booked in` : `Thanks ${name}, we have your booking`,
+      advice
+        ? `Thanks ${name}, your time is held`
+        : confirmed
+          ? `Thanks ${name}, you are booked in`
+          : `Thanks ${name}, we have your booking`,
       `${opening}${shortNotice}<p style="margin:0 0 6px;font-size:13px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#5a6069">When</p>
 <p style="margin:0 0 16px;font-size:18px;font-weight:700">${esc(when)}</p>
 <p style="margin:0 0 14px">That is a start time, not how long we stay: we arrive within the hour after it. We will text you an ETA before we set off.</p>
-${receiptRows(priced)}`,
+${
+  advice
+    ? `<p style="margin:0 0 14px">We have set aside <strong>${Math.round(ADVICE_HOLD_MIN / 60)} hours</strong>, which covers our longest single-vehicle detail. If what you pick needs less, we finish earlier and you pay less.</p>`
+    : ""
+}${receiptRows(priced)}`,
     ),
   };
 }
@@ -179,16 +208,24 @@ function ownerEmail({ contact, when, priced, kind, cart }) {
   const where = [a.line1, a.city, a.region, a.zip].filter(Boolean).join(", ");
   return {
     subject:
-      `${kind === "inquiry" ? "REQUEST" : "BOOKING"}, ${contact.name}, ` +
-      `${$(priced?.totalCents ?? 0)}${when ? `, ${when}` : ""}`,
+      // "HELP ME DECIDE" first, because it is the one that needs something
+      // from him before the day rather than just turning up.
+      `${kind === "advice" ? "HELP ME DECIDE" : kind === "inquiry" ? "REQUEST" : "BOOKING"}, ${contact.name}, ` +
+      `${kind === "advice" ? "no package yet" : $(priced?.totalCents ?? 0)}${when ? `, ${when}` : ""}`,
     html: SHELL(
-      kind === "inquiry" ? "New request" : "New booking",
+      kind === "advice" ? "Time held, package to work out" : kind === "inquiry" ? "New request" : "New booking",
       `<table style="width:100%;font-size:14px;border-collapse:collapse">
 <tr><td style="padding:4px 0;color:#5a6069;width:90px">Who</td><td style="padding:4px 0">${esc(contact.name)}<br>${esc(contact.phone)}${contact.email ? `<br>${esc(contact.email)}` : ""}</td></tr>
 <tr><td style="padding:4px 0;color:#5a6069">When</td><td style="padding:4px 0">${esc(when || "not selected, they asked us to come back with a time")}</td></tr>
 <tr><td style="padding:4px 0;color:#5a6069">Where</td><td style="padding:4px 0">${esc(where || "not given")}</td></tr>
 </table>
-${receiptRows(priced)}`,
+${
+  kind === "advice"
+    ? `<p style="margin:16px 0 0;padding:10px 12px;background:#fdf3e3;border-radius:8px;font-size:14px">` +
+      `<strong>They have not picked a package.</strong> ${Math.round(ADVICE_HOLD_MIN / 60)} hours are blocked on the calendar. ` +
+      `Read what they wrote about the vehicle, and either come back with a recommendation beforehand or work it out on the driveway.</p>`
+    : ""
+}${receiptRows(priced)}`,
     ),
   };
 }
@@ -202,9 +239,14 @@ ${receiptRows(priced)}`,
  * is going, who he is meeting, what he is doing, what he is owed, and what to
  * expect when he gets there.
  */
-function eventDescription({ contact, cart, priced, extras, payInFull }) {
+function eventDescription({ contact, cart, priced, extras, payInFull, kind }) {
   const a = cart.address ?? {};
   const lines = [];
+
+  if (kind === "advice") {
+    lines.push("** HELP ME DECIDE. No package chosen. Price to agree before starting. **");
+    lines.push("");
+  }
 
   lines.push(`WHO  ${contact.name}  ${contact.phone}${contact.email ? `  ${contact.email}` : ""}`);
   lines.push(`WHERE  ${[a.line1, a.city, a.region, a.zip].filter(Boolean).join(", ")}`);
@@ -226,11 +268,16 @@ function eventDescription({ contact, cart, priced, extras, payInFull }) {
 
   lines.push("");
   lines.push("PRICE");
-  for (const l of priced.lines ?? []) lines.push(`  ${l.label}: ${$(l.amountCents)}`);
-  lines.push(`  TOTAL: ${$(priced.totalCents)}`);
-  lines.push(`  ${payInFull ? "PAID IN FULL online" : "TO COLLECT on the day"}`);
-  lines.push(`  Travel: added at confirmation, not in the figure above`);
-  lines.push(`  On site: about ${Math.round((priced.serviceDurationMin ?? 0) / 60 * 10) / 10} hours`);
+  if (kind === "advice") {
+    lines.push("  Nothing priced yet. Agree it with them before starting.");
+    lines.push(`  Holding ${Math.round(ADVICE_HOLD_MIN / 60)} hours.`);
+  } else {
+    for (const l of priced.lines ?? []) lines.push(`  ${l.label}: ${$(l.amountCents)}`);
+    lines.push(`  TOTAL: ${$(priced.totalCents)}`);
+    lines.push(`  ${payInFull ? "PAID IN FULL online" : "TO COLLECT on the day"}`);
+    lines.push(`  Travel: added at confirmation, not in the figure above`);
+    lines.push(`  On site: about ${Math.round((priced.serviceDurationMin ?? 0) / 60 * 10) / 10} hours`);
+  }
 
   lines.push("");
   lines.push("ON ARRIVAL");
@@ -243,7 +290,7 @@ function eventDescription({ contact, cart, priced, extras, payInFull }) {
   return lines.join("\n");
 }
 
-async function writeCalendar({ contact, cart, priced, extras, payInFull, key }) {
+async function writeCalendar({ contact, cart, priced, extras, payInFull, key, kind }) {
   if (!gcalConfigured()) return { ok: false, reason: "unconfigured" };
   if (!cart.slot) return { ok: false, reason: "no_slot" };
 
@@ -251,14 +298,26 @@ async function writeCalendar({ contact, cart, priced, extras, payInFull, key }) 
     .flatMap((v) => (v.packageIds ?? []).map((id) => findPackage(id)?.name))
     .filter(Boolean);
 
+  /*
+   * A "help me decide" visit has no package, so it has no duration, and
+   * `?? 120` did not save it: zero is not null, so the event would have ended
+   * the moment it started and Google would have refused it outright. It holds
+   * the same block the customer was offered on the booking screen.
+   */
+  const minutes = priced.serviceDurationMin || (kind === "advice" ? ADVICE_HOLD_MIN : 120);
+
   return createBookingEvent({
-    summary: `${names.join(" + ") || "Detail"}, ${contact.name}`,
-    description: eventDescription({ contact, cart, priced, extras, payInFull }),
+    // The title is what Elijah reads at a glance on a phone, so it says the
+    // thing he needs to know before setting off: nobody has chosen yet.
+    summary: kind === "advice"
+      ? `HELP ME DECIDE, ${contact.name}`
+      : `${names.join(" + ") || "Detail"}, ${contact.name}`,
+    description: eventDescription({ contact, cart, priced, extras, payInFull, kind }),
     location: [cart.address?.line1, cart.address?.city, cart.address?.region, cart.address?.zip]
       .filter(Boolean)
       .join(", "),
     startMs: cart.slot,
-    endMs: cart.slot + (priced.serviceDurationMin ?? 120) * 60_000,
+    endMs: cart.slot + minutes * 60_000,
     key,
   });
 }
@@ -342,7 +401,7 @@ export async function handler(event) {
     kind === "inquiry"
       ? { ok: false, reason: "inquiry" }
       : await writeCalendar({
-          contact, cart, priced, extras, payInFull,
+          contact, cart, priced, extras, payInFull, kind,
           key: text(payload?.idempotencyKey, 120),
         }).catch((err) => {
           console.error("calendar write", err);

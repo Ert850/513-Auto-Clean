@@ -193,7 +193,7 @@ export function priceFromWire(wire: WireCart, opts: PriceOptions = {}): PricedCa
 import { addonIcon } from "./catalog/icons.js";
 
 export { MAX_ONE_WAY_MINUTES } from "./travel/zipRanges.js";
-export { validateWire, driveTooFar, normalisePhone, WIRE_LIMITS } from "./pricing/wire.js";
+export { validateWire, driveTooFar, normalisePhone, WIRE_LIMITS, ADVICE_HOLD_MIN } from "./pricing/wire.js";
 export { MAX_BOOKING_CENTS } from "./pricing/rules.js";
 export { slotNeedsPriority } from "./pricing/surcharge.js";
 export { LEGAL, longDate } from "./site/legal.js";

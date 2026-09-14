@@ -297,12 +297,20 @@ describe("the booking funnel opens", () => {
     expect(body, "with nothing added it should be the dark panel").toContain("bk-extras empty");
   });
 
-  it("Help me decide asks for a recommendation instead of a package", () => {
+  it("Help me decide books a real time and leaves only the package open", async () => {
     /*
-     * Somebody who does not know what they want had nothing to press. Every
-     * route through the intent step demanded an answer they did not have, and
-     * the fallback was to close the funnel. This walks the path they take
-     * now: no package, no price, no slot, and a request at the end of it.
+     * TWO THINGS ARE UNKNOWN WHEN SOMEBODY PRESSES HELP ME DECIDE, and for a
+     * long time this path treated them as one. Which package they want is
+     * open. WHEN they are free is not, and it never was.
+     *
+     * So this used to hand them a different screen: no calendar, no real
+     * times, just "tell us roughly when suits". That is the weakest thing a
+     * booking form can do to somebody who is ready to buy and only unsure
+     * what to buy, and it turned the customer most in need of a conversation
+     * into an email thread that goes cold.
+     *
+     * They get the real calendar now. The hours are held, the appointment is
+     * real, and the only open question is the one they actually asked.
      */
     const fresh = loadFunnel();
     fresh.window.ACFunnel.open();
@@ -321,18 +329,29 @@ describe("the booking funnel opens", () => {
     expect(nav, "and the extras tab with it").not.toContain("Extras");
     expect(nav, "the summary should say which path they are on").toContain("Help me decide");
 
-    // It lands on the time step, which under advice is the preference picker:
-    // there is no duration, so there is no honest list of start times.
+    expect(fresh.lookup("bkTitle").textContent).toBe("Pick your time");
     const body = fresh.lookup("bkBody").innerHTML;
-    expect(body, "it should ask which days could work").toContain("data-prefday");
-    expect(body, "and offer no start times to pick from").not.toContain("data-slot");
+    expect(body, "the real picker, not the when-suits form").toContain("bkSlots");
+    expect(body, "and it says how much time is being held").toMatch(/holding <b>\d+ hours<\/b>/);
 
-    // Walk the rest of it. The last screen is the one that has broken twice,
-    // and on this path it renders with no price, no promo box and no card.
-    const day = /data-prefday="([^"]+)"/.exec(body)[1];
-    click(fresh, { dataset: { prefday: day } });
+    // loadSlots resolves on a microtask; let the promises settle.
+    await new Promise((r) => setTimeout(r, 0));
+    await new Promise((r) => setTimeout(r, 0));
 
+    const slots = fresh.lookup("bkSlots").innerHTML;
+    expect(slots, "no real start times on the advice path").toContain("data-slot");
+    expect(slots, "the painter fell back to the inquiry panel").not.toContain("bk-noslots");
+
+    const ms = /data-slot="(\d+)"/.exec(slots)[1];
+    click(fresh, { dataset: { slot: ms } });
+
+    // Continue on the time step re-checks the calendar before it moves, so
+    // the step change lands a microtask later.
     click(fresh, { id: "bkNext" });
+    await new Promise((r) => setTimeout(r, 0));
+    await new Promise((r) => setTimeout(r, 0));
+    expect(fresh.lookup("bkTitle").textContent).toBe("Where are we detailing?");
+
     type(fresh, { dataset: { addr: "line1" } }, "1 Main St");
     type(fresh, { dataset: { addr: "city" } }, "Cincinnati");
     type(fresh, { dataset: { addr: "zip" } }, "45220");
@@ -348,11 +367,45 @@ describe("the booking funnel opens", () => {
     const last = fresh.lookup("bkBody").innerHTML;
 
     expect(last.length, "the last screen rendered nothing").toBeGreaterThan(200);
-    expect(last, "it should say what it is").toContain("request for a recommendation");
+    expect(last, "the time is settled, so say so").toContain("Your time is held");
+    expect(last, "and the price is not, so say that too").toContain("open question");
     expect(last, "there is nothing priced, so no receipt").not.toContain("bk-review");
     expect(last, "and no promo box to apply to it").not.toContain("bkPromo");
     expect(last, "and no card to authorize").not.toContain("bkMandate");
     expect(last, "it should ask about the vehicle instead").toContain("bkNotes");
+  });
+
+  it("sends an advice booking as its own kind, priced at nothing", () => {
+    /*
+     * The server rejects an empty cart, correctly, because an empty cart is
+     * otherwise a bug or somebody poking at the endpoint. "advice" is the one
+     * kind allowed to be empty, so it has to be on the wire under its own
+     * name rather than smuggled through as a booking.
+     */
+    const src = fs.readFileSync(path.join(ROOT, "js/funnel.js"), "utf8");
+    const at = src.indexOf("kind: state.advice");
+    expect(at, "the wire must carry all three kinds").toBeGreaterThan(-1);
+    expect(src.slice(at, at + 80)).toContain("'advice'");
+    expect(src.slice(at, at + 80)).toContain("'inquiry'");
+
+    // And it can never prepay: 5% off an unknown number is not an offer.
+    const can = src.slice(src.indexOf("function canPayNow()"), src.indexOf("function canPayNow()") + 900);
+    expect(can).toContain("!state.advice");
+  });
+
+  it("holds one block of time, agreed between the browser and the server", () => {
+    // The funnel fits slots to it and the confirmation function ends the
+    // calendar event with it. Two numbers here would mean a calendar event
+    // that does not match the slot the customer was offered.
+    const funnel = fs.readFileSync(path.join(ROOT, "js/funnel.js"), "utf8");
+    expect(funnel, "the funnel must not invent its own hold").toContain("P.ADVICE_HOLD_MIN");
+    expect(funnel).toMatch(/function holdMinutes\(\) \{ return totalDurationMin\(\) \|\| P\.ADVICE_HOLD_MIN; \}/);
+
+    const conf = fs.readFileSync(path.join(ROOT, "netlify/functions/send-confirmation.mjs"), "utf8");
+    expect(conf, "the calendar event must use the same block").toContain("ADVICE_HOLD_MIN");
+    // Zero is not null, so `?? 120` never caught an advice booking and the
+    // event would have ended the moment it started.
+    expect(conf).not.toMatch(/priced\.serviceDurationMin \?\? 120/);
   });
 
   it("brings the card step back the moment a Stripe key exists", () => {

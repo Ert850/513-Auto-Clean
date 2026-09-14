@@ -99,6 +99,9 @@ import { PROMOS, findPromo, normalisePromo, promoDiscountCents, promoMessage } f
 import { ADDON_ICONS, addonIcon } from "./catalog/icons.js";
 import { popularityOf } from "./catalog/popularity.js";
 import { ZIP_GEO, zipGeo } from "./travel/zipGeo.js";
+// How long a "help me decide" visit holds. The funnel fits slots to it and
+// the confirmation function ends the calendar event with it. One definition.
+import { ADVICE_HOLD_MIN } from "./pricing/wire.js";
 import {
   MAX_ONE_WAY_MINUTES,
   ZIP_RANGES,
@@ -182,6 +185,7 @@ const api = {
   ZIP_RANGES,
   ZIP_GEO,
   MAX_ONE_WAY_MINUTES,
+  ADVICE_HOLD_MIN,
   zipGeo,
   estimateOneWayMinutes,
   lookupZip,

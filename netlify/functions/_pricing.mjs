@@ -1367,6 +1367,7 @@ function normalisePhone(raw) {
   return "+1" + digits;
 }
 var EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+var ADVICE_HOLD_MIN = 240;
 function validateWire(body, opts) {
   const fail = (error, message) => ({ ok: false, error, message });
   if (!isObj(body)) return fail("bad_body", "The request was not understood.");
@@ -1377,6 +1378,7 @@ function validateWire(body, opts) {
   if (rawVehicles.length > WIRE_LIMITS.maxVehicles) {
     return fail("too_many_vehicles", `We can book up to ${WIRE_LIMITS.maxVehicles} vehicles online. Ask us about more.`);
   }
+  const kind = cart["kind"] === "inquiry" ? "inquiry" : cart["kind"] === "advice" ? "advice" : "booking";
   const vehicles = [];
   let anything = false;
   for (const rv of rawVehicles) {
@@ -1455,8 +1457,7 @@ function validateWire(body, opts) {
     if (packageIds.length || addons.length || v.correction) anything = true;
     vehicles.push(v);
   }
-  if (!anything) return fail("empty_cart", "Pick at least one service.");
-  const kind = cart["kind"] === "inquiry" ? "inquiry" : "booking";
+  if (!anything && kind !== "advice") return fail("empty_cart", "Pick at least one service.");
   let slot = null;
   const rawSlot = cart["slot"];
   if (rawSlot !== void 0 && rawSlot !== null) {
@@ -1475,6 +1476,9 @@ function validateWire(body, opts) {
   const payInFull = opts.mode === "pay_now";
   if (payInFull && slot === null) {
     return fail("inquiry_cannot_prepay", "We do not take payment in full for a time that is not confirmed yet.");
+  }
+  if (payInFull && kind === "advice") {
+    return fail("advice_cannot_prepay", "We do not take payment before we have recommended anything.");
   }
   let visits;
   if (cart["visits"] !== void 0 && cart["visits"] !== null) {
@@ -2403,6 +2407,7 @@ function priceFromWire(wire, opts = {}) {
 }
 export {
   ADDONS,
+  ADVICE_HOLD_MIN,
   CAPABILITIES,
   COATING_COVERAGE,
   COATING_EXPLAINER,
