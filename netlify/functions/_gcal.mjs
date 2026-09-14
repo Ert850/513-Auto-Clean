@@ -9,13 +9,28 @@ import crypto from "node:crypto";
  * somebody else. The scheduler already treats any non-OPEN event as busy, so
  * writing the job onto the calendar is also what closes the slot.
  *
- * AUTH IS A SERVICE ACCOUNT, not OAuth. Nobody is present when this runs, so
- * there is no one to consent; a service account is a machine identity with
- * its own key, and the calendar is shared with its email address the same way
- * it would be shared with a person.
+ * TWO WAYS TO AUTHENTICATE, because one of them can be switched off by
+ * somebody who is not you.
  *
- * The signing is done here rather than with googleapis, which is a large
- * dependency for one JWT. Node's crypto signs RS256 directly.
+ * A SERVICE ACCOUNT is the clean answer: a machine identity with its own
+ * key, and the calendar shared with its email address the way it would be
+ * shared with a person. Nobody has to be present at 11pm when a booking
+ * lands. It is used whenever GOOGLE_SERVICE_ACCOUNT_JSON is set.
+ *
+ * But Google now turns on `iam.disableServiceAccountKeyCreation` by default
+ * for a lot of accounts, and lifting it needs organisation-level access that
+ * a sole trader with a Gmail address may simply not have. Being unable to
+ * download a key file should not mean bookings never reach the calendar.
+ *
+ * So: AN OAUTH REFRESH TOKEN is the fallback. Elijah consents once, on his
+ * laptop, to an app that can write to his own calendar. Google returns a
+ * refresh token, which is a long-lived credential that mints access tokens
+ * forever without anyone being present. No key file, no org policy, nothing
+ * to be blocked from. `npm run gcal:token` walks through it.
+ *
+ * The signing and the exchanges are done here rather than with googleapis,
+ * which is a large dependency for one JWT and one form POST. Node's crypto
+ * signs RS256 directly.
  *
  * EVERYTHING DEGRADES. No key, no calendar id, a Google outage: all of it
  * comes back {ok:false} with a reason, and the caller carries on. A booking
@@ -51,8 +66,29 @@ function bookedCalendarId() {
   );
 }
 
+/**
+ * The OAuth fallback: a client, its secret, and a refresh token.
+ *
+ * All three or nothing. A refresh token without the client that minted it is
+ * not a credential, it is a string.
+ */
+function oauthCredentials() {
+  const id = process.env.GOOGLE_OAUTH_CLIENT_ID;
+  const secret = process.env.GOOGLE_OAUTH_CLIENT_SECRET;
+  const refresh = process.env.GOOGLE_OAUTH_REFRESH_TOKEN;
+  if (!id || !secret || !refresh) return null;
+  return { id, secret, refresh };
+}
+
 export function gcalConfigured() {
-  return Boolean(serviceAccount() && bookedCalendarId());
+  return Boolean((serviceAccount() || oauthCredentials()) && bookedCalendarId());
+}
+
+/** Which way in we are using, for the diagnostics in the booking response. */
+export function gcalAuthMode() {
+  if (serviceAccount()) return "service_account";
+  if (oauthCredentials()) return "oauth";
+  return "none";
 }
 
 const b64 = (s) => Buffer.from(s).toString("base64url");
@@ -61,9 +97,40 @@ const b64 = (s) => Buffer.from(s).toString("base64url");
 let cached = null;
 
 async function accessToken() {
-  const sa = serviceAccount();
-  if (!sa) return null;
   if (cached && cached.expires > Date.now() + 60_000) return cached.token;
+
+  /*
+   * The refresh token path is tried FIRST when there is no service account,
+   * and it is the simpler of the two: no signing, one form POST, Google
+   * hands back an access token good for an hour.
+   */
+  const oauth = oauthCredentials();
+  const sa = serviceAccount();
+  if (!sa && oauth) {
+    const res = await fetch(TOKEN_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        grant_type: "refresh_token",
+        client_id: oauth.id,
+        client_secret: oauth.secret,
+        refresh_token: oauth.refresh,
+      }),
+    });
+    if (!res.ok) {
+      // invalid_grant here almost always means the consent screen is still in
+      // Testing, where refresh tokens expire after seven days. Publishing it
+      // is the fix, and the message says so.
+      console.error("gcal oauth refresh", res.status, (await res.text()).slice(0, 300));
+      return null;
+    }
+    const j = await res.json();
+    if (!j.access_token) return null;
+    cached = { token: j.access_token, expires: Date.now() + (j.expires_in ?? 3600) * 1000 };
+    return cached.token;
+  }
+
+  if (!sa) return null;
 
   const now = Math.floor(Date.now() / 1000);
   const claim = {

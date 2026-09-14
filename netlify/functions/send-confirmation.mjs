@@ -1,5 +1,5 @@
 import { priceFromWire, validateWire, findPackage, findAddon, vehicleSize } from "./_pricing.mjs";
-import { createBookingEvent, gcalConfigured } from "./_gcal.mjs";
+import { createBookingEvent, gcalAuthMode, gcalConfigured } from "./_gcal.mjs";
 import { measuredOneWayMinutes } from "./_routes.mjs";
 import { limited } from "./_ratelimit.mjs";
 import { verifyTurnstile } from "./_turnstile.mjs";
@@ -314,8 +314,12 @@ export async function handler(event) {
           return { ok: false, reason: "threw" };
         });
 
+  // The auth mode rides along on every booking. A calendar failure is much
+  // easier to read when the reply says WHICH way in was being used.
+  const calendarOut = { ...calendar, auth: gcalAuthMode() };
+
   if (!apiKey) {
-    return json(200, { sent: false, reason: "unconfigured", calendar });
+    return json(200, { sent: false, reason: "unconfigured", calendar: calendarOut });
   }
 
   // Elijah's copy first. If only one of the two can get through, it has to be
@@ -323,5 +327,5 @@ export async function handler(event) {
   const toOwner = await send(apiKey, from, owner, ownerEmail(ctx), contact.email);
   const toCustomer = contact.email ? await send(apiKey, from, contact.email, customerEmail(ctx)) : false;
 
-  return json(200, { sent: toOwner || toCustomer, owner: toOwner, customer: toCustomer, calendar });
+  return json(200, { sent: toOwner || toCustomer, owner: toOwner, customer: toCustomer, calendar: calendarOut });
 }
