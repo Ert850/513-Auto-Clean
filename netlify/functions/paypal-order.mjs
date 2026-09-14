@@ -1,5 +1,5 @@
 import { MAX_BOOKING_CENTS, driveTooFar, priceFromWire, validateWire } from "./_pricing.mjs";
-import { addressLine, measureRoundTrip } from "./_routes.mjs";
+import { measuredOneWayMinutes } from "./_routes.mjs";
 import { limited } from "./_ratelimit.mjs";
 import { verifyTurnstile } from "./_turnstile.mjs";
 
@@ -51,21 +51,6 @@ async function token() {
   return (await res.json()).access_token;
 }
 
-async function measuredMinutes(cart) {
-  const line = addressLine(cart?.address);
-  if (!line) return null;
-  try {
-    const drive = await measureRoundTrip({
-      dest: { address: line },
-      slotMs: cart?.slot ?? null,
-      serviceMin: cart?.serviceDurationMin ?? 0,
-    });
-    return drive?.reachable ? drive.minutes : null;
-  } catch {
-    return null;
-  }
-}
-
 export async function handler(event) {
   if (event?.httpMethod !== "POST") return json(405, { error: "POST only" });
   if (limited(event, "paypal-order", 30)) return json(429, { error: "slow_down" });
@@ -104,7 +89,7 @@ export async function handler(event) {
     const bot = await verifyTurnstile(payload?.turnstileToken, event);
     if (bot) return json(400, { error: bot, message: "Please complete the check and try again." });
 
-    const measured = await measuredMinutes(cart);
+    const measured = await measuredOneWayMinutes(cart);
     if (driveTooFar(measured)) {
       return json(400, { error: "too_far", message: "That address is further than we can drive for a mobile detail." });
     }

@@ -172,3 +172,32 @@ export async function measureRoundTrip({ dest, slotMs, serviceMin }) {
     legs: back && back.reachable ? (out === rough ? 2 : 3) : 2,
   };
 }
+
+/**
+ * The drive, measured, for pricing a cart.
+ *
+ * THIS LIVES HERE SO IT CANNOT BE FORGOTTEN. create-payment measured the
+ * drive and passed it into priceFromWire; send-confirmation called
+ * priceFromWire without it and silently fell back to the ZIP band. For a
+ * Mason address that was $30 in the confirmation email against $20 on the
+ * screen and $20 on the card. Three numbers for one booking, and the
+ * customer saw two of them.
+ *
+ * Every caller that prices a cart server side calls this first and passes the
+ * result in. Failure returns null, which is the estimate, because refusing a
+ * booking over a routing hiccup costs more than a few dollars of drive time.
+ */
+export async function measuredOneWayMinutes(cart) {
+  const line = addressLine(cart?.address);
+  if (!line) return null;
+  try {
+    const drive = await measureRoundTrip({
+      dest: { address: line },
+      slotMs: cart?.slot ?? null,
+      serviceMin: cart?.serviceDurationMin ?? 0,
+    });
+    return drive?.reachable ? drive.minutes : null;
+  } catch {
+    return null;
+  }
+}

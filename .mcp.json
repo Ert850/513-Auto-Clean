@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "meta-ads": {
+      "type": "http",
+      "url": "https://mcp.facebook.com/ads"
+    },
+    "apify-ad-library": {
+      "type": "http",
+      "url": "https://mcp.apify.com/?tools=fetch-actor-details,benthepythondev/meta-ad-library-scraper"
+    }
+  }
+}

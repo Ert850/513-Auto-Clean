@@ -50,3 +50,8 @@ tmp/
 # nothing to argue with, and a Deploy Preview can carry different keys from
 # production.
 js/config.js
+
+# Content studio: video concepts, niche research, scripts. Separate from the
+# website and never published. Kept beside it only so the catalog, prices and
+# service copy are one directory away when writing.
+content/

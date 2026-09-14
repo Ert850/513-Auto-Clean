@@ -1558,18 +1558,22 @@ function driveTooFar(oneWayMinutes) {
 
 // lib/site/legal.ts
 var LEGAL = {
-  // Bumped when the Stripe publishable key landed: the privacy policy now
-  // names Stripe as a processor and the terms now describe paying online and
-  // a card held on file. Somebody agreeing today is agreeing to different
-  // words than 2026-09-11 carried, and the consent record has to point at
-  // the right document.
-  // These move independently, because they change for different reasons.
-  // Switching the calendar on added a processor to the privacy policy and
-  // left the terms word for word identical, so only the privacy date moved.
-  // Bumping both would point every consent record at a "new" document that
-  // says exactly what the old one said.
-  termsEffective: "2026-09-13",
-  privacyEffective: "2026-09-13"
+  /*
+   * The date each document last CHANGED, not the date it was last built.
+   *
+   * These move independently and only when the wording actually differs,
+   * because the terms date is what a consent record points at: bumping it
+   * for an unchanged document sends somebody looking for a version that
+   * says exactly what the old one said. `legal.test.ts` compares the built
+   * page against legal.lock.json and fails the build if the words moved and
+   * the date did not.
+   *
+   * Both are 2026-09-14 because Stripe and Resend came back on together: the
+   * terms describe taking a card again, and the privacy policy names two
+   * more processors.
+   */
+  termsEffective: "2026-09-14",
+  privacyEffective: "2026-09-14"
 };
 function longDate(iso) {
   const [y, m, d] = iso.split("-").map(Number);
@@ -2015,25 +2019,20 @@ var CAPABILITIES = [
     id: "cardOnFile",
     what: "Taking a card at booking and charging it when the work is done",
     /*
-     * MUTED ON PURPOSE, not blocked.
+     * LIVE, and verified against production rather than assumed.
      *
-     * The Stripe keys are in place and the whole payment path is written and
-     * tested. Stripe is refusing the secret key with an authentication error
-     * that has survived two attempts to fix it, and a booking screen that
-     * asks for a card and then cannot take one is worse than one that never
-     * mentions a card at all.
+     * POST /api/create-payment with a real cart came back with a
+     * seti_... client secret and a $134.75 total, which means the rotated
+     * secret key is valid and Stripe is creating intents. The mute that was
+     * here while Stripe returned StripeAuthenticationError is lifted.
      *
-     * So it is off, and everything moves with it: no card field, no
-     * authorization checkbox, no pay-in-full option, Stripe out of the
-     * privacy policy's processor list, and the five sentences in the terms
-     * about taking a card replaced with what actually happens. Payment is in
-     * full when the detail is finished.
-     *
-     * Set this back to true and all of it returns, in one commit, with
-     * nothing to rewrite.
+     * Everything moves with it: the card field, the pay-in-full option at
+     * 5% off, the authorization checkbox, Stripe named in the privacy
+     * policy's processor list, and the five sentences in the terms about
+     * taking a card.
      */
-    live: false,
-    blockedBy: "Stripe is rejecting the secret key"
+    live: true,
+    blockedBy: "Stripe keys"
   },
   {
     id: "digitalWallets",
@@ -2070,8 +2069,15 @@ var CAPABILITIES = [
     // weeks for no reason.
     id: "automatedEmail",
     what: "Automatic confirmation and reminder emails",
-    live: false,
-    blockedBy: "Resend account and one DNS record. The quickest win on this list"
+    /*
+     * Live, and verified: POST /api/send-confirmation returned
+     * {sent:true, owner:true} from production, and the domain is verified so
+     * bookings@513autoclean.com is the sender. Resend now handles customer
+     * data, so the privacy policy has to name it, and the terms stop saying
+     * a booking is confirmed by hand.
+     */
+    live: true,
+    blockedBy: "Resend account and one DNS record"
   },
   {
     id: "automatedTexts",
@@ -2174,7 +2180,10 @@ var GATED_COPY = [
     id: "whyACard",
     capability: "cardOnFile",
     live: "It is also why we take card details when you book. We are not charging you up front. We just need a late change to cost the person making it something, rather than costing everyone else the slot.",
-    notYet: "We are not charging you up front. We just need a late change to cost the person making it something, rather than costing everyone else the slot."
+    // Deliberately NOT a shortened copy of the live sentence. The guard in
+    // terms.test.ts checks the page does not still carry the other half, and
+    // it cannot tell them apart if one is a substring of the other.
+    notYet: "Nothing is taken up front. We just need a late change to cost the person making it something, rather than costing everyone else the slot."
   },
   {
     id: "refunds",

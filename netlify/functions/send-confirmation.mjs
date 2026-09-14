@@ -1,5 +1,6 @@
 import { priceFromWire, validateWire, findPackage, findAddon, vehicleSize } from "./_pricing.mjs";
 import { createBookingEvent, gcalConfigured } from "./_gcal.mjs";
+import { measuredOneWayMinutes } from "./_routes.mjs";
 import { limited } from "./_ratelimit.mjs";
 import { verifyTurnstile } from "./_turnstile.mjs";
 
@@ -274,7 +275,19 @@ export async function handler(event) {
   if (!checked.ok) return json(400, { error: checked.error });
   const { cart, contact, kind, payInFull } = checked.booking;
 
-  const priced = priceFromWire(cart, { nowMs: Date.now(), payInFull });
+  /*
+   * MEASURED, not estimated. This line used to read
+   * `priceFromWire(cart, { nowMs, payInFull })` with no drive time, so the
+   * confirmation email quietly priced travel off the ZIP band while the
+   * screen and the card both used the real drive. A Mason booking read $30
+   * in the inbox and $20 everywhere else.
+   */
+  const measured = await measuredOneWayMinutes(cart);
+  const priced = priceFromWire(cart, {
+    measuredOneWayMinutes: measured,
+    nowMs: Date.now(),
+    payInFull,
+  });
   const when = whenLabel(cart.slot);
   const ctx = { contact, when, priced, kind, cart };
 
