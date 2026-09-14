@@ -754,3 +754,61 @@ describe("no two functions share a name in one scope", () => {
     ).toEqual([]);
   });
 });
+
+/**
+ * Four bugs that a render test cannot see, because each one is a sentence
+ * being chosen rather than a screen failing to draw. All four were reported
+ * from the live site by somebody trying to book.
+ */
+describe("what the screen says about money and time", () => {
+  const src = () => fs.readFileSync(path.join(ROOT, "js/funnel.js"), "utf8");
+  const fn = (name, len) => {
+    const code = src();
+    const at = code.indexOf(`function ${name}(`);
+    expect(at, `${name}() should exist`).toBeGreaterThan(-1);
+    return code.slice(at, at + len);
+  };
+
+  it("shows a measured drive even for a ZIP that is not in our table", () => {
+    /*
+     * travelLine() opened by looking the ZIP up in zipRanges and giving up if
+     * it was not there. An address in 40324 is outside that table, so the
+     * panel said "add your ZIP and the travel fee appears here" while the
+     * Routes API had already measured the drive and the fee was in the total.
+     * Charging for something the screen denies exists is the worst version of
+     * this bug, not a cosmetic one.
+     */
+    const code = fn("travelLine", 1600);
+    const gate = code.indexOf("Add your ZIP");
+    const measured = code.indexOf("t.source === 'routes'");
+    expect(measured, "the measurement must be read before the ZIP table is consulted")
+      .toBeLessThan(gate);
+    expect(code.slice(0, gate)).toContain("!measured");
+  });
+
+  it("prices the receipt's travel row from the quote, not from a second sum", () => {
+    // Rebuilding the fee here meant the row could disagree with the total
+    // directly beneath it, which is the one thing a receipt must never do.
+    const code = fn("lineTable", 2600);
+    expect(code).toContain("quote.travelCents");
+    expect(code, "no second mileage calculation").not.toContain("mileageFeeCents");
+    expect(code, "the quote's own travel line would print the fee twice")
+      .toContain("l.kind !== 'travel'");
+  });
+
+  it("asks for a time with a list of half hours, not a clock", () => {
+    // A native time input on a phone opens on the current time: touching it
+    // at all asks for 4:37 this afternoon without meaning to.
+    const code = fn("jumpBox", 1200);
+    expect(code, "a time input defaults itself to now").not.toContain('type="time"');
+    expect(code).toContain("halfHours()");
+  });
+
+  it("offers the nearest times instead of refusing the one asked for", () => {
+    const code = fn("noteWantedTime", 2600);
+    expect(code).toContain("Here are the nearest times we have to");
+    for (const dead of ["Nothing at exactly", "not available", "isn't available"]) {
+      expect(code, `"${dead}" reads as a failure when nothing has failed`).not.toContain(dead);
+    }
+  });
+});
