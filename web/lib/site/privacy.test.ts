@@ -84,6 +84,29 @@ describe("privacy.html is generated and current", () => {
     }
   });
 
+  it("does not claim to run no analytics while page-speed monitoring is on", () => {
+    /*
+     * Netlify Real User Monitoring is a switch in Netlify's own UI, not an
+     * environment variable, so nothing in this repo can detect it. The
+     * capability is the record of it, and these three sentences are the ones
+     * it falsifies. Two of them were flat denials and the third promised to
+     * ask before adding any analytics at all, which would have been a
+     * promise already broken on the page making it.
+     */
+    if (isLive("performanceMonitoring")) {
+      expect(text).not.toMatch(/runs no analytics software/i);
+      expect(text).not.toMatch(/no analytics or advertising trackers/i);
+      expect(text, "a policy cannot promise to ask before adding what is already running")
+        .not.toMatch(/If we ever add analytics, we will/i);
+      // And it has to say what IS happening, not merely stop denying it.
+      expect(text).toMatch(/measure how fast our own pages load/i);
+      expect(text).toContain("Netlify Real User Monitoring");
+    } else {
+      expect(text).toMatch(/runs no analytics software/i);
+      expect(text).not.toContain("Netlify Real User Monitoring");
+    }
+  });
+
   it("no em-dashes", () => {
     expect(html).not.toMatch(/—|&mdash;/);
   });

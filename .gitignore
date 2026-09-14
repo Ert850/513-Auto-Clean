@@ -55,3 +55,7 @@ js/config.js
 # website and never published. Kept beside it only so the catalog, prices and
 # service copy are one directory away when writing.
 content/
+
+# Lighthouse build plugin output. Written at the repo root, outside dist/,
+# so it is never published; it does not belong in the repo either.
+/reports/

@@ -43,6 +43,45 @@
   node_bundler = "esbuild"
 
 # ---------------------------------------------------------------------------
+# Lighthouse, on every build
+# ---------------------------------------------------------------------------
+#
+# Scores and the full report land in the Netlify UI and in the deploy log,
+# and on a pull request they appear in the deploy preview comment. Netlify
+# installs the plugin itself from this block; there is nothing to add to
+# package.json.
+#
+# WHY THREE PATHS. The home page carries the funnel and is what the money
+# depends on. The two legal pages are plain documents with no scripts, so if
+# their scores ever drop it is the shared head that did it, which makes them
+# a useful control against the home page.
+#
+# Paths are relative to the publish directory, which is dist/.
+#
+# NO THRESHOLDS ON PURPOSE. The plugin can fail a build when a score falls
+# below a number, and a performance score moves with the CPU Netlify happens
+# to give the runner. A booking fix that cannot deploy because a synthetic
+# audit came in at 0.78 on a noisy machine is a worse problem than a slow
+# page. Read the number, act on it, do not let it hold the site hostage.
+[[plugins]]
+  package = "@netlify/plugin-lighthouse"
+
+  [plugins.inputs]
+    output_path = "reports/lighthouse.html"
+
+  [[plugins.inputs.audits]]
+    path = "index.html"
+    output_path = "reports/lighthouse-home.html"
+
+  [[plugins.inputs.audits]]
+    path = "terms.html"
+    output_path = "reports/lighthouse-terms.html"
+
+  [[plugins.inputs.audits]]
+    path = "privacy.html"
+    output_path = "reports/lighthouse-privacy.html"
+
+# ---------------------------------------------------------------------------
 # Redirects
 # ---------------------------------------------------------------------------
 
@@ -104,6 +143,16 @@
     # needed for scripts. Styles keep it because Leaflet and the funnel set
     # style attributes from JavaScript. Promote to enforcing once the
     # console is quiet on a real booking end to end.
+    #
+    # BEFORE PROMOTING THIS TO ENFORCING, check Real User Monitoring. Netlify
+    # injects its own script before </body> on production deploys, after this
+    # file has had its say, so a script-src that does not admit it would stop
+    # the measurement and leave the dashboard empty with nothing to explain
+    # why. Report-only means it cannot break anything today: watch the
+    # violation reports from a production visit, then widen this to match
+    # what RUM actually asks for, or switch RUM off. The privacy policy
+    # describes it either way, through the performanceMonitoring switch in
+    # web/lib/site/capabilities.ts.
     Content-Security-Policy-Report-Only = "default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://js.stripe.com https://www.paypal.com https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://*.tile.openstreetmap.org https://*.googleusercontent.com https://lh3.googleusercontent.com https://*.paypal.com https://*.paypalobjects.com; connect-src 'self' https://api.web3forms.com https://nominatim.openstreetmap.org https://places.googleapis.com https://www.googleapis.com https://api.stripe.com https://*.paypal.com https://challenges.cloudflare.com; frame-src https://js.stripe.com https://hooks.stripe.com https://www.paypal.com https://*.paypal.com https://challenges.cloudflare.com; base-uri 'self'; form-action 'self' https://api.web3forms.com; object-src 'none'; frame-ancestors 'self'"
 
 # Every asset URL carries a content hash (?v=...), so it can be cached hard.
