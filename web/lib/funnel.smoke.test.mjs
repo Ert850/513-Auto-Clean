@@ -863,3 +863,98 @@ describe("the first screen owes nothing to the rest of the page", () => {
     expect(v).not.toContain("paypal.com/sdk");
   });
 });
+
+/**
+ * What a visitor actually downloads.
+ *
+ * The page was three and a quarter megabytes, most of it twelve full size
+ * photos fetched at once for cards a few hundred points wide, and a fifth of
+ * a megabyte of unminified JavaScript. Both are the kind of thing that comes
+ * back the moment somebody adds a photo without thinking about it.
+ */
+describe("the page does not send more than it needs", () => {
+  const gallery = () => JSON.parse(fs.readFileSync(path.join(ROOT, "data/gallery.json"), "utf8"));
+
+  it("has a resized file on disk for every width it claims", () => {
+    for (const pair of gallery().pairs) {
+      expect(pair.widths, `${pair.slug} must say which widths exist`).toBeTruthy();
+      expect(pair.widths.length).toBeGreaterThan(1);
+      for (const side of ["before", "after"]) {
+        for (const w of pair.widths) {
+          const f = path.join(ROOT, "images", `ba-${pair.slug}-${side}-${w}.webp`);
+          expect(fs.existsSync(f), `missing ${path.basename(f)}, so srcset would point at nothing`).toBe(true);
+          // And the file really is that wide, or the browser picks the wrong
+          // one: a `w` descriptor is a promise about pixels.
+          const buf = fs.readFileSync(f);
+          const vp8 = buf.indexOf("VP8", 12);
+          expect(vp8, `${path.basename(f)} is not a WebP`).toBeGreaterThan(0);
+        }
+        expect(fs.existsSync(path.join(ROOT, "images", `ba-${pair.slug}-${side}-760.jpg`)),
+          "the <img> fallback for browsers without WebP").toBe(true);
+      }
+    }
+  });
+
+  it("loads the gallery below the first card only when it is scrolled to", () => {
+    const js = fs.readFileSync(path.join(ROOT, "js/gallery.js"), "utf8");
+    expect(js).toContain('loading="lazy"');
+    expect(js, "the first card is on screen, so it does not wait").toContain("i === 0");
+    expect(js, "the full size export is a master to re-cut from, not a page asset")
+      .not.toMatch(/images\/ba-' \+ slug \+ '-(before|after)\.jpg/);
+  });
+
+  it("publishes minified JavaScript", () => {
+    // dist/ is built by `npm run build`; when it is absent this has nothing
+    // to check, which is the case in a bare checkout.
+    const dist = path.join(ROOT, "dist/js/funnel.js");
+    if (!fs.existsSync(dist)) return;
+    const src = fs.readFileSync(path.join(ROOT, "js/funnel.js"), "utf8");
+    const out = fs.readFileSync(dist, "utf8");
+    expect(out.length, "dist/js/funnel.js is not smaller than the source").toBeLessThan(src.length * 0.7);
+    expect(out, "comments are for us, not for the wire").not.toContain("NEVER RECORD A PAYMENT");
+  });
+
+  it("does not publish the full size gallery masters", () => {
+    const dir = path.join(ROOT, "dist/images");
+    if (!fs.existsSync(dir)) return;
+    for (const pair of gallery().pairs) {
+      for (const side of ["before", "after"]) {
+        expect(fs.existsSync(path.join(dir, `ba-${pair.slug}-${side}.jpg`)),
+          `dist ships the full size ba-${pair.slug}-${side}.jpg, which nothing loads`).toBe(false);
+      }
+    }
+  });
+});
+
+/**
+ * A drawer nobody can see is a drawer nobody should be able to tab into.
+ * aria-hidden only hides it from a screen reader; the ten links stayed in the
+ * tab order, parked off the right of the screen with no visible focus ring.
+ */
+describe("the closed mobile menu is out of reach", () => {
+  it("starts inert and stays in step with aria-hidden", () => {
+    const html = fs.readFileSync(path.join(ROOT, "index.html"), "utf8");
+    expect(html).toMatch(/<aside class="mobile-menu" id="mobileMenu" aria-hidden="true" inert>/);
+
+    const js = fs.readFileSync(path.join(ROOT, "script.js"), "utf8");
+    expect(js, "opening it has to give the links back").toContain("removeAttribute('inert')");
+    expect(js, "closing it has to take them away again").toContain("setAttribute('inert', '')");
+
+    // visibility is the half that works in a browser with no `inert`.
+    const css = fs.readFileSync(path.join(ROOT, "styles.css"), "utf8");
+    expect(css).toMatch(/\.mobile-menu \{ visibility: hidden;/);
+    expect(css).toMatch(/\.mobile-menu\.open \{[^}]*visibility: visible/);
+  });
+
+  it("uses an amber dark enough to read where amber is the text", () => {
+    const css = fs.readFileSync(path.join(ROOT, "styles.css"), "utf8");
+    expect(css).toContain("--amber-ink:");
+    // The bright amber is a fill and a border. On a light ground it is 2:1,
+    // which fails for text at any size.
+    for (const rule of [".g-badge .g-stars", ".rv-stars i.on"]) {
+      const at = css.indexOf(rule);
+      expect(at, `${rule} should exist`).toBeGreaterThan(-1);
+      expect(css.slice(at, css.indexOf("}", at))).toContain("--amber-ink");
+    }
+  });
+});

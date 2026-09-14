@@ -857,8 +857,10 @@ body.bk-open { overflow: hidden; }
 .bk-seg.now .bk-seg-t { color: var(--red); }
 .bk-seg.locked { opacity: .4; cursor: default; }
 
-.bk-star { color: var(--amber); }
-.bk-soon { color: var(--amber); font-size: .85rem; }
+/* The readable amber: these sit on the modal's light ground. See
+   --amber-ink in styles.css. */
+.bk-star { color: var(--amber-ink); }
+.bk-soon { color: var(--amber-ink); font-size: .85rem; }
 .bk-pkg.off { opacity: .72; cursor: default; }
 .bk-pkg.off:hover { border-color: var(--line); }
 
@@ -899,7 +901,7 @@ body.bk-open { overflow: hidden; }
 .bk-explain ul.no li::marker { color: var(--red); }
 .bk-explain-why { font-style: italic; border-top: 1px solid var(--line); padding-top: .7rem; margin-top: .9rem !important; }
 
-.bk-explain ul.time li::marker { color: var(--amber); }
+.bk-explain ul.time li::marker { color: var(--amber-ink); }
 
 /* ---------- Card-on-file authorization and bot check ---------- */
 .bk-mandate { align-items: flex-start; margin: .9rem 0 .6rem; font-size: .88rem; line-height: 1.45; }

@@ -27,6 +27,12 @@
 <meta name="twitter:image" content="https://513autoclean.com/images/hero-exterior.jpg" />
 
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230b0e13'/%3E%3Ctext x='32' y='42' font-family='Arial' font-weight='800' font-size='24' fill='%23ff3b3b' text-anchor='middle'%3E513%3C/text%3E%3C/svg%3E" />
+<!-- Saved to a phone's home screen, this is what it looks like and what it
+     is called. No service worker: an offline cache on a site whose job is
+     showing today's real open times is a way to let somebody book a slot
+     that was taken last week. -->
+<link rel="apple-touch-icon" href="images/apple-touch-icon.png" />
+<link rel="manifest" href="manifest.webmanifest" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <!-- The web fonts are linked at the END of the body, not here. A stylesheet
@@ -40,7 +46,7 @@
       href="images/hero-exterior-960.webp"
       imagesrcset="images/hero-exterior-640.webp 640w, images/hero-exterior-960.webp 960w, images/hero-exterior-1280.webp 1280w, images/hero-exterior-1600.webp 1600w"
       imagesizes="100vw" />
-<link rel="stylesheet" href="styles.css?v=b6e801d44f" />
+<link rel="stylesheet" href="styles.css?v=7a78ba5e7b" />
 <!-- Public configuration and third party loaders live in js/, not inline,
      so the Content-Security-Policy can forbid inline scripts outright.
      js/config.js holds publishable keys only. Secret keys never go in a page. -->
@@ -654,7 +660,7 @@
 
 <!-- Mobile menu -->
 <div class="scrim" id="scrim"></div>
-<aside class="mobile-menu" id="mobileMenu" aria-hidden="true">
+<aside class="mobile-menu" id="mobileMenu" aria-hidden="true" inert>
   <div class="mm-head">
     <span class="brand"><img class="mark-img" src="images/logo-mark.png" alt="" width="40" height="40" /><span class="b-name" style="color:#fff">513 Auto Clean</span></span>
     <button class="mm-close" id="mmClose" aria-label="Close menu">&times;</button>
@@ -1055,7 +1061,11 @@
     <div class="about-grid">
       <div class="about-photo reveal">
         <div class="frame">
-          <img src="images/team-portrait.jpg" alt="Owner of 513 Auto Clean, mobile detailing in Cincinnati" width="800" height="1200" decoding="async" fetchpriority="low" />
+          <picture>
+            <source type="image/webp" sizes="(min-width: 960px) 40vw, 90vw"
+                    srcset="images/team-portrait-400.webp 400w, images/team-portrait-800.webp 800w" />
+            <img src="images/team-portrait.jpg" alt="Owner of 513 Auto Clean, mobile detailing in Cincinnati" width="800" height="1200" decoding="async" loading="lazy" />
+          </picture>
         </div>
         <div class="sig">
           <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22"><path d="M12 2l2.4 7.4H22l-6 4.6 2.3 7.4L12 17l-6.3 4.4L8 14 2 9.4h7.6z"/></svg></span>
@@ -1444,13 +1454,13 @@
      and the library plus a dozen tiles were sharing the connection with the
      hero image on every visit. -->
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&family=Hanken+Grotesk:wght@400;500;600;700&display=swap" />
-<link rel="stylesheet" href="book.css?v=776fafa8df" />
+<link rel="stylesheet" href="book.css?v=a5545b95bf" />
 <!-- Deferred, in order: the pricing bundle must run before the funnel. -->
 <script src="js/pricing.bundle.js?v=5fe83d2949" defer></script>
-<script src="js/gallery.js?v=459274924b" defer></script>
+<script src="js/gallery.js?v=d9bac1fab2" defer></script>
 <script src="js/reviews.js?v=d59d6040a0" defer></script>
 <script src="js/travel.js?v=ccc602d44f" defer></script>
 <script src="js/funnel.js?v=1711be0f55" defer></script>
-<script src="script.js?v=04d836cd8e" defer></script>
+<script src="script.js?v=73dac09f87" defer></script>
 </body>
 </html>

@@ -2,10 +2,13 @@
   "_howToAdd": [
     "1. Export two photos at roughly the same angle and crop.",
     "2. Name them images/ba-<slug>-before.jpg and images/ba-<slug>-after.jpg.",
-    "3. Add an entry below with that same <slug>, a caption, and alt text.",
-    "4. Optional: set video to a clip URL. Nothing renders one yet, but the",
+    "3. Run the resize step so images/ba-<slug>-<side>-<width>.webp exist, and",
+    "   list those widths in `widths` below. The page never loads the full",
+    "   size original: a phone would be pulling a megabyte per card.",
+    "4. Add an entry below with that same <slug>, a caption, and alt text.",
+    "5. Optional: set video to a clip URL. Nothing renders one yet, but the",
     "   field is here so adding them later is a data change, not a code change.",
-    "5. Optional: tag with a service id so the gallery can filter by package."
+    "6. Optional: tag with a service id so the gallery can filter by package."
   ],
   "pairs": [
     {
@@ -13,48 +16,90 @@
       "caption": "Pet hair removal, Full Interior",
       "altBefore": "Before: heavy pet hair on the floor and carpet",
       "altAfter": "After: pet hair removed from vehicle floor and seats",
-      "services": ["full-interior", "pet-hair"],
-      "video": null
+      "services": [
+        "full-interior",
+        "pet-hair"
+      ],
+      "video": null,
+      "widths": [
+        420,
+        760,
+        1120
+      ]
     },
     {
       "slug": "headlight",
       "caption": "Headlight restoration and ceramic",
       "altBefore": "Before: foggy, oxidized headlight",
       "altAfter": "After: restored, clear headlight",
-      "services": ["headlight"],
-      "video": null
+      "services": [
+        "headlight"
+      ],
+      "video": null,
+      "widths": [
+        420,
+        760,
+        1120
+      ]
     },
     {
       "slug": "sonic-interior",
       "caption": "Interior reset and leather condition",
       "altBefore": "Before: cluttered, dirty car interior",
       "altAfter": "After: cleaned and conditioned car interior",
-      "services": ["full-interior"],
-      "video": null
+      "services": [
+        "full-interior"
+      ],
+      "video": null,
+      "widths": [
+        420,
+        760,
+        1120
+      ]
     },
     {
       "slug": "jeep-cargo",
       "caption": "Cargo area deep clean, Jeep Wrangler",
       "altBefore": "Before: dirty Jeep cargo area with debris",
       "altAfter": "After: vacuumed and detailed Jeep cargo area",
-      "services": ["full-interior"],
-      "video": null
+      "services": [
+        "full-interior"
+      ],
+      "video": null,
+      "widths": [
+        420,
+        760,
+        1120
+      ]
     },
     {
       "slug": "crv-interior",
       "caption": "Front interior detail, Honda CR-V",
       "altBefore": "Before: dirty CR-V front interior with stains",
       "altAfter": "After: detailed CR-V front interior",
-      "services": ["basic-interior"],
-      "video": null
+      "services": [
+        "basic-interior"
+      ],
+      "video": null,
+      "widths": [
+        420,
+        760,
+        1120
+      ]
     },
     {
       "slug": "console",
       "caption": "Console and cup holders, detailed",
       "altBefore": "Before: dusty center console and cup holders",
       "altAfter": "After: cleaned center console and cup holders",
-      "services": ["basic-interior"],
-      "video": null
+      "services": [
+        "basic-interior"
+      ],
+      "video": null,
+      "widths": [
+        420,
+        760
+      ]
     }
   ]
 }

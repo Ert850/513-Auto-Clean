@@ -47,6 +47,14 @@
   --red-ghost: rgba(196,20,20,.12);
 
   --amber:      #f0a93f;
+  /* THE SAME AMBER, DARK ENOUGH TO READ.
+     #f0a93f is a fine fill and a fine border, and it is 2.0:1 against white,
+     which is not text. Anywhere amber IS the text and the ground is light,
+     this is the one to use: 5.1:1 on white, 4.7:1 on the off white. Stars,
+     asterisks and the "not available yet" notes all read now. On the dark
+     sections (the review ticker) the bright one stays, because there it has
+     all the contrast it needs. */
+  --amber-ink:  #9a6100;
 
   --shadow-sm:  0 1px 2px rgba(11,14,19,.06), 0 2px 6px rgba(11,14,19,.05);
   --shadow-md:  0 8px 24px rgba(11,14,19,.10), 0 2px 6px rgba(11,14,19,.06);
@@ -211,7 +219,12 @@ section { padding-block: clamp(40px, 5vw, 72px); position: relative; }
   display: flex; flex-direction: column; padding: 2rem 1.75rem; gap: .25rem;
   box-shadow: var(--shadow-lg);
 }
-.mobile-menu.open { transform: translateX(0); }
+/* Off screen AND out of reach. `visibility` is the half of this that stops a
+   keyboard walking into the closed drawer in browsers that do not support
+   the `inert` attribute; it is delayed by the same duration as the slide so
+   the panel is still painted while it animates away. */
+.mobile-menu { visibility: hidden; transition: transform .4s var(--ease), visibility 0s linear .4s; }
+.mobile-menu.open { transform: translateX(0); visibility: visible; transition: transform .4s var(--ease), visibility 0s; }
 .mobile-menu .mm-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
 .mobile-menu .mm-close { color: #fff; font-size: 1.8rem; line-height: 1; padding: .25rem .5rem; }
 .mobile-menu a.mm-link {
@@ -277,7 +290,7 @@ section { padding-block: clamp(40px, 5vw, 72px); position: relative; }
 .g-badge:hover { transform: translateY(-3px); box-shadow: 0 28px 64px rgba(11,14,19,.28); }
 .g-badge .g-logo { width: 36px; height: 36px; flex-shrink: 0; }
 .g-badge .g-meta { display: flex; flex-direction: column; line-height: 1.15; gap: .15rem; }
-.g-badge .g-stars { color: var(--amber); font-size: 1.25rem; letter-spacing: .08em; }
+.g-badge .g-stars { color: var(--amber-ink); font-size: 1.25rem; letter-spacing: .08em; }
 .g-badge .g-text { font-size: .92rem; color: var(--text-soft); font-weight: 600; }
 
 .hero-scroll { position: absolute; left: 50%; bottom: 22px; transform: translateX(-50%); z-index: 1; width: 26px; height: 42px; border: 2px solid rgba(255,255,255,.5); border-radius: 14px; display: none; }
@@ -452,6 +465,11 @@ section { padding-block: clamp(40px, 5vw, 72px); position: relative; }
   position: relative; aspect-ratio: 4/3; border-radius: var(--r-lg); overflow: hidden;
   background: var(--ink-2); box-shadow: var(--shadow-md); user-select: none; touch-action: pan-y;
 }
+/* The photo is wrapped in <picture> now, so the fill has to be on the
+   wrapper as well: a <picture> is an inline box that shrink-wraps its image,
+   and an absolutely positioned child inside a static inline parent resolves
+   against the stage anyway, but only if the wrapper does not lay out first. */
+.ba-stage picture { position: absolute; inset: 0; display: block; }
 .ba-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; pointer-events: none; }
 .ba-before-layer { position: absolute; inset: 0; clip-path: inset(0 calc(100% - var(--pos)) 0 0); will-change: clip-path; }
 .ba-tag {
@@ -495,7 +513,7 @@ section { padding-block: clamp(40px, 5vw, 72px); position: relative; }
 .rev-fallback .g-logo { width: 40px; height: 40px; }
 .rev-fallback .rf-score { display: flex; align-items: center; gap: .8rem; margin-top: .6rem; }
 .rev-fallback .rf-score .num { font-family: var(--font-display); font-weight: 800; font-size: 3.4rem; line-height: 1; letter-spacing: -.03em; color: var(--ink); }
-.rev-fallback .rf-score .stars { color: var(--amber); font-size: 1.5rem; letter-spacing: .08em; }
+.rev-fallback .rf-score .stars { color: var(--amber-ink); font-size: 1.5rem; letter-spacing: .08em; }
 .rev-fallback .rf-text { color: var(--text-soft); font-size: 1.05rem; }
 .rev-fallback .rf-text b { color: var(--text); }
 .rev-fallback .rf-cta { display: flex; flex-wrap: wrap; gap: .7rem; justify-content: center; margin-top: 1.2rem; }
@@ -999,7 +1017,7 @@ html.scrolling-fast .reveal { transition: none; transition-delay: 0s; }
 .rv-score b { font-family: var(--font-display); font-size: 1.9rem; }
 .rv-score span { color: var(--text-soft); font-size: .88rem; }
 .rv-stars i { font-style: normal; color: var(--line); }
-.rv-stars i.on { color: var(--amber); }
+.rv-stars i.on { color: var(--amber-ink); }
 .rv-grid { display: grid; gap: 1rem; grid-template-columns: 1fr; }
 @media (min-width: 700px) { .rv-grid { grid-template-columns: repeat(2, 1fr); } }
 @media (min-width: 1000px) { .rv-grid { grid-template-columns: repeat(3, 1fr); } }
@@ -1131,9 +1149,9 @@ html.scrolling-fast .reveal { transition: none; transition-delay: 0s; }
 
 /* add-ons that are listed but not bookable yet */
 .addon.ad-off { opacity: .78; }
-.addon.ad-off b sup { color: var(--amber); }
+.addon.ad-off b sup { color: var(--amber-ink); }
 .addon .ad-soon {
-  display: block; font-style: normal; color: var(--amber);
+  display: block; font-style: normal; color: var(--amber-ink);
   font-weight: 700; font-size: .76rem; line-height: 1.4; margin-top: .2rem;
 }
 .ad-how { margin-top: .5rem; }
@@ -1169,7 +1187,7 @@ html.scrolling-fast .reveal { transition: none; transition-delay: 0s; }
 
 
 
-.svc-explain ul.ex-time li::marker { color: var(--amber); }
+.svc-explain ul.ex-time li::marker { color: var(--amber-ink); }
 
 /* ---------- Skip link: invisible until it has keyboard focus ---------- */
 .skip-link {
