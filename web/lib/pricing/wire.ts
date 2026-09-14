@@ -37,6 +37,9 @@ export interface WireAddress {
   zip?: string;
 }
 
+/** The three situations a cart can be in. See `kind` below. */
+export type BookingKind = "booking" | "inquiry" | "advice";
+
 export interface WireCart {
   vehicles: WireVehicle[];
   zip?: string | null;
@@ -53,7 +56,15 @@ export interface WireCart {
   payInFull?: boolean;
   promoCode?: string | null;
   address?: WireAddress | null;
-  kind?: "booking" | "inquiry";
+  /**
+   * What the customer settled.
+   *
+   * booking  a time and a price.
+   * advice   a real time, no price: they pressed "help me decide", so the
+   *          cart is deliberately empty and nothing can be charged for it.
+   * inquiry  no time, only the days that could work.
+   */
+  kind?: BookingKind;
 }
 
 export interface WireContact {
@@ -76,7 +87,7 @@ export interface CleanBooking {
   cart: WireCart;
   contact: WireContact;
   consent: WireConsent;
-  kind: "booking" | "inquiry";
+  kind: BookingKind;
   /** Derived from `mode`, never from the cart. */
   payInFull: boolean;
 }
@@ -147,6 +158,26 @@ export interface ValidateOptions {
   requireContact?: boolean;
 }
 
+/**
+ * How long a "help me decide" visit holds on the calendar.
+ *
+ * Somebody who cannot tell us what they want can still be given a real time,
+ * and that is worth far more than a promise to email them back: a time on
+ * the calendar is a booking, and a promise is a thing to chase. But with no
+ * package there is no duration, so the slot finder has nothing to fit and
+ * the calendar event has no end.
+ *
+ * Four hours, which is a Full Interior, the longest of the ordinary jobs.
+ * Holding too much and giving time back costs us a slot we might have sold.
+ * Holding too little and discovering it on the driveway costs us the next
+ * customer's appointment, and them their afternoon. The first mistake is the
+ * cheap one.
+ *
+ * Both sides read this: the browser fits slots to it, and the confirmation
+ * function ends the calendar event with it.
+ */
+export const ADVICE_HOLD_MIN = 240;
+
 export function validateWire(body: unknown, opts: ValidateOptions): WireValidation {
   const fail = (error: string, message: string): WireValidation => ({ ok: false, error, message });
 
@@ -160,6 +191,15 @@ export function validateWire(body: unknown, opts: ValidateOptions): WireValidati
   if (rawVehicles.length > WIRE_LIMITS.maxVehicles) {
     return fail("too_many_vehicles", `We can book up to ${WIRE_LIMITS.maxVehicles} vehicles online. Ask us about more.`);
   }
+
+  /*
+   * READ THE KIND FIRST, because it decides whether an empty cart is an error
+   * or the whole point. "advice" is somebody who pressed Help me decide: they
+   * have a vehicle and a time and no idea what they want, which is exactly
+   * the customer worth booking rather than turning into an email thread.
+   */
+  const kind: BookingKind =
+    cart["kind"] === "inquiry" ? "inquiry" : cart["kind"] === "advice" ? "advice" : "booking";
 
   const vehicles: WireVehicle[] = [];
   let anything = false;
@@ -250,11 +290,11 @@ export function validateWire(body: unknown, opts: ValidateOptions): WireValidati
     if (packageIds.length || addons.length || v.correction) anything = true;
     vehicles.push(v);
   }
-  if (!anything) return fail("empty_cart", "Pick at least one service.");
+  // The one cart that is allowed to be empty. Everything else with nothing
+  // in it is a bug or a poke at the endpoint.
+  if (!anything && kind !== "advice") return fail("empty_cart", "Pick at least one service.");
 
-  /* ---- kind and slot ---- */
-  const kind: "booking" | "inquiry" = cart["kind"] === "inquiry" ? "inquiry" : "booking";
-
+  /* ---- slot ---- */
   let slot: number | null = null;
   const rawSlot = cart["slot"];
   if (rawSlot !== undefined && rawSlot !== null) {
@@ -275,6 +315,12 @@ export function validateWire(body: unknown, opts: ValidateOptions): WireValidati
   const payInFull = opts.mode === "pay_now";
   if (payInFull && slot === null) {
     return fail("inquiry_cannot_prepay", "We do not take payment in full for a time that is not confirmed yet.");
+  }
+  // There is no price yet, so there is nothing to pay in full. Charging for a
+  // recommendation nobody has seen is not a thing we would ever want to do by
+  // accident.
+  if (payInFull && kind === "advice") {
+    return fail("advice_cannot_prepay", "We do not take payment before we have recommended anything.");
   }
 
   /* ---- visits ---- */

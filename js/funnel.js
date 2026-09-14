@@ -377,6 +377,22 @@
 
   function totalDurationMin() { return q().serviceDurationMin; }
 
+  /*
+   * HOW LONG TO HOLD, which is not the same as how long the job is.
+   *
+   * On the "help me decide" path there is no package, so there is no
+   * duration, so the slot finder has nothing to fit and would offer every
+   * hour of every day. It holds a Full Interior's four hours instead: the
+   * longest of the ordinary jobs, because holding too much costs us a slot
+   * we might have sold and holding too little costs the NEXT customer their
+   * appointment.
+   *
+   * P.ADVICE_HOLD_MIN is the same number the confirmation function ends the
+   * calendar event with, so the block on the calendar is the block the
+   * customer was offered.
+   */
+  function holdMinutes() { return totalDurationMin() || P.ADVICE_HOLD_MIN; }
+
   /* ================= dom ================= */
 
   var root = null, host = null;
@@ -870,7 +886,7 @@
     // Nothing authoritative to check against, so nothing to contradict.
     if (!P.calendarConfigured(cfg)) return Promise.resolve(true);
 
-    var dur = totalDurationMin();
+    var dur = holdMinutes();
     var dayStart = new Date(slot);
     dayStart.setHours(0, 0, 0, 0);
     var from = dayStart.getTime() - DAY;
@@ -1498,7 +1514,7 @@
 
     // The slot is part of the key: the same address at 8am and at 5pm is a
     // different drive, and that is the whole point of measuring it.
-    var key = addressLine().toUpperCase() + '@' + (state.slot || 0) + '+' + totalDurationMin();
+    var key = addressLine().toUpperCase() + '@' + (state.slot || 0) + '+' + holdMinutes();
     if (state.travel.forKey === key && !state.travel.pending) return;
 
     state.travel.pending = true;
@@ -1508,7 +1524,7 @@
     travelTimer = setTimeout(function () {
       fetch('/api/travel?address=' + encodeURIComponent(addressLine()) +
             (state.slot ? '&at=' + encodeURIComponent(state.slot) : '') +
-            '&service=' + encodeURIComponent(totalDurationMin()) +
+            '&service=' + encodeURIComponent(holdMinutes()) +
             '&zip=' + encodeURIComponent(state.address.zip || ''), { cache: 'default' })
         .then(function (r) { return r.ok ? r.json() : Promise.reject(new Error(String(r.status))); })
         .then(function (d) {
@@ -1692,17 +1708,29 @@
   /* ================= step 7: time ================= */
 
   function rTime() {
-    // No package means no duration, so there is nothing to fit into a day
-    // and no honest list of start times to show. Ask the one question that
-    // still has an answer.
-    if (state.advice) {
-      return '<p class="bk-sub">We will recommend a package once we know a bit more, so there is no ' +
-        'time to lock in yet. Tell us roughly when suits and we will come back with a time and a price.</p>' +
-        preferPicker();
-    }
-
     var earliest = P.earliestBookableDate(startOfToday(), RULES.window);
-    var html = '<p class="bk-sub">Pick a time that works. Nothing is charged until the next step.</p>';
+
+    /*
+     * THE SAME PICKER, WHATEVER THEY KNOW ABOUT THE PACKAGE.
+     *
+     * This step used to hand the "help me decide" path a different screen: no
+     * calendar, no real times, just "tell us roughly when suits". That is the
+     * weakest thing a booking form can do to somebody who is ready to buy and
+     * only unsure what to buy. They came to be advised, not to start an email
+     * thread, and a request with no time on it is the one most likely to go
+     * cold while they look at somebody else's website.
+     *
+     * So they get the real calendar. The hours are held, the appointment is
+     * real, and the only thing still open is which package it turns out to
+     * be, which is exactly the question they asked us.
+     */
+    var html = state.advice
+      ? '<p class="bk-sub">Pick a time and it is yours. We will work out the right package with you ' +
+        'before we start, so nothing is priced yet.</p>' +
+        '<p class="bk-note">We are holding <b>' + Math.round(P.ADVICE_HOLD_MIN / 60) + ' hours</b>, ' +
+        'which covers our longest single-vehicle detail. If the package we recommend needs less, we ' +
+        'finish earlier and you pay less. If it needs more, we will say so before the day.</p>'
+      : '<p class="bk-sub">Pick a time that works. Nothing is charged until the next step.</p>';
 
     if (state.vehicles.length > 1) {
       html += '<label class="bk-check bk-split' + (state.separateTimes ? ' on' : '') + '">' +
@@ -1945,7 +1973,7 @@
     // The WHOLE job, however long. Anything past a day gets planned across
     // consecutive days rather than truncated to its first morning, which is
     // what used to happen and left the rest to a phone call.
-    var dur = totalDurationMin();
+    var dur = holdMinutes();
 
     // Both calendars. 513 Auto Clean carries the OPEN blocks and the booked
     // details; 513 Availability is there for when those get split up. They
@@ -2123,10 +2151,19 @@
    * Everything downstream keys off this: the price is a quote, the button
    * says request, and paying in full is off the table.
    */
+  /*
+   * A REQUEST IS ABOUT THE TIME, not about the price.
+   *
+   * This used to return true for anybody who pressed "help me decide", which
+   * collapsed two different things into one. Not knowing which package you
+   * want does not mean you cannot be given a time: the van still has to drive
+   * out, the hours still have to be held, and a real appointment is worth
+   * immeasurably more to both sides than a promise to email back. What is
+   * unknown on that path is the PRICE, and that is what advising() says.
+   *
+   * So this now means exactly what its name says: no time has been agreed.
+   */
   function isInquiry() {
-    // Asking us to choose is a request by definition: there is no package to
-    // price and no duration to fit into a day, so there can be no slot.
-    if (state.advice) return true;
     return !state.slot && (state.prefer.parts.length > 0 || state.prefer.days.length > 0);
   }
 
@@ -2677,13 +2714,6 @@
   }
 
   function vTime() {
-    // isInquiry() is already true on this path, so without this the step
-    // would pass with nothing answered at all.
-    if (state.advice) {
-      return (state.prefer.days.length || state.prefer.parts.length)
-        ? null
-        : needs('Pick at least one day or time of day that could work.', '[data-prefday],[data-prefpart]');
-    }
     if (state.slot) return null;
     if (isInquiry()) return null;
     return needs('Pick a time, or tell us when suits.', '[data-band],[data-prefday],[data-prefpart]');
@@ -2965,7 +2995,15 @@
     // A request and a booking are two different things and were being told
     // the same story. One has a time on the calendar; the other is waiting
     // for us to offer one.
-    if (state.advice) {
+    if (state.advice && state.slot) {
+      out.push('<li><b>Your time is held.</b> ' +
+        (calendar ? 'It came off our live calendar as you picked it, so it is yours.' : 'We will confirm it shortly.') +
+        ' We are holding ' + Math.round(P.ADVICE_HOLD_MIN / 60) + ' hours for it.</li>');
+      out.push('<li><b>We work out the package with you.</b> Either beforehand, from what you have told ' +
+        'us, or on the day when we can see the vehicle. You hear the price before we start.</li>');
+      out.push('<li><b>You decide, and you can still say no.</b> If nothing we suggest is worth it to ' +
+        'you, we leave and there is nothing to pay.</li>');
+    } else if (state.advice) {
       out.push('<li><b>We come back with a recommendation.</b> Usually within a few hours: the package ' +
         'we would suggest, what it costs, and a time from the days you picked.</li>');
       out.push('<li><b>You decide.</b> Nothing is booked and nothing is charged until you say yes to it.</li>');
@@ -2996,7 +3034,10 @@
       : '<li><b>A text before we set off</b>, with an ETA. We send that one by hand, so if you need to ' +
         'move anything, replying to it reaches a person.</li>');
 
-    if (!state.advice) {
+    if (state.advice && state.slot) {
+      out.push('<li><b>Pay when it is done</b>, by ' + IN_PERSON + ', for whatever we agreed to do. ' +
+        'Nothing is taken beforehand.</li>');
+    } else if (!state.advice) {
       out.push('<li><b>Pay when it is done.</b> ' +
         (state.payInFull
           ? 'Already paid, so there is nothing to do.'
@@ -3105,7 +3146,9 @@
     // payInFull is its own switch and is currently off: the pay-now path did
     // not complete reliably on mobile, and a booking that says it is paid and
     // is not is worse than one that plainly is not.
-    return !isInquiry() && stripeMode() === 'live' &&
+    // And not while the price is still a question: 5% off an unknown number
+    // is not an offer, it is a puzzle.
+    return !isInquiry() && !state.advice && stripeMode() === 'live' &&
       P.isLive('cardOnFile') && P.isLive('payInFull');
   }
 
@@ -3131,10 +3174,16 @@
 
     if (state.advice) {
       html += '<div class="bk-asknote">' +
-        '<b>This is a request for a recommendation</b>' +
-        '<span>' + esc(preferenceSummary()) + ' We will read what you have told us, come back with the ' +
-        'package we would suggest and what it costs, and you decide from there. ' +
-        '<strong>Nothing is charged, and nothing is booked until you say yes.</strong>' +
+        '<b>' + (state.slot ? 'Your time is held. The package is the open question.' : 'This is a request for a recommendation') + '</b>' +
+        '<span>' +
+        (state.slot
+          ? 'We are holding ' + Math.round(P.ADVICE_HOLD_MIN / 60) + ' hours on ' +
+            esc(new Date(state.slot).toLocaleString('en-US', { weekday: 'long', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit' })) +
+            '. Before we start we will look at the vehicle with you, recommend the package, and tell you ' +
+            'what it costs. You can say no to it and we will do less, or nothing at all, at no charge. '
+          : esc(preferenceSummary()) + ' We will read what you have told us, come back with the package we ' +
+            'would suggest and what it costs, and you decide from there. ') +
+        '<strong>Nothing is charged today.</strong>' +
         '</span></div>';
     } else if (ask) {
       html += '<div class="bk-asknote">' +
@@ -3387,9 +3436,15 @@
       slot: state.slot,
       priority: state.priority,
       promoCode: state.promoCode || null,
-      // A request, not a booking. The server must not take money for a time
-      // that does not exist yet.
-      kind: isInquiry() ? 'inquiry' : 'booking',
+      /*
+       * THREE KINDS, because there are three situations.
+       *
+       * booking  a time and a price, both settled.
+       * advice   a real time, no price yet. The server allows this one cart
+       *          to be empty, holds the slot, and never takes money for it.
+       * inquiry  no time at all, only the days that could work.
+       */
+      kind: state.advice ? 'advice' : isInquiry() ? 'inquiry' : 'booking',
       access: state.access,
       // Free text. The pricing gate drops all of it, correctly, because none
       // of it can change a price. send-confirmation reads it from the raw
@@ -3398,7 +3453,7 @@
       locationNote: state.noGoodLocation ? (state.locationNote || '') : '',
       interest: state.interest.slice(),
       prefer: isInquiry() ? state.prefer : null,
-      payInFull: isInquiry() ? false : state.payInFull
+      payInFull: (isInquiry() || state.advice) ? false : state.payInFull
     };
   }
 
@@ -4332,7 +4387,8 @@
     var fd = new FormData();
     fd.append('access_key', WEB3FORMS_KEY);
     fd.append('subject', state.advice
-      ? 'HELP ME DECIDE, ' + state.contact.name + ', ' + (state.address.zip || 'no zip')
+      ? 'HELP ME DECIDE, ' + state.contact.name + ', ' +
+        (state.slot ? new Date(state.slot).toLocaleString('en-US') : (state.address.zip || 'no zip'))
       : (isInquiry() ? 'REQUEST, ' : 'BOOKING, ') + state.contact.name + ', ' + $(quote.totalCents) +
         (state.slot ? ', ' + new Date(state.slot).toLocaleString('en-US') : ''));
     fd.append('from_name', '513 Auto Clean Booking');
@@ -4363,7 +4419,12 @@
 
   function buildSummary(quote) {
     var a = state.address;
-    return (state.advice ? 'HELP ME DECIDE, no package chosen\n\n' : 'BOOKING\n\n') +
+    return (state.advice
+      ? 'HELP ME DECIDE, no package chosen. ' +
+        (state.slot
+          ? 'TIME IS HELD, ' + Math.round(P.ADVICE_HOLD_MIN / 60) + ' hours blocked. Work out the package with them.'
+          : 'No time chosen.') + '\n\n'
+      : 'BOOKING\n\n') +
       'WHO\n  ' + state.contact.name + '\n  ' + state.contact.phone +
       (state.contact.email ? '\n  ' + state.contact.email : '') + '\n\n' +
       'WHEN\n  ' + (state.slot ? new Date(state.slot).toLocaleString('en-US') : 'not selected') +
@@ -4486,9 +4547,14 @@
       '<h3>Thanks, ' + esc(state.contact.name.split(' ')[0]) + '.</h3>' +
       '<p>' + (isInquiry()
         ? 'We have your request and the times that suit you. 513 Auto Clean will come back with a time to confirm.'
-        : 'We have your booking' + (state.slot ? ' for <b>' +
-            new Date(state.slot).toLocaleString('en-US', { weekday: 'long', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit' }) +
-            '</b>' : '') + '. Your total is <b>' + $(quote.totalCents) + '</b> before travel.') +
+        : state.advice
+          ? 'Your time is held' + (state.slot ? ' for <b>' +
+              new Date(state.slot).toLocaleString('en-US', { weekday: 'long', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit' }) +
+              '</b>' : '') + '. There is no total yet, because we have not recommended anything yet. ' +
+            'We will do that with you before we start, and nothing is charged until you have agreed to it.'
+          : 'We have your booking' + (state.slot ? ' for <b>' +
+              new Date(state.slot).toLocaleString('en-US', { weekday: 'long', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit' }) +
+              '</b>' : '') + '. Your total is <b>' + $(quote.totalCents) + '</b> before travel.') +
       '</p>' +
 
       '<h4 class="bk-done-h">What you sent us</h4>' +
