@@ -358,22 +358,53 @@ body.bk-open { overflow: hidden; }
 .bk-pref-call { margin: .9rem 0 0; font-size: .84rem; color: var(--text-soft); }
 .bk-pref-call a { color: var(--red); font-weight: 700; }
 
-/* The way out at the foot of the slot list. Quiet by default: it is for the
-   minority whose day is not on the list, and it must not compete with the
-   times themselves. */
-.bk-askwhen { margin-top: 1.2rem; border-top: 1px solid var(--line); padding-top: .9rem; }
-.bk-askwhen > summary {
-  cursor: pointer; list-style: none; font-size: .88rem; font-weight: 700; color: var(--red);
-  padding: .55rem .2rem; display: flex; align-items: center; gap: .4rem;
+/* "Help me choose a time", above the calendar.
+
+   QUIET BY DEFAULT, because the calendar is the better answer for almost
+   everybody and a real time beats a conversation about times. Loud enough to
+   be seen without scrolling, because the person who needs it is the person
+   who cannot find a time that works, and they will not scroll twenty days
+   looking for a way out: they will close the tab. */
+.bk-timeswitch {
+  display: flex; flex-wrap: wrap; align-items: center; gap: .6rem .9rem;
+  background: var(--paper-2); border: 1.5px solid var(--line); border-radius: var(--r-md);
+  padding: .8rem .9rem; margin: 0 0 1rem;
 }
-.bk-askwhen > summary::-webkit-details-marker { display: none; }
-.bk-askwhen > summary::before {
-  content: ""; flex: none; width: 7px; height: 7px; border-right: 2px solid currentColor;
-  border-bottom: 2px solid currentColor; transform: rotate(-45deg); transition: transform .16s;
+.bk-timeswitch-t { flex: 1 1 15rem; min-width: 0; }
+.bk-timeswitch-t b { display: block; font-size: .95rem; margin-bottom: .15rem; }
+.bk-timeswitch-t span { display: block; font-size: .84rem; line-height: 1.5; color: var(--text-soft); }
+.bk-timeswitch-b {
+  flex: none; font: inherit; font-size: .88rem; font-weight: 700; cursor: pointer;
+  background: var(--paper); color: var(--red); border: 1.5px solid var(--red);
+  border-radius: 999px; padding: .5rem .95rem;
 }
-.bk-askwhen[open] > summary::before { transform: rotate(45deg); }
-.bk-askwhen > summary:hover { text-decoration: underline; }
-.bk-askwhen-b { padding-top: .2rem; }
+.bk-timeswitch-b:hover { background: var(--red); color: #fff; }
+.bk-timeswitch-b:focus-visible { outline: 2px solid var(--red); outline-offset: 2px; }
+
+/* Somebody who has already said they are not sure what they want. Not being
+   sure when, either, is the likeliest next thing, so it is worth more than a
+   grey box to them. */
+.bk-timeswitch.nudge { border-color: var(--red); background: var(--red-ghost); }
+
+/* In the ask view it is the heading of the screen, not an aside. */
+.bk-timeswitch.on { display: block; border-color: var(--ink); background: var(--paper-2); }
+.bk-timeswitch.on .bk-timeswitch-b { margin-top: .7rem; }
+.bk-timeswitch-warn {
+  margin: .6rem 0 0; font-size: .85rem; line-height: 1.5;
+  background: rgba(240, 169, 63, .13); color: #7a5209;
+  border-left: 3px solid var(--amber); border-radius: var(--r-sm); padding: .5rem .65rem;
+}
+
+/* The same way out at the foot of a long day list, for anyone who read to
+   the bottom before giving up. A button, not a second picker: two sets of
+   [data-prefday] in one document means one of them is always lying. */
+.bk-askwhen-link {
+  display: block; width: 100%; margin-top: 1.2rem; padding: .7rem .2rem;
+  border: 0; border-top: 1px solid var(--line); background: none;
+  font: inherit; font-size: .88rem; font-weight: 700; color: var(--red);
+  text-align: left; cursor: pointer;
+}
+.bk-askwhen-link:hover { text-decoration: underline; }
 
 /* "Help me decide", beside the three answers somebody might not have. Set
    apart from them, because it is a different kind of answer rather than a
