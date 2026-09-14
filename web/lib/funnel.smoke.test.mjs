@@ -1011,3 +1011,87 @@ describe("the closed mobile menu is out of reach", () => {
     }
   });
 });
+
+/**
+ * Choosing a time when the calendar is the wrong question.
+ *
+ * The escape hatch existed, collapsed, at the foot of a list that can run to
+ * twenty days. Somebody who cannot find a time that works does not scroll to
+ * the bottom looking for a way out; they close the tab. It is a mode switch
+ * at the top of the step now, on every path.
+ */
+describe("help me choose a time", () => {
+  const timeStep = (env) => {
+    env.window.ACFunnel.open();
+    click(env, { dataset: { size: "small" } });
+    click(env, { dataset: { intent: "interior" } });
+    click(env, { dataset: { pkg: "basic-interior", cat: "interior" } });
+    click(env, { id: "bkNext" });
+    click(env, { id: "bkNext" });
+    expect(env.lookup("bkTitle").textContent).toBe("Pick your time");
+    return env;
+  };
+
+  it("offers it above the day list, on every path", () => {
+    const env = timeStep(loadFunnel());
+    const body = env.lookup("bkBody").innerHTML;
+    const offer = body.indexOf("Help me choose a time");
+    const list = body.indexOf('id="bkSlots"');
+    expect(offer).toBeGreaterThan(-1);
+    expect(list).toBeGreaterThan(-1);
+    expect(offer, "the way out belongs above the thing it is a way out of").toBeLessThan(list);
+  });
+
+  it("swaps the calendar for the picker, and back", () => {
+    const env = timeStep(loadFunnel());
+
+    click(env, { id: "bkAskMode" });
+    const ask = env.lookup("bkBody").innerHTML;
+    expect(ask, "the picker should be here").toContain("data-prefday");
+    expect(ask, "and the calendar gone, so there is one question on screen")
+      .not.toContain('id="bkSlots"');
+    expect(ask, "and a way back").toContain("bkSlotMode");
+
+    click(env, { id: "bkSlotMode" });
+    const back = env.lookup("bkBody").innerHTML;
+    expect(back).toContain('id="bkSlots"');
+    expect(back, "one picker in the document at a time, or one of them lies")
+      .not.toContain("data-prefday");
+  });
+
+  it("says plainly that a chosen day is not a booking", () => {
+    const env = timeStep(loadFunnel());
+    click(env, { id: "bkAskMode" });
+    const ask = env.lookup("bkBody").innerHTML;
+    // The worst outcome on this screen is a reader who believes a request is
+    // a confirmed appointment.
+    expect(ask).toContain("This is not a booking");
+  });
+
+  it("nudges it harder for somebody who already said they are not sure", () => {
+    const plain = timeStep(loadFunnel()).lookup("bkBody").innerHTML;
+    expect(plain).not.toContain("bk-timeswitch nudge");
+    expect(plain).toContain("Would you rather we found a time?");
+
+    const fresh = loadFunnel();
+    fresh.window.ACFunnel.open();
+    click(fresh, { dataset: { size: "small" } });
+    click(fresh, { dataset: { intent: "advice" } });
+    const advice = fresh.lookup("bkBody").innerHTML;
+    expect(advice, "they have already told us they cannot choose").toContain("bk-timeswitch nudge");
+    expect(advice).toContain("Not sure when, either?");
+  });
+
+  it("keeps a picked day as a request, never as a slot", () => {
+    const src = fs.readFileSync(path.join(ROOT, "js/funnel.js"), "utf8");
+    const at = src.indexOf("if (t.dataset.prefday !== undefined");
+    expect(at).toBeGreaterThan(-1);
+    const handler = src.slice(at, at + 700);
+    expect(handler, "a preference and a fixed slot are different answers").toContain("state.slot = null");
+
+    // And isInquiry() is what turns that into "we will come back with a
+    // time", which is what keeps payment and the calendar write off it.
+    const inq = src.slice(src.indexOf("function isInquiry()"), src.indexOf("function isInquiry()") + 260);
+    expect(inq).toContain("!state.slot");
+  });
+});

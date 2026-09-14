@@ -95,6 +95,15 @@
       // them. It skips the three steps that only make sense once you know
       // what you want.
       advice: false,
+      /*
+       * Which way they are choosing a time: 'slots' is the calendar, 'ask'
+       * is telling us the days that could work and letting us come back.
+       *
+       * A mode, not a hidden panel, because the two are different answers to
+       * the same question and only one of them can be true. Picking a day in
+       * 'ask' clears any slot, which is what makes the answer unambiguous.
+       */
+      timeMode: 'slots',
       // Set when the payment form could not load, whatever the reason. The
       // card section removes itself and stops being a requirement.
       cardUnavailable: false,
@@ -1708,6 +1717,8 @@
   /* ================= step 7: time ================= */
 
   function rTime() {
+    if (state.timeMode === 'ask') return rTimeAsk();
+
     var earliest = P.earliestBookableDate(startOfToday(), RULES.window);
 
     /*
@@ -1731,6 +1742,10 @@
         'which covers our longest single-vehicle detail. If the package we recommend needs less, we ' +
         'finish earlier and you pay less. If it needs more, we will say so before the day.</p>'
       : '<p class="bk-sub">Pick a time that works. Nothing is charged until the next step.</p>';
+
+    // Before the day list, not after it. Somebody who cannot see a time that
+    // works does not scroll twenty days looking for a way out.
+    html += timeSwitch();
 
     if (state.vehicles.length > 1) {
       html += '<label class="bk-check bk-split' + (state.separateTimes ? ' on' : '') + '">' +
@@ -1765,6 +1780,16 @@
     html += '<div class="bk-slots" id="bkSlots"><p class="bk-loading">Checking the calendar...</p></div>';
     setTimeout(loadSlots, 0);
     return html;
+  }
+
+  /**
+   * The "tell us when suits" view of this step.
+   *
+   * The same picker the funnel has always fallen back to when the calendar
+   * has nothing, reached deliberately now instead of only by accident.
+   */
+  function rTimeAsk() {
+    return timeSwitch() + preferPicker();
   }
 
   /* ================= shareable quotes ================= */
@@ -2505,13 +2530,16 @@
         'If none of it works, tell us when suits below.</p>';
     }
 
-    // The way out for anybody whose day is not on this list. Without it the
-    // only move left was the close button, and closing is what someone does
-    // when a form appears to have nothing for them.
-    html += '<details class="bk-askwhen"' + (isInquiry() ? ' open' : '') + '>' +
-      '<summary>None of these work? Tell us when does</summary>' +
-      '<div class="bk-askwhen-b">' + preferPicker() + '</div>' +
-      '</details>';
+    /*
+     * The way out, again, for anybody who has read to the bottom.
+     *
+     * A BUTTON, not a second copy of the picker. Two pickers in one document
+     * means two sets of [data-prefday] buttons, and the click handler toggles
+     * the class on the one that was pressed, so the other copy would sit
+     * there showing the opposite of the truth.
+     */
+    html += '<button type="button" class="bk-askwhen-link" id="bkAskMode2">' +
+      'None of these work? Tell us when does</button>';
 
     box.innerHTML = html;
   }
@@ -2575,6 +2603,55 @@
   function wantedLabel(value) {
     var hit = halfHours().filter(function (o) { return o.value === value; })[0];
     return hit ? hit.label : value;
+  }
+
+  /**
+   * "Help me choose a time", at the top of the time step, for everybody.
+   *
+   * The calendar is the right default: a real time beats a conversation
+   * about times for almost everyone. But a list of days is the wrong shape
+   * of question for some people, and until now the only way out of it was a
+   * collapsed line at the foot of a list that could be twenty days long.
+   * Somebody who cannot see a time that works does not scroll to the bottom
+   * looking for an escape hatch, they close the tab.
+   *
+   * Nothing chosen here is a booking. It is the time they would LIKE, and
+   * the copy says so in both directions, because a request that the reader
+   * believes is confirmed is the single worst outcome on this screen.
+   */
+  function timeSwitch() {
+    if (state.timeMode === 'ask') {
+      return '<div class="bk-timeswitch on">' +
+        '<div class="bk-timeswitch-t">' +
+          '<b>Tell us when could work</b>' +
+          '<span>Pick the days and the part of the day that suit you. ' +
+          '<strong>This is not a booking</strong>: it is the time you would like, and we come back ' +
+          'to agree one with you, usually within a few hours.</span>' +
+        '</div>' +
+        (state.slot
+          ? '<p class="bk-timeswitch-warn">You have <b>' +
+            esc(new Date(state.slot).toLocaleString('en-US', { weekday: 'long', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit' })) +
+            '</b> picked. Choosing a day below swaps that confirmed time for a request.</p>'
+          : '') +
+        '<button type="button" class="bk-timeswitch-b" id="bkSlotMode">Show me real times instead</button>' +
+        '</div>';
+    }
+
+    // More suggestive for somebody who has already told us they are not sure.
+    // They said they cannot choose a package; not being able to choose an
+    // hour either is the likeliest next thing.
+    var advice = state.advice;
+    return '<div class="bk-timeswitch' + (advice ? ' nudge' : '') + '">' +
+      '<div class="bk-timeswitch-t">' +
+        '<b>' + (advice ? 'Not sure when, either?' : 'Would you rather we found a time?') + '</b>' +
+        '<span>' + (advice
+          ? 'You can tell us the days that could work instead of picking an hour from the calendar, ' +
+            'and we will come back with a time that fits.'
+          : 'Tell us roughly when suits and we will come back with a time, usually within a few hours. ' +
+            'Nothing is charged either way.') + '</span>' +
+      '</div>' +
+      '<button type="button" class="bk-timeswitch-b" id="bkAskMode">Help me choose a time</button>' +
+      '</div>';
   }
 
   function jumpBox() {
@@ -2716,7 +2793,9 @@
   function vTime() {
     if (state.slot) return null;
     if (isInquiry()) return null;
-    return needs('Pick a time, or tell us when suits.', '[data-band],[data-prefday],[data-prefpart]');
+    return state.timeMode === 'ask'
+      ? needs('Pick at least one day or time of day that could work.', '[data-prefday],[data-prefpart]')
+      : needs('Pick a time, or tell us when suits.', '[data-band],[data-prefday],[data-prefpart]');
   }
 
   /* ================= step 8: contact ================= */
@@ -3808,6 +3887,7 @@
       '[data-kind],[data-paymethod],[data-corr],[data-coating],[data-garage],[data-step],' +
       '[data-prefday],[data-prefpart],[data-interest],[data-band],[data-access],[data-extrarm],' +
       '#bkAddVeh,#bkMoreDays,#bkJumpClear,#bkNext,#bkBack,#bkClose,#bkScrim,#bkBrowse,#bkBrowseBack,' +
+      '#bkAskMode,#bkAskMode2,#bkSlotMode,' +
       '#bkLeaveStay,#bkLeaveKeep,#bkLeaveAsk,#bkLeaveDrop,#bkFresh,' +
       '#bkDoneClose,#bkDoneAsk,#bkDoneCopy,#bkDoneAgain,' +
       '#bkCopyQuote,' +
@@ -4083,6 +4163,18 @@
       renderTotal();
       return;
     }
+    if (t.id === 'bkAskMode' || t.id === 'bkAskMode2') {
+      state.timeMode = 'ask';
+      return render();
+    }
+    if (t.id === 'bkSlotMode') {
+      state.timeMode = 'slots';
+      // Their preferences stay recorded. If they pick a real time the slot
+      // wins, because isInquiry() reads the slot first, and if they do not
+      // then the request is still complete.
+      return render();
+    }
+
     if (t.dataset.pay) { state.payInFull = t.dataset.pay === 'now'; return render(); }
 
     if (t.id === 'bkAddVeh') {
@@ -4670,7 +4762,7 @@
     'step', 'vehicles', 'active', 'address', 'noGoodLocation', 'locationNote',
     'priority', 'slot', 'daysShown', 'contact', 'consent', 'interest',
     'prefer', 'promoCode', 'notes', 'separateTimes', 'payInFull', 'access',
-    'jumpDate', 'wantTime'
+    'jumpDate', 'wantTime', 'advice', 'timeMode'
   ];
 
   function saveDraft() {
