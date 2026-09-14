@@ -1,6 +1,6 @@
 # What is blocking a fully working site
 
-Last updated 2026-09-11, after the stress test.
+Last updated 2026-09-14.
 
 Everything on the site works today except the parts that need an account in
 your name. This is that list: what you have to do, what you have to send me,
@@ -16,9 +16,25 @@ actually does, down to which companies handle customer data. A test fails the
 build if a page and the switches ever disagree, so neither page can promise
 something that is not working or name a processor that is not in use.
 
-The switches, as of today: `cardOnFile`, `digitalWallets`, `liveCalendar`,
-`measuredTravel`, `automatedEmail`, `automatedTexts`, `bookingLink`,
-`placesAutocomplete`, `botCheck`. All off.
+The switches, as of today. Five of nine live, each verified against
+production rather than assumed:
+
+| Switch | State | Verified by |
+|---|---|---|
+| `cardOnFile` | **live** | `/api/create-payment` returns a `seti_` client secret |
+| `liveCalendar` | **live** | the funnel paints real openings from 513 Auto Clean |
+| `measuredTravel` | **live** | `/api/travel` answers `source: "routes"` |
+| `automatedEmail` | **live** | `/api/send-confirmation` returns `sent: true` |
+| `placesAutocomplete` | **live** | Places returns suggestions for the browser key |
+| `digitalWallets` | off | no PayPal client id. The chooser is hidden until there is one |
+| `automatedTexts` | off | A2P 10DLC not registered |
+| `bookingLink` | off | no Neon database |
+| `botCheck` | off | no Turnstile keys |
+
+**Not a switch, but still missing: the calendar WRITE.** Bookings reach the
+inbox and do not reach the calendar, because `GOOGLE_SERVICE_ACCOUNT_JSON` is
+not set. `/api/send-confirmation` reports `calendar: {ok:false, reason:
+"unconfigured"}` on every booking. SETUP.md 4a is the walkthrough.
 
 **Email and text are separate switches on purpose.** Resend is a signup and
 one DNS record, so `automatedEmail` can go live this week. A2P 10DLC is days
@@ -151,9 +167,10 @@ time, and raising it is one click.
 
 ## 4. The availability calendar
 
-**One calendar, and no service account.** `513 Booked Jobs` and a service
-account were for a calendar writer that has not been built; nothing in this
-repo writes to Google Calendar. Creating them now is work that does nothing.
+**One calendar, and now a service account too.** The funnel reads your OPEN
+blocks from it with the browser key, and `send-confirmation` writes each
+booking onto it with a service account. Full walkthrough, including what to do
+when a step is blocked and how to read the failure codes, is SETUP.md 4a.
 
 `513 Availability` is the one you manage from your phone. In its settings,
 tick **Make available to public** and choose **See all event details**, which

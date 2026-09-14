@@ -98,13 +98,16 @@ nothing else: no billing account, no card, no trial that expires.
    directly.
 4. Restrict it: Websites, `513autoclean.com/*`; API restrictions, Calendar API.
 
-**Do not create a service account, and do not create an OAuth client.** If the
-console pushes you into a "what data will you be accessing" wizard, the answer
-is **Public data**, which produces an API key. The funnel reads a *public*
-calendar from the visitor's browser: OAuth would ask every customer to sign in
-to Google, and a service account needs a private JSON key, which can never be
-put in a browser. Nothing in this repo writes to Google Calendar, so there is
-no second credential to create.
+**For this key, do not create a service account and do not create an OAuth
+client.** If the console pushes you into a "what data will you be accessing"
+wizard, the answer is **Public data**, which produces an API key. The funnel
+READS a public calendar from the visitor's browser: OAuth would ask every
+customer to sign in to Google, and a service account key can never be put in
+a browser.
+
+WRITING a booking onto the calendar is a separate job with a separate
+credential, and that one IS a service account. It is section 4a, and it lives
+in a different part of the console.
 
 ### 3b. Maps Platform, needs a card
 
@@ -149,9 +152,9 @@ make them yours.
 
 ## 4. The availability calendar
 
-**One calendar today, not two.** `513 Booked Jobs` was for a writer that has
-not been built: nothing in this repo writes to Google Calendar. Create it when
-that ships, not before.
+**One calendar, read and written.** The funnel reads your OPEN blocks from it,
+and `send-confirmation` writes each booking onto it. Since the reader treats
+any non-OPEN event as busy, writing the job is also what closes the slot.
 
 In Google Calendar on a desktop browser:
 
@@ -184,6 +187,78 @@ GOOGLE_CALENDAR_BOOKED_ID=...@group.calendar.google.com
 ```
 
 ---
+
+### 4a. The service account, so bookings write themselves
+
+Reading a public calendar takes an API key. WRITING to one takes an identity
+Google will accept, and nobody is present at 11pm when a booking lands, so it
+cannot be a login. A service account is a machine identity with its own key,
+and you share the calendar with its email address exactly as you would with a
+person.
+
+**Do not use "Create credentials".** That menu offers API keys and OAuth
+clients and will send you round the "what data will you be accessing" wizard
+again. Service accounts live somewhere else entirely.
+
+1. <https://console.cloud.google.com/iam-admin/serviceaccounts>, with the
+   513 Auto Clean project selected in the top bar.
+2. **Create service account**. Name it `513-calendar`. Press **Create and
+   continue**.
+3. **Skip both optional steps.** "Grant this service account access to the
+   project" and "Grant users access" are about Google Cloud resources, not
+   your calendar. Press **Done**.
+4. Click the account you just made, open the **Keys** tab, then
+   **Add key → Create new key → JSON**. A `.json` file downloads. That file
+   is a password: it never goes in the repo, never in a chat, never in email.
+5. Copy its email address, which looks like
+   `513-calendar@<project>.iam.gserviceaccount.com`. That address is safe to
+   share; it is not the key.
+
+Then in Google Calendar, on a desktop browser:
+
+6. **513 Auto Clean → Settings → Share with specific people or groups →
+   Add people**, paste the service account email, set permission to
+   **Make changes to events**, and Send. There is no invitation to accept:
+   a service account cannot read email, and the share takes effect
+   immediately.
+
+Then in Netlify:
+
+7. Site configuration → Environment variables → `GOOGLE_SERVICE_ACCOUNT_JSON`,
+   marked **secret**, all scopes. Paste the ENTIRE contents of the JSON file
+   as one value. Netlify turns the newlines inside the private key into the
+   two characters `\` and `n`; the code expects that and puts them back.
+8. **Redeploy.** Netlify injects environment variables into functions at
+   deploy time, so the variable does nothing until the next build.
+
+**If a step is blocked.** Service accounts need no billing account and no
+special role on a personal Google account, so the usual cause is being in the
+wrong console section. Two real blockers exist and both announce themselves:
+
+- *"Service account key creation is disabled"* is the org policy
+  `iam.disableServiceAccountKeyCreation`, which only exists if the Google
+  account belongs to a Workspace organisation. A personal Gmail account has
+  no organisation and cannot hit it.
+- *"You do not have permission to create service accounts"* means the signed
+  in account is not the project owner. Check the account picker top right; it
+  must be the one that created the project.
+
+**How to tell whether it worked.** The booking response says so. Every
+booking POSTs to `/api/send-confirmation`, and the reply carries a `calendar`
+field:
+
+| `reason` | What it means |
+|---|---|
+| absent, `ok: true` | The event was written. There is an `id` and a link. |
+| `unconfigured` | `GOOGLE_SERVICE_ACCOUNT_JSON` is not set, or not deployed yet |
+| `auth_failed` | The JSON is malformed, or the private key did not survive the paste |
+| `http_404` | The calendar has not been shared with the service account |
+| `http_403` | It is shared, but read only. Change it to Make changes to events |
+| `inquiry` | Correct: a request has no agreed time, so there is nothing to write |
+
+The function log in Netlify carries Google's own message alongside any of
+those, which names the problem in one line.
+
 
 ## 4b. Your personal calendar, as a conflict source
 
