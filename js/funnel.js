@@ -3045,18 +3045,37 @@
         '<h4>' + (now ? 'How would you like to pay?' : 'Card on file') + '</h4>' +
         '<p class="bk-hint">' +
           (now
-            ? 'Card, Apple Pay, Google Pay, bank transfer, PayPal or Venmo.'
+            // NOT a list of wallets. Apple Pay only appears if the domain is
+            // registered with Stripe AND the visitor is in Safari on an Apple
+            // device with a card in Wallet, so naming it on a desktop that
+            // will never show it is a promise the page cannot keep. Stripe
+            // renders whatever the device and the account actually support,
+            // so the copy names Stripe and lets the form speak for itself.
+            ? 'Handled by Stripe. Card, Link, and whichever wallets your device offers.'
             : 'Nothing is charged now, and nothing will be unless you cancel or move the booking late. ' +
               'On the day, pay however suits: ' + IN_PERSON + '.') +
         '</p>';
 
-      if (now) {
+      /*
+       * ONE METHOD, NO CHOOSER.
+       *
+       * The row offered "Card, Apple Pay, bank" against "PayPal or Venmo".
+       * There is no PayPal client id, so that second button led to a panel
+       * saying PayPal is not available here yet: a choice between something
+       * that works and something that apologises. The row appears again on
+       * its own the day a PayPal id lands in the config.
+       */
+      if (now && CFG.paypalClientId) {
         html += '<div class="bk-methods">' +
           '<button type="button" class="bk-method' + (state.payMethod === 'card' ? ' on' : '') + '" data-paymethod="card">' +
-            'Card, Apple Pay, bank</button>' +
+            'Card or wallet</button>' +
           '<button type="button" class="bk-method' + (state.payMethod === 'paypal' ? ' on' : '') + '" data-paymethod="paypal">' +
             'PayPal or Venmo</button>' +
           '</div>';
+      } else if (now) {
+        // Nothing to choose between, so the state cannot sit on a method that
+        // is not on the screen.
+        state.payMethod = 'card';
       }
 
       // Card networks require the customer to agree, in words they can read,

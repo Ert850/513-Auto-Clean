@@ -30,25 +30,20 @@ export const CAPABILITIES: Capability[] = [
     id: "cardOnFile",
     what: "Taking a card at booking and charging it when the work is done",
     /*
-     * MUTED ON PURPOSE, not blocked.
+     * LIVE, and verified against production rather than assumed.
      *
-     * The Stripe keys are in place and the whole payment path is written and
-     * tested. Stripe is refusing the secret key with an authentication error
-     * that has survived two attempts to fix it, and a booking screen that
-     * asks for a card and then cannot take one is worse than one that never
-     * mentions a card at all.
+     * POST /api/create-payment with a real cart came back with a
+     * seti_... client secret and a $134.75 total, which means the rotated
+     * secret key is valid and Stripe is creating intents. The mute that was
+     * here while Stripe returned StripeAuthenticationError is lifted.
      *
-     * So it is off, and everything moves with it: no card field, no
-     * authorization checkbox, no pay-in-full option, Stripe out of the
-     * privacy policy's processor list, and the five sentences in the terms
-     * about taking a card replaced with what actually happens. Payment is in
-     * full when the detail is finished.
-     *
-     * Set this back to true and all of it returns, in one commit, with
-     * nothing to rewrite.
+     * Everything moves with it: the card field, the pay-in-full option at
+     * 5% off, the authorization checkbox, Stripe named in the privacy
+     * policy's processor list, and the five sentences in the terms about
+     * taking a card.
      */
-    live: false,
-    blockedBy: "Stripe is rejecting the secret key",
+    live: true,
+    blockedBy: "Stripe keys",
   },
   {
     id: "digitalWallets",
@@ -85,8 +80,15 @@ export const CAPABILITIES: Capability[] = [
     // weeks for no reason.
     id: "automatedEmail",
     what: "Automatic confirmation and reminder emails",
-    live: false,
-    blockedBy: "Resend account and one DNS record. The quickest win on this list",
+    /*
+     * Live, and verified: POST /api/send-confirmation returned
+     * {sent:true, owner:true} from production, and the domain is verified so
+     * bookings@513autoclean.com is the sender. Resend now handles customer
+     * data, so the privacy policy has to name it, and the terms stop saying
+     * a booking is confirmed by hand.
+     */
+    live: true,
+    blockedBy: "Resend account and one DNS record",
   },
   {
     id: "automatedTexts",
@@ -261,8 +263,11 @@ export const GATED_COPY: GatedCopy[] = [
       "It is also why we take card details when you book. We are not charging you up front. We " +
       "just need a late change to cost the person making it something, rather than costing " +
       "everyone else the slot.",
+    // Deliberately NOT a shortened copy of the live sentence. The guard in
+    // terms.test.ts checks the page does not still carry the other half, and
+    // it cannot tell them apart if one is a substring of the other.
     notYet:
-      "We are not charging you up front. We just need a late change to cost the person making it " +
+      "Nothing is taken up front. We just need a late change to cost the person making it " +
       "something, rather than costing everyone else the slot.",
   },
   {

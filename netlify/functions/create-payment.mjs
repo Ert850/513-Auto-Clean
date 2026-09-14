@@ -1,6 +1,6 @@
 import Stripe from "stripe";
 import { MAX_BOOKING_CENTS, driveTooFar, priceFromWire, validateWire } from "./_pricing.mjs";
-import { addressLine, measureRoundTrip } from "./_routes.mjs";
+import { measuredOneWayMinutes } from "./_routes.mjs";
 import { limited } from "./_ratelimit.mjs";
 import { verifyTurnstile } from "./_turnstile.mjs";
 
@@ -28,29 +28,6 @@ const json = (status, body) => ({
   headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
   body: JSON.stringify(body),
 });
-
-/**
- * Measure the drive before pricing, so the customer is charged the same
- * travel fee the funnel showed them rather than a ZIP band approximation.
- *
- * Failure is not fatal: it falls back to the estimate, because refusing a
- * booking over a routing hiccup costs more than a few dollars of drive time.
- * Too far IS fatal, and is checked by the caller.
- */
-async function measuredMinutes(cart) {
-  const line = addressLine(cart?.address);
-  if (!line) return null;
-  try {
-    const drive = await measureRoundTrip({
-      dest: { address: line },
-      slotMs: cart?.slot ?? null,
-      serviceMin: cart?.serviceDurationMin ?? 0,
-    });
-    return drive?.reachable ? drive.minutes : null;
-  } catch {
-    return null;
-  }
-}
 
 /**
  * What a customer is allowed to read out of a Stripe error.
@@ -89,15 +66,28 @@ export async function handler(event) {
   if (!checked.ok) return json(400, { error: checked.error, message: checked.message });
   const { cart, contact, consent, kind, payInFull } = checked.booking;
 
-  // A card is only ever saved with the customer's say-so, in words they read.
-  if (!consent.mandateAccepted) {
+  /*
+   * A card is only ever SAVED with the customer's say-so, in words they read.
+   *
+   * That is what the mandate is for, and for `card_only` it is the entire
+   * point: nothing is being charged, a card is being kept against a late
+   * cancellation, and without consent there is nothing to do.
+   *
+   * Paying in full is a different transaction. The money moves now, the
+   * customer is present, and the authorization is the payment itself. So
+   * pay_now no longer demands the tick, which is what let the payment form
+   * load the moment somebody chooses "pay now and save 5%" instead of after
+   * a checkbox two paragraphs above it. The card is still only STORED for
+   * later if they ticked: see setup_future_usage below.
+   */
+  if (mode === "card_only" && !consent.mandateAccepted) {
     return json(400, { error: "mandate_required", message: "Please confirm the card authorization to continue." });
   }
 
   const bot = await verifyTurnstile(payload?.turnstileToken, event);
   if (bot) return json(400, { error: bot, message: "Please complete the check and try again." });
 
-  const measured = await measuredMinutes(cart);
+  const measured = await measuredOneWayMinutes(cart);
   if (driveTooFar(measured)) {
     return json(400, { error: "too_far", message: "That address is further than we can drive for a mobile detail." });
   }
@@ -162,7 +152,10 @@ export async function handler(event) {
           // Pay, Google Pay, Link, ACH, Cash App and so on. Enabling a new
           // method is a dashboard toggle, not a code change.
           automatic_payment_methods: { enabled: true },
-          setup_future_usage: "off_session",
+          // Only keep the card for later if they actually agreed to that.
+          // Paying today and being charged in three weeks are two different
+          // permissions and only one of them was given here.
+          ...(consent.mandateAccepted ? { setup_future_usage: "off_session" } : {}),
           statement_descriptor_suffix: "513AUTOCLEAN",
           description: `513 Auto Clean, ${contact.name}`.slice(0, 200),
           metadata,
