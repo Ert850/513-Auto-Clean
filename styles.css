@@ -748,6 +748,21 @@ section { padding-block: clamp(40px, 5vw, 72px); position: relative; }
 .reveal[data-d="3"] { transition-delay: .24s; }
 .reveal[data-d="4"] { transition-delay: .32s; }
 
+/* THE HERO DOES NOT WAIT FOR JAVASCRIPT.
+   .reveal holds an element invisible until script.js adds .in, and script.js
+   is the LAST deferred script: it ran after the pricing bundle, the funnel
+   and everything else had downloaded and executed. On a phone that put the
+   headline on screen eight seconds after the page arrived, and the headline
+   is the largest thing on the first screen, so that was the page's measured
+   load time. The hero animates itself in from CSS instead. Same look, same
+   stagger, no dependency. The animation's fill overrides the opacity above,
+   and .in landing later matches its end state, so nothing flickers. */
+.hero .reveal { animation: fadeUp .55s var(--ease) both; }
+.hero .reveal[data-d="1"] { animation-delay: .06s; }
+.hero .reveal[data-d="2"] { animation-delay: .12s; }
+.hero .reveal[data-d="3"] { animation-delay: .18s; }
+.hero .reveal[data-d="4"] { animation-delay: .24s; }
+
 /* Fast scrubbing: when the user flicks quickly, drop the fade + stagger so no
    element is ever caught mid-transition. Specificity (0,2,1) beats the
    [data-d] delay rules (0,2,0), so the stagger is cancelled too. */

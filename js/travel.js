@@ -635,7 +635,76 @@
 
   /* ---------------- wiring ---------------- */
 
-  if (!initLeaflet()) buildSchematic();
+  /*
+   * THE MAP LOADS WHEN IT IS ABOUT TO BE SEEN, not with the page.
+   *
+   * Leaflet, its stylesheet and a dozen map tiles were fetched on every
+   * visit, from the head, for a map that sits several screens below the
+   * fold on a phone. All of it shared one mobile connection with the hero
+   * image, which is the thing the reader is actually waiting for.
+   *
+   * So: the schematic SVG is drawn straight away, because it is cheap and
+   * it is what shows if the library never arrives. When the map's box comes
+   * within a screen of the viewport, the library is fetched, pinned to the
+   * same version and integrity hashes it always was, and replaces the
+   * schematic. Anyone who never scrolls that far never pays for it.
+   */
+  var LEAFLET_CSS = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css';
+  var LEAFLET_JS = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js';
+
+  buildSchematic();
+
+  var mapAsked = false;
+  function mountMap() {
+    if (mapAsked) return;
+    mapAsked = true;
+
+    function ready() {
+      if (!map && window.L && initLeaflet()) {
+        var fb = document.getElementById('zipMapSvg');
+        if (fb) fb.hidden = true;
+        if (selected) pick(selected);
+      }
+    }
+    if (window.L) { ready(); return; }
+
+    var css = document.createElement('link');
+    css.rel = 'stylesheet';
+    css.href = LEAFLET_CSS;
+    css.integrity = 'sha384-c6Rcwz4e4CITMbu/NBmnNS8yN2sC3cUElMEMfP3vqqKFp7GOYaaBBCqmaWBjmkjb';
+    css.crossOrigin = 'anonymous';
+    css.referrerPolicy = 'no-referrer';
+    document.head.appendChild(css);
+
+    var js = document.createElement('script');
+    js.src = LEAFLET_JS;
+    js.integrity = 'sha384-NElt3Op+9NBMCYaef5HxeJmU4Xeard/Lku8ek6hoPTvYkQPh3zLIrJP7KiRocsxO';
+    js.crossOrigin = 'anonymous';
+    js.referrerPolicy = 'no-referrer';
+    js.async = true;
+    // The stylesheet is usually there first, being smaller. If it is not,
+    // Leaflet still initialises correctly; the tiles just snap into place a
+    // moment later.
+    js.onload = ready;
+    // Nothing on failure: the schematic is already on screen and is the
+    // documented fallback.
+    document.head.appendChild(js);
+  }
+
+  var mapHost = document.getElementById('areaMap');
+  if (mapHost && 'IntersectionObserver' in window) {
+    var mapWatch = new IntersectionObserver(function (entries) {
+      if (entries.some(function (e) { return e.isIntersecting; })) {
+        mapWatch.disconnect();
+        mountMap();
+      }
+    }, { rootMargin: '600px 0px' });
+    mapWatch.observe(mapHost);
+  } else {
+    // No observer: wait for the load event, as before, so it still never
+    // competes with the first paint.
+    window.addEventListener('load', mountMap);
+  }
 
   go.addEventListener('click', function () { search(true); });
 
@@ -663,14 +732,4 @@
     if (suggest && !suggest.contains(e.target) && e.target !== input) hideSuggest();
   });
 
-  // Leaflet is deferred, so it may land after this file runs.
-  if (!map) {
-    window.addEventListener('load', function () {
-      if (!map && window.L && initLeaflet()) {
-        var fb = document.getElementById('zipMapSvg');
-        if (fb) fb.hidden = true;
-        if (selected) pick(selected);
-      }
-    });
-  }
 })();

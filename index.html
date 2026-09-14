@@ -29,15 +29,27 @@
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230b0e13'/%3E%3Ctext x='32' y='42' font-family='Arial' font-weight='800' font-size='24' fill='%23ff3b3b' text-anchor='middle'%3E513%3C/text%3E%3C/svg%3E" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&family=Hanken+Grotesk:wght@400;500;600;700&display=swap" />
-<link rel="preload" as="image" href="images/hero-exterior.webp" type="image/webp" fetchpriority="high" />
-<link rel="stylesheet" href="styles.css?v=01c9ae38da" />
+<!-- The web fonts are linked at the END of the body, not here. A stylesheet
+     in the head blocks the first paint until it arrives, and this one comes
+     from a third party. Down there, the page paints in the fallback face
+     and the real one swaps in (display=swap) a moment later. -->
+<!-- The largest thing on the first screen. Preloaded at the SIZE THE
+     SCREEN NEEDS: a phone was pulling the 1600 pixel, 300KB original over
+     a mobile connection while five scripts fought it for the line. -->
+<link rel="preload" as="image" type="image/webp" fetchpriority="high"
+      href="images/hero-exterior-960.webp"
+      imagesrcset="images/hero-exterior-640.webp 640w, images/hero-exterior-960.webp 960w, images/hero-exterior-1280.webp 1280w, images/hero-exterior-1600.webp 1600w"
+      imagesizes="100vw" />
+<link rel="stylesheet" href="styles.css?v=b6e801d44f" />
 <!-- Public configuration and third party loaders live in js/, not inline,
      so the Content-Security-Policy can forbid inline scripts outright.
      js/config.js holds publishable keys only. Secret keys never go in a page. -->
 <script src="js/config.js?v=e5dba8e597"></script>
-<script src="js/vendors.js?v=15afd8c532"></script>
-<link rel="stylesheet" href="book.css?v=776fafa8df" />
+<script src="js/vendors.js?v=b1b3811463"></script>
+<!-- book.css styles the booking modal, which is not open when the page first
+     paints, so it is linked at the end of the body rather than blocking the
+     paint from here. Scripts still wait for it: a parser-inserted script
+     does not run until every pending stylesheet has loaded. -->
 
 
 <!-- Local Business structured data (SEO) -->
@@ -667,8 +679,11 @@
 <section class="hero" id="home">
   <div class="hero-bg">
     <picture>
-      <source srcset="images/hero-exterior.webp" type="image/webp" />
-      <img src="images/hero-exterior.jpg" alt="Freshly detailed glossy white SUV in a Cincinnati driveway" fetchpriority="high" width="1600" height="1200" />
+      <source type="image/webp" sizes="100vw"
+              srcset="images/hero-exterior-640.webp 640w, images/hero-exterior-960.webp 960w, images/hero-exterior-1280.webp 1280w, images/hero-exterior-1600.webp 1600w" />
+      <img src="images/hero-exterior-1280.jpg" sizes="100vw"
+           srcset="images/hero-exterior-640.jpg 640w, images/hero-exterior-960.jpg 960w, images/hero-exterior-1280.jpg 1280w, images/hero-exterior-1600.jpg 1600w"
+           alt="Freshly detailed glossy white SUV in a Cincinnati driveway" fetchpriority="high" width="1600" height="1200" />
     </picture>
   </div>
   <div class="hero-overlay"></div>
@@ -1423,17 +1438,18 @@
   <a class="mb-quote" href="book.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> Book Now</a>
 </div>
 
-<!-- Leaflet, for the service area map. Pinned to an exact version with
-     integrity hashes computed from the CDN copies on 11 September 2026. If
-     it fails to load, js/travel.js falls back to a schematic map drawn in
-     SVG. -->
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" integrity="sha384-c6Rcwz4e4CITMbu/NBmnNS8yN2sC3cUElMEMfP3vqqKFp7GOYaaBBCqmaWBjmkjb" crossorigin="anonymous" referrerpolicy="no-referrer" />
-<script defer src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js" integrity="sha384-NElt3Op+9NBMCYaef5HxeJmU4Xeard/Lku8ek6hoPTvYkQPh3zLIrJP7KiRocsxO" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<!-- Leaflet, for the service area map, is NOT linked here. js/travel.js
+     fetches it, with the same pinned version and integrity hashes, when the
+     map scrolls within reach. On a phone the map is several screens down,
+     and the library plus a dozen tiles were sharing the connection with the
+     hero image on every visit. -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&family=Hanken+Grotesk:wght@400;500;600;700&display=swap" />
+<link rel="stylesheet" href="book.css?v=776fafa8df" />
 <!-- Deferred, in order: the pricing bundle must run before the funnel. -->
 <script src="js/pricing.bundle.js?v=ddf26df7c4" defer></script>
 <script src="js/gallery.js?v=459274924b" defer></script>
 <script src="js/reviews.js?v=d59d6040a0" defer></script>
-<script src="js/travel.js?v=6751d91279" defer></script>
+<script src="js/travel.js?v=ccc602d44f" defer></script>
 <script src="js/funnel.js?v=1711be0f55" defer></script>
 <script src="script.js?v=04d836cd8e" defer></script>
 </body>
