@@ -564,12 +564,15 @@ describe("the booking funnel opens", () => {
       .not.toContain('data-pay="now"');
 
     // Both locks open.
+    // Three locks, not two: payInFull is its own switch, because taking a
+    // card to hold and taking the whole price up front fail differently and
+    // one of them was failing on mobile.
     const live = render({ stripePublishableKey: "pk_live_smoke" });
-    if (P.isLive("cardOnFile")) {
-      expect(live, "a live key and the capability together open it").toContain('data-pay="now"');
+    if (P.isLive("cardOnFile") && P.isLive("payInFull")) {
+      expect(live, "a live key and the capabilities together open it").toContain('data-pay="now"');
       expect(live).toMatch(/Pay now and save/);
     } else {
-      expect(live, "the capability is off, so the key alone is not enough")
+      expect(live, "a capability is off, so the key alone is not enough")
         .not.toContain('data-pay="now"');
     }
   });
@@ -628,9 +631,12 @@ describe("the booking funnel opens", () => {
 
     // A test key must never unlock "pay now and save 5%": now means a test
     // card that moves nothing, so the discount would be off an unpaid bill.
-    const can = src.slice(src.indexOf("function canPayNow()"), src.indexOf("function canPayNow()") + 400);
+    const can = src.slice(src.indexOf("function canPayNow()"), src.indexOf("function canPayNow()") + 900);
     expect(can).toContain("=== 'live'");
     expect(can).toContain("cardOnFile");
+    // And the prepay switch, so turning the key on does not by itself turn
+    // "pay now and save 5%" back on while the mobile path is still broken.
+    expect(can).toContain("payInFull");
   });
 
   it("says test mode out loud when the key is a test key", () => {

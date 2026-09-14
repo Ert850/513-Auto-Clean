@@ -220,6 +220,7 @@ const inline = { inline: true };
   s("PAYMENT_METHODS", copyFor("paymentMethods"), inline);
   s("WHO_CAN_BOOK", copyFor("whoCanBook"), inline);
   s("CARD_AT_BOOKING", copyFor("cardAtBooking"), inline);
+  s("PREPAY", copyFor("prepay"));
   s("AUTHORIZATION", copyFor("authorization"));
   s("WHY_A_CARD", copyFor("whyACard"), inline);
   s("REFUNDS", copyFor("refunds"), inline);

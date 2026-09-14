@@ -1,4 +1,4 @@
-import { priceFromWire, validateWire, findPackage, findAddon, vehicleSize } from "./_pricing.mjs";
+import { priceFromWire, validateWire, findPackage, findAddon, vehicleSize, isLive } from "./_pricing.mjs";
 import { createBookingEvent, gcalAuthMode, gcalConfigured } from "./_gcal.mjs";
 import { measuredOneWayMinutes } from "./_routes.mjs";
 import { limited } from "./_ratelimit.mjs";
@@ -109,10 +109,18 @@ ${rows}
 <tr><td style="padding:10px 0 0;border-top:1px solid #e2e4df;font-weight:800">Total</td>
 <td style="padding:10px 0 0;border-top:1px solid #e2e4df;text-align:right;font-weight:800">${$(priced.totalCents)}</td></tr>
 </table>
-<p style="margin:0;font-size:13px;color:#5a6069">Travel is worked out from your address and added when we confirm.</p>`;
+${
+    priced.lines.some((l) => /travel/i.test(l.label))
+      // It is already a line in the table above, measured from the address at
+      // the hour picked. Saying it will be "added when we confirm" underneath
+      // a table that already added it is how a customer starts wondering what
+      // else is going to appear.
+      ? `<p style="margin:0;font-size:13px;color:#5a6069">Travel is the measured drive from us to you at the time you picked, and it is in the total above.</p>`
+      : `<p style="margin:0;font-size:13px;color:#5a6069">Travel is worked out from your address and added when we confirm.</p>`
+  }`;
 }
 
-function customerEmail({ contact, when, priced, kind }) {
+function customerEmail({ contact, when, priced, kind, slot }) {
   const name = esc(String(contact.name || "").split(" ")[0] || "there");
 
   if (kind === "inquiry" || !when) {
@@ -127,13 +135,40 @@ ${receiptRows(priced)}`,
     };
   }
 
+  /*
+   * CONFIRMED MEANS CONFIRMED.
+   *
+   * The time was taken off a live calendar and a job has been written back
+   * onto it, so the slot is gone for everybody else. Telling that customer
+   * we will "come back to confirm" makes them sit waiting for an email that
+   * is never coming, and some of them will book somebody else instead.
+   *
+   * The one honest exception is a booking made inside a day of the
+   * appointment. The calendar says the hour is free, and it is, but nobody
+   * may have looked at a phone between the booking and the van needing to
+   * leave. That gets a line saying so rather than a blanket hedge on every
+   * booking.
+   */
+  const confirmed = isLive("liveCalendar");
+  const soon = slot !== null && slot - Date.now() < 24 * 60 * 60 * 1000;
+
+  const opening = confirmed
+    ? `<p style="margin:0 0 14px">This is <strong>confirmed and booked in</strong>. Nothing else is needed from you, and there is nothing left to accept.</p>`
+    : `<p style="margin:0 0 14px">We will confirm this with you shortly, usually within a few hours. Treat the time as requested until you hear back.</p>`;
+
+  const shortNotice = confirmed && soon
+    ? `<p style="margin:0 0 14px;padding:10px 12px;background:#fdf3e3;border-radius:8px;font-size:14px">` +
+      `Because this is within the next day, we will send a quick message to double check we can ` +
+      `make it. If anything has to move we will call you, not leave you waiting.</p>`
+    : "";
+
   return {
-    subject: `You are booked in for ${when}`,
+    subject: confirmed ? `Booked in for ${when}` : `We have your booking for ${when}`,
     html: SHELL(
-      `Thanks ${name}, you are booked in`,
-      `<p style="margin:0 0 6px;font-size:13px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#5a6069">When</p>
+      confirmed ? `Thanks ${name}, you are booked in` : `Thanks ${name}, we have your booking`,
+      `${opening}${shortNotice}<p style="margin:0 0 6px;font-size:13px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#5a6069">When</p>
 <p style="margin:0 0 16px;font-size:18px;font-weight:700">${esc(when)}</p>
-<p style="margin:0 0 14px">That is a start time, not how long we stay. We will text you an ETA before we set off.</p>
+<p style="margin:0 0 14px">That is a start time, not how long we stay: we arrive within the hour after it. We will text you an ETA before we set off.</p>
 ${receiptRows(priced)}`,
     ),
   };
@@ -289,7 +324,7 @@ export async function handler(event) {
     payInFull,
   });
   const when = whenLabel(cart.slot);
-  const ctx = { contact, when, priced, kind, cart };
+  const ctx = { contact, when, priced, kind, cart, slot: cart.slot ?? null };
 
   const rawCart = payload?.cart ?? {};
   const rawAccess = rawCart.access ?? {};

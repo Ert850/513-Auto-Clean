@@ -2035,6 +2035,30 @@ var CAPABILITIES = [
     blockedBy: "Stripe keys"
   },
   {
+    /*
+     * SEPARATE FROM cardOnFile ON PURPOSE.
+     *
+     * Taking a card to hold against a late cancellation and taking the whole
+     * price up front are different promises, they fail differently, and one
+     * of them was failing. On mobile the Payment Element sometimes never
+     * mounted, and the funnel recorded the booking as PAID IN FULL anyway:
+     * Elijah would have arrived at a job expecting nothing and the customer
+     * would have expected to owe nothing. On desktop some payment methods in
+     * the element did not complete.
+     *
+     * So prepay is off and the card on file stays. Nothing is charged before
+     * the work is done; the whole price is paid on site afterwards.
+     *
+     * Turning this back on: the guard in submit() refuses to record a
+     * pay-in-full booking with no confirmed payment, so the failure mode that
+     * caused this cannot silently return. Test the mobile mount first.
+     */
+    id: "payInFull",
+    what: "Paying the whole detail online at booking, for 5% off",
+    live: false,
+    blockedBy: "The Stripe pay-now path does not complete reliably on mobile"
+  },
+  {
     id: "digitalWallets",
     what: "Apple Pay, Google Pay, PayPal and Venmo at checkout",
     live: false,
@@ -2166,8 +2190,22 @@ var GATED_COPY = [
   {
     id: "cardAtBooking",
     capability: "cardOnFile",
-    live: 'We ask for a card when you book. <strong>Nothing is charged then</strong> unless you choose to pay in full. It is there so that a last-minute cancellation is not free for the person making it. See <a href="#cancellation">cancellation</a>.',
+    // No mention of paying in full: that is the payInFull switch's sentence,
+    // in section 4, and it is off. This one is only about the card.
+    live: 'We ask for a card when you book. <strong>Nothing is charged then.</strong> It is there so that a last-minute cancellation is not free for the person making it. See <a href="#cancellation">cancellation</a>.',
     notYet: 'Nothing is charged when you book. You pay in full once the detail is finished. See <a href="#cancellation">cancellation</a> for what happens if you cancel late.'
+  },
+  {
+    /*
+     * The two paragraphs about paying up front. They were hand-written into
+     * terms.html and so they kept saying a discount was available for
+     * something the site had stopped offering. Anything whose truth depends
+     * on a switch belongs here, where the switch is.
+     */
+    id: "prepay",
+    capability: "payInFull",
+    live: "<p>You can pay in full up front instead, which gets you a discount. That is always your choice and we will never ask for it.</p>\n    <p>If your booking is a request rather than a confirmed time, we do not offer pay in full at all. We are not going to sit on your money for a time nobody has agreed to yet.</p>",
+    notYet: "<p>There is no way to pay up front at the moment, for a confirmed booking or a request. Whatever you book, the money changes hands once the work is done.</p>"
   },
   {
     id: "authorization",
@@ -2193,11 +2231,17 @@ var GATED_COPY = [
   },
   {
     id: "paymentMethods",
-    // Gated on taking money online at all, not on wallets: the in-person
-    // list is true today and does not wait for a Stripe key.
-    capability: "cardOnFile",
+    /*
+     * Gated on PREPAY, not on the card on file.
+     *
+     * The card and the payment are different sentences. Whether a card is
+     * held is section 6's business; this sentence is only about when money
+     * moves, and while prepay is off the answer is always "after the work".
+     * That reads correctly whether or not a card is being taken.
+     */
+    capability: "payInFull",
     live: `On the day you can pay by ${IN_PERSON}. You can also pay in full online when you book, or ask us to put it on the card we already have on file.`,
-    notYet: `On the day you can pay by ${IN_PERSON}. Ask us for anything not on that list and we will almost certainly be able to take it.`
+    notYet: `On the day you can pay by ${IN_PERSON}. Nothing is charged when you book. Ask us for anything not on that list and we will almost certainly be able to take it.`
   },
   {
     id: "travelBasis",
