@@ -20,13 +20,51 @@
     });
   }
 
+  /*
+   * ONE PHOTO, AT THE SIZE THE CARD IS ACTUALLY PAINTED.
+   *
+   * This used to hand every visitor the full export: twelve photos of about
+   * a quarter of a megabyte each, all fetched at once, for cards that are
+   * never wider than about 560 points. Three megabytes on a phone, competing
+   * with the hero image for the connection, to fill a section most people
+   * scroll past.
+   *
+   * The card is full width on a phone and half of a 1200 container above
+   * 820px, which is what `sizes` says. The browser picks a width from that
+   * and its own screen density; we only have to supply honest candidates.
+   */
+  var SIZES = '(min-width: 820px) 46vw, 92vw';
+
+  function srcset(slug, side, widths, ext) {
+    return widths.map(function (w) {
+      return 'images/ba-' + slug + '-' + side + '-' + w + '.' + ext + ' ' + w + 'w';
+    }).join(', ');
+  }
+
+  function photo(pair, slug, side, alt, eager) {
+    // Widths are listed per pair in gallery.json, because they depend on the
+    // photo: the portrait console shot is only 1050 wide, so claiming a 1120
+    // candidate would have the browser choose a file that does not exist.
+    var widths = (pair.widths && pair.widths.length) ? pair.widths : [420, 760];
+    return '<picture>' +
+      '<source type="image/webp" sizes="' + SIZES + '" srcset="' + srcset(slug, side, widths, 'webp') + '" />' +
+      '<img class="ba-img" src="images/ba-' + slug + '-' + side + '-760.jpg" alt="' + alt + '"' +
+        ' width="1400" height="1050" decoding="async"' +
+        // The first card is on screen, or nearly, the moment the gallery
+        // renders. Everything below it waits until somebody scrolls that
+        // far, which for most visitors is never.
+        (eager ? ' fetchpriority="low"' : ' loading="lazy"') +
+      ' /></picture>';
+  }
+
   function card(pair, i) {
     var slug = esc(pair.slug);
     var delay = i % 3 ? ' data-d="' + (i % 3) + '"' : '';
+    var eager = i === 0;
     return '<figure class="ba-slider reveal"' + delay + '>' +
       '<div class="ba-stage" style="--pos:50%">' +
-        '<img class="ba-img" src="images/ba-' + slug + '-after.jpg" alt="' + esc(pair.altAfter) + '" decoding="async" fetchpriority="low" />' +
-        '<div class="ba-before-layer"><img class="ba-img" src="images/ba-' + slug + '-before.jpg" alt="' + esc(pair.altBefore) + '" decoding="async" fetchpriority="low" /></div>' +
+        photo(pair, slug, 'after', esc(pair.altAfter), eager) +
+        '<div class="ba-before-layer">' + photo(pair, slug, 'before', esc(pair.altBefore), eager) + '</div>' +
         '<span class="ba-tag b">Before</span><span class="ba-tag a">After</span>' +
         '<div class="ba-divider"><div class="ba-knob">' + CHEV + '</div></div>' +
         '<input class="ba-range" type="range" min="0" max="100" value="50" aria-label="Compare before and after: ' + esc(pair.caption) + '" />' +

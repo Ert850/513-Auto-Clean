@@ -53,6 +53,11 @@
     navToggle.classList.add('open');
     navToggle.setAttribute('aria-expanded', 'true');
     mobileMenu.setAttribute('aria-hidden', 'false');
+    // `inert` is what actually takes the drawer out of the tab order.
+    // aria-hidden only hides it from a screen reader, so a keyboard user was
+    // tabbing through ten invisible links parked off the right of the screen
+    // with no way to tell where the focus ring had gone.
+    mobileMenu.removeAttribute('inert');
     document.body.style.overflow = 'hidden';
   }
   function closeMenu() {
@@ -61,6 +66,7 @@
     navToggle.classList.remove('open');
     navToggle.setAttribute('aria-expanded', 'false');
     mobileMenu.setAttribute('aria-hidden', 'true');
+    mobileMenu.setAttribute('inert', '');
     document.body.style.overflow = '';
   }
   if (navToggle) navToggle.addEventListener('click', function () {
