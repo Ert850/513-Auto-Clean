@@ -142,6 +142,30 @@ export const CAPABILITIES: Capability[] = [
     blockedBy: "Google browser key in js/config.js",
   },
   {
+    /*
+     * NETLIFY REAL USER MONITORING, on.
+     *
+     * Netlify injects a small script before </body> on the production site.
+     * It times how long the page takes to become visible and usable for the
+     * person actually loading it, and sends those timings back to Netlify,
+     * where they are aggregated across visitors. It sets no cookie, and an
+     * ad blocker does not stop it, because it is served from our own origin
+     * rather than from a tracker's.
+     *
+     * IT IS STILL A SCRIPT THAT WATCHES A VISITOR AND REPORTS TO A THIRD
+     * PARTY, so it goes through the same switch as everything else. Three
+     * sentences in the privacy policy said this site "runs no analytics" and
+     * promised to ask before adding any. All three flip with this.
+     *
+     * Turning it off: switch it off in the Netlify UI under Analytics and
+     * metrics, flip this to false, and rebuild. The policy stops describing
+     * something that is not happening.
+     */
+    id: "performanceMonitoring",
+    what: "Netlify Real User Monitoring, which times page loads for real visitors",
+    live: true,
+  },
+  {
     id: "botCheck",
     what: "Cloudflare Turnstile in front of the payment step",
     live: false,
@@ -180,6 +204,10 @@ export const PROCESSORS: Processor[] = [
   { name: "PayPal", does: "takes PayPal and Venmo payments.", capability: "digitalWallets" },
   { name: "Twilio", does: "sends our appointment text messages.", capability: "automatedTexts" },
   { name: "Resend", does: "sends our confirmation and reminder emails.", capability: "automatedEmail" },
+  // Named separately from the hosting row on purpose. "Netlify hosts the
+  // website" does not tell a reader that a script is running in their
+  // browser and reporting back, and that is the part worth knowing.
+  { name: "Netlify Real User Monitoring", does: "measures how quickly pages load for real visitors. A small script times the page and sends those timings to Netlify. It uses no cookie and carries nothing that identifies you.", capability: "performanceMonitoring" },
   { name: "Neon", does: "stores bookings in our database so your booking link works.", capability: "bookingLink" },
   { name: "Cloudflare Turnstile", does: "checks that a booking is being made by a person, before payment. It may set a cookie to do so.", capability: "botCheck" },
 ];

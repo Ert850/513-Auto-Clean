@@ -119,7 +119,12 @@ ${items.map((i) => `      <li>${i}</li>`).join("\n")}
 
 function automaticPara() {
   const parts = [
-    "Our website runs no analytics software, advertising pixels, or session-tracking tools. Like nearly all websites, our web host records standard server logs, including IP addresses and browser type, for security and reliability. The typefaces load from Google Fonts, which means Google receives your IP address when a page loads.",
+    // "No analytics software" stops being true the moment Real User
+    // Monitoring is switched on, so the sentence is written twice and the
+    // switch picks. What is measured is the page, not the person.
+    isLive("performanceMonitoring")
+      ? "Our website runs no advertising pixels and no session-tracking tools, and nothing on it follows you to other websites. Our host, Netlify, does measure how fast our own pages load: a small script times the page as it appears and sends those timings back to Netlify, where they are pooled with everyone else's. It sets no cookie and carries nothing that identifies you, and we use it to find the pages that are slow. Like nearly all websites, our web host also records standard server logs, including IP addresses and browser type, for security and reliability. The typefaces load from Google Fonts, which means Google receives your IP address when a page loads."
+      : "Our website runs no analytics software, advertising pixels, or session-tracking tools. Like nearly all websites, our web host records standard server logs, including IP addresses and browser type, for security and reliability. The typefaces load from Google Fonts, which means Google receives your IP address when a page loads.",
     "The service area map is drawn with OpenStreetMap tiles and a map library served by cdnjs, so both receive your IP address when the map loads. If you type a place into the map search, that text goes to OpenStreetMap to find it on the map.",
   ];
   if (isLive("placesAutocomplete")) {
@@ -163,7 +168,9 @@ ${rows}
 
 function cookiesParas() {
   const parts = [
-    "This website sets no cookies of its own and runs no analytics or advertising trackers.",
+    isLive("performanceMonitoring")
+      ? "This website sets no cookies of its own and runs no advertising trackers. The one thing we measure is how quickly our pages load, described in section 2, and it needs no cookie to do it."
+      : "This website sets no cookies of its own and runs no analytics or advertising trackers.",
     "There is one thing we can keep in your browser, and only if you ask for it. If you start a booking and leave before finishing, we offer to keep your answers so they are still there next time. Say yes and they are stored in your own browser for 14 days, so that the next time you tap Book Now you carry on where you stopped. That information stays on your device, never reaches us until you actually book, and you can throw it away from the same screen that offered to keep it. Say no, or say nothing, and there is nothing to throw away.",
   ];
   const setters = [];
@@ -176,7 +183,14 @@ function cookiesParas() {
       `When you reach the payment step, ${list} may set cookies of their own for fraud prevention and to make the form work. They load only on that step, not when you are reading the site.`,
     );
   }
-  parts.push("If we ever add analytics, we will update this policy and ask for your consent before any non-essential tracking is loaded.");
+  // Promising to ask before adding analytics, on a page that already has
+  // page-speed measurement running, is the kind of sentence that makes a
+  // reader stop believing the rest of the document.
+  parts.push(
+    isLive("performanceMonitoring")
+      ? "If we ever add analytics that identify you or follow you between websites, we will update this policy and ask for your consent before any of it loads."
+      : "If we ever add analytics, we will update this policy and ask for your consent before any non-essential tracking is loaded.",
+  );
   return parts.map((p) => `<p>${p}</p>`).join("\n    ");
 }
 
