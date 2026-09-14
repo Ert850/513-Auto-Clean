@@ -2019,20 +2019,26 @@ var CAPABILITIES = [
     id: "cardOnFile",
     what: "Taking a card at booking and charging it when the work is done",
     /*
-     * LIVE, and verified against production rather than assumed.
+     * OFF. There is no way to take a card at all right now.
      *
-     * POST /api/create-payment with a real cart came back with a
-     * seti_... client secret and a $134.75 total, which means the rotated
-     * secret key is valid and Stripe is creating intents. The mute that was
-     * here while Stripe returned StripeAuthenticationError is lifted.
+     * Stripe was the only thing that could hold one, and the pay path it
+     * gave us did not complete reliably, so it is muted. A booking screen
+     * that asks for a card it cannot store, against an authorization it
+     * cannot act on, is worse than one that never mentions a card: it is a
+     * promise made to a customer that the site cannot keep.
      *
-     * Everything moves with it: the card field, the pay-in-full option at
-     * 5% off, the authorization checkbox, Stripe named in the privacy
-     * policy's processor list, and the five sentences in the terms about
-     * taking a card.
+     * A late cancellation is still charged. The cancellation policy has not
+     * moved and neither has the amount. What changed is the collection: we
+     * bill for it and settle it with the customer, rather than putting it
+     * through a card we are holding. The same fee is carried onto the new
+     * date when somebody reschedules, which is where most of it lands.
+     *
+     * Everything moves with this switch: the card field, the authorization
+     * checkbox, Stripe named in the privacy policy's processor list, and the
+     * sentences in the terms about taking a card.
      */
-    live: true,
-    blockedBy: "Stripe keys"
+    live: false,
+    blockedBy: "No way to store a card while Stripe is muted"
   },
   {
     /*

@@ -3098,9 +3098,15 @@
           (state.advice
             ? 'There is nothing to pay for a recommendation. When we come back with a package and a ' +
               'price, you decide whether to book it.'
+            // Whether anybody confirms this by hand depends on the calendar.
+            // With it live, the time was taken when they picked it, and
+            // promising a confirmation nobody is going to send leaves them
+            // waiting on an email that is never coming.
             : 'You pay in full once the detail is finished, by ' + IN_PERSON + '. ' +
-              'Nothing is taken beforehand. Send your booking and we will confirm it, usually ' +
-              'within a few hours.') +
+              'Nothing is taken beforehand. ' +
+              (P.isLive('liveCalendar') && state.slot && !isInquiry()
+                ? 'Send it and the time is yours.'
+                : 'Send your booking and we will confirm it, usually within a few hours.')) +
         '</p></div>';
     } else {
       html += '<div class="bk-cardbox">' +
