@@ -578,6 +578,22 @@
     return String(node.value || '').trim() !== '';
   }
 
+  /**
+   * Is this box comfortably on screen already?
+   *
+   * Measured against the modal body, which is the thing that scrolls, with a
+   * margin at each end so a field half under the sticky footer still counts
+   * as needing a scroll.
+   */
+  function inView(box) {
+    var body = el('bkBody');
+    if (!body || !box || !box.getBoundingClientRect) return false;
+    var b = box.getBoundingClientRect();
+    var v = body.getBoundingClientRect();
+    var pad = 24;
+    return b.top >= v.top + pad && b.bottom <= v.bottom - pad;
+  }
+
   /** Put the cursor where it belongs, without hauling the page about. */
   function reach(node) {
     if (!node) return;
@@ -600,10 +616,20 @@
     var active = document.activeElement;
     if (isGroup && active && active.tagName === 'INPUT' && active.blur) active.blur();
 
-    // 'nearest' for a field, because it scrolls the least it can and a box
-    // already on screen should not move. 'center' for a consent group, whose
-    // question and buttons have to be visible together to be answerable.
-    box.scrollIntoView({ behavior: 'smooth', block: isGroup ? 'center' : 'nearest' });
+    /*
+     * A FIELD ALREADY ON SCREEN DOES NOT MOVE THE PAGE AT ALL.
+     *
+     * 'nearest' is documented as scrolling the least it can, and browsers
+     * still shift the page for a box that was only just inside the edge.
+     * Autofilling a name and watching the screen slide is the whole
+     * complaint, and the fix is not a smaller scroll: it is none.
+     *
+     * A consent group is different. It has to be read and answered, so it
+     * is centred whether or not it was technically visible.
+     */
+    if (isGroup || !inView(box)) {
+      box.scrollIntoView({ behavior: 'smooth', block: isGroup ? 'center' : 'nearest' });
+    }
 
     var target = node.tagName === 'INPUT' ? node : node.querySelector('button,input,select,textarea');
     if (target && target.focus) {
@@ -638,15 +664,44 @@
 
     clearTimeout(advanceTimer);
     advanceTimer = setTimeout(function () {
-      // Only if they are still in the box that just fired. If they have
-      // already tapped something else, moving them would be an ambush.
-      if (document.activeElement && document.activeElement !== node &&
-          document.activeElement.tagName === 'INPUT') return;
+      /*
+       * WALK ON FROM WHERE THEY ACTUALLY ARE, not from the box that fired.
+       *
+       * Autofill fills name, phone and email in one go and fires change on
+       * each. The last timer to survive belongs to whichever fired last, and
+       * the cursor is usually sitting somewhere else by then. Bailing out in
+       * that case meant nothing moved at all, which is why the terms question
+       * only sometimes came into view.
+       *
+       * The one case worth leaving alone is a box they moved to themselves
+       * and have not filled yet. That is a deliberate choice, not a stall.
+       */
+      var a = document.activeElement;
+      var body = el('bkBody');
+      if (a && a !== node && a.tagName === 'INPUT' && body && body.contains(a)) {
+        if (!String(a.value || '').trim()) return;
+        focusNext(a);
+        return;
+      }
       focusNext(node);
-    }, 120);
+    }, 160);
   }
 
   /** Continue is the only thing left. Say so without moving anything else. */
+  /**
+   * Show the end of the step: whatever optional boxes are left, and the
+   * button. Scrolls the body itself rather than an element, because the last
+   * thing on the page is the button in the sticky footer, and scrolling TO
+   * that stops short of the boxes above it.
+   */
+  function showTail() {
+    var body = el('bkBody');
+    if (body && body.scrollHeight > body.clientHeight) {
+      body.scrollTo({ top: body.scrollHeight, behavior: 'smooth' });
+    }
+    pointAtContinue();
+  }
+
   function pointAtContinue() {
     var next = el('bkNext');
     if (!next || next.hidden) return;
@@ -1518,11 +1573,23 @@
 
   function travelLine() {
     var hit = state.address.zip ? P.lookupZip(state.address.zip) : null;
-    if (!hit) {
+    var t = state.travel;
+    var measured = t.source === 'routes' && t.minutes !== null;
+
+    /*
+     * A MEASURED DRIVE OUTRANKS THE ZIP TABLE.
+     *
+     * This used to start by looking the ZIP up in our own table and give up
+     * if it was not there, so an address in 40324 got "add your ZIP and the
+     * travel fee appears here" while the Routes API had already measured the
+     * drive and the fee was sitting in the total. The customer was charged
+     * for something the screen refused to admit existed. The table is a
+     * fallback for before the measurement lands, never a gate in front of it.
+     */
+    if (!measured && !t.pending && !t.tooFar && !hit) {
       return '<p class="bk-hint bk-travel-slot">Add your ZIP and the travel fee appears here. ' +
         'The first 10 minutes of drive time are free.</p>';
     }
-    var t = state.travel;
 
     if (t.pending) {
       return '<div class="bk-travel pending bk-travel-slot"><b>Measuring the drive</b>' +
@@ -1535,13 +1602,12 @@
         'Give us a call and we will see what we can suggest.</span></div>';
     }
 
-    var measured = t.source === 'routes' && t.minutes !== null;
     var mins = measured ? t.minutes : P.estimateOneWayMinutes(state.address.zip);
     var fee = P.mileageFeeCents(mins, RULES.mileage);
 
     if (fee === 0) {
       return '<div class="bk-travel free bk-travel-slot"><b>No travel fee</b>' +
-        '<span>' + esc(measured ? 'Your address is' : hit.area + ' is') +
+        '<span>' + esc(measured || !hit ? 'Your address is' : hit.area + ' is') +
         ' inside our free radius' +
         (measured && driveSummary(t, mins) ? ', ' + driveSummary(t, mins) + ' each way' : '') +
         '.</span></div>';
@@ -1569,8 +1635,9 @@
     }
 
     return '<div class="bk-travel bk-travel-slot"><b>' + $(fee) + ' travel</b>' +
-      '<span>' + esc(hit.area) + ', about ' + mins + ' minutes each way, already in your total. ' +
-      'We confirm it from your exact address before charging anything.</span></div>';
+      '<span>' + esc(hit ? hit.area : 'Your ZIP') + ', about ' + mins + ' minutes each way, ' +
+      'already in your total. We confirm it from your exact address before charging ' +
+      'anything.</span></div>';
   }
 
   function vLoc() {
@@ -2445,6 +2512,34 @@
    * for on the days on screen and says plainly whether it is there, rather
    * than emptying the list and leaving someone to guess.
    */
+  /**
+   * Every half hour of a working day, as options.
+   *
+   * This was a native time input, and a native time input on a phone opens a
+   * wheel already sitting on the current time: touch it at all and you have
+   * asked for 4:37 this afternoon without meaning to. A list cannot do that.
+   * It also matches how the times are actually offered, which are half hours,
+   * so nobody asks for a minute that was never on sale.
+   */
+  function halfHours() {
+    var out = [];
+    for (var m = 6 * 60; m <= 20 * 60; m += 30) {
+      var h = Math.floor(m / 60), mm = m % 60;
+      var h12 = h % 12 === 0 ? 12 : h % 12;
+      out.push({
+        value: String(h).padStart(2, '0') + ':' + String(mm).padStart(2, '0'),
+        label: h12 + ':' + String(mm).padStart(2, '0') + (h < 12 ? ' am' : ' pm')
+      });
+    }
+    return out;
+  }
+
+  /** "14:30" as "2:30 pm", for a sentence rather than a field. */
+  function wantedLabel(value) {
+    var hit = halfHours().filter(function (o) { return o.value === value; })[0];
+    return hit ? hit.label : value;
+  }
+
   function jumpBox() {
     var min = dateInputValue(Math.max(Date.now(), hasCorrection()
       ? startOfToday().getTime() + P.CORRECTION_RULES.minLeadDays * DAY
@@ -2457,8 +2552,13 @@
         '" min="' + min + '" max="' + max + '" />' +
       '</div>' +
       '<div class="bk-jump-f"><label for="bkJumpTime">Got a time in mind?</label>' +
-        '<input type="time" id="bkJumpTime" data-jumptime value="' + esc(state.wantTime) +
-        '" step="1800" />' +
+        '<select id="bkJumpTime" data-jumptime' + (state.jumpDate ? '' : ' disabled') + '>' +
+          '<option value="">' + (state.jumpDate ? 'Any time' : 'Pick a date first') + '</option>' +
+          halfHours().map(function (o) {
+            return '<option value="' + o.value + '"' +
+              (state.wantTime === o.value ? ' selected' : '') + '>' + o.label + '</option>';
+          }).join('') +
+        '</select>' +
       '</div>' +
       (state.jumpDate || state.wantTime
         ? '<button type="button" class="bk-jump-clear" id="bkJumpClear">Show the soonest instead</button>'
@@ -2480,21 +2580,54 @@
     if (!m) { state.timeNote = ''; return; }
     var wanted = Number(m[1]) * 60 + Number(m[2]);
 
-    var exact = null, near = null, bestGap = Infinity;
-    slots.forEach(function (ms) {
-      var gap = Math.abs(localMin(ms) - wanted);
-      if (gap === 0 && exact === null) exact = ms;
-      if (gap < bestGap) { bestGap = gap; near = ms; }
+    /*
+     * ON THE DAY THEY ASKED FOR, when they asked for one.
+     *
+     * "The closest we have is 9am on Thursday" is not an answer to "what
+     * about Tuesday afternoon". Narrowing to the chosen day keeps the
+     * sentence about the question that was asked.
+     */
+    var day = state.jumpDate ? dayStartFromInput(state.jumpDate) : 0;
+    var pool = day
+      ? slots.filter(function (ms) { return ms >= day && ms < day + DAY; })
+      : slots.slice();
+
+    var exact = null;
+    pool.forEach(function (ms) {
+      if (localMin(ms) === wanted && exact === null) exact = ms;
     });
 
     if (exact !== null) {
       state.timeNote = 'Good news, ' + timeLabel(exact) + ' is open. It is in the list below.';
-    } else if (near !== null) {
-      state.timeNote = 'Nothing at exactly ' + state.wantTime + '. The closest we have is ' +
-        timeLabel(near) + ' on ' + new Date(near).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }) + '.';
-    } else {
-      state.timeNote = 'Nothing open in this range. Try another date, or tell us when suits below.';
+      return;
     }
+
+    if (!pool.length) {
+      state.timeNote = day
+        ? 'Nothing open on that day. Try another date, or tell us when suits below.'
+        : 'Nothing open in this range. Try another date, or tell us when suits below.';
+      return;
+    }
+
+    /*
+     * NEVER A REFUSAL.
+     *
+     * Nothing has gone wrong: they picked a half hour off a list and we have
+     * neighbouring ones. Saying what we DO have, nearest first, is the same
+     * information without the dead end.
+     */
+    var near = pool.slice().sort(function (a, b) {
+      return Math.abs(localMin(a) - wanted) - Math.abs(localMin(b) - wanted);
+    }).slice(0, 3).sort(function (a, b) { return a - b; });
+
+    var names = near.map(timeLabel);
+    var list = names.length > 1
+      ? names.slice(0, -1).join(', ') + ' and ' + names[names.length - 1]
+      : names[0];
+
+    state.timeNote = 'Here are the nearest times we have to ' + wantedLabel(state.wantTime) +
+      (day ? ' on ' + new Date(day).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }) : '') +
+      ': ' + list + '. They are in the list below.';
   }
 
   function timeLabel(ms) {
@@ -3179,7 +3312,14 @@
     }
 
     if (!state.advice) {
-      html += '<p class="bk-fine">Travel is worked out from your address and added when we confirm. ' +
+      // Whether travel is still to come depends on whether it has been
+      // priced. Saying it is "added when we confirm" directly under a table
+      // that has already added it is how somebody starts wondering what else
+      // is going to turn up.
+      html += '<p class="bk-fine">' +
+        (quote.travelIsEstimate
+          ? 'Travel is worked out from your address and added when we confirm. '
+          : 'Travel is the measured drive from us to you at the time you picked, and it is in the total above. ') +
         'Sales tax' + (quote.taxIsEstimate ? ' is added once we have your ZIP' : ' at ' + (quote.taxRateBp / 100).toFixed(2) + '% is included') + '.</p>';
     }
 
@@ -3545,7 +3685,12 @@
   }
 
   function lineTable(quote) {
-    var rows = quote.lines.map(function (l) {
+    // Travel is drawn on its own below, with the distance and the drive time
+    // behind it. Leaving the quote's own bare "Travel" line in as well
+    // printed the same fee twice.
+    var rows = quote.lines.filter(function (l) {
+      return l.kind !== 'travel';
+    }).map(function (l) {
       return '<tr class="' + l.kind + (l.amountCents < 0 ? ' neg' : '') + '">' +
         '<td>' + esc(l.label) +
         (l.vehicleIndex !== null && state.vehicles.length > 1 ? ' <i>(vehicle ' + (l.vehicleIndex + 1) + ')</i>' : '') +
@@ -3563,10 +3708,21 @@
     var tr = state.travel;
     var trMins = tr.source === 'routes' && tr.minutes !== null ? tr.minutes : null;
     var trSummary = trMins !== null ? driveSummary(tr, trMins) : '';
-    var travel = trSummary
-      ? '<tr class="pending"><td>Travel <i>' + esc(trSummary) + ' each way</i></td>' +
-        '<td>' + $(P.mileageFeeCents(trMins, RULES.mileage)) + '</td></tr>'
-      : '<tr class="pending"><td>Travel <i>from your address</i></td><td>added at confirmation</td></tr>';
+
+    /*
+     * THE MONEY COMES FROM THE QUOTE, not from a second sum done here.
+     *
+     * Rebuilding the fee from state.travel meant the row could disagree with
+     * the total it sits above: a quote priced off the ZIP estimate showed
+     * "added at confirmation" beside a blank while the total already had the
+     * fee in it, which is the one thing a receipt must never do.
+     */
+    var travel = quote.travelIsEstimate
+      ? '<tr class="pending"><td>Travel <i>from your address</i></td>' +
+        '<td>added at confirmation</td></tr>'
+      : '<tr><td>Travel <i>' +
+        esc(trSummary ? trSummary + ' each way, measured' : 'estimated from your ZIP') +
+        '</i></td><td>' + $(quote.travelCents) + '</td></tr>';
     var tax = quote.taxIsEstimate ? '<tr class="pending"><td>Sales tax</td><td>added at confirmation</td></tr>' : '';
     var when = state.slot
       ? '<tr class="when"><td>Your time</td><td>' +
@@ -3812,7 +3968,17 @@
       accGroup.querySelectorAll('[data-access]').forEach(function (b) {
         b.classList.toggle('on', b === t);
       });
-      focusNext(accGroup);
+      /*
+       * THE LAST SETUP QUESTION ENDS AT THE BOTTOM OF THE PAGE.
+       *
+       * Underneath these two questions sit the parking box, the anything-else
+       * box and the confirm button, and all three are optional, so the walker
+       * had nothing to move to and left the reader parked mid-screen looking
+       * at a question they had just answered. Showing them the end of the
+       * page is the answer: the optional boxes if they want them, and the
+       * button if they do not.
+       */
+      if (!focusNext(accGroup)) showTail();
       return;
     }
 

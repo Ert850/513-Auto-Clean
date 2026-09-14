@@ -1094,12 +1094,15 @@ body.bk-open { overflow: hidden; }
   display: block; font-size: .78rem; font-weight: 700; color: var(--text-soft);
   margin-bottom: .3rem;
 }
-.bk-jump input {
+.bk-jump input, .bk-jump select {
   width: 100%; font: inherit; font-size: .92rem;
   border: 1.5px solid var(--line); border-radius: var(--r-sm);
   padding: .55rem .65rem; background: var(--paper); color: var(--text);
 }
-.bk-jump input:focus { border-color: var(--red); outline: none; }
+.bk-jump input:focus, .bk-jump select:focus { border-color: var(--red); outline: none; }
+/* Disabled until a date is picked, because "nearest to 2pm" has to be
+   nearest to 2pm on some particular day to mean anything. */
+.bk-jump select:disabled { color: var(--text-soft); background: var(--paper-2); cursor: not-allowed; }
 .bk-jump-clear, .bk-jump-note { grid-column: 1 / -1; }
 .bk-jump-clear {
   justify-self: start; font: inherit; font-size: .82rem; font-weight: 700;
@@ -1146,12 +1149,18 @@ body.bk-open { overflow: hidden; }
   letter-spacing: .06em; text-transform: uppercase; color: var(--text-soft);
 }
 .bk-extra-list { list-style: none; margin: 0 0 .8rem; padding: 0; display: grid; gap: .35rem; }
+/* GRID, not flex. `.bk-how` below is already written as `grid-column: 1/-1`,
+   which does nothing inside a flex row, so an open "How it works" became a
+   fourth item on the same line: the name squeezed to one word per line and
+   the price printed straight through it. Three columns and a full-width
+   fourth cell is what the rest of this block was always written for. */
 .bk-extra-list li {
-  display: flex; align-items: baseline; gap: .6rem;
+  display: grid; grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: baseline; column-gap: .6rem; row-gap: .25rem;
   font-size: .9rem; padding: .45rem .6rem;
   background: var(--paper); border-radius: var(--r-sm);
 }
-.bk-extra-list li span { flex: 1; min-width: 0; }
+.bk-extra-list li span { min-width: 0; overflow-wrap: anywhere; }
 .bk-extra-list li b { font-weight: 800; white-space: nowrap; }
 .bk-extra-x {
   font: inherit; font-size: .78rem; font-weight: 700; color: var(--text-soft);
