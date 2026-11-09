@@ -114,11 +114,16 @@
   <span id="travel" class="anchor-alias" aria-hidden="true"></span>
   <div class="wrap">
     <div class="section-head center reveal">
-      <span class="eyebrow on-dark">Service Area and Travel</span>
+      <span class="eyebrow">Service Area and Travel</span>
       <h2>Price Estimate for Driving to You</h2>
       <p>Driving to you costs real money in fuel, maintenance, and hours. Instead of increasing every price and having our closest customers pay for our longest drives, we keep the prices lower for everyone and charge the actual drive. The first 10 minutes are free.</p>
     </div>
 
+    <!-- Three blocks, placed by grid areas: the search, the map, then the
+         extras. On a phone they stack in that order, so the map comes right
+         after the answer instead of after the fine print and two buttons.
+         From 820px the map takes the right column beside both. The legend
+         sits under the map because it explains the map's dots. -->
     <div class="areas-tool reveal">
       <div class="at-side">
         <label class="at-label" for="zipEst">Find your travel fee</label>
@@ -128,33 +133,52 @@
         </div>
         <div class="at-suggest" id="zipSuggest" hidden></div>
         <div class="travel-out" id="zipOut" role="status" aria-live="polite"></div>
+      </div>
+      <div class="at-map">
+        <div class="at-canvas" id="areaMap" role="application" aria-label="Map of the service area, coloured by travel fee"></div>
+        <!-- Schematic fallback, shown only if the map library does not load. -->
+        <div class="tmap-canvas" id="zipMapSvg" hidden></div>
         <div class="tmap-legend" id="zipLegend"></div>
+        <p class="at-zoomhint" id="mapZoomHint"></p>
+      </div>
+      <div class="at-extra">
         <p class="travel-fine">Rough figures from typical drive times, so a large ZIP shows a range. Your exact fee is measured from your real address when you book, and you see it before you pay anything.</p>
-        <button type="button" class="btn btn-ghost on-dark btn-block at-pin" id="pinDrop" hidden>
+        <button type="button" class="btn btn-ghost btn-block at-pin" id="pinDrop" hidden>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2C8 2 5 5 5 9c0 5 7 13 7 13s7-8 7-13c0-4-3-7-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg>
           Drop a pin on the map
         </button>
         <p class="at-pinhint" id="pinHint"></p>
-        <a class="btn btn-ghost on-dark btn-block" href="index.html#book">Get an exact quote</a>
-      </div>
-      <div class="at-map">
-        <div class="at-canvas" id="areaMap" role="application" aria-label="Map of the service area, coloured by travel fee"></div>
-        <p class="at-zoomhint" id="mapZoomHint"></p>
-        <!-- Schematic fallback, shown only if the map library does not load. -->
-        <div class="tmap-canvas" id="zipMapSvg" hidden></div>
+        <a class="btn btn-ghost btn-block" href="index.html#book">Get an exact quote</a>
       </div>
     </div>
 
+    <!-- Grouped so a long list can be scanned: by side of town in Ohio, by
+         county in Kentucky. Same towns as before and as the robots.txt
+         comment, only regrouped. -->
     <div class="area-lists reveal">
-      <div class="area-col">
+      <div class="area-col area-oh">
         <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2C8 2 5 5 5 9c0 5 7 13 7 13s7-8 7-13c0-4-3-7-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg> Ohio</h3>
         <div class="codes">Area codes 513 &amp; 937</div>
-        <p>Cincinnati, Clifton, Corryville, Northside, Norwood, Hyde Park, Oakley, Mount Lookout, Pleasant Ridge, Kenwood, Blue Ash, Montgomery, Symmes, Deer Park, Madeira, Mariemont, Indian Hill, Newtown, Anderson, Cherry Grove, Milford, Loveland, Mason, West Chester, Liberty Township, Sharonville, Springdale, Forest Park, Wyoming, Reading, Evendale, College Hill, Mount Healthy, Colerain, Groesbeck, Monfort Heights, Westwood, Bridgetown, Dent, Delhi, Price Hill, Sayler Park, Harrison, Fairfield, Hamilton, Middletown, Lebanon, Springboro, Franklin, Oxford, Batavia</p>
+        <h4 class="area-grp">Central Cincinnati</h4>
+        <p>Cincinnati, Clifton, Corryville, Northside, Norwood, Hyde Park, Oakley, Mount Lookout, Pleasant Ridge</p>
+        <h4 class="area-grp">East side</h4>
+        <p>Kenwood, Deer Park, Madeira, Mariemont, Indian Hill, Newtown, Anderson, Cherry Grove, Milford, Batavia</p>
+        <h4 class="area-grp">North</h4>
+        <p>Blue Ash, Montgomery, Symmes, Loveland, Mason, West Chester, Liberty Township, Sharonville, Springdale, Forest Park, Wyoming, Reading, Evendale, Fairfield</p>
+        <h4 class="area-grp">West side</h4>
+        <p>College Hill, Mount Healthy, Colerain, Groesbeck, Monfort Heights, Westwood, Bridgetown, Dent, Delhi, Price Hill, Sayler Park, Harrison</p>
+        <h4 class="area-grp">Farther north</h4>
+        <p>Hamilton, Middletown, Lebanon, Springboro, Franklin, Oxford</p>
       </div>
       <div class="area-col">
         <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2C8 2 5 5 5 9c0 5 7 13 7 13s7-8 7-13c0-4-3-7-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg> Northern Kentucky</h3>
         <div class="codes">Area code 859</div>
-        <p>Covington, Newport, Bellevue, Fort Thomas, Fort Mitchell, Edgewood, Crestview Hills, Erlanger, Florence, Independence, Union, Burlington, Hebron, Cold Spring, Highland Heights, Alexandria, Walton</p>
+        <h4 class="area-grp">Kenton County</h4>
+        <p>Covington, Fort Mitchell, Edgewood, Crestview Hills, Erlanger, Independence</p>
+        <h4 class="area-grp">Campbell County</h4>
+        <p>Newport, Bellevue, Fort Thomas, Cold Spring, Highland Heights, Alexandria</p>
+        <h4 class="area-grp">Boone County</h4>
+        <p>Florence, Union, Burlington, Hebron, Walton</p>
       </div>
       <div class="area-col">
         <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2C8 2 5 5 5 9c0 5 7 13 7 13s7-8 7-13c0-4-3-7-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg> Southeast Indiana</h3>
