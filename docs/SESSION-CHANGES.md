@@ -94,6 +94,73 @@ reorganization only. Reference sites: *links not yet provided*.
 
 ---
 
+### 3. Page split, phase 1: a shorter home page and four sub-pages
+- **Home page (`index.html`):**
+  - Now holds the hero, review ticker, gallery, packages (Services), booking, question form and footer. It went from 94.5 KB to 63 KB.
+  - Moved out, verbatim: About plus the full reviews grid, the service area and travel estimator, the FAQ, and the add-on catalog.
+  - The add-ons block is replaced by a "See all add-ons" button that links to `services.html`.
+  - The FAQ structured data (JSON-LD) moved to `faq.html`.
+  - `js/travel.js` is no longer loaded on the home page; it only drives the service area.
+- **New pages:**
+
+| Page | Content | Scripts |
+|---|---|---|
+| `services.html` | Add-on catalog, rendered from the catalog | `script.js` |
+| `about.html` | Meet the Team, plus the reviews grid | `reviews.js`, `script.js` |
+| `service-area.html` | Map and travel estimator | `pricing.bundle.js`, `travel.js`, `script.js` |
+| `faq.html` | FAQ, its JSON-LD and the generated price sentence | `script.js` |
+
+  - All four load `config.js` and `analytics.js`, so the banner and arrival-source capture work on them too.
+  - The topbar, header, mobile menu, footer and mobile bar are **copied verbatim** from `index.html`, with only the links changed. Home-page anchors become `index.html#…`. Book Now becomes `index.html#book`, which opens the booking form on arrival. Contact becomes `index.html#inquiry`.
+  - **Design rule kept:** no CSS changes and no new components. The only new markup is the add-ons page heading and the "See all add-ons" button, both using existing classes.
+- **Navigation:** the home page's header, mobile menu and footer now link to `about.html`, `about.html#reviews`, `service-area.html` and `faq.html` instead of in-page anchors. Labels and order are unchanged.
+- **Build:**
+  - `render-site.mjs` now writes to four pages: packages and offers into `index.html`, add-ons into `services.html`, the FAQ price sentence and its JSON-LD into `faq.html`, and the rating into every page that carries it.
+  - The new pages are added to `build-dist.mjs` `FILES`, `stamp-assets.mjs` `PAGES` and `sitemap.xml`.
+  - The comment in `robots.txt` now points at `service-area.html`.
+- **Generated with** a one-off script that copied each slice of `index.html` exactly. It is not committed: the pages are plain static files from here on. Header and footer changes now need making on all five pages.
+- **Test:**
+  1. Every nav, menu and footer link on every page lands where its label says.
+  2. Book Now on a sub-page opens the booking form on the home page.
+  3. Package "Book …" buttons on the home page preselect the package.
+  4. "See all add-ons" opens `services.html`.
+  5. The travel estimator answers a ZIP code on `service-area.html`, and the map loads when scrolled to.
+  6. The reviews grid appears on `about.html`. Locally, `/api/reviews` returns 404 and the stored reviews show; on Netlify the API is used.
+  7. FAQ answers expand, and Google's Rich Results test sees the FAQPage on `faq.html`.
+  8. No horizontal scroll at 375 px.
+  9. The mobile bar and menu work on every page.
+- **Checked in a browser on the built site:**
+  - All four pages render with no script errors. The only failing request is `/api/reviews`, which exists only on Netlify.
+  - The travel estimator returned "Mason (45040), $20 to $35".
+  - About shows 6 review cards.
+  - FAQ has 6 questions and valid FAQPage JSON-LD.
+  - Services shows the Interior and Exterior add-on groups.
+  - Home has 6 sections, and package buttons open the booking form.
+  - `index.html#book` opens the booking form.
+  - At 375 px, `service-area.html` has no horizontal overflow.
+- **Polish for the review pass (not done):**
+  - Sub-pages have no `<h1>`; each section heading is an `<h2>`. Swapping it would change how it looks, so that needs a decision.
+  - `services.html` shows its heading plus the catalog's own "Add-ons" `<h3>`, which reads as slightly repetitive.
+  - On sub-pages the first section fades in after `script.js` runs. The home hero avoids this with a CSS animation.
+  - `services.html` holds only add-ons, as decided. The URL suggests full services, so consider `/add-ons`, or adding the packages there later.
+
+### Reference sites reviewed (design lessons only, nothing copied)
+- **dksdetailing.com:**
+  - **What works:** one short line of social proof ("Trusted by 250+"), a one-line headline, and two buttons (a main one plus Call). Packages are grouped by Full, Exterior and Interior.
+  - **What to avoid:** no prices anywhere, so every button says "Get Free Quote", which adds friction. The page is about 9,800 px tall with duplicated carousel content.
+- **truecolorsdetailing.com** (local competitor, Florence, KY):
+  - **What works:** a short nav (Services, Book Now, About, Mobile, Contact), each service on its own page (good for SEO), and a headline with the location in it. The hero has a main "Book services" button and a secondary "View all services" one, which is the same split we just made.
+  - **What to avoid:** ten different labels for the booking button, and the home page is still about 12,000 px.
+  - **Possible follow-up:** they're the closest competitor in our area; consider doing a full side-by-side comparison.
+- **extramileceramiccoating.com:**
+  - **What to avoid:** several `<h1>`s, a 20,000 px wall of text, a stray "New Page" nav item, and vague lowercase "schedule" buttons.
+  - **What works:** the owner's own voice.
+- **What that means for us:**
+  - Use one main button label everywhere (Book Now) and one secondary (services and prices).
+  - Keep the home page to proof, packages and booking, with depth on sub-pages.
+  - Keep prices visible; that is already an advantage over DKS.
+  - Avoid repeated content, and have one `<h1>` per page.
+
 ## Files and sections changed
 
 | File | Section | Change |
@@ -135,12 +202,13 @@ reorganization only. Reference sites: *links not yet provided*.
 ## Docs added
 - `docs/DELIVERABLES-2026-11-13.md`: the deliverables list from the voice notes
 - `docs/ANALYTICS-OPTIONS.md`: the analytics comparison (GA4 + Clarity chosen)
-- `docs/BOOKING-PIPELINE.md`: booking pipeline process document (in progress, written by a parallel agent)
+- `docs/BOOKING-PIPELINE.md`: booking pipeline process document: flow diagram, counts, asked-vs-minimum comparison, 11 ranked improvements, and the weekly calendar spec. Written by a parallel agent. Two claims spot-checked against `rules.ts` and `surcharge.ts`: correct. Its 8 questions for the owner are still open.
 - `docs/SESSION-CHANGES.md`: this file
 
 ## Known gaps and follow-ups
 - GA4 and Clarity ids are not set yet. The owner needs to create the accounts (see `docs/ANALYTICS-OPTIONS.md`) and add `GA4_MEASUREMENT_ID` and `CLARITY_PROJECT_ID` as Netlify environment variables.
-- The banner and the "Analytics choices" link exist only on the home page. New sub-pages (`/faq`, `/about`, `/service-area`, `/services`, magazine pages) must include `js/config.js` and `js/analytics.js`, and the footer link.
+- The four sub-pages load `config.js` and `analytics.js`, and their footers carry the "Analytics choices" link (copied from the home page). **The magazine landing pages are not built yet** and must do the same.
+- **GitHub push is blocked:** this Mac is signed in as `AffineFrame`, which has no write access to `Ert850/513-Auto-Clean`. Commits are on local `eNov6` only until access is fixed.
 - The source is not yet sent to GoHighLevel, because that integration doesn't exist yet.
 
 ## Environment
