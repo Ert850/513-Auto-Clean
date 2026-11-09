@@ -1,0 +1,147 @@
+# Session change log: November 9, 2026 (branch `eNov6`)
+
+For the validation agent at the end of the session. It lists every change,
+every new feature, and every section modified, with what to test. Updated as
+work lands.
+
+**Design rule (from the owner):** the home page is being simplified and
+reorganized for better conversion. **The look of the site does not change.**
+Colors, type, components and style stay as they are. This is cleanup and
+reorganization only. Reference sites: *links not yet provided*.
+
+**Rules for anything that touches the owner's calendar or bookings (from the owner):**
+- Validate what the live site actually does before changing anything near it. That is the bare minimum.
+- **Do not break existing behavior.** GoHighLevel starts as a *parallel* feed alongside the current booking flow. Whether booking management moves to GoHighLevel is a later decision.
+
+**Phase order (from the owner):**
+1. Interface cleanup, plus moving sections to sub-pages and building the magazine landing pages. **Next.**
+2. Set up analytics, and validate that the landing pages work. The analytics code (feature 1 below) is **already built but on hold**: it does nothing until the two ids are set in Netlify, so it changes nothing on the live site until phase 2.
+3. Rigorous testing and review of every change: behavior, bugs, how intuitive it is to use, and final cleanup.
+
+---
+
+## Live site check (November 9, 2026)
+
+**The live site runs exactly what is on `main`** (`5fbf83a`, the same commit as `eNov6`'s base). The asset stamps in the live `index.html` match `HEAD`.
+
+**Calendar reads, checked in the live booking form** (opened in a browser and stepped through to the Time step; nothing was submitted):
+
+| What | Result |
+|---|---|
+| Availability calendar (`9f26…`) | Read through the Calendar API |
+| Work calendar (`75726f…`) | Read through the Calendar API |
+| Personal calendar (`/api/personal-busy`) | Read, 49 busy blocks ahead |
+| "Standard time slots" fallback warning | Not shown, so real openings are offered |
+
+**Calendar writes on booking** (`netlify/functions/_gcal.mjs`, called from `send-confirmation`): **not verified.** Proving it needs a real booking, which has side effects. Verify with the owner's own test booking, or in the Netlify function logs (`calendar.auth` in the response).
+
+**Other things found:**
+- `check-live.mjs` reports the Calendar, Places and Stripe keys as "not set", but the live `js/config.js` does carry them. The checker can't parse the minified config, so this is a bug in the checker, not the site. Not fixed (outside scope).
+- `/api/reviews` returns 502 on the live site, because Google doesn't recognize the Place ID. The stored-reviews fallback works. Existing issue, not caused by this session.
+- The availability and booking tests depend on the timezone: all 409 pass with `TZ=America/New_York`, and 14 fail under `TZ=UTC` (and under this laptop's CET). Existing issue, and none of those tests touch code changed here. Run tests with `TZ=America/New_York`.
+
+---
+
+## New features
+
+### 1. Analytics consent banner, with GA4 and Microsoft Clarity
+- **New file:** `js/analytics.js`
+- **What it does:**
+  - On the first visit to the home page, a banner offers Accept or Decline.
+  - Accept loads GA4 (`googletagmanager.com/gtag/js`) and Clarity (`clarity.ms/tag/<id>`).
+  - Decline, or ignoring the banner, loads neither.
+  - The choice is saved in `localStorage` under `ac-analytics`.
+  - An "Analytics choices" link in the footer reopens the banner.
+  - Changing Accept to Decline reloads the page, so the running scripts stop.
+- **Not for advertising:**
+  - Google consent mode denies ad storage, ad user data and ad personalization.
+  - Google Signals and ad personalization signals are off.
+  - Clarity is told ads storage is denied (`consentv2`).
+- **No ids, no banner:** with `GA4_MEASUREMENT_ID` and `CLARITY_PROJECT_ID` unset, nothing shows and the tracking calls do nothing.
+- **Events tracked:**
+
+| Event | When it fires |
+|---|---|
+| `booking_open` | The booking form opens |
+| `booking_step` | Each step of the booking form, with `step` as the step id |
+| `booking_complete` / `booking_request` | A booking or request is sent, with value, `USD` and `source` |
+| `question_sent` | The question form is sent |
+| `contact_click` | A `tel:`, `sms:` or `mailto:` link is clicked, with `method` |
+
+- **Test:**
+  1. With no ids set, there is no banner and no console errors.
+  2. With ids set: the banner appears on the first visit, on both phone and desktop. On a phone it sits above the sticky bottom bar.
+  3. Decline: no requests to googletagmanager.com or clarity.ms.
+  4. Accept: both scripts load and the CSP reports no violations.
+  5. Reload: the banner stays hidden and the choice is kept.
+  6. The footer "Analytics choices" link reopens the banner.
+  7. Switching from Accept to Decline reloads the page.
+  8. The banner's privacy link opens `privacy.html#cookies`.
+  9. The booking form still works end to end.
+
+### 2. Arrival source tracking (magazine ROI)
+- **In:** `js/analytics.js` (`AC_SOURCE`)
+- **What it does:**
+  - On arrival, `utm_source`, `utm_medium` and `utm_campaign` are saved as `"golf / print / qr"` in `sessionStorage` under `ac-source`.
+  - The first tagged link wins for that tab, and it is saved whether or not the visitor accepts analytics.
+  - The source is sent with every booking and question.
+- **Test:**
+  1. Open `/?utm_source=golf&utm_medium=print&utm_campaign=qr`, then book.
+  2. The Web3Forms email ends with `SOURCE golf / print / qr`.
+  3. The owner's Resend email ends with the same SOURCE block.
+  4. The question form's email includes a `source` field.
+  5. Without UTMs, there is no SOURCE line at all.
+
+---
+
+## Files and sections changed
+
+| File | Section | Change |
+|---|---|---|
+| `js/analytics.js` | new | Banner, loader, event tracking, arrival source |
+| `index.html` | `<head>` script tags | Added `js/analytics.js` (deferred) after `vendors.js` |
+| `index.html` | footer, `.footer-bottom` | Added an "Analytics choices" button (`data-analytics-choices`, hidden until there are ids) |
+| `styles.css` | after `.mobile-bar` | `.consent` banner styles and the `.linklike` button style |
+| `js/funnel.js` | `go()` | Fires `booking_step`. Added the `track()` and `source()` helpers |
+| `js/funnel.js` | `open()` | Fires `booking_open` |
+| `js/funnel.js` | `done()` | Fires `booking_complete` or `booking_request` |
+| `js/funnel.js` | `sendConfirmation()` | Payload now includes `source` |
+| `js/funnel.js` | `buildSummary()` | Adds a SOURCE block to the Web3Forms email |
+| `script.js` | question and contact form submit | Appends `source` to the FormData. Fires `question_sent` on success |
+| `netlify/functions/send-confirmation.mjs` | `extras` and the owner email lines | Reads `payload.source` (120 characters maximum) and prints a SOURCE block |
+| `js/config.template.js` | end | Added `ga4MeasurementId` and `clarityProjectId` |
+| `web/scripts/render-config.mjs` | `COSTS` | The build log names the two new variables when they are missing |
+| `netlify.toml` | `SECRETS_SCAN_OMIT_KEYS` | Added the two analytics ids (they are public) |
+| `netlify.toml` | CSP (report-only) | Allowed googletagmanager.com, *.google-analytics.com, *.analytics.google.com, *.clarity.ms and c.bing.com |
+| `web/lib/site/capabilities.ts` | `CAPABILITIES`, `PROCESSORS` | New `siteAnalytics` switch (live), plus Google Analytics and Microsoft Clarity as processors |
+| `web/scripts/render-legal.mjs` | `automaticPara`, `cookiesParas` | New wording when `siteAnalytics` is live: the banner, the cookies, the arrival source, and how to change the choice |
+| `web/lib/site/legal.ts` | `privacyEffective` | 2026-09-14 changed to 2026-11-09. Terms unchanged |
+| `privacy.html` | generated sections | Regenerated by the build (do not hand edit) |
+| `web/legal.lock.json` | privacy fingerprint | Re-locked with `npm run lock:legal` after the privacy wording change |
+| `terms.html`, `404.html` | stylesheet `?v=` stamp | Re-stamped by the build only, because `styles.css` changed. No wording change |
+| `js/pricing.bundle.js`, `netlify/functions/_pricing.mjs` | generated bundles | Rebuilt, carrying the new capability and the legal date |
+
+**Verified so far:**
+- `npm run build` passes, and `tsc --noEmit` passes.
+- With `TZ=America/New_York`, the tests pass: 409 of 409.
+- In a browser, with placeholder ids on a local copy of the build:
+  - The banner shows, and nothing loads before a choice is made.
+  - Decline: nothing loads, and `denied` is saved.
+  - The footer link reopens the banner.
+  - Accept: both scripts load, with the consent default (ads denied) and Clarity `consentv2` called first.
+  - `?utm_source=golf&utm_medium=print&utm_campaign=qr` is captured as `golf / print / qr`.
+- **Not yet tested:** a real booking's emails showing the SOURCE block, the phone layout of the banner over the mobile bar, and CSP reports from production.
+
+## Docs added
+- `docs/DELIVERABLES-2026-11-13.md`: the deliverables list from the voice notes
+- `docs/ANALYTICS-OPTIONS.md`: the analytics comparison (GA4 + Clarity chosen)
+- `docs/BOOKING-PIPELINE.md`: booking pipeline process document (in progress, written by a parallel agent)
+- `docs/SESSION-CHANGES.md`: this file
+
+## Known gaps and follow-ups
+- GA4 and Clarity ids are not set yet. The owner needs to create the accounts (see `docs/ANALYTICS-OPTIONS.md`) and add `GA4_MEASUREMENT_ID` and `CLARITY_PROJECT_ID` as Netlify environment variables.
+- The banner and the "Analytics choices" link exist only on the home page. New sub-pages (`/faq`, `/about`, `/service-area`, `/services`, magazine pages) must include `js/config.js` and `js/analytics.js`, and the footer link.
+- The source is not yet sent to GoHighLevel, because that integration doesn't exist yet.
+
+## Environment
+- Installed Node 22 with Homebrew (`node@22`), with the owner's approval, to run the build and tests.
