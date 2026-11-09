@@ -32,7 +32,11 @@ import {
 } from "../../netlify/functions/_pricing.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
-const INDEX = path.join(root, "index.html");
+// The catalog is split across pages now: packages on the home page, add-ons
+// on services.html, the FAQ (and its price sentence) on faq.html, and the
+// reviews block that carries the rating on about.html.
+const PAGES = ["index.html", "services.html", "faq.html", "about.html"];
+const read = (f) => fs.readFileSync(path.join(root, f), "utf8");
 
 const money = (c) => {
   const whole = Math.abs(c) % 100 === 0;
@@ -289,25 +293,25 @@ function offersHtml() {
 
 /* ---------------- splice ---------------- */
 
-function splice(html, name, body, { inline = false } = {}) {
+function splice(file, html, name, body, { inline = false } = {}) {
   const start = `<!-- CATALOG:${name}:START -->`;
   const end = `<!-- CATALOG:${name}:END -->`;
   const i = html.indexOf(start);
   const j = html.indexOf(end);
   if (i < 0 || j < 0) {
-    throw new Error(`Markers for ${name} not found in index.html`);
+    throw new Error(`Markers for ${name} not found in ${file}`);
   }
   const wrapped = inline ? body : `\n${body}\n    `;
   return html.slice(0, i + start.length) + wrapped + html.slice(j);
 }
 
-let html = fs.readFileSync(INDEX, "utf8");
-html = splice(html, "SERVICES", servicesHtml());
-html = splice(html, "ADDONS", addonsHtml());
-html = splice(html, "FAQPRICE", faqPriceText(), { inline: true });
+const pages = Object.fromEntries(PAGES.map((f) => [f, read(f)]));
+pages["index.html"] = splice("index.html", pages["index.html"], "SERVICES", servicesHtml());
+pages["index.html"] = splice("index.html", pages["index.html"], "OFFERS", offersHtml());
+pages["services.html"] = splice("services.html", pages["services.html"], "ADDONS", addonsHtml());
+pages["faq.html"] = splice("faq.html", pages["faq.html"], "FAQPRICE", faqPriceText(), { inline: true });
 // The JSON-LD copy has to survive JSON.stringify, so quotes are escaped.
-html = splice(html, "FAQPRICE_JSON", JSON.stringify(faqPriceText()).slice(1, -1), { inline: true });
-html = splice(html, "OFFERS", offersHtml());
+pages["faq.html"] = splice("faq.html", pages["faq.html"], "FAQPRICE_JSON", JSON.stringify(faqPriceText()).slice(1, -1), { inline: true });
 /* ---------------- the Google rating, from one source ---------------- */
 
 // "5.0 across 32 reviews" used to be typed into the meta description, the
@@ -320,7 +324,7 @@ html = splice(html, "OFFERS", offersHtml());
   const count = Number(snap.count ?? (snap.reviews ?? []).length);
   if (Number.isFinite(rating) && rating > 0 && count > 0) {
     const r1 = rating.toFixed(1);
-    html = html
+    for (const f of PAGES) pages[f] = pages[f]
       .replace(/Rated [0-9.]+ across \d+ Google reviews/g, `Rated ${r1} across ${count} Google reviews`)
       .replace(/"ratingValue": "[0-9.]+"/g, `"ratingValue": "${r1}"`)
       .replace(/"reviewCount": "\d+"/g, `"reviewCount": "${count}"`)
@@ -336,11 +340,11 @@ html = splice(html, "OFFERS", offersHtml());
   }
 }
 
-fs.writeFileSync(INDEX, html);
+for (const f of PAGES) fs.writeFileSync(path.join(root, f), pages[f]);
 
 const count =
   packagesFor("interior").concat(packagesFor("exterior")).filter((p) => !p.requiresPriorDetail).length;
 const bookable = ADDONS.filter((a) => !unavailableReason(a)).length;
 console.log(
-  `rendered ${count} packages, ${ADDONS.length} add-ons (${bookable} bookable, ${ADDONS.length - bookable} listed only) into index.html`,
+  `rendered ${count} packages, ${ADDONS.length} add-ons (${bookable} bookable, ${ADDONS.length - bookable} listed only) into ${PAGES.join(", ")}`,
 );
