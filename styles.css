@@ -77,7 +77,10 @@
 
 /* ---------- Reset ---------- */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; scroll-padding-top: 90px; }
+/* No scroll-behavior: smooth here. script.js glides in-page link clicks itself,
+   so arriving at page.html#section lands in place instead of sliding there.
+   scroll-padding-top is a fallback; script.js sets it to the header's real height. */
+html { -webkit-text-size-adjust: 100%; scroll-padding-top: 73px; }
 body {
   font-family: var(--font-body);
   color: var(--text);
@@ -729,6 +732,10 @@ section { padding-block: clamp(40px, 5vw, 72px); position: relative; }
 .footer-grid { display: grid; gap: 2.5rem; margin-bottom: 3rem; }
 .footer .brand .b-name, .footer .brand .mark { color: var(--red-bright); }
 .footer .brand .b-name { color: #fff; }
+/* logo-mark.png is a square with the bottle in its middle third, so at 40px
+   the bottle drew 13px wide with 13px of empty space each side. Larger, with
+   the empty sides cropped, it sits beside the name at a matching weight. */
+.footer .brand .mark-img { width: 30px; height: 54px; object-fit: cover; }
 .footer .f-about { margin-top: 1.1rem; font-size: .95rem; max-width: 300px; }
 .footer .f-socials { display: flex; gap: .7rem; margin-top: 1.3rem; }
 .footer .f-socials a { width: 40px; height: 40px; border-radius: 12px; background: var(--ink-2); border: 1px solid var(--line-dark); display: grid; place-items: center; transition: background .25s, transform .25s, color .25s; }
@@ -936,14 +943,18 @@ html.scrolling-fast .reveal { transition: none; transition-delay: 0s; }
 .phone-copy svg { width: 15px; height: 15px; }
 .phone-copy.copied { color: #1a8a3f; }
 
+/* The email reads as a button, in the phone chip's style, so it is
+   obvious it can be clicked rather than looking like a caption. */
 .inq-email {
-  display: inline-flex; align-items: center; gap: .5rem; margin-top: .9rem;
-  color: var(--text-soft); font-size: .95rem; text-decoration: none; word-break: break-all;
+  display: inline-flex; align-items: center; gap: .5rem; margin-top: .7rem;
+  color: var(--text); font-size: .95rem; font-weight: 600; text-decoration: none; word-break: break-all;
+  border: 1px solid var(--line); background: var(--paper-2); border-radius: var(--r-sm);
+  box-shadow: var(--shadow-sm); padding: .6rem .95rem; transition: color .2s, background .2s;
 }
-.inq-email:hover { color: var(--red); }
-.inq-email svg { width: 17px; height: 17px; flex: none; }
+.inq-email:hover { color: var(--red); background: rgba(224,26,26,.04); }
+.inq-email svg { width: 17px; height: 17px; flex: none; color: var(--red); }
 
-.inq-points { list-style: none; margin: 1.5rem 0 0; padding: 0; display: grid; gap: .6rem; }
+.inq-points { list-style: none; margin: 1.1rem 0 0; padding: 0; display: grid; gap: .5rem; }
 .inq-points li {
   display: flex; gap: .55rem; align-items: flex-start;
   color: var(--text-soft); font-size: .92rem; line-height: 1.5;
@@ -967,6 +978,20 @@ html.scrolling-fast .reveal { transition: none; transition-delay: 0s; }
 
 @media (min-width: 820px) {
   .inq-grid { grid-template-columns: 0.8fr 1.2fr; gap: 2.4rem; align-items: start; }
+}
+/* The question form: a narrower side column and a wider card, so the card
+   can lay its fields out in rows of two and three instead of stacking. */
+@media (min-width: 900px) {
+  .inq-grid { grid-template-columns: minmax(250px, .5fr) 1.5fr; }
+}
+.field-row.pair-wide textarea { height: 7.4rem; min-height: 7.4rem; }
+@media (min-width: 560px) and (max-width: 999px) {
+  /* Two columns here, so the third field of a row of three takes the full width. */
+  .field-row.three > :last-child { grid-column: 1 / -1; }
+}
+@media (min-width: 1000px) {
+  .field-row.pair-wide { grid-template-columns: 1.3fr 1fr; }
+  .field-row.three { grid-template-columns: repeat(3, 1fr); }
 }
 
 /* Booking CTA panel (replaces the old quote form in the contact section) */

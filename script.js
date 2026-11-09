@@ -22,6 +22,16 @@
   window.addEventListener('scroll', onScroll, { passive: true });
   onScroll();
 
+  /* Jumps to a section stop exactly under the sticky header. styles.css says
+     90px, but the header is 73px tall, so every jump stopped short and showed
+     a strip of the section above. Measured instead of guessed, and again on
+     resize, since the header's height is whatever its contents make it. */
+  function fitScrollPadding() {
+    if (header) document.documentElement.style.scrollPaddingTop = header.offsetHeight + 'px';
+  }
+  fitScrollPadding();
+  window.addEventListener('resize', fitScrollPadding);
+
   /**
    * Opening a "How it works" or an FAQ answer should show the answer.
    *
@@ -92,11 +102,12 @@
      whenever the page changes size, it is scrolled back to the target, until
      things settle or the visitor scrolls themselves. */
   var pinStop = null;
-  function pinTo(id) {
+  function pinTo(id, behavior) {
     var target = id && document.getElementById(id);
     if (!target || !('ResizeObserver' in window)) return;
     if (pinStop) pinStop();
-    var ro = new ResizeObserver(function () { target.scrollIntoView({ block: 'start' }); });
+    // 'auto' follows the stylesheet (smooth); 'instant' jumps.
+    var ro = new ResizeObserver(function () { target.scrollIntoView({ block: 'start', behavior: behavior || 'auto' }); });
     var timer = setTimeout(stop, 2500);
     function stop() {
       ro.disconnect();
@@ -108,20 +119,34 @@
     pinStop = stop;
     ro.observe(document.body);
   }
+  // Smooth scrolling is done here, for clicks within the page, and NOT by
+  // `scroll-behavior: smooth` in the stylesheet: that also animated arriving
+  // from another page, so about.html -> index.html#inquiry opened at the top
+  // and slid 4700px down. Arrivals now land in place; clicks still glide.
+  var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   document.addEventListener('click', function (e) {
     var a = e.target.closest && e.target.closest('a[href*="#"]');
-    if (!a || a.pathname !== location.pathname || a.hash.length < 2) return;
-    pinTo(decodeURIComponent(a.hash.slice(1)));
+    if (!a || e.defaultPrevented || a.pathname !== location.pathname || a.hash.length < 2) return;
+    var id = decodeURIComponent(a.hash.slice(1));
+    var target = document.getElementById(id);
+    if (!target) return;
+    e.preventDefault();
+    if (location.hash !== a.hash) history.pushState(null, '', a.hash);
+    var how = reduceMotion ? 'instant' : 'smooth';
+    target.scrollIntoView({ block: 'start', behavior: how });
+    pinTo(id, how);
   });
-  // Arriving from another page, e.g. about.html#reviews from the menu. Held
-  // again once everything has loaded (images, fonts), unless the visitor has
-  // already started moving around, in which case the page is theirs.
+  // Arriving from another page, e.g. about.html#reviews from the menu. This
+  // JUMPS: with smooth scrolling on, the page otherwise opened at the top and
+  // then visibly slid thousands of pixels down to the section, which read as
+  // the page repositioning itself. Held again once everything has loaded
+  // (images, fonts), unless the visitor has already started moving around.
   if (location.hash.length > 1) {
     var touched = false;
     ['wheel', 'touchmove', 'keydown', 'pointerdown'].forEach(function (ev) {
       window.addEventListener(ev, function () { touched = true; }, { passive: true, once: true });
     });
-    var arrive = function () { if (!touched) pinTo(decodeURIComponent(location.hash.slice(1))); };
+    var arrive = function () { if (!touched) pinTo(decodeURIComponent(location.hash.slice(1)), 'instant'); };
     arrive();
     window.addEventListener('load', arrive, { once: true });
   }
