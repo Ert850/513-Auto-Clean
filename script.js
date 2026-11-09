@@ -81,6 +81,51 @@
     if (e.key === 'Escape' && mobileMenu.classList.contains('open')) closeMenu();
   });
 
+  /* ---------- Land where the link said, even while the page is still filling ----------
+     A jump to a section is aimed at where that section is AT THAT MOMENT. The
+     gallery (built from data/gallery.json), the review ticker (shown once
+     reviews load) and the web fonts (display=swap) all change height after the
+     first paint, so a tap on Services early on landed up to ~1300px short, and
+     about.html#reviews drifted when the fonts swapped in above it.
+
+     So for a moment after any jump to an id on this page, the target is held:
+     whenever the page changes size, it is scrolled back to the target, until
+     things settle or the visitor scrolls themselves. */
+  var pinStop = null;
+  function pinTo(id) {
+    var target = id && document.getElementById(id);
+    if (!target || !('ResizeObserver' in window)) return;
+    if (pinStop) pinStop();
+    var ro = new ResizeObserver(function () { target.scrollIntoView({ block: 'start' }); });
+    var timer = setTimeout(stop, 2500);
+    function stop() {
+      ro.disconnect();
+      clearTimeout(timer);
+      ['wheel', 'touchmove', 'keydown', 'pointerdown'].forEach(function (ev) { window.removeEventListener(ev, stop); });
+      pinStop = null;
+    }
+    ['wheel', 'touchmove', 'keydown', 'pointerdown'].forEach(function (ev) { window.addEventListener(ev, stop, { passive: true }); });
+    pinStop = stop;
+    ro.observe(document.body);
+  }
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest && e.target.closest('a[href*="#"]');
+    if (!a || a.pathname !== location.pathname || a.hash.length < 2) return;
+    pinTo(decodeURIComponent(a.hash.slice(1)));
+  });
+  // Arriving from another page, e.g. about.html#reviews from the menu. Held
+  // again once everything has loaded (images, fonts), unless the visitor has
+  // already started moving around, in which case the page is theirs.
+  if (location.hash.length > 1) {
+    var touched = false;
+    ['wheel', 'touchmove', 'keydown', 'pointerdown'].forEach(function (ev) {
+      window.addEventListener(ev, function () { touched = true; }, { passive: true, once: true });
+    });
+    var arrive = function () { if (!touched) pinTo(decodeURIComponent(location.hash.slice(1))); };
+    arrive();
+    window.addEventListener('load', arrive, { once: true });
+  }
+
   /* ---------- Service tabs ---------- */
   var tabs = document.querySelectorAll('.svc-tab');
   tabs.forEach(function (tab) {

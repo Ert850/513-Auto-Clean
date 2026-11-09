@@ -46,7 +46,7 @@
       href="images/hero-exterior-960.webp"
       imagesrcset="images/hero-exterior-640.webp 640w, images/hero-exterior-960.webp 960w, images/hero-exterior-1280.webp 1280w, images/hero-exterior-1600.webp 1600w"
       imagesizes="100vw" />
-<link rel="stylesheet" href="styles.css?v=5f4b8994df" />
+<link rel="stylesheet" href="styles.css?v=39bbfc52e2" />
 <!-- Public configuration and third party loaders live in js/, not inline,
      so the Content-Security-Policy can forbid inline scripts outright.
      js/config.js holds publishable keys only. Secret keys never go in a page. -->
@@ -551,6 +551,9 @@
 </head>
 <body>
 <a class="skip-link" href="#services">Skip to content</a>
+<!-- The logo scrolls here. Above the top bar on purpose: placed under the
+     header, scroll-padding left the top bar half hidden. -->
+<span id="top"></span>
 
 <!-- ============ TOP BAR ============ -->
 <div class="topbar">
@@ -587,7 +590,7 @@
       <a href="about.html">Meet the Team</a>
       <!-- <a href="#schedule">Schedule</a> -->
       <a href="about.html#reviews">Reviews</a>
-      <a href="service-area.html">Service Area</a>
+      <a href="service-area.html">Range &amp; Travel</a>
       <a href="faq.html">FAQ</a>
     </nav>
     <div class="nav-cta">
@@ -615,7 +618,7 @@
   <a class="mm-link" href="about.html">Meet the Team</a>
   <!-- <a class="mm-link" href="#schedule">Schedule</a> -->
   <a class="mm-link" href="about.html#reviews">Reviews</a>
-  <a class="mm-link" href="service-area.html">Service Area &amp; Travel</a>
+  <a class="mm-link" href="service-area.html">Range &amp; Travel Costs</a>
   <a class="mm-link" href="faq.html">FAQ</a>
   <a class="mm-link" href="#inquiry">Contact Us</a>
   <div class="mm-cta">
@@ -623,8 +626,6 @@
     <a class="btn btn-ghost on-dark btn-block" href="#inquiry">Contact Us</a>
   </div>
 </aside>
-
-<span id="top"></span>
 
 <!-- ============ HERO ============ -->
 <section class="hero" id="home">
@@ -657,15 +658,28 @@
           Contact Us
         </a>
       </div>
-      <!-- Google reviews badge (live widget mounts here; see README) -->
-      <a class="g-badge reveal" data-d="4" id="google-badge" href="https://maps.app.goo.gl/PAAdpX7owQmc1cAz9" target="_blank" rel="noopener" aria-label="Read our reviews on Google">
-        <svg class="g-logo" viewBox="0 0 24 24"><path fill="#4285F4" d="M22 12c0-.6-.1-1.2-.2-1.8H12v3.6h5.6a4.8 4.8 0 0 1-2 3.1v2.6h3.2A9.6 9.6 0 0 0 22 12z"/><path fill="#34A853" d="M12 22c2.7 0 5-.9 6.6-2.4l-3.2-2.6c-.9.6-2 .9-3.4.9-2.6 0-4.8-1.7-5.6-4.1H3.1v2.6A10 10 0 0 0 12 22z"/><path fill="#FBBC05" d="M6.4 13.8a6 6 0 0 1 0-3.6V7.6H3.1a10 10 0 0 0 0 8.8z"/><path fill="#EA4335" d="M12 6.4c1.5 0 2.8.5 3.8 1.5l2.8-2.8A10 10 0 0 0 3.1 7.6l3.3 2.6C7.2 8 9.4 6.4 12 6.4z"/></svg>
-        <span class="g-meta"><span class="g-stars">★★★★★</span><span class="g-text">Rated 5.0 from 32 reviews on Google &amp; Yelp</span></span>
-      </a>
     </div>
   </div>
   <a class="hero-scroll" href="#services" aria-label="Scroll to services"><span></span></a>
 </section>
+
+<!-- trust strip: the Google rating on the left, the four promises 2x2 on
+     the right. Above the review carousel, so proof reads rating first. -->
+<div class="trustbar">
+  <div class="wrap">
+    <!-- Google reviews badge (rating text kept in step by js/reviews.js) -->
+    <a class="g-badge" id="google-badge" href="https://maps.app.goo.gl/PAAdpX7owQmc1cAz9" target="_blank" rel="noopener" aria-label="Read our reviews on Google">
+        <svg class="g-logo" viewBox="0 0 24 24"><path fill="#4285F4" d="M22 12c0-.6-.1-1.2-.2-1.8H12v3.6h5.6a4.8 4.8 0 0 1-2 3.1v2.6h3.2A9.6 9.6 0 0 0 22 12z"/><path fill="#34A853" d="M12 22c2.7 0 5-.9 6.6-2.4l-3.2-2.6c-.9.6-2 .9-3.4.9-2.6 0-4.8-1.7-5.6-4.1H3.1v2.6A10 10 0 0 0 12 22z"/><path fill="#FBBC05" d="M6.4 13.8a6 6 0 0 1 0-3.6V7.6H3.1a10 10 0 0 0 0 8.8z"/><path fill="#EA4335" d="M12 6.4c1.5 0 2.8.5 3.8 1.5l2.8-2.8A10 10 0 0 0 3.1 7.6l3.3 2.6C7.2 8 9.4 6.4 12 6.4z"/></svg>
+        <span class="g-meta"><span class="g-stars">★★★★★</span><span class="g-text">Rated 5.0 from 32 reviews on Google &amp; Yelp</span></span>
+      </a>
+    <div class="trust-items">
+      <span class="ti"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg> UC student-owned &amp; operated</span>
+      <span class="ti"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg> Flexible scheduling, 7 days a week</span>
+      <span class="ti"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l19-9-9 19-2-8-8-2z"/></svg> We bring everything to you</span>
+      <span class="ti"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3 7h7l-5.5 4 2 7L12 17l-6.5 3 2-7L2 9h7z"/></svg> No upsells. No pressure. Fair pricing.</span>
+    </div>
+  </div>
+</div>
 
 <!-- Live 5 star reviews, newest first, looping. Filled by js/reviews.js and
      removed entirely if the feed is unavailable, so it never shows an empty bar. -->
@@ -685,16 +699,6 @@
     </div>
   </div>
 </section>
-
-<!-- trust strip -->
-<div class="trustbar">
-  <div class="wrap">
-    <span class="ti"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg> UC student-owned &amp; operated</span>
-    <span class="ti"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg> Flexible scheduling, 7 days a week</span>
-    <span class="ti"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l19-9-9 19-2-8-8-2z"/></svg> We bring everything to you</span>
-    <span class="ti"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3 7h7l-5.5 4 2 7L12 17l-6.5 3 2-7L2 9h7z"/></svg> No upsells. No pressure. Fair pricing.</span>
-  </div>
-</div>
 
 <!-- ============ GALLERY ============ -->
 <section class="gallery" id="gallery">
@@ -1173,6 +1177,6 @@
 <script src="js/gallery.js?v=d9bac1fab2" defer></script>
 <script src="js/reviews.js?v=d59d6040a0" defer></script>
 <script src="js/funnel.js?v=be96b9b061" defer></script>
-<script src="script.js?v=4597f46189" defer></script>
+<script src="script.js?v=8412313588" defer></script>
 </body>
 </html>

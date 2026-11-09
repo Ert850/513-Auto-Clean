@@ -301,8 +301,16 @@ section { padding-block: clamp(40px, 5vw, 72px); position: relative; }
 .btn-light:hover { --bg: #fff; }
 
 /* trust marquee */
-.trustbar { background: var(--ink-2); color: var(--text-inv-soft); border-top: 1px solid var(--line-dark); }
-.trustbar .wrap { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 1rem 2.2rem; padding-block: 1.1rem; }
+.trustbar { background: var(--ink-2); color: var(--text-inv-soft); border-top: 1px solid var(--line-dark); border-bottom: 1px solid var(--line-dark); }
+.trustbar .wrap { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 1.1rem 3rem; padding-block: 1.3rem; }
+/* The Google badge sits on the left of the strip now, not in the hero. */
+.trustbar .g-badge { margin-top: 0; }
+/* The four promises, 2x2 beside the badge; the badge drops above them when narrow. */
+.trust-items { display: grid; grid-template-columns: repeat(2, auto); gap: .8rem 2.2rem; }
+@media (max-width: 560px) {
+  .trust-items { grid-template-columns: 1fr 1fr; gap: .8rem 1rem; }
+  .trustbar .ti { align-items: flex-start; font-size: .86rem; }
+}
 .trustbar .ti { display: inline-flex; align-items: center; gap: .55rem; font-size: .92rem; font-weight: 600; }
 .trustbar .ti svg { width: 18px; height: 18px; color: var(--red-bright); flex-shrink: 0; }
 
