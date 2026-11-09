@@ -144,6 +144,16 @@ reorganization only. Reference sites: *links not yet provided*.
   - On sub-pages the first section fades in after `script.js` runs. The home hero avoids this with a CSS animation.
   - `services.html` holds only add-ons, as decided. The URL suggests full services, so consider `/add-ons`, or adding the packages there later.
 
+### 4. Fixes from the first human review (November 9)
+
+| Reported | Root cause | Fix | Verified |
+|---|---|---|---|
+| Clicking the logo cut the top bar in half | The logo's `#top` target sat *under* the top bar and header (113 px down). `scroll-padding-top: 90px` then stopped the jump at about 23 to 28 px, leaving 12 of the top bar's 40 px visible | Moved `<span id="top">` to the very start of `<body>`, so the jump lands at 0 with the whole top bar showing | Scrolled down, clicked the logo: scroll 0, top bar fully visible |
+| Services sometimes landed at the wrong height | Content above Services loads after the first paint. The gallery is built from `data/gallery.json` (383 → 1,562 px) and the review ticker appears (+116 px), pushing Services down about 1,295 px. A smooth scroll aims at where the section was when the click happened | `script.js`: after a jump to an id on the same page, a `ResizeObserver` holds the target in place for 2.5 s whenever the page changes height. The hold ends the moment the visitor scrolls, taps or presses a key | Services held at 90 px (the header clearance) through the load, and still at 90 px after an extra 600 px was injected above it. After a wheel scroll the hold let go |
+| Reviews link shifted slightly | Same cause on `about.html#reviews`: the web fonts (`display=swap`) and images settle above the target after the jump | Same hold, also applied when arriving with `#id` in the URL, and held again on `window.load` unless the visitor has already moved | Logic is shared with the Services case. The arrival timing could not be measured, because the hidden pane does not run smooth scrolling. **Re-check by hand** |
+| "Service Area" needed a clearer name | n/a | Header nav now says **Range & Travel**, and the mobile menu says **Range & Travel Costs**, on all 5 pages. The footer column ("Service Areas"), the page title and the section heading are unchanged | Visible in the desktop nav |
+| Google badge and four-promise bar layout | The badge sat alone in the hero, and the four promises wrapped 3 + 1 under the carousel | The badge moved out of the hero into the trust strip, on the left, with the four promises in a **2x2 grid** on the right. The strip now sits **above** the review carousel. Below 560 px the badge sits above the 2x2 grid. Uses the existing badge, icon and colour styles; the only new CSS is the grid, the badge margin, and a divider line under the strip so it doesn't merge with the carousel band | Checked at 1440, 820 and 375 px wide: no sideways scroll, and the rating text is still synced by `reviews.js` (`#google-badge` kept) |
+
 ### Reference sites reviewed (design lessons only, nothing copied)
 - **dksdetailing.com:**
   - **What works:** one short line of social proof ("Trusted by 250+"), a one-line headline, and two buttons (a main one plus Call). Packages are grouped by Full, Exterior and Interior.
