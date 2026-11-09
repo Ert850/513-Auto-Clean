@@ -173,7 +173,11 @@ section { padding-block: clamp(40px, 5vw, 72px); position: relative; }
 .nav { display: flex; align-items: center; justify-content: space-between; min-height: 72px; gap: 1rem; }
 
 .brand { display: inline-flex; align-items: center; gap: .6rem; flex-shrink: 0; }
-.brand .mark-img { width: 46px; height: 46px; object-fit: contain; flex-shrink: 0; display: block; }
+/* logo-mark.png is a square with the bottle in its middle third. Cropping the
+   empty sides keeps the bottle the same size and saves 18px, which is what
+   pushed the menu button 4px past a 375px phone and made the phone zoom out
+   (every jump to a section then landed about 9px low). */
+.brand .mark-img { width: 28px; height: 46px; object-fit: cover; flex-shrink: 0; display: block; }
 .mobile-menu .brand .mark-img, .footer .brand .mark-img { width: 40px; height: 40px; }
 .brand .mark {
   width: 42px; height: 42px; border-radius: 12px; flex-shrink: 0;
@@ -189,6 +193,8 @@ section { padding-block: clamp(40px, 5vw, 72px); position: relative; }
 }
 .brand .b-name { font-family: var(--font-display); font-weight: 800; font-size: 1.16rem; letter-spacing: -.03em; line-height: 1; }
 .brand .b-sub { font-size: .68rem; letter-spacing: .12em; text-transform: uppercase; color: var(--text-soft); font-weight: 600; }
+/* On the smallest phones the tag line is what gives way, not the page width. */
+@media (max-width: 359px) { .header .brand .b-sub { display: none; } }
 
 .nav-links { display: none; align-items: center; gap: 0; }
 .nav-links a {
@@ -984,7 +990,14 @@ html.scrolling-fast .reveal { transition: none; transition-delay: 0s; }
 @media (min-width: 900px) {
   .inq-grid { grid-template-columns: minmax(250px, .5fr) 1.5fr; }
 }
-.field-row.pair-wide textarea { height: 7.4rem; min-height: 7.4rem; }
+/* Rows of the question form line up on their boxes, not their labels, so a
+   label that wraps cannot push its box below its neighbour's. */
+.field-row.pair-wide, .field-row.three { align-items: end; }
+.field-row.pair-wide textarea { height: 6.25rem; min-height: 6.25rem; }
+/* `.field label { display: block }` is more specific than `.pref`, so the
+   pills went block and stacked the radio over its word in a narrow column.
+   Restated here, and sized to match the text inputs beside them. */
+.contact-pref .pref { display: inline-flex; margin: 0; padding: .78rem .85rem; white-space: nowrap; }
 @media (min-width: 560px) and (max-width: 999px) {
   /* Two columns here, so the third field of a row of three takes the full width. */
   .field-row.three > :last-child { grid-column: 1 / -1; }
@@ -992,6 +1005,8 @@ html.scrolling-fast .reveal { transition: none; transition-delay: 0s; }
 @media (min-width: 1000px) {
   .field-row.pair-wide { grid-template-columns: 1.3fr 1fr; }
   .field-row.three { grid-template-columns: repeat(3, 1fr); }
+  /* The contact pills take the width they need; the two inputs share the rest. */
+  .field-row.three:has(.contact-pref) { grid-template-columns: 1fr 1fr auto; }
 }
 
 /* Booking CTA panel (replaces the old quote form in the contact section) */
