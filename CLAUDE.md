@@ -101,9 +101,13 @@ Read this before changing anything. Every rule below came from a real bug or an 
 - **No `scroll-behavior: smooth` on `html`.** It also animates arriving at `page.html#section` from another page: the page opened at the top and slid thousands of pixels. `script.js` glides in-page clicks itself.
 - **Content that loads late moves anchors.** The gallery, the review ticker and the web fonts all grow the page after first paint. `script.js` `pinTo()` holds a jump's target for 2.5 s. New late-loading content above an anchor either reserves its space or relies on that hold.
 - **Anchor targets sit where the scroll should land:** `#top` is the first element in `<body>`, above the top bar.
+- **Check the page's real width at 375 and 320 px**, not just for scrolling: compare `innerWidth` with the device width, and check `visualViewport.offsetTop`. A header 4 px too wide made phones zoom out, and every jump to a section landed about 9 px low, while `scrollWidth > innerWidth` still said everything was fine.
+- **`.field label { display: block }` beats single-class component rules.** Any component built from `<label>`s inside `.field` (such as the `.pref` pills) has to restate its display, or it falls back to block and stacks.
+- **Form rows align on their boxes (`align-items: end`).** A label that wraps must not push its input below its neighbour's.
 - **`images/logo-mark.png` is mostly transparent**: the bottle fills only x 40–78 and y 18–93 of 120×120. Size it with `object-fit: cover` and a narrow width, not as a square.
 
 ## Verifying UI changes
 - **The in-app browser pane, when hidden, does not run smooth scrolling or the browser's own jump-to-section on page load.** Don't trust scroll measurements from it. Drive headless Chrome over CDP with real mouse events instead (the nav click checker lives in the session scratchpad).
 - **Disable the browser cache, or add a query string, when testing a rebuilt `dist/`.** A cached `index.html` keeps loading the old scripts. Two test runs were wasted on stale pages.
+- **Parallel sessions each use their own preview port** (main session 8799; give each other session its own, e.g. 8790, 8791). Two sessions on 8765 stopped each other's servers and mixed one session's files into another's test run.
 - Check at 1440, 820 and 375 px wide: no horizontal scroll, and nothing overlaps the mobile bar.
