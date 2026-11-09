@@ -154,6 +154,35 @@ reorganization only. Reference sites: *links not yet provided*.
 | "Service Area" needed a clearer name | n/a | Header nav now says **Range & Travel**, and the mobile menu says **Range & Travel Costs**, on all 5 pages. The footer column ("Service Areas"), the page title and the section heading are unchanged | Visible in the desktop nav |
 | Google badge and four-promise bar layout | The badge sat alone in the hero, and the four promises wrapped 3 + 1 under the carousel | The badge moved out of the hero into the trust strip, on the left, with the four promises in a **2x2 grid** on the right. The strip now sits **above** the review carousel. Below 560 px the badge sits above the 2x2 grid. Uses the existing badge, icon and colour styles; the only new CSS is the grid, the badge margin, and a divider line under the strip so it doesn't merge with the carousel band | Checked at 1440, 820 and 375 px wide: no sideways scroll, and the rating text is still synced by `reviews.js` (`#google-badge` kept) |
 
+### 5. Second review round (November 10): nav alignment everywhere, footer logo, question form
+
+**Method.** Headless Chrome driven over CDP with real mouse clicks: every header-nav link (1440 px) and every mobile-menu link (375 px) on all 5 pages, clicked both immediately and after load, measuring the target's top against the header's bottom. That's 160 checks per run. The in-app browser pane was not used for this: when hidden, it does not run smooth scrolling or the jump-to-section on page load.
+
+| Run | Misaligned | Note |
+|---|---|---|
+| Baseline | 80 / 160 | Desktop 17 px short, phone 26 px short |
+| After scroll-padding fix | not valid | The test browser served cached old HTML. Cache now disabled |
+| After smooth-scroll change | 32 / 160 | Desktop 80/80 correct; phone 9 px low |
+| After header-width fix | see the latest run in the log | |
+
+| Problem | Root cause | Fix |
+|---|---|---|
+| Every nav jump stopped short, showing a strip of the section above | `scroll-padding-top: 90px` against a 73 px sticky header | `script.js` sets it from `#header.offsetHeight`, again on resize. The CSS fallback is 73 px |
+| Arriving from another page (such as About → Contact Us) opened at the top, then slid about 4,700 px | `html { scroll-behavior: smooth }` animates the jump to a section on page load too | Removed from CSS. `script.js` smooth-scrolls in-page clicks itself (respecting reduced motion) and arrivals land instantly |
+| Phone jumps 9 px low | The header row was 379 px on a 375 px phone (logo PNG's transparent sides, name, tag line, menu button), so the phone zoomed out to fit it | The header logo now crops its transparent sides (`28×46`, `object-fit: cover`; the bottle stays the same size), and the tag line is hidden below 360 px. Width is now 375/375 and 320/320 |
+| Footer logo tiny, with a big gap before the name | The same transparent PNG at 40×40 showed a 13 px bottle | `.footer .brand .mark-img { 30×54, cover }` |
+| Question form: the text boxes started at different heights | The condition label wrapped to two lines | Rows align on the boxes (`align-items: end`). The label is now "Your vehicle's condition" |
+| Question form: contact pills tall, with the radio stacked over its word | `.field label { display: block }` outranks `.pref` | Restated as `.contact-pref .pref`, sized to match the inputs, and given an `auto` column on wide screens |
+| Question section: the card was too tall, the left column airy, the email didn't look clickable | Every field on its own row in a narrow card | Card widened (`minmax(250px, .5fr) 1.5fr`). Fields laid out as: question and condition side by side; then Name, Phone, Email; then Vehicle, ZIP and the contact pills. The email is a chip like the phone number. Left-column gaps tightened. The card is 628 px tall at 1440 |
+
+**Merged:** `claude/service-area-cleanup-b4bca3` (Range & Travel page; see `docs/SESSION-CHANGES-service-area.md`).
+
+**Still running in parallel:** the `services-fixes` session (How-it-works spacing, correction card, offers banner, condensed copy drafts).
+
+**Decided with the owner (to build next):**
+- One full Services page: packages, correction, offers and add-ons on `services.html`, with a short teaser on the home page. Nav "Services" goes to that page, and its Book buttons open the booking form in place.
+- The home page's "Book Now" scrolls to the booking section, while the header's Book Now still opens the form instantly.
+
 ### Reference sites reviewed (design lessons only, nothing copied)
 - **dksdetailing.com:**
   - **What works:** one short line of social proof ("Trusted by 250+"), a one-line headline, and two buttons (a main one plus Call). Packages are grouped by Full, Exterior and Interior.
