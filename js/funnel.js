@@ -1037,7 +1037,7 @@
       '</div>' +
       '<p class="bk-sub bk-intentnote">Every package says what it includes and what it is for, ' +
       'so you can also just read them. ' +
-      '<a href="index.html#services" target="_blank" rel="noopener">See all services and prices</a></p>' +
+      '<a href="services.html" target="_blank" rel="noopener">See all services and prices</a></p>' +
       '<button type="button" class="bk-browsebar" id="bkBrowse">' +
         '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>' +
         '<span><b>Browse through all options</b><i>Every package and price, side by side</i></span>' +

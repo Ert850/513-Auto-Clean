@@ -46,7 +46,7 @@
       href="images/hero-exterior-960.webp"
       imagesrcset="images/hero-exterior-640.webp 640w, images/hero-exterior-960.webp 960w, images/hero-exterior-1280.webp 1280w, images/hero-exterior-1600.webp 1600w"
       imagesizes="100vw" />
-<link rel="stylesheet" href="styles.css?v=e56df25ca7" />
+<link rel="stylesheet" href="styles.css?v=75673b9d81" />
 <!-- Public configuration and third party loaders live in js/, not inline,
      so the Content-Security-Policy can forbid inline scripts outright.
      js/config.js holds publishable keys only. Secret keys never go in a page. -->
@@ -586,7 +586,7 @@
     </a>
     <nav class="nav-links" aria-label="Primary">
       <a href="#gallery">Work</a>
-      <a href="#services">Services</a>
+      <a href="services.html">Services</a>
       <a href="about.html">Meet the Team</a>
       <!-- <a href="#schedule">Schedule</a> -->
       <a href="about.html#reviews">Reviews</a>
@@ -614,7 +614,7 @@
     <button class="mm-close" id="mmClose" aria-label="Close menu">&times;</button>
   </div>
   <a class="mm-link" href="#gallery">Our Work</a>
-  <a class="mm-link" href="#services">Services &amp; Pricing</a>
+  <a class="mm-link" href="services.html">Services &amp; Pricing</a>
   <a class="mm-link" href="about.html">Meet the Team</a>
   <!-- <a class="mm-link" href="#schedule">Schedule</a> -->
   <a class="mm-link" href="about.html#reviews">Reviews</a>
@@ -729,204 +729,46 @@
     <div class="section-head reveal">
       <span class="eyebrow">Services &amp; Pricing</span>
       <h2>Detailing packages for daily drivers, family vehicles &amp; work trucks.</h2>
-      <p>Clear, honest pricing. Pick a package below. Every detail is done by hand at your home or office. Prices are starting points for most cars; larger or heavily soiled vehicles may vary.</p>
+      <p>Clear, honest pricing. Every detail is done by hand at your home or office. Prices are starting points for most cars; larger or heavily soiled vehicles may vary.</p>
     </div>
 
-    <div class="svc-tabs reveal" role="tablist">
-      <button class="svc-tab active" data-panel="interior" role="tab" aria-selected="true">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l1-5a2 2 0 0 1 2-1.5h12A2 2 0 0 1 20 6l1 5"/><path d="M5 16h14M7 16v3M17 16v3"/><rect x="3" y="11" width="18" height="5" rx="2"/></svg>
-        Interior
-      </button>
-      <button class="svc-tab" data-panel="exterior" role="tab" aria-selected="false">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 13l1.5-4.5A2 2 0 0 1 8.4 7h7.2a2 2 0 0 1 1.9 1.5L19 13"/><path d="M3 13h18v4a1 1 0 0 1-1 1h-1a1 1 0 0 1-1-1v-1H6v1a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z"/></svg>
-        Exterior
-      </button>
-    </div>
-
-    <!-- CATALOG:SERVICES:START -->
-    <div class="svc-panel active" id="panel-interior">
-      <div class="svc-grid">
-        <article class="svc-card reveal">
-          <h3>Basic Interior</h3>
-          <div class="svc-meta">
-            <span class="price">$125</span>
-            <span class="dur"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v4l3 2"/></svg> 2 hrs</span>
-          </div>
-          <p class="svc-desc">A solid clean that gets the everyday grime out.</p>
-          
-          <ul class="feat">
-            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 6L9 17l-5-5"/></svg> Blowout and vacuum of seats, carpet and trunk</li>
-            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 6L9 17l-5-5"/></svg> Clean floor mats</li>
-            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 6L9 17l-5-5"/></svg> Clean surfaces</li>
-            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 6L9 17l-5-5"/></svg> Remove major interior grime</li>
-          </ul>
-          <details class="svc-how"><summary>How it works</summary><p>A blowout and thorough vacuum through the seats, carpet and trunk, mats cleaned, surfaces wiped down, and the visible grime taken off. The car looks and feels clean when you get back in it. It does NOT shampoo or extract the upholstery, treat set-in stains, condition leather, or brush out every seam and crevice. A vacuum and air compressor blow out alone does not lift what has worked its way down into the upholstery, so engrained fibers, pet hair and grit in the carpet will not all come out, and stains already in the fabric will still be there. Most will come out with a Full Interior, or with Basic plus pet hair removal, a stain treatment, or both.</p></details>
-          <div class="svc-foot"><a class="btn btn-ghost btn-block" href="book.html" data-book-package="basic-interior">Book Basic Interior</a></div>
-        </article>
-
-        <article class="svc-card featured reveal">
-          <span class="svc-tag">Most Popular</span>
-          <h3>Full Interior</h3>
-          <div class="svc-meta">
-            <span class="price">$215</span>
-            <span class="dur"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v4l3 2"/></svg> 4 hrs</span>
-          </div>
-          <p class="svc-desc">A deep, top to bottom detail that makes it feel new again.</p>
-          
-          <ul class="feat">
-            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 6L9 17l-5-5"/></svg> Thorough vacuum of seats, carpet and trunk</li>
-            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 6L9 17l-5-5"/></svg> Remove engrained particles</li>
-            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 6L9 17l-5-5"/></svg> Shampoo scrub upholstery</li>
-            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 6L9 17l-5-5"/></svg> Wash and dress floor mats</li>
-            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 6L9 17l-5-5"/></svg> Condition leather</li>
-            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 6L9 17l-5-5"/></svg> Clean glass</li>
-            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 6L9 17l-5-5"/></svg> Clean door jams</li>
-            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 6L9 17l-5-5"/></svg> Brush detail every crack and crevice</li>
-          </ul>
-          <details class="svc-how"><summary>How it works</summary><p>Everything in Basic, then the deep work: engrained particles pulled out of the carpet, upholstery shampooed and scrubbed, mats washed and dressed, leather conditioned, glass and door jams cleaned, and every crack and crevice brush detailed. Stain reduction is part of it. It does NOT guarantee a stain comes out completely, steam sanitize the whole vehicle, or remove the seats to get underneath them. Most engrained fibers and pet hair come out at this level, but the truly stubborn ones woven deep into the carpet backing need the individual fiber lifting in Showroom Ready. Deep set stains want the extraction add-on and lingering smells want ozone.</p></details>
-          <div class="svc-foot"><a class="btn btn-primary btn-block" href="book.html" data-book-package="full-interior">Book Full Interior</a></div>
-        </article>
-
-        <article class="svc-card reveal">
-          <h3>Showroom Ready</h3>
-          <div class="svc-meta">
-            <span class="price">$395+</span>
-            <span class="dur"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v4l3 2"/></svg> 7 hrs to 8 hrs</span>
-          </div>
-          <p class="svc-desc">Everything in Full, taken to its limit.</p>
-          
-          <ul class="feat">
-            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 6L9 17l-5-5"/></svg> <strong>Everything in Full Interior</strong></li>
-            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 6L9 17l-5-5"/></svg> Full upholstery and applicable trim steam treatment</li>
-            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 6L9 17l-5-5"/></svg> Individual removal of engrained fibers in upholstery</li>
-            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 6L9 17l-5-5"/></svg> Floor mat water resistant protection</li>
-            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 6L9 17l-5-5"/></svg> Full trim ceramic sealant coating and protection</li>
-            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 6L9 17l-5-5"/></svg> Ceramic sealant protection of all interior metal and paint</li>
-          </ul>
-          <details class="svc-how"><summary>How it works</summary><p>Everything in Full, then taken as far as an interior goes: the whole cabin steamed and sanitized, engrained fibers lifted out individually rather than vacuumed at, floor mats given a water resistant treatment, and a ceramic coating on the trim and on the interior metal and paint so it stays this way. It does NOT repair damage. Tears, burns, cracked trim and worn out material are still tears, burns, cracked trim and worn out material. This makes everything that is there as good as it can get.</p></details>
-          <div class="svc-foot"><a class="btn btn-ghost btn-block" href="book.html" data-book-package="showroom-interior">Book Showroom Ready</a></div>
-        </article>
+    <!-- A taste of the catalog. The full cards, how each works, the correction
+         tiers and the add-ons are on services.html. Rendered from the catalog by
+         web/scripts/render-site.mjs, so a price here cannot drift. -->
+    <!-- CATALOG:TEASER:START -->
+      <h4 class="addon-grp">Interior</h4>
+      <div class="addon-grid">
+        <a class="addon teaser reveal" href="services.html#panel-interior">
+          <div class="ad-body"><b>Basic Interior</b><span>A solid clean that gets the everyday grime out.</span><i class="ad-price">$125 &middot; 2 hrs</i></div>
+        </a>
+        <a class="addon teaser reveal" href="services.html#panel-interior">
+          <div class="ad-body"><b>Full Interior <span class="teaser-pop">Most popular</span></b><span>A deep, top to bottom detail that makes it feel new again.</span><i class="ad-price">$215 &middot; 4 hrs</i></div>
+        </a>
+        <a class="addon teaser reveal" href="services.html#panel-interior">
+          <div class="ad-body"><b>Showroom Ready</b><span>Everything in Full, taken to its limit.</span><i class="ad-price">$395+ &middot; 7 hrs to 8 hrs</i></div>
+        </a>
       </div>
-    </div>
-
-    <div class="svc-panel" id="panel-exterior">
-      <div class="svc-grid">
-        <article class="svc-card reveal">
-          <h3>Express Exterior</h3>
-          <div class="svc-meta">
-            <span class="price">$75</span>
-            <span class="dur"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v4l3 2"/></svg> 1 hr 15 min</span>
-          </div>
-          <p class="svc-desc">A clean hand wash and dry to bring back the shine.</p>
-          
-          <ul class="feat">
-            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 6L9 17l-5-5"/></svg> Rinse exterior and scrub hubcaps</li>
-            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 6L9 17l-5-5"/></svg> Gentle hand wash</li>
-            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 6L9 17l-5-5"/></svg> Clean windows and mirrors</li>
-            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 6L9 17l-5-5"/></svg> Towel dry all surfaces</li>
-          </ul>
-          <details class="svc-how"><summary>How it works</summary><p>A rinse, hubcaps scrubbed, a gentle hand wash and a towel dry, with the windows and mirrors cleaned. It takes the surface dirt off and it is quick. It does NOT decontaminate or clay the paint, dress the tires, touch the engine bay, or leave any protection behind. The paint will still feel rough to the touch afterwards, because a wash cannot remove what is bonded to it.</p></details>
-          <div class="svc-foot"><a class="btn btn-ghost btn-block" href="book.html" data-book-package="express-exterior">Book Express Exterior</a></div>
-        </article>
-
-        <article class="svc-card featured reveal">
-          <span class="svc-tag">Most Popular</span>
-          <h3>Basic Exterior</h3>
-          <div class="svc-meta">
-            <span class="price">$125</span>
-            <span class="dur"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v4l3 2"/></svg> 2 hrs</span>
-          </div>
-          <p class="svc-desc">A thorough hand wash with wheels and tires done properly.</p>
-          
-          <ul class="feat">
-            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 6L9 17l-5-5"/></svg> Pre-wash</li>
-            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 6L9 17l-5-5"/></svg> Bug removal</li>
-            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 6L9 17l-5-5"/></svg> Hand wash</li>
-            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 6L9 17l-5-5"/></svg> Blow dry and towel dry</li>
-            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 6L9 17l-5-5"/></svg> Wheels: hubcaps, tires and wheel wells scrubbed</li>
-            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 6L9 17l-5-5"/></svg> Tire dressing</li>
-          </ul>
-          <details class="svc-how"><summary>How it works</summary><p>A pre-wash to lift the loose grit before anything touches the paint, bug removal, a proper hand wash, blow dry and towel dry, and the wheels done properly: hubcaps, tires and wheel wells scrubbed, then tires dressed. It does NOT decontaminate or clay the paint, remove water spotting, clean the engine bay, or leave a ceramic wax sealant on it. The paint is clean but still not smooth, and there is no lasting protection. That is the step up to Full.</p></details>
-          <div class="svc-foot"><a class="btn btn-primary btn-block" href="book.html" data-book-package="basic-exterior">Book Basic Exterior</a></div>
-        </article>
-
-        <article class="svc-card reveal">
-          <h3>Full Exterior</h3>
-          <div class="svc-meta">
-            <span class="price">$245</span>
-            <span class="dur"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v4l3 2"/></svg> 4 hrs</span>
-          </div>
-          <p class="svc-desc">Strips what a wash cannot reach, then protects the paint underneath. Decontaminated, clayed, engine bay cleaned and finished with a ceramic wax sealant.</p>
-          
-          <ul class="feat">
-            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 6L9 17l-5-5"/></svg> <strong>Everything in Basic Exterior</strong></li>
-            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 6L9 17l-5-5"/></svg> Paint decontamination</li>
-            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 6L9 17l-5-5"/></svg> Clay towel</li>
-            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 6L9 17l-5-5"/></svg> Hard water spot treatment</li>
-            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 6L9 17l-5-5"/></svg> Engine bay clean and protect</li>
-            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 6L9 17l-5-5"/></svg> Ceramic wax sealant applied</li>
-          </ul>
-          <details class="svc-how"><summary>How it works</summary><p>Everything in Basic, then the paint is actually decontaminated: iron and fallout dissolved chemically, a clay towel to shear off what is left, hard water spotting treated, the engine bay cleaned and protected, and a ceramic wax sealant applied so water beads and dirt struggles to stick. It does NOT correct the paint. Swirl marks, scratches and etching stay exactly as they are, and the sealant goes on over the top of them. Removing those means machine polishing, which is Showroom Ready.</p></details>
-          <div class="svc-foot"><a class="btn btn-ghost btn-block" href="book.html" data-book-package="full-exterior">Book Full Exterior</a></div>
-        </article>
-
-        <article class="svc-card wide reveal">
-          <span class="svc-tag soon">Coming soon</span>
-          <div class="swide-main">
-          <h3>Showroom Ready (Paint Correction and Protection)</h3>
-          <div class="svc-meta">
-            <span class="price">$245+</span>
-            <span class="dur"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v4l3 2"/></svg> 4 hrs</span>
-          </div>
-          <p class="svc-desc">Everything in Full Exterior, then the swirls come out and a real ceramic coating goes on. Pick how far to take it below.</p>
-          <p class="svc-soon">We are building up to correction work. Register your interest and we will come to you first when it opens.</p>
-          <ul class="feat">
-            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 6L9 17l-5-5"/></svg> <strong>Everything in Full Exterior</strong></li>
-          </ul>
-          <details class="svc-how"><summary>How it works</summary><p>Everything in Full Exterior, then the paint is machine corrected and a durable ceramic coating goes on the paint, wheels, plastic trim and glass. How much correction depends on the tier you pick below. It does NOT repair physical damage. Dents, rock chips and any scratch deep enough to have gone through the clear coat cannot be polished out, because correction removes a little clear coat, it does not add any. We will tell you what will and will not come out before we start.</p></details>
-          <div class="svc-foot"><a class="btn btn-ghost btn-block" href="book.html" data-book-interest="showroom-exterior">Register interest</a></div>
-          </div>
-          <div class="svc-corr">
-            <h4>Paint correction and ceramic coating</h4>
-            <details class="svc-explain">
-              <summary>How it Works: What is a ceramic coating?</summary>
-              <p>A liquid polymer that chemically bonds to your clear coat and cures into a hard, glass-like layer. It is not a wax sitting on top that washes away in a few months, it becomes part of the surface and stays there for years.</p>
-              <p class="ex-h">What it does</p>
-              <ul class="ex-yes"><li>Makes the paint strongly hydrophobic, so water beads up and rolls off instead of sheeting and drying into spots</li><li>Keeps dirt, brake dust and road film from keying into the surface, so the car stays cleaner between washes and washes far faster</li><li>Blocks UV, which is what oxidises and fades paint over time</li><li>Resists the things that actually etch paint: bird droppings, bug guts, tree sap, road salt</li><li>Adds real depth and gloss, and holds it rather than dulling after a month</li></ul>
-              <p class="ex-h">What it does not do</p>
-              <ul class="ex-no"><li>Stop rock chips. Nothing you can apply to paint does; a coating is microns thick and a stone at highway speed is not going to notice it</li><li>Prevent dents, door dings or scratches deep enough to reach the clear coat</li><li>Remove defects that are already there. Whatever the paint looks like when it goes on is what gets sealed in, which is why correction comes first</li><li>Mean you never wash the car again. It means washing is quicker and the results last</li></ul>
-              <p class="ex-h">How long it takes</p>
-              <ul class="ex-time"><li>Coating only, about 9 hours. Wash, decontaminate, clay, panel wipe, then apply and level the coating by hand and let it cure.</li><li>1 step correction, about 16 hours, usually across two days.</li><li>2 step correction, about 22 hours, two to three days.</li><li>3 to 4 step correction, about 34 hours, three to four days.</li></ul>
-              <p>Nearly all of that is labour. Correction is levelling paint by hand, one pass at a time, checking under inspection lighting between each, and hard paint can add another 20 to 30% on top. The coating itself then has to be applied and levelled panel by panel before it flashes.</p>
-              <p class="ex-why">Worth it if you keep your vehicles a while, park outside, or are tired of the paint looking tired. If you are about to sell, or the car lives in a garage and rarely gets dirty, a sealant is usually the better value.</p>
-              <p class="ex-h">What is covered</p>
-              <p>Every coating covers the whole vehicle: paint, wheels, plastic trim and glass.</p>
-            </details>
-            <ul class="corr-tiers">
-              <li><strong>Ceramic coating only</strong><b class="corr-price">+$550</b><span class="corr-meta">3 to 5 years of protection, no correction</span><span class="corr-meta">About 9 hrs of work</span></li>
-              <li><strong>1 step paint correction, then coating</strong><b class="corr-price">+$850</b><span class="corr-meta">Looks perfect from about 5 feet away</span><span class="corr-meta">About 16 hrs of work</span></li>
-              <li><strong>2 step paint correction, then coating</strong><b class="corr-price">+$1,495</b><span class="corr-meta">Looks perfect from about 2 feet away</span><span class="corr-meta">About 22 hrs of work</span></li>
-              <li><strong>3 to 4 step paint correction, then coating</strong><b class="corr-price">+$2,250</b><span class="corr-meta">Removes 90%+ of all defects, reflective trim included</span><span class="corr-meta">About 34 hrs of work</span></li>
-            </ul>
-            <p class="svc-coverage">Booked at least 14 days out, on weekend mornings, because the work runs across days.</p>
-          </div>
-        </article>
+      <h4 class="addon-grp">Exterior</h4>
+      <div class="addon-grid">
+        <a class="addon teaser reveal" href="services.html#panel-exterior">
+          <div class="ad-body"><b>Express Exterior</b><span>A clean hand wash and dry to bring back the shine.</span><i class="ad-price">$75 &middot; 1 hr 15 min</i></div>
+        </a>
+        <a class="addon teaser reveal" href="services.html#panel-exterior">
+          <div class="ad-body"><b>Basic Exterior <span class="teaser-pop">Most popular</span></b><span>A thorough hand wash with wheels and tires done properly.</span><i class="ad-price">$125 &middot; 2 hrs</i></div>
+        </a>
+        <a class="addon teaser reveal" href="services.html#panel-exterior">
+          <div class="ad-body"><b>Full Exterior</b><span>Strips what a wash cannot reach, then protects the paint underneath. Decontaminated, clayed, engine bay cleaned and finished with a ceramic wax sealant.</span><i class="ad-price">$245 &middot; 4 hrs</i></div>
+        </a>
+        <a class="addon teaser ad-off reveal" href="services.html#panel-exterior">
+          <div class="ad-body"><b>Showroom Ready</b><span>Everything in Full Exterior, then the swirls come out and a real ceramic coating goes on. Pick how far to take it below.</span><i class="ad-price">$245+ &middot; 4 hrs &middot; Coming soon</i></div>
+        </a>
       </div>
+    <!-- CATALOG:TEASER:END -->
+    <div class="hero-cta svc-teaser-cta reveal">
+      <a class="btn btn-primary btn-lg" href="services.html">See all services &amp; prices</a>
+      <a class="btn btn-ghost btn-lg" href="book.html">Book Now</a>
     </div>
 
-    <div class="svc-note reveal">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
-      <div class="svc-offers">
-        <p>Booking interior <em>and</em> exterior together? Take <strong>$25 off automatically when you book together.</strong></p>
-        <p>Have multiple vehicles? <strong>Get 10% off everything</strong> when you book them together!</p>
-      </div>
-    </div>
-    <!-- CATALOG:SERVICES:END -->
-
-    <!-- Add-ons moved to services.html, to keep this page short. -->
-    <div class="addons reveal">
-      <a class="btn btn-ghost" href="services.html">See all add-ons</a>
-    </div>
 
   </div>
 </section>
@@ -1127,7 +969,7 @@
         <h4>Explore</h4>
         <div class="f-links">
           <a href="#gallery">Our Work</a>
-          <a href="#services">Services &amp; Pricing</a>
+          <a href="services.html">Services &amp; Pricing</a>
           <a href="about.html">Meet the Team</a>
           <!-- <a href="#schedule">Schedule</a> -->
           <a href="about.html#reviews">Reviews</a>
@@ -1179,7 +1021,7 @@
 <script src="js/pricing.bundle.js?v=f387991749" defer></script>
 <script src="js/gallery.js?v=d9bac1fab2" defer></script>
 <script src="js/reviews.js?v=d59d6040a0" defer></script>
-<script src="js/funnel.js?v=be96b9b061" defer></script>
-<script src="script.js?v=57fb656cc4" defer></script>
+<script src="js/funnel.js?v=8affea5b41" defer></script>
+<script src="script.js?v=c23b038225" defer></script>
 </body>
 </html>

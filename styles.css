@@ -390,6 +390,17 @@ section { padding-block: clamp(40px, 5vw, 72px); position: relative; }
 /* auto-fill against a minimum width rather than a fixed column count: six
    columns of a paragraph plus a price gave one word per line. */
 .addon-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(245px, 1fr)); gap: .7rem; }
+/* Home page package teaser: add-on cards that are links to services.html. */
+a.addon.teaser { color: inherit; text-decoration: none; transition: border-color .2s, box-shadow .2s, transform .2s; }
+a.addon.teaser:hover { border-color: var(--red); box-shadow: var(--shadow-md); transform: translateY(-2px); }
+.teaser-pop { display: inline-block; margin-left: .35rem; font-size: .66rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--red); vertical-align: middle; }
+.svc-teaser-cta { margin-top: 1.6rem; justify-content: center; }
+/* On phones: two across, name, price and hours only. The full description is a tap away. */
+@media (max-width: 560px) {
+  .addon-grid:has(> a.teaser) { grid-template-columns: 1fr 1fr; }
+  a.addon.teaser .ad-body > span:not(.teaser-pop) { display: none; }
+  .teaser-pop { display: block; margin: .15rem 0 0; }
+}
 /* Cards stretch to the tallest in their row and the price pins to the bottom,
    so a one-line description and a two-line one still line up. */
 .addon {

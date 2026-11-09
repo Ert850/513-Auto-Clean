@@ -81,7 +81,7 @@ Read this before changing anything. Every rule below came from a real bug or an 
 - Node: `export PATH=/opt/homebrew/opt/node@22/bin:$PATH`. Build with `npm run build` at the root.
 - Tests: `cd web && TZ=America/New_York npx vitest run`. 14 scheduling tests fail in any other timezone; that's a known issue in the tests, not a bug in the change.
 - Generated, never hand-edited:
-  - `CATALOG:*` regions in `index.html`, `services.html` and `faq.html` (source: `web/lib/catalog/`, `web/scripts/render-site.mjs`);
+  - `CATALOG:*` regions: `TEASER` and `OFFERS` in `index.html`; `SERVICES` (all package cards, the correction tiers, the offers banner) and `ADDONS` in `services.html`; `FAQPRICE` in `faq.html` (source: `web/lib/catalog/`, `web/scripts/render-site.mjs`);
   - `TERMS:*` and `PRIVACY:*` regions (source: `web/lib/site/capabilities.ts`, `web/scripts/render-legal.mjs`);
   - `js/pricing.bundle.js`, `netlify/functions/_pricing.mjs`, `js/config.js`, `dist/`;
   - every `?v=` stamp.
@@ -94,6 +94,8 @@ Read this before changing anything. Every rule below came from a real bug or an 
   - `PAGES` in `web/scripts/stamp-assets.mjs`;
   - `sitemap.xml`.
   It must also load `js/config.js` and `js/analytics.js`.
+- A page whose Book buttons should open the booking form in place needs `<div id="bookFunnel" hidden>`, `book.css`, `js/vendors.js`, `js/pricing.bundle.js` and `js/funnel.js` (as on `index.html` and `services.html`), and its Book links must be `href="book.html"`, which the form intercepts. On pages without the form, Book links are `index.html#book`.
+- Links to a hidden tab panel (`services.html#panel-exterior`) work because `script.js` selects that tab on arrival. Never link to a hidden element without something to reveal it.
 - When a section moves to another page, re-point the links *inside* it (`book.html` becomes `index.html#book`, `#inquiry` becomes `index.html#inquiry`).
 
 ## Scrolling and layout (bugs fixed November 9–10)
