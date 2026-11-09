@@ -538,49 +538,57 @@ section { padding-block: clamp(40px, 5vw, 72px); position: relative; }
 /* ============================================================
    SERVICE AREAS
    ============================================================ */
-.areas { background: var(--ink); color: var(--text-inv); }
-.areas .section-head h2 { color: #fff; }
-.areas .section-head p { color: var(--text-inv-soft); }
+/* Light, like the About and FAQ pages. It was the dark band from the home
+   page, which on a page of its own sat between a light header and a dark
+   footer with nothing to tell the page from the footer. On paper, the
+   footer is a clear end. */
+.areas { background: var(--paper); padding-block: clamp(32px, 4vw, 56px) clamp(48px, 6vw, 80px); }
+.areas .section-head { max-width: 760px; }
 /* ---------- combined service area + travel ---------- */
 /* Offset so the #travel anchor does not land under the sticky header. */
 .anchor-alias { position: absolute; margin-top: -80px; }
 
-.areas-tool { display: grid; gap: 1.1rem; }
-.at-label { display: block; font-size: .85rem; font-weight: 700; color: #fff; margin-bottom: .45rem; }
+.areas-tool { display: grid; gap: 1.1rem; grid-template-areas: "side" "map" "extra"; }
+.at-side { grid-area: side; }
+.at-map { grid-area: map; }
+.at-extra { grid-area: extra; }
+.at-label { display: block; font-size: .85rem; font-weight: 700; color: var(--text); margin-bottom: .45rem; }
 .at-side { position: relative; }
 .at-row { display: flex; gap: .55rem; }
 .at-row input {
   flex: 1; min-width: 0; font: inherit; font-size: .95rem;
-  background: rgba(255,255,255,.06); color: #fff;
-  border: 1.5px solid var(--line-dark); border-radius: var(--r-sm); padding: .8rem .9rem;
+  background: var(--paper-2); color: var(--text);
+  border: 1.5px solid var(--line); border-radius: var(--r-sm); padding: .8rem .9rem;
 }
-.at-row input::placeholder { color: var(--text-inv-soft); }
-.at-row input:focus { outline: 2px solid var(--red-bright); outline-offset: 1px; border-color: transparent; }
+.at-row input::placeholder { color: #9aa1ac; }
+.at-row input:focus { outline: 2px solid var(--red); outline-offset: 1px; border-color: transparent; }
 
 /* Suggestions float rather than pushing the map down the page as you type. */
 .at-suggest {
   position: absolute; z-index: 5; left: 0; right: 0; margin-top: .35rem;
-  background: var(--ink-3); border: 1px solid var(--line-dark);
+  background: var(--paper-2); border: 1px solid var(--line);
   border-radius: var(--r-sm); overflow: hidden; box-shadow: var(--shadow-lg);
 }
 .at-sg {
   display: flex; align-items: center; gap: .6rem; width: 100%; text-align: left;
-  padding: .55rem .75rem; color: var(--text-inv); font: inherit; font-size: .88rem;
-  border-bottom: 1px solid var(--line-dark);
+  padding: .55rem .75rem; color: var(--text); font: inherit; font-size: .88rem;
+  border-bottom: 1px solid var(--line);
 }
 .at-sg:last-child { border-bottom: 0; }
-.at-sg:hover { background: rgba(255,255,255,.07); }
+.at-sg:hover { background: var(--paper); }
 .sg-dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
 .sg-name { flex: 1; font-weight: 700; }
-.sg-name i { font-style: normal; font-weight: 400; color: var(--text-inv-soft); margin-left: .4rem; }
-.sg-fee { color: var(--red-bright); font-weight: 700; font-size: .84rem; flex: none; }
-.at-sg-note { padding: .6rem .75rem; margin: 0; font-size: .85rem; color: var(--text-inv-soft); }
+.sg-name i { font-style: normal; font-weight: 400; color: var(--text-soft); margin-left: .4rem; }
+.sg-fee { color: var(--red); font-weight: 700; font-size: .84rem; flex: none; }
+.at-sg-note { padding: .6rem .75rem; margin: 0; font-size: .85rem; color: var(--text-soft); }
 
 .at-map { min-width: 0; }
 .at-canvas {
   height: 340px; border-radius: var(--r-md); overflow: hidden;
-  border: 1px solid var(--line-dark); background: var(--ink-3);
+  border: 1px solid var(--line); background: var(--line); box-shadow: var(--shadow-sm);
 }
+/* It had no rule at all, so it sat flush against the bottom of the map. */
+.at-zoomhint { margin-top: .55rem; font-size: .78rem; color: var(--text-soft); line-height: 1.5; }
 /* Leaflet stacks its own furniture high: panes to 600, popups to 700, and the
    zoom control to 1000. `.leaflet-container` sets position without a z-index,
    so it never becomes a stacking context and all of that escapes into the
@@ -590,7 +598,7 @@ section { padding-block: clamp(40px, 5vw, 72px); position: relative; }
    One stacking context keeps the map's layering to itself, at the map's own
    place in the page, and fixes the popups and markers for the same reason. */
 .leaflet-container {
-  font-family: var(--font-body); background: var(--ink-3);
+  font-family: var(--font-body); background: var(--line);
   isolation: isolate;
 }
 
@@ -609,27 +617,39 @@ section { padding-block: clamp(40px, 5vw, 72px); position: relative; }
 }
 .leaflet-marker-draggable:active .ac-pin-body { cursor: grabbing; }
 
-.at-pin { margin-top: .8rem; gap: .5rem; }
+.at-pin { gap: .5rem; }
 .at-pin svg { width: 17px; height: 17px; }
-.at-pinhint { margin: .45rem 0 .8rem; font-size: .76rem; color: var(--text-inv-soft); line-height: 1.5; }
+.at-pinhint { margin: .45rem 0 .8rem; font-size: .76rem; color: var(--text-soft); line-height: 1.5; }
+/* Empty until a search has run; without this its margins were a gap of
+   blank space above "Get an exact quote". */
+.at-pinhint:empty { display: none; }
 .leaflet-popup-content { margin: .6rem .8rem; font-size: .85rem; line-height: 1.5; }
 .leaflet-popup-content .lp-fee { color: var(--red-deep); font-weight: 800; }
 .leaflet-popup-content .lp-min { color: var(--text-soft); font-size: .78rem; }
 
 /* The town lists stay in the HTML: this is the text that actually ranks for
    "mobile detailing in <town>". Set as prose rather than ninety pills. */
-.area-lists { display: grid; gap: 1rem; margin-top: 1.6rem; }
+.area-lists { display: grid; gap: 1rem; margin-top: clamp(1.8rem, 3vw, 2.2rem); }
 .area-col {
-  background: rgba(255,255,255,.03); border: 1px solid var(--line-dark);
-  border-radius: var(--r-md); padding: 1rem 1.1rem;
+  background: var(--paper-2); border: 1px solid var(--line);
+  border-radius: var(--r-md); padding: 1.1rem 1.2rem 1.2rem;
 }
-.area-col h3 { color: #fff; font-size: 1.02rem; display: flex; align-items: center; gap: .5rem; margin-bottom: .35rem; }
-.area-col h3 svg { width: 17px; height: 17px; color: var(--red-bright); }
-.area-col .codes { font-size: .74rem; color: var(--red-bright); font-weight: 700; letter-spacing: .05em; margin-bottom: .5rem; }
-.area-col p { font-size: .82rem; color: var(--text-inv-soft); line-height: 1.6; margin: 0; }
+.area-col h3 { color: var(--ink); font-size: 1.1rem; display: flex; align-items: center; gap: .5rem; margin-bottom: .35rem; }
+.area-col h3 svg { width: 17px; height: 17px; color: var(--red); }
+.area-col .codes { font-size: .74rem; color: var(--red-deep); font-weight: 700; letter-spacing: .05em; margin-bottom: .6rem; }
+.area-col p { font-size: .88rem; color: var(--text); line-height: 1.6; margin: 0; }
+/* A small titled divider between groups of towns: the group's name, then a
+   dotted rule to the edge of the card. Same type as the add-on group labels. */
+.area-grp {
+  display: flex; align-items: center; gap: .6rem; margin: .95rem 0 .3rem;
+  font-family: var(--font-body); font-size: .7rem; font-weight: 800; letter-spacing: .09em;
+  text-transform: uppercase; color: var(--text-soft); line-height: 1.2;
+}
+.area-grp::after { content: ""; flex: 1; border-top: 1.5px dotted #c5c9c2; }
+.area-col .codes + .area-grp { margin-top: .4rem; }
 
-.areas .area-note { margin-top: 1.2rem; text-align: center; color: var(--text-inv-soft); font-size: .95rem; }
-.areas .area-note b { color: var(--red-bright); }
+.areas .area-note { margin-top: 1.6rem; text-align: center; color: var(--text-soft); font-size: .95rem; }
+.areas .area-note b { color: var(--red-deep); }
 
 /* ============================================================
    FAQ
@@ -839,9 +859,16 @@ html.scrolling-fast .reveal { transition: none; transition-delay: 0s; }
 }
 @media (min-width: 820px) {
   .svc-grid { grid-template-columns: repeat(3, 1fr); }
-  .areas-tool { grid-template-columns: 22rem 1fr; gap: 1.6rem; align-items: start; }
-  .at-canvas { height: 430px; }
-  .area-lists { grid-template-columns: repeat(3, 1fr); }
+  /* Search on top of the extras on the left, the map down the right. */
+  .areas-tool {
+    grid-template-columns: 22rem 1fr; grid-template-rows: auto 1fr;
+    grid-template-areas: "side map" "extra map"; gap: 1.1rem 1.6rem; align-items: start;
+  }
+  .at-canvas { height: 380px; }
+  /* Ohio has three times the towns, so it gets the wide column and the other
+     two stack beside it, instead of three cards of very different heights. */
+  .area-lists { grid-template-columns: 1.4fr 1fr; align-items: start; }
+  .area-oh { grid-row: span 2; }
   /* The correction package spans the row underneath, laid out sideways so a
      full width card does not become a tall empty box. */
   /* The correction package spans the row underneath: the package on the
@@ -1159,8 +1186,8 @@ html.scrolling-fast .reveal { transition: none; transition-delay: 0s; }
 
 /* ============================================================
    TRAVEL FEE READOUT AND SCHEMATIC MAP
-   Lives inside the dark Service Area section. The schematic only renders
-   when Leaflet fails to load; colours come from the band data in
+   Lives inside the Service Area section. The schematic only renders
+   when Leaflet fails to load, and keeps its own dark card; colours come from the band data in
    js/travel.js rather than from classes here, so there is one list of
    thresholds rather than two.
    ============================================================ */
@@ -1182,17 +1209,20 @@ html.scrolling-fast .reveal { transition: none; transition-delay: 0s; }
 .tmap-baselab { fill: #fff; font-family: var(--font-display); font-size: 17px; font-weight: 800; }
 
 .tmap-legend { display: flex; flex-wrap: wrap; gap: .5rem 1.1rem; margin-top: .9rem; }
-.tmap-key { display: inline-flex; align-items: center; gap: .4rem; font-size: .8rem; color: var(--text-inv-soft); font-weight: 600; }
-.tmap-key i { width: 11px; height: 11px; border-radius: 50%; flex: none; }
+.tmap-key { display: inline-flex; align-items: center; gap: .4rem; font-size: .8rem; color: var(--text-soft); font-weight: 600; }
+/* Drawn like the map's dots: the band colour with a white ring, so a key
+   and the dot it explains look the same. */
+.tmap-key i { width: 13px; height: 13px; border-radius: 50%; flex: none; border: 2px solid #fff; box-shadow: 0 0 0 1px rgba(11,14,19,.25); }
 
-.travel-out { margin-top: .9rem; min-height: 1.5rem; }
-.travel-out.ok b { display: block; font-family: var(--font-display); font-size: 1.7rem; color: var(--red-bright); }
-.travel-out.ok span { display: block; font-size: .86rem; color: var(--text-inv-soft); line-height: 1.55; margin-top: .2rem; }
+.travel-out { margin-top: .9rem; }
+.travel-out:empty { margin-top: 0; }
+.travel-out.ok b { display: block; font-family: var(--font-display); font-size: 1.7rem; color: var(--red); }
+.travel-out.ok span { display: block; font-size: .86rem; color: var(--text-soft); line-height: 1.55; margin-top: .2rem; }
 .travel-out .travel-approx { font-style: italic; margin-top: .35rem; }
-.travel-out.err { color: var(--red-bright); font-size: .88rem; }
+.travel-out.err { color: var(--red); font-size: .88rem; }
 .travel-out.err b { display: block; font-family: var(--font-display); font-size: 1.25rem; margin-bottom: .25rem; }
-.travel-out.err span { display: block; color: var(--text-inv-soft); font-size: .84rem; line-height: 1.55; }
-.travel-fine { margin: .9rem 0; font-size: .78rem; color: var(--text-inv-soft); line-height: 1.55; }
+.travel-out.err span { display: block; color: var(--text-soft); font-size: .84rem; line-height: 1.55; }
+.travel-fine { margin: 0 0 .9rem; font-size: .78rem; color: var(--text-soft); line-height: 1.55; }
 
 /* ============================================================
    CATALOG-RENDERED EXTRAS
