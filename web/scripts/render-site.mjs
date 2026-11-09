@@ -73,14 +73,24 @@ function correctionBlock() {
 
   // Hours are shown because the price only makes sense beside them: this is
   // days of labour, not a product with a markup.
+  // One convention per tier: name and price on the first row, what it gets
+  // you on the next line, the hours always on a line of their own. They were
+  // joined with a middle dot, which wrapped wherever the width happened to
+  // break and left the hours mid-line on some tiers and alone on others.
   const tiers = CORRECTION_TIERS.map(
     (t) =>
-      `<li><strong>${esc(t.label)}</strong> <b class="corr-price">+${money(t.addCents)}</b>` +
-      `<span class="corr-meta">${esc(t.result)} &middot; about ${dur(baseMin + t.addMin)} of work</span></li>`,
+      `<li><strong>${esc(t.label)}</strong><b class="corr-price">+${money(t.addCents)}</b>` +
+      `<span class="corr-meta">${esc(t.result)}</span>` +
+      `<span class="corr-meta">About ${dur(baseMin + t.addMin)} of work</span></li>`,
   ).join("\n              ");
 
+  // "Coming soon" is said once, by the amber tag on the card's corner. This
+  // heading repeated it inline, an inch away, about the same card.
+  // The list is deliberately not ul.feat: that class belongs to the package
+  // checklists, and its `.svc-card ul.feat li { display: flex }` outranked
+  // this list's own layout and split every tier into three squeezed columns.
   return `<div class="svc-corr">
-            <h4>Paint correction and ceramic coating <span class="corr-soon">Coming soon</span></h4>
+            <h4>Paint correction and ceramic coating</h4>
             <details class="svc-explain">
               <summary>How it Works: ${esc(COATING_EXPLAINER.heading)}</summary>
               <p>${esc(COATING_EXPLAINER.body)}</p>
@@ -95,7 +105,7 @@ function correctionBlock() {
               <p class="ex-h">What is covered</p>
               <p>${esc(COATING_COVERAGE)}</p>
             </details>
-            <ul class="feat corr-tiers">
+            <ul class="corr-tiers">
               ${tiers}
             </ul>
             <p class="svc-coverage">Booked at least ${CORRECTION_RULES.minLeadDays} days out, on weekend mornings, because the work runs across days.</p>
@@ -183,8 +193,10 @@ ${panel("exterior")}
 
     <div class="svc-note reveal">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
-      <span>Booking interior <em>and</em> exterior together? Take <strong>${money(DEFAULT_RULES.comboDiscountCents)} off automatically when you book together.</strong>
-      Have multiple vehicles? <strong>Get ${DEFAULT_RULES.additionalVehicleDiscountBp / 100}% off everything</strong> when you book them together!</span>
+      <div class="svc-offers">
+        <p>Booking interior <em>and</em> exterior together? Take <strong>${money(DEFAULT_RULES.comboDiscountCents)} off automatically when you book together.</strong></p>
+        <p>Have multiple vehicles? <strong>Get ${DEFAULT_RULES.additionalVehicleDiscountBp / 100}% off everything</strong> when you book them together!</p>
+      </div>
     </div>`;
 }
 
