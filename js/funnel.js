@@ -865,7 +865,14 @@
     var target = Math.max(0, Math.min(STEPS.length - 1, n));
     state.step = target;
     render();
+    track('booking_step', { step: STEPS[target].id });
   }
+
+  /** js/analytics.js, which does nothing without consent. Never in the way. */
+  function track(name, params) {
+    if (window.AC_TRACK) window.AC_TRACK(name, params);
+  }
+  function source() { return window.AC_SOURCE ? window.AC_SOURCE() : ''; }
 
   /**
    * Is the chosen time STILL free?
@@ -4463,7 +4470,9 @@
           turnstileToken: state.turnstileToken,
           mode: state.payInFull ? 'pay_now' : 'card_only',
           // So a retry writes one calendar event rather than two.
-          idempotencyKey: bookingKey()
+          idempotencyKey: bookingKey(),
+          // Which tagged link brought them here, e.g. a magazine QR code.
+          source: source()
         })
       }).catch(function () {});
     } catch (e) { /* an email must never cost us a booking */ }
@@ -4552,7 +4561,8 @@
       '\n  Card authorization: ' + (state.mandate ? 'YES' : 'no') +
       '\n  SMS: ' + (state.consent.sms ? 'YES' : 'no') +
       '\n  Filming: ' + (state.consent.media ? 'YES' : 'no') + '\n\n' +
-      (state.notes ? 'NOTES\n  ' + state.notes + '\n' : '');
+      (state.notes ? 'NOTES\n  ' + state.notes + '\n' : '') +
+      (source() ? '\nSOURCE\n  ' + source() + '\n' : '');
   }
 
   /**
@@ -4614,6 +4624,11 @@
   function done(quote) {
     state.done = true;
     clearDraft();
+    track(isInquiry() ? 'booking_request' : 'booking_complete', {
+      value: Math.round(quote.totalCents) / 100,
+      currency: 'USD',
+      source: source() || '(none)'
+    });
     // Start at the top. Everything else in the funnel keeps its place on
     // purpose, but this is a different screen with a different job, and
     // landing halfway down a receipt is not reading it.
@@ -4874,6 +4889,7 @@
   function open() {
     if (!host) return;
     reset();
+    track('booking_open');
 
     // Pick up exactly where they left off, including the step they were on,
     // because that is what they asked for when they kept it.

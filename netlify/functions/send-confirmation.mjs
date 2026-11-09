@@ -286,6 +286,7 @@ function eventDescription({ contact, cart, priced, extras, payInFull, kind }) {
   if (extras.parking) lines.push(`  Parking: ${extras.parking}`);
   if (extras.notes) lines.push(`  Notes: ${extras.notes}`);
   if (extras.locationNote) lines.push(`  ** NEEDS A LOCATION SORTED ** ${extras.locationNote}`);
+  if (extras.source) lines.push("", "SOURCE", `  ${extras.source}`);
 
   return lines.join("\n");
 }
@@ -393,6 +394,8 @@ export async function handler(event) {
     parking: text(rawAccess.parking, 300),
     notes: text(rawCart.notes ?? payload?.notes, 500),
     locationNote: text(rawCart.locationNote, 300),
+    // The tagged link they arrived through (a magazine QR code), for ROI.
+    source: text(payload?.source, 120),
   };
 
   // THE CALENDAR FIRST. It is the half that stops the slot being sold again,

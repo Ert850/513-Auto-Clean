@@ -30,7 +30,9 @@ export const LEGAL = {
    * more processors.
    */
   termsEffective: "2026-09-14",
-  privacyEffective: "2026-09-14",
+  // 2026-11-09: Google Analytics and Microsoft Clarity behind a consent
+  // banner, and the arrival source kept for the visit.
+  privacyEffective: "2026-11-09",
 } as const;
 
 export function longDate(iso: string): string {
