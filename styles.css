@@ -354,11 +354,6 @@ section { padding-block: clamp(40px, 5vw, 72px); position: relative; }
   font-size: .84rem; color: #7a5209; background: rgba(240,169,63,.14);
   border-radius: var(--r-sm); padding: .5rem .65rem; margin-bottom: .85rem; line-height: 1.5;
 }
-.corr-soon {
-  font-size: .66rem; font-weight: 800; letter-spacing: .09em; text-transform: uppercase;
-  color: #7a5209; background: rgba(240,169,63,.2); border-radius: 4px;
-  padding: .2rem .45rem; vertical-align: middle; margin-left: .45rem;
-}
 .svc-tag {
   position: absolute; top: -12px; right: 1.5rem; background: linear-gradient(135deg, var(--red), var(--red-deep));
   color: #ffffff; font-size: .72rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase;
@@ -376,12 +371,18 @@ section { padding-block: clamp(40px, 5vw, 72px); position: relative; }
 .svc-card ul.feat li svg { width: 17px; height: 17px; color: var(--red-deep); flex-shrink: 0; margin-top: .18rem; }
 .svc-card .svc-foot { margin-top: auto; }
 
+/* No flex-wrap: the text's flex-basis is its full one-line width, so with
+   wrapping on it always dropped to a row of its own under the icon. */
 .svc-note {
-  margin-top: 1.8rem; display: flex; flex-wrap: wrap; gap: .75rem 1.5rem; align-items: center;
+  margin-top: 1.8rem; display: flex; gap: .75rem; align-items: flex-start;
   background: var(--red-ghost); border: 1px dashed rgba(200,20,20,.4); border-radius: var(--r-md);
   padding: 1rem 1.3rem; font-size: .95rem; color: var(--red-deep); font-weight: 600;
 }
-.svc-note svg { width: 20px; height: 20px; flex-shrink: 0; }
+.svc-note svg { width: 20px; height: 20px; flex-shrink: 0; margin-top: .15rem; }
+/* Two offers, two lines, split by the banner's own dashed rule. */
+.svc-offers { flex: 1; min-width: 0; }
+.svc-offers p { margin: 0; line-height: 1.5; }
+.svc-offers p + p { margin-top: .55rem; padding-top: .55rem; border-top: 1px dashed rgba(200,20,20,.3); }
 
 /* add-ons */
 .addons { margin-top: 1.6rem; }
@@ -874,8 +875,13 @@ html.scrolling-fast .reveal { transition: none; transition-delay: 0s; }
   /* The correction package spans the row underneath: the package on the
      left, the correction tiers on the right, so the "+" on the price has its
      explanation next to it instead of a screen away. */
-  .svc-card.wide { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1.05fr; gap: 2rem; align-items: start; }
+  /* Stretch, not start: with start the left column ended wherever its text
+     did, so the Register button floated short of the card's bottom edge and
+     left a ragged empty block in the bottom-left corner. Stretched, the
+     button's margin-top: auto pins it to the bottom, level with the tier box. */
+  .svc-card.wide { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1.05fr; gap: 2rem; align-items: stretch; }
   .svc-card.wide .svc-foot { max-width: 22rem; }
+  .svc-card.wide .svc-corr { align-self: start; }
   .steps { grid-template-columns: repeat(3, 1fr); }
   .rev-grid { grid-template-columns: repeat(3, 1fr); }
   .area-grid { grid-template-columns: repeat(3, 1fr); }
@@ -1230,17 +1236,29 @@ html.scrolling-fast .reveal { transition: none; transition-delay: 0s; }
 .addon-grp { font-size: .74rem; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; color: var(--text-soft); margin: 1.15rem 0 .55rem; }
 .addon .ad-price { display: block; font-style: normal; font-weight: 800; color: var(--red); font-size: .88rem; margin-top: .35rem; }
 .swide-main { display: flex; flex-direction: column; min-width: 0; }
+/* Stacked on a phone the tier box came straight after the Register button,
+   with nothing between them; the grid gap only exists from 820px up. */
+@media (max-width: 819.98px) { .svc-card.wide .svc-corr { margin-top: 1.4rem; } }
 .svc-corr {
   min-width: 0; background: var(--paper); border: 1px solid var(--line);
   border-radius: var(--r-md); padding: 1.1rem 1.2rem;
 }
 .svc-corr h4 { font-family: var(--font-display); font-size: 1.1rem; margin: 0 0 .7rem; }
-.svc-corr .corr-tiers { list-style: none; margin: 0; padding: 0; display: grid; gap: .6rem; }
-.svc-corr .corr-tiers li { display: block; font-size: .9rem; color: var(--text-soft); line-height: 1.45; }
+/* Each tier is a two-column row: name on the left, price right-aligned in a
+   column of its own so the four prices line up; the two meta lines sit under
+   the name. Equal padding and a hairline between tiers keep them evenly spaced
+   however many lines a name wraps to. */
+.svc-corr .corr-tiers { list-style: none; margin: 0; padding: 0; }
+.svc-corr .corr-tiers li {
+  display: grid; grid-template-columns: 1fr auto; column-gap: 1rem; align-items: baseline;
+  padding: .7rem 0; font-size: .9rem; color: var(--text-soft); line-height: 1.45;
+}
+.svc-corr .corr-tiers li + li { border-top: 1px solid var(--line); }
 .svc-corr .corr-tiers li svg { display: none; }
 .svc-corr .corr-tiers strong { color: var(--text); }
-.svc-corr .corr-price { color: var(--red); font-family: var(--font-display); font-weight: 800; margin-left: .35rem; }
-.svc-corr .corr-meta { display: block; font-size: .8rem; color: var(--text-soft); margin-top: .12rem; }
+.svc-corr .corr-price { color: var(--red); font-family: var(--font-display); font-weight: 800; text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.svc-corr .corr-meta { grid-column: 1; font-size: .8rem; color: var(--text-soft); margin-top: .12rem; }
+.svc-corr .corr-meta + .corr-meta { margin-top: 0; }
 
 /* add-ons that are listed but not bookable yet */
 .addon.ad-off { opacity: .78; }
@@ -1259,12 +1277,19 @@ html.scrolling-fast .reveal { transition: none; transition-delay: 0s; }
 .svc-coverage { margin-top: .9rem; margin-bottom: 0; font-size: .8rem; color: var(--text-soft); font-style: italic; }
 
 /* how it works, on a front page package card */
-.svc-how { margin: .9rem 0 0; }
-.svc-how summary { cursor: pointer; font-size: .8rem; font-weight: 700; color: var(--red); list-style: none; }
+/* The card is a flex column, so margins add up instead of collapsing: the
+   list's 1.05rem plus this toggle's .9rem put it 31px under the last item, and
+   with no bottom margin an opened panel sat flush on the Book button (the
+   button's margin-top: auto is 0 once the card is the tallest in its row).
+   The toggle now hangs .65rem under the list and always keeps 1.1rem clear of
+   the button. */
+.svc-card ul.feat:has(+ .svc-how) { margin-bottom: 0; }
+.svc-how { margin: .65rem 0 1.1rem; }
+.svc-how summary { display: inline-block; padding: .2rem 0; cursor: pointer; font-size: .8rem; font-weight: 700; color: var(--red); list-style: none; }
 .svc-how summary::-webkit-details-marker { display: none; }
 .svc-how summary::after { content: " +"; font-weight: 800; }
 .svc-how[open] summary::after { content: " -"; }
-.svc-how p { margin: .5rem 0 0; font-size: .82rem; line-height: 1.65; color: var(--text-soft); background: var(--paper); border-left: 2px solid var(--line); padding: .65rem .8rem; border-radius: 0 var(--r-sm) var(--r-sm) 0; }
+.svc-how p { margin: .45rem 0 0; font-size: .82rem; line-height: 1.65; color: var(--text-soft); background: var(--paper); border-left: 2px solid var(--line); padding: .8rem .95rem; border-radius: 0 var(--r-sm) var(--r-sm) 0; }
 
 .svc-explain { background: var(--paper-2); border: 1px solid var(--line); border-radius: var(--r-sm); padding: .8rem .9rem; margin-bottom: 1rem; }
 .svc-explain summary { font-size: .95rem; }
