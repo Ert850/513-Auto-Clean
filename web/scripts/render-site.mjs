@@ -200,6 +200,31 @@ ${panel("exterior")}
     </div>`;
 }
 
+/* ---------------- home page teaser ---------------- */
+
+/**
+ * The home page shows the packages as compact cards that link to the full
+ * Services page, where each one is explained and can be booked. Same markup
+ * and styles as the add-on cards, so nothing new to look at; same catalog, so
+ * the prices match the full cards and the funnel.
+ */
+function teaserHtml() {
+  const card = (p) => {
+    const price = money(p.priceCents) + (p.pricePlus ? "+" : "");
+    const time = p.durationMaxMin ? `${dur(p.durationMin)} to ${dur(p.durationMaxMin)}` : dur(p.durationMin);
+    const name = p.name.replace(/\s*\([^)]*\)\s*$/, "");
+    return `        <a class="addon teaser${p.comingSoon ? " ad-off" : ""} reveal" href="services.html#panel-${p.category}">
+          <div class="ad-body"><b>${esc(name)}${p.featured ? " <span class=\"teaser-pop\">Most popular</span>" : ""}</b><span>${esc(p.tagline)}</span><i class="ad-price">${price} &middot; ${time}${p.comingSoon ? " &middot; Coming soon" : ""}</i></div>
+        </a>`;
+  };
+  return ["interior", "exterior"]
+    .map((cat) => `      <h4 class="addon-grp">${cat === "interior" ? "Interior" : "Exterior"}</h4>
+      <div class="addon-grid">
+${packagesFor(cat).filter((p) => !p.requiresPriorDetail).map(card).join("\n")}
+      </div>`)
+    .join("\n");
+}
+
 /* ---------------- add-ons ---------------- */
 
 function addonsHtml() {
@@ -318,7 +343,8 @@ function splice(file, html, name, body, { inline = false } = {}) {
 }
 
 const pages = Object.fromEntries(PAGES.map((f) => [f, read(f)]));
-pages["index.html"] = splice("index.html", pages["index.html"], "SERVICES", servicesHtml());
+pages["index.html"] = splice("index.html", pages["index.html"], "TEASER", teaserHtml());
+pages["services.html"] = splice("services.html", pages["services.html"], "SERVICES", servicesHtml());
 pages["index.html"] = splice("index.html", pages["index.html"], "OFFERS", offersHtml());
 pages["services.html"] = splice("services.html", pages["services.html"], "ADDONS", addonsHtml());
 pages["faq.html"] = splice("faq.html", pages["faq.html"], "FAQPRICE", faqPriceText(), { inline: true });
