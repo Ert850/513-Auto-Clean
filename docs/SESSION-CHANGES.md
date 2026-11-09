@@ -179,9 +179,27 @@ reorganization only. Reference sites: *links not yet provided*.
 
 **Still running in parallel:** the `services-fixes` session (How-it-works spacing, correction card, offers banner, condensed copy drafts).
 
-**Decided with the owner (to build next):**
-- One full Services page: packages, correction, offers and add-ons on `services.html`, with a short teaser on the home page. Nav "Services" goes to that page, and its Book buttons open the booking form in place.
-- The home page's "Book Now" scrolls to the booking section, while the header's Book Now still opens the form instantly.
+**Also merged:** `claude/services-fixes-d9e6fc`, the Services & Pricing details. See `docs/SESSION-CHANGES-services.md`. The condensed "How it works" copy in `docs/HOW-IT-WORKS-DRAFTS.md` is **not applied**: it waits for the owner's approval.
+
+### 6. One full Services page (decided with the owner, November 10)
+- **`services.html`:**
+  - Now holds every package card (Interior and Exterior tabs, How it works, the correction tiers, the offers banner) above the add-ons.
+  - Loads the booking form (`#bookFunnel`, `book.css`, `vendors.js`, `pricing.bundle.js`, `funnel.js`). Book on any card opens the form in place with that package chosen, and its Book Now links are `book.html`.
+  - Title: "Services and Prices".
+- **Home page `#services`:**
+  - Keeps the heading, then a teaser rendered from the catalog (`CATALOG:TEASER` in `render-site.mjs`). It shows one compact card per package (name, Most popular, tagline, price and hours), styled like the add-on cards and linking to `services.html#panel-<category>`.
+  - Below that: "See all services & prices" and "Book Now".
+  - On phones it shows two cards across with no tagline (1,044 px instead of 1,544 px).
+- **Links:** "Services" and "Services & Pricing" in every header, menu and footer now go to `services.html`. The booking form's "See all services and prices" link does too.
+- **`script.js`:** arriving at `services.html#panel-exterior` selects that tab and then lands on it. A hidden panel can't be scrolled to.
+- **Verified (1440 and 375 px):**
+  - 7 teaser cards on the home page.
+  - `services.html#panel-exterior` opens the Exterior tab, and the panel lands at 73 px.
+  - "Book Express Exterior" opens the booking form on the Services page.
+  - No horizontal overflow.
+  - Tests 409/409.
+- **Open with the owner:**
+  - The home page's `#quote` section ("Let's get your car booked"). The owner suggested pointing the home-page Book Now there, with the header Book Now staying instant. My recommendation: keep every Book Now instant and merge `#quote` into the Contact section.
 
 ### Reference sites reviewed (design lessons only, nothing copied)
 - **dksdetailing.com:**
