@@ -751,6 +751,23 @@ section { padding-block: clamp(40px, 5vw, 72px); position: relative; }
 .mobile-bar .mb-call { background: var(--ink); color: #fff; }
 .mobile-bar .mb-quote { background: linear-gradient(135deg, var(--red), var(--red-deep)); color: #ffffff; }
 
+/* Analytics consent banner (js/analytics.js). Sits above the mobile bar. */
+.consent {
+  position: fixed; left: 12px; right: 12px; bottom: 76px; z-index: 95;
+  max-width: 520px; margin: 0 auto; padding: 1rem 1.1rem;
+  background: #fff; color: var(--text); border: 1px solid var(--line);
+  border-radius: var(--r-md); box-shadow: var(--shadow-lg);
+  font-size: .92rem; line-height: 1.5;
+}
+.consent[hidden] { display: none; }
+.consent p { margin: 0 0 .8rem; }
+.consent a { text-decoration: underline; }
+.consent-btns { display: flex; gap: .6rem; justify-content: flex-end; }
+.consent-btns .btn { padding: .6rem 1.1rem; font-size: .92rem; }
+@media (min-width: 1040px) { .consent { bottom: 20px; left: 20px; right: auto; margin: 0; } }
+.linklike { background: none; border: 0; padding: 0; font: inherit; color: inherit; cursor: pointer; text-decoration: underline; }
+.linklike[hidden] { display: none; }
+
 /* ============================================================
    ANIMATIONS
    ============================================================ */

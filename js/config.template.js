@@ -74,5 +74,11 @@ window.AC_CONFIG = {
 
     // Cloudflare Turnstile site key. Empty means no bot check, which is
     // fine until the first bot.
-    turnstileSiteKey: '{{TURNSTILE_SITE_KEY}}'
+    turnstileSiteKey: '{{TURNSTILE_SITE_KEY}}',
+
+    // Analytics ids, public by design: they appear in every page that runs
+    // them. Empty means no consent banner and no analytics. js/analytics.js
+    // loads neither until a visitor presses Accept.
+    ga4MeasurementId: '{{GA4_MEASUREMENT_ID}}',
+    clarityProjectId: '{{CLARITY_PROJECT_ID}}'
 };

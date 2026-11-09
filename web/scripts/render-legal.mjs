@@ -122,7 +122,9 @@ function automaticPara() {
     // "No analytics software" stops being true the moment Real User
     // Monitoring is switched on, so the sentence is written twice and the
     // switch picks. What is measured is the page, not the person.
-    isLive("performanceMonitoring")
+    isLive("siteAnalytics")
+      ? "Our website runs no advertising pixels. If you accept analytics in the banner, Google Analytics and Microsoft Clarity load and show us how the site is used: which pages are visited, how people found us, where they click, and where they leave. We use that only to see how the website is working, never for advertising, and neither loads unless you accept. Our host, Netlify, does measure how fast our own pages load too: a small script times the page as it appears and sends those timings back to Netlify, where they are pooled with everyone else's. It sets no cookie and carries nothing that identifies you. Like nearly all websites, our web host also records standard server logs, including IP addresses and browser type, for security and reliability. The typefaces load from Google Fonts, which means Google receives your IP address when a page loads."
+      : isLive("performanceMonitoring")
       ? "Our website runs no advertising pixels and no session-tracking tools, and nothing on it follows you to other websites. Our host, Netlify, does measure how fast our own pages load: a small script times the page as it appears and sends those timings back to Netlify, where they are pooled with everyone else's. It sets no cookie and carries nothing that identifies you, and we use it to find the pages that are slow. Like nearly all websites, our web host also records standard server logs, including IP addresses and browser type, for security and reliability. The typefaces load from Google Fonts, which means Google receives your IP address when a page loads."
       : "Our website runs no analytics software, advertising pixels, or session-tracking tools. Like nearly all websites, our web host records standard server logs, including IP addresses and browser type, for security and reliability. The typefaces load from Google Fonts, which means Google receives your IP address when a page loads.",
     "The service area map is drawn with OpenStreetMap tiles and a map library served by cdnjs, so both receive your IP address when the map loads. If you type a place into the map search, that text goes to OpenStreetMap to find it on the map.",
@@ -168,10 +170,15 @@ ${rows}
 
 function cookiesParas() {
   const parts = [
-    isLive("performanceMonitoring")
+    isLive("siteAnalytics")
+      ? "This website runs no advertising trackers. The first time you visit, a banner asks whether you accept analytics. Press Accept and Google Analytics and Microsoft Clarity load and set their own cookies, as described in section 2. Press Decline, or ignore the banner, and neither loads and no analytics cookie is set. We remember your choice in your browser so we do not ask on every page, and you can change it at any time from the Analytics choices link at the bottom of the home page."
+      : isLive("performanceMonitoring")
       ? "This website sets no cookies of its own and runs no advertising trackers. The one thing we measure is how quickly our pages load, described in section 2, and it needs no cookie to do it."
       : "This website sets no cookies of its own and runs no analytics or advertising trackers.",
-    "There is one thing we can keep in your browser, and only if you ask for it. If you start a booking and leave before finishing, we offer to keep your answers so they are still there next time. Say yes and they are stored in your own browser for 14 days, so that the next time you tap Book Now you carry on where you stopped. That information stays on your device, never reaches us until you actually book, and you can throw it away from the same screen that offered to keep it. Say no, or say nothing, and there is nothing to throw away.",
+    ...(isLive("siteAnalytics")
+      ? ["If you arrive through a link we tagged, such as the QR code in a magazine ad, your browser remembers which link it was until you close the tab, and it is sent with a booking or question so we know how you found us. That works whether or not you accept analytics, identifies nobody, and goes to no one else."]
+      : []),
+    (isLive("siteAnalytics") ? "Apart from those two, there is one more thing we can keep in your browser" : "There is one thing we can keep in your browser") + ", and only if you ask for it. If you start a booking and leave before finishing, we offer to keep your answers so they are still there next time. Say yes and they are stored in your own browser for 14 days, so that the next time you tap Book Now you carry on where you stopped. That information stays on your device, never reaches us until you actually book, and you can throw it away from the same screen that offered to keep it. Say no, or say nothing, and there is nothing to throw away.",
   ];
   const setters = [];
   if (isLive("cardOnFile")) setters.push("Stripe's payment form");
@@ -186,7 +193,7 @@ function cookiesParas() {
   // Promising to ask before adding analytics, on a page that already has
   // page-speed measurement running, is the kind of sentence that makes a
   // reader stop believing the rest of the document.
-  parts.push(
+  if (!isLive("siteAnalytics")) parts.push(
     isLive("performanceMonitoring")
       ? "If we ever add analytics that identify you or follow you between websites, we will update this policy and ask for your consent before any of it loads."
       : "If we ever add analytics, we will update this policy and ask for your consent before any non-essential tracking is loaded.",

@@ -41,6 +41,8 @@ const COSTS = {
   STRIPE_PUBLISHABLE_KEY: "no card field at all",
   PAYPAL_CLIENT_ID: "no PayPal or Venmo",
   TURNSTILE_SITE_KEY: "no bot check",
+  GA4_MEASUREMENT_ID: "no Google Analytics",
+  CLARITY_PROJECT_ID: "no Clarity heatmaps or recordings",
   GOOGLE_API_KEY: null, // legacy fallback, absence is normal
 };
 

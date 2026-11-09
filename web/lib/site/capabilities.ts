@@ -166,6 +166,21 @@ export const CAPABILITIES: Capability[] = [
     live: true,
   },
   {
+    /*
+     * GA4 AND MICROSOFT CLARITY, behind a consent banner (js/analytics.js).
+     *
+     * Live because the code ships now. Neither loads until a visitor presses
+     * Accept, and with no ids in js/config.js the banner never even shows, so
+     * the policy's "we ask first" is true either way. Ads storage and Google
+     * Signals are off, which is what lets the banner say "never used for
+     * advertising". Linking Google Ads changes that sentence first.
+     */
+    id: "siteAnalytics",
+    what: "Google Analytics and Microsoft Clarity, loaded only after the visitor accepts",
+    live: true,
+    blockedBy: "GA4_MEASUREMENT_ID and CLARITY_PROJECT_ID in Netlify",
+  },
+  {
     id: "botCheck",
     what: "Cloudflare Turnstile in front of the payment step",
     live: false,
@@ -208,6 +223,8 @@ export const PROCESSORS: Processor[] = [
   // website" does not tell a reader that a script is running in their
   // browser and reporting back, and that is the part worth knowing.
   { name: "Netlify Real User Monitoring", does: "measures how quickly pages load for real visitors. A small script times the page and sends those timings to Netlify. It uses no cookie and carries nothing that identifies you.", capability: "performanceMonitoring" },
+  { name: "Google Analytics", does: "counts visits, the pages viewed, and how people found us, only if you accept analytics. It sets cookies to tell one visit from the next. We have turned off Google's advertising features for it.", capability: "siteAnalytics" },
+  { name: "Microsoft Clarity", does: "records how pages are used, such as clicks, scrolling and where people leave, only if you accept analytics. It sets cookies to do so. What you type into forms is hidden from it, and we have told it not to use anything for advertising.", capability: "siteAnalytics" },
   { name: "Neon", does: "stores bookings in our database so your booking link works.", capability: "bookingLink" },
   { name: "Cloudflare Turnstile", does: "checks that a booking is being made by a person, before payment. It may set a cookie to do so.", capability: "botCheck" },
 ];
