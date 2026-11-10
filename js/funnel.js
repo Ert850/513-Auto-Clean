@@ -2993,7 +2993,7 @@
         '<b>' + esc(w.label) + '</b><span>' + esc(w.range) + '</span>' +
         // The surcharge is named on the band they are asking for, not sprung
         // on them when we come back with a time.
-        (w.premium ? '<em>+' + RULES.surcharge.timeOfDayBp / 100 + '%</em>' : '') +
+        (w.premium ? '<em>+' + RULES.surcharge.timeOfDayBp / 100 + '% ' + (w.fromMin < 12 * 60 ? 'early start fee' : 'late start fee') + '</em>' : '') +
         '</button>';
     }).join('');
 
@@ -3610,10 +3610,8 @@
     var later = state.step > ti;
     // Compact, so the line fits beside a suggestion: "+$37.50 rush + early".
     // The full wording, short notice included, is on the steps themselves.
-    var kinds = [];
-    if (needsPriority(ms)) kinds.push('rush');
-    if (timeFeeApplies(ms)) kinds.push(localMin(ms) < 12 * 60 ? 'early' : 'late');
-    var price = fee ? fee + ' ' + kinds.join(' + ') : 'Standard price';
+    // The fee's one name (owner's approval, November 10), in dollars.
+    var price = fee ? fee + ' ' + feeWhy(ms) : 'Standard price';
     var to = steerFor(ms);
     // Labelled as the chosen time (owner, November 10: it has to read as
     // "this is your time", not as one more option).
@@ -3852,16 +3850,11 @@
       '<small>' + esc(g.end) + '</small>';
   }
 
-  /** "Rush 20%", "Early 20%", "Rush + late 30%": what the fee is, in a few words. */
+  /** "Late start fee +$25": the fee's one name, in dollars (owner's approval, November 10). */
   function feeNote(ms) {
-    var bp = surchargeBp(ms);
-    if (!bp) return '';
-    var parts = [];
-    if (needsPriority(ms)) parts.push('Rush');
-    var m = localMin(ms);
-    if (timeFeeApplies(ms)) parts.push(m < 12 * 60 ? 'early' : 'late');
-    var text = parts.join(' + ');
-    return text.charAt(0).toUpperCase() + text.slice(1) + ' ' + bp / 100 + '%';
+    if (!surchargeBp(ms)) return '';
+    var why = feeWhy(ms);
+    return why.charAt(0).toUpperCase() + why.slice(1) + ' ' + feeText(ms);
   }
 
   /**

@@ -468,17 +468,18 @@ describe("the surcharge line says what the surcharge is for", () => {
     // 10am is explicitly a standard hour. Charging for it and then labelling
     // the line "Premium time" is the kind of small untruth a customer notices
     // and is right to argue with.
-    expect(at(10, true)).toBe("Rush booking, +20%");
-    expect(at(12, true)).toBe("Rush booking, +20%");
+    expect(at(10, true)).toBe("Rush fee (20%)");
+    expect(at(12, true)).toBe("Rush fee (20%)");
   });
 
   it("calls premium time premium time", () => {
-    expect(at(7, false)).toBe("Premium time, +20%");
-    expect(at(19, false)).toBe("Premium time, +20%");
+    expect(at(7, false)).toBe("Early start fee (20%)");
+    expect(at(19, false)).toBe("Late start fee (20%)");
   });
 
   it("names both when both apply, at the capped rate", () => {
-    expect(at(7, true)).toBe("Rush booking and premium time, +30%");
+    expect(at(7, true)).toBe("Rush and early start fee (30%)");
+    expect(at(19, true)).toBe("Rush and late start fee (30%)");
   });
 
   it("has no surcharge line at a standard hour booked ahead", () => {
