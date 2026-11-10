@@ -278,6 +278,30 @@ reorganization only. Reference sites: *links not yet provided*.
   - **Effective result:** 192/192.
 - **Carousel round 2** sent back to the carousel session: hover no longer pauses; the button shows Play after an interaction pause; all visible cards sweep together; smoother easing; Instagram button; section whitespace RCA.
 
+### 14. Header and footer from one source (November 10)
+- **Why:** the header and footer were copied by hand into 6 pages, so every nav rename or link fix had to be made 6 times. Several review rounds fixed one copy and missed another.
+- **Pattern:** build-time partials, the industry standard used by static site generators (Eleventy, Hugo, Astro). Done here as one more generated region, like `CATALOG:*`, rather than adopting a new generator.
+- **Files:**
+  - `web/partials/header.html` (top bar, header, phone menu) and `footer.html` (footer, phone bar): the only copies to edit.
+  - `web/scripts/chrome.mjs` (the logic) and `render-chrome.mjs` (the build step).
+  - `CHROME:HEADER` and `CHROME:FOOTER` markers in the 6 pages.
+  - `build:chrome` runs first in `npm run build`, which Netlify already runs.
+- **Per-page values:** derived from the page, so there's no settings table.
+
+| Value | On the page itself | Everywhere else |
+|---|---|---|
+| Logo | `#top` (home) | `index.html` |
+| Results | `#gallery` (home) | `index.html#gallery` |
+| Book Now | `book.html` (pages with `#bookFunnel`: home and Services) | `index.html#book` |
+| Contact | `#inquiry` (`contact.html`) | `contact.html` |
+| Footer place links | in-page (`service-area.html`) | `service-area.html#area-…` |
+
+- **Verified:**
+  - The partials reproduce all 6 pages **byte for byte**: the first render changed 0 bytes, and the only diff from before is the 4 marker lines per page.
+  - Editing the partial once ("FAQ" to "FAQs") updated all 6 pages in both the header nav and the phone menu, then was reverted.
+  - A hand edit to one page's header fails `chrome.test.ts`, with a message pointing to `web/partials/`.
+  - Tests 416/416 (7 new). Link audit 286 links, 0 broken.
+
 ### Reference sites reviewed (design lessons only, nothing copied)
 - **dksdetailing.com:**
   - **What works:** one short line of social proof ("Trusted by 250+"), a one-line headline, and two buttons (a main one plus Call). Packages are grouped by Full, Exterior and Interior.

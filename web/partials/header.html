@@ -1,0 +1,74 @@
+<!-- Edit THIS file, not the pages. web/scripts/render-chrome.mjs copies it into
+     every page between CHROME:HEADER markers at build time. The {{...}} values
+     are filled per page; see web/scripts/chrome.mjs. -->
+<!-- ============ TOP BAR ============ -->
+<div class="topbar">
+  <div class="wrap">
+    <div class="tb-left">
+      <a class="tb-phone" href="tel:+15132792915">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.9.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+        (513) 279-2915
+      </a>
+      <span class="tb-hide">Mobile detailing • We come to you</span>
+    </div>
+    <div class="tb-socials">
+      <a href="https://www.instagram.com/513autoclean/" target="_blank" rel="noopener" aria-label="Instagram"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/></svg></a>
+      <a href="https://www.facebook.com/61588108894760" target="_blank" rel="noopener" aria-label="Facebook"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg></a>
+      <a href="https://www.yelp.com/biz/513-auto-clean-cincinnati-2" target="_blank" rel="noopener" aria-label="Yelp"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M11.5 2.5c.8-.3 1.6.2 1.6 1v8.2c0 1-1.2 1.5-1.9.8L7 8.7c-.5-.5-.4-1.3.2-1.6zM10.2 14.3c.6-.6 1.7-.2 1.7.7v6.3c0 .8-.8 1.3-1.5 1l-3.5-1.6c-.7-.3-.8-1.2-.3-1.7zM13.9 14.6c-.2-.8.6-1.5 1.4-1.2l5.9 2.1c.8.3.9 1.3.3 1.8l-2.6 2.3c-.6.5-1.5.2-1.7-.5zM14 11.4c-.6.5-1.6 0-1.6-.8l.4-6.3c0-.8.9-1.2 1.6-.8l3.3 2c.6.4.6 1.3 0 1.7zM13.5 13.2c-.3-.8.5-1.6 1.3-1.3l-.1-.1 5.7-1c.8-.1 1.4.7 1 1.4l-1.6 3c-.4.7-1.3.7-1.7.1z"/></svg></a>
+      <a href="https://maps.app.goo.gl/PAAdpX7owQmc1cAz9" target="_blank" rel="noopener" aria-label="Google reviews"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C8.1 2 5 5.1 5 9c0 5.2 7 13 7 13s7-7.8 7-13c0-3.9-3.1-7-7-7zm0 9.5A2.5 2.5 0 1 1 12 6a2.5 2.5 0 0 1 0 5.5z"/></svg></a>
+    </div>
+  </div>
+</div>
+
+<!-- ============ HEADER ============ -->
+<header class="header" id="header">
+  <div class="wrap nav">
+    <a class="brand" href="{{home}}" aria-label="513 Auto Clean home">
+      <img class="mark-img" src="images/logo-mark.png" alt="513 Auto Clean logo" width="46" height="46" />
+      <span class="brand-text">
+        <span class="b-name">513 Auto Clean</span>
+        <span class="b-sub">Mobile Detailing</span>
+      </span>
+    </a>
+    <nav class="nav-links" aria-label="Primary">
+      <a href="{{gallery}}">Results</a>
+      <a href="services.html">Services</a>
+      <a href="about.html">Meet the Team</a>
+      <!-- <a href="#schedule">Schedule</a> -->
+      <a href="about.html#reviews">Reviews</a>
+      <a href="service-area.html">Range &amp; Travel</a>
+      <a href="faq.html">FAQ</a>
+    </nav>
+    <div class="nav-cta">
+      <a class="btn btn-ghost" href="{{contact}}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        Contact Us
+      </a>
+      <a class="btn btn-primary" href="{{book}}">Book Now</a>
+    </div>
+    <button class="nav-toggle" id="navToggle" aria-label="Open menu" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+</header>
+
+<!-- Mobile menu -->
+<div class="scrim" id="scrim"></div>
+<aside class="mobile-menu" id="mobileMenu" aria-hidden="true" inert>
+  <div class="mm-head">
+    <span class="brand"><img class="mark-img" src="images/logo-mark.png" alt="" width="40" height="40" /><span class="b-name" style="color:#fff">513 Auto Clean</span></span>
+    <button class="mm-close" id="mmClose" aria-label="Close menu">&times;</button>
+  </div>
+  <a class="mm-link" href="{{gallery}}">Results</a>
+  <a class="mm-link" href="services.html">Services &amp; Pricing</a>
+  <a class="mm-link" href="about.html">Meet the Team</a>
+  <!-- <a class="mm-link" href="#schedule">Schedule</a> -->
+  <a class="mm-link" href="about.html#reviews">Reviews</a>
+  <a class="mm-link" href="service-area.html">Range &amp; Travel Costs</a>
+  <a class="mm-link" href="faq.html">FAQ</a>
+  <a class="mm-link" href="{{contact}}">Contact Us</a>
+  <div class="mm-cta">
+    <a class="btn btn-primary btn-block" href="{{book}}">Book Now</a>
+    <a class="btn btn-ghost on-dark btn-block" href="{{contact}}">Contact Us</a>
+  </div>
+</aside>
