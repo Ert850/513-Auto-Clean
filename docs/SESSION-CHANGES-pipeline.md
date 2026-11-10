@@ -13,6 +13,56 @@ Built overnight, November 10 to 11, for you to evaluate. It combines your 8 answ
   - `web/lib/browser-entry.ts`, `js/pricing.bundle.js` (built), `web/lib/funnel.smoke.test.mjs`.
   - The build also re-stamps `?v=` on every page. Those page changes were left out of the commit; a rebuild after merging restamps them.
 
+## Round 11 (November 10): rush fee check, fine print, pinned bars, "Your time", filming after the terms
+
+### Rush fee: checked, no bug
+- **The worry:** the rush fee always read +$25.
+- **What I checked, on the live preview:** the fee on every calendar box against what the total goes up by when that box is booked, for five carts.
+
+  | Cart | Service price | Rush (20%) | Rush with early or late (30%) |
+  |---|---|---|---|
+  | Basic Interior, small | $125 | +$25 | +$37.50 |
+  | Showroom Ready Interior, small | $395 | +$79 | +$118.50 |
+  | Full Interior, large | $240 | +$48 | +$72 |
+  | Basic Interior, medium, with pet hair | $185 | +$37 | +$55.50 |
+  | Full Exterior, small | $245 | +$49 | +$73.50 |
+
+- **Result:** every label matched the surcharge the quote charges. The calendar (`deltaFor`) and the quote (`applySurchargeCents`) both take the rate from `computeSurcharge` and apply it to `serviceSubtotalCents`.
+- **Why it looked fixed:** +$25 is 20% of the $125 Basic Interior that was being tested.
+
+### Bug: the calendar's fine print lost its style
+- **Root cause:** round 9's edit to the bottom-bar rules in `book.css` found the end of a media block by searching for the first `}` after its last rule. That matched the rule's own brace, so the block's closing `}` was left orphaned. Browsers drop the rule after a stray brace, which was `.bk-wk-fine`, so the note fell back to body text.
+- **Fix:** removed the brace.
+- **Guard:** `web/lib/site/stylesheets.test.ts` now fails on any unbalanced brace in `book.css` or `styles.css`.
+- **Lesson for `CLAUDE.md` after the merge:** never cut CSS by searching for a closing brace; check brace balance after any scripted CSS edit.
+
+### i) The fine print, moved and quieter
+- **Fee rules:** "Early is before 10am and late is 6pm or later; rush is within 3 days. Early or late plus rush is 30% in total." now sits as a small grey line under the legend, beside the "+$" key it explains (was a paragraph under the calendar).
+- **Time zone:** "Hours are in Cincinnati Time Zone (EST)" moved under the week title, next to the dates it applies to. In the last bookable week it adds "We take bookings up to 3 months ahead".
+
+### ii and iii) The ways on, pinned to the bottom
+- **What's pinned:** "See additional times" with "None of these work? Tell us when does" under our recommended times, and "Go to a date" with the same link on the calendar. Each bar sticks to the bottom of the window (`.bk-pinbar`), full width, with a light top shadow.
+- **"More below":** the cue sits above the pinned bar (`updateCue`).
+- **The flexible card:** extra picks now also leave room for the pinned bar plus a 44 px peek of the next card, so the first screen ends with "Flexible on the time?" half cut off (81 px showing at 1440×900).
+- **Trade-off:** the 4th pick no longer fits within the 860 px the booking form can reach.
+- **Phones:** the links shorten to "Tell us when suits" and "Go to", so each bar is one row (61 px). At 375×812 the third pick ends right at the bar, so the flexible card starts under it, and "More below" points to it.
+
+### iv) The chosen time reads as yours
+- **Look:** the box in the bottom bar now has a red tick, a red "YOUR TIME" label and a faint red fill.
+- **Size:** it keeps the one-row size, as tall as Continue (53 px on a laptop, 52 px beside 53 on a phone).
+
+### v) Filming after the terms
+- **Order on Your details:** name, phone and email; then the terms; then "Can we film and photograph the detail?"; then texts. Filming is still a required answer.
+
+### Bug: the chosen block looked misshapen after Back or Change (owner's screenshot)
+- **Root cause:** the hour box under the chosen block kept its own "selected" look (red outline, pink fill). A half-past start's block begins halfway down its box, so the top half of that box showed above the block as an empty red band. It only showed after Back or Change, because a pick now moves straight on.
+- **Fix:** on the calendar the block is the selection. The box keeps `aria-selected` but no longer gets the selected style (`.bk-wk-c.on` removed).
+- **Verified:** booked 6:30am with a real mouse and pressed Back. No cell under the block has a red border, and the slice above the block is a plain 6am box.
+
+### Verified (headless Chrome, live calendar, test Kris)
+- **Sizes:** 1440×900, 1440×1100 and 375×812. No sideways scroll.
+- **Tests:** 470/470, including the new stylesheet check.
+
 ## Round 10 (November 10): half-hour starts back
 
 The owner asked for half-hour starts again, so every start the original pipeline offered can be booked again, in each place a time is picked:
