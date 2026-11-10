@@ -56,6 +56,7 @@ import {
   mergeIntervals,
   subtractIntervals,
 } from "./availability/slots.js";
+import { addWeeks, buildWeek, defaultPick, weekStartOf } from "./availability/week.js";
 import {
   addableComponents,
   componentsOf,
@@ -171,6 +172,10 @@ const api = {
   localMinutesOfDay,
   mergeIntervals,
   subtractIntervals,
+  weekStartOf,
+  addWeeks,
+  buildWeek,
+  defaultPick,
   quote,
   QUOTE_TTL_HOURS,
   decodeQuote,
