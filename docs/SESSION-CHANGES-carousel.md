@@ -3,7 +3,47 @@
 Branch: `claude/results-carousel-347a0d`. Not pushed.
 Files: `index.html` (`#gallery` only), `js/gallery.js`, `styles.css` (gallery block, plus one gallery-only line in the 820px block and a 1100px rule after it). `script.js` is unchanged: the carousel drives the existing slider markup.
 
-**Newest round first. Round 5 makes every card in view wipe in every cycle. Round 4 tied the return to the middle to the shift. Round 3 changed the timings and the step size; everything else from round 2 stands (the button as the state, no hover pause, the endless loop, rAF easing, the edge fades, reduced motion).**
+**Newest round first. Round 6 starts each cycle with the leftmost card on screen. Round 5 makes every card in view wipe in every cycle. Round 4 tied the return to the middle to the shift. Round 3 changed the timings and the step size; everything else from round 2 stands (the button as the state, no hover pause, the endless loop, rAF easing, the edge fades, reduced motion).**
+
+# Round 6
+
+`eNov6` fast-forwarded onto this branch first (80174cf, round 5 merged). Only `js/gallery.js` changed.
+
+The owner: "When a new wiper animation cycle starts, the farthest-left visible card should start, regardless of whether it is new or not."
+
+## Change
+
+| # | Change | Where | How to test |
+|---|---|---|---|
+| 6.1 | **A cycle starts as one group, in on-screen order.** When the track lands, every card in view is taken together, sorted by its on-screen position (`getBoundingClientRect().left`, read once per cycle), and started 2.5 s apart from the leftmost. It doesn't matter whether a card just slid in or was already there, or where it sits in the DOM after a loop rearrangement. The group waits for all its photos before any card starts (handles at rest in the middle, at most 1.5 s), so a card still loading can't be overtaken by the cards to its right. | `js/gallery.js` `run()` (`cycleWait`; the per-card `_wait` is gone) | On a slow connection, click dot 5 then Play at 1440: card 5 (left) moves first, then 6, then 1. |
+
+## Root cause
+
+Each card waited for its own photos, and the stagger only counted cards that had already started. A card whose photos were still loading sat out while the cards to its right started at 0 and 2.5 s; when its photos arrived (or the 1.5 s wait ran out), it started with no stagger at all, and so moved after them.
+
+In the normal forward cycle the leftmost card's photos are always in, so this never showed in the earlier headless runs. It shows whenever the leftmost card is the one still loading: after jumping back with a dot or the Previous arrow, where the cards brought in on the left are lazy photos fetched only at that moment, or with a slow connection at the first cycle. Reproduced in headless Chrome with a slow connection (400 ms latency, 40 KB/s): dot 5, then Play, at 1440. Before the fix the cards on screen, left to right, were 5, 6, 1, and card 1 moved first (3.2 s), then 5 (4.7 s), then 6 (7.2 s).
+
+The order also relied on DOM order matching screen order, which holds only once a loop rearrangement has finished. It is now read from the screen.
+
+Possibly also part of what the owner saw: before round 5 was merged, a card that stayed in view did not wipe again, so only the new card on the right moved.
+
+## Verified (round 6)
+
+- `npm run build` OK; `cd web && TZ=America/New_York npx vitest run`: 416 of 416.
+- Every frame recorded in headless Chrome. For each cycle, the first frame each visible card's handle leaves the middle, against the cards' order on screen. Started from dot 5 so the runs include wraps past the last card:
+  - 1440 (3 in view):
+    - 5,6,1 (DOM 5,6,1,…): 5 at 3.2 s, 6 at 5.7, 1 at 8.2;
+    - 1,2,3: 1, 2, 3;
+    - 3,4,5 (DOM 3,4,5,6,1,2): 3, 4, 5;
+    - 5,6,1 again after the wrap: 5, 6, 1.
+
+    All four cycles left to right.
+  - 820 (2 in view): 5,6, then **6,1 (the wrap)**, then 1,2, then 2,3. All four cycles left to right.
+  - Slow connection, dot 5 then Play: at 1440 5 → 6 → 1 (4.7, 7.2, 9.7 s; the group waited for the photos); at 820 5 → 6.
+- Unchanged from round 5, re-measured at 1440 and 820:
+  - every card in view sweeps in every cycle (100/0);
+  - returns start on the same frame, with the shift 1.1 s later;
+  - largest handle step 1.64% per frame, longest frame 17 ms.
 
 # Round 5
 

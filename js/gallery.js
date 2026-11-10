@@ -93,7 +93,8 @@
    * owner's rounds 3 and 5): 3 s at rest in the middle (time to reach for
    * the handle), to the right edge (the whole before), then slowly across
    * to the left edge (the whole after), where it waits. The cards start
-   * 2.5 s apart, left to right, so they never move in lockstep. A card that
+   * 2.5 s apart, strictly left to right on screen (round 6), so they never
+   * move in lockstep. A card that
    * stays in view after a shift wipes again; one that slides in joins the
    * very next cycle. A card sitting still beside moving ones looked broken.
    *
@@ -161,6 +162,7 @@
     var idleTimer = null;
     var running = false;
     var homing = null;               // the shared return to the middle
+    var cycleWait = null;            // when the next cycle began waiting for photos
     var settles = [];                // handles gliding back to the middle
     var raf = 0;
     var pendingMove = null, moveTimer = null;
@@ -280,7 +282,7 @@
       var on = shown();
       slides.forEach(function (s) {
         if (on.indexOf(s) >= 0) return;
-        s._t0 = null; s._wait = null; s._user = false;
+        s._t0 = null; s._user = false;
         settles = settles.filter(function (st) { return st.s !== s; });
         s.classList.remove('auto');
         if (s._pos !== 50) { paint(s, 50); commit(s); }
@@ -361,24 +363,30 @@
       }
       // Nothing new starts while the track glides.
       if (pendingMove) return;
-      // Start the clock of every card in view, left to right, a stagger
-      // apart: the ones that stayed and the ones that just slid in. The
-      // only wait for photos is here, with the handle at rest.
-      var lag = 0;
-      shown().forEach(function (c) {
-        if (c._t0 != null) return;
-        if (!loaded([c])) {
-          if (c._wait == null) c._wait = now;
-          if (now - c._wait < PHOTO_WAIT_MS) return;
+      // Start a cycle: every card in view, as one group, strictly left to
+      // right by where it is on screen, a stagger apart, whether it just
+      // slid in or was already there. The whole group waits (handles at
+      // rest, at most PHOTO_WAIT_MS) until all of its photos are in. Each
+      // card used to wait on its own photos while the cards to its right
+      // started without it, so after a jump back on a slow connection the
+      // rightmost card moved first.
+      var start = shown().filter(function (c) { return c._t0 == null; });
+      if (start.length) {
+        if (cycleWait == null) cycleWait = now;
+        if (loaded(start) || now - cycleWait >= PHOTO_WAIT_MS) {
+          cycleWait = null;
+          start.map(function (c) { return { c: c, x: c.getBoundingClientRect().left }; })
+            .sort(function (a, b) { return a.x - b.x; })
+            .forEach(function (o, i) {
+              var c = o.c;
+              c._t0 = now + i * STAGGER_MS;
+              c._from = posOf(c);
+              c._user = false;
+              c.classList.add('auto');
+              settles = settles.filter(function (st) { return st.s !== c; });
+            });
         }
-        c._wait = null;
-        c._t0 = now + lag;
-        lag += STAGGER_MS;
-        c._from = posOf(c);
-        c._user = false;
-        c.classList.add('auto');
-        settles = settles.filter(function (st) { return st.s !== c; });
-      });
+      }
       var wiping = slides.filter(function (c) { return c._t0 != null; });
       wiping.forEach(function (c) { wipe(c, now); });
       // Every card in view has started (none still waiting for photos) and
@@ -419,13 +427,13 @@
 
     function halt() {
       running = false;
+      cycleWait = null;
       // A return under way finishes as a settle; on resume every card in
       // view gets a fresh wipe.
       homing = null;
       slides.forEach(function (s) {
         if (s._t0 == null) return;
         s._t0 = null;
-        s._wait = null;
         if (s._user) { s.classList.remove('auto'); return; }
         if (s._pos !== 50) settles.push({ s: s, t0: null });
         else { commit(s); s.classList.remove('auto'); }
