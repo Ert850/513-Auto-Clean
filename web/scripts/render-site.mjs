@@ -92,7 +92,8 @@ function correctionBlock() {
   return `<div class="svc-corr">
             <h4>Paint correction and ceramic coating</h4>
             <details class="svc-explain">
-              <summary>How it Works: ${esc(COATING_EXPLAINER.heading)}</summary>
+              <summary>How it works: ${esc(COATING_EXPLAINER.heading)}</summary>
+              <div class="how-body">
               <p>${esc(COATING_EXPLAINER.body)}</p>
               <p class="ex-h">What it does</p>
               <ul class="ex-yes">${COATING_EXPLAINER.does.map((d) => `<li>${esc(d)}</li>`).join("")}</ul>
@@ -104,6 +105,7 @@ function correctionBlock() {
               <p class="ex-why">${esc(COATING_EXPLAINER.why)}</p>
               <p class="ex-h">What is covered</p>
               <p>${esc(COATING_COVERAGE)}</p>
+              </div>
             </details>
             <ul class="corr-tiers">
               ${tiers}
@@ -198,31 +200,6 @@ ${panel("exterior")}
         <p>Have multiple vehicles? <strong>Get ${DEFAULT_RULES.additionalVehicleDiscountBp / 100}% off everything</strong> when you book them together!</p>
       </div>
     </div>`;
-}
-
-/* ---------------- home page teaser ---------------- */
-
-/**
- * The home page shows the packages as compact cards that link to the full
- * Services page, where each one is explained and can be booked. Same markup
- * and styles as the add-on cards, so nothing new to look at; same catalog, so
- * the prices match the full cards and the funnel.
- */
-function teaserHtml() {
-  const card = (p) => {
-    const price = money(p.priceCents) + (p.pricePlus ? "+" : "");
-    const time = p.durationMaxMin ? `${dur(p.durationMin)} to ${dur(p.durationMaxMin)}` : dur(p.durationMin);
-    const name = p.name.replace(/\s*\([^)]*\)\s*$/, "");
-    return `        <a class="addon teaser${p.comingSoon ? " ad-off" : ""} reveal" href="services.html#panel-${p.category}">
-          <div class="ad-body"><b>${esc(name)}${p.featured ? " <span class=\"teaser-pop\">Most popular</span>" : ""}</b><span>${esc(p.tagline)}</span><i class="ad-price">${price} &middot; ${time}${p.comingSoon ? " &middot; Coming soon" : ""}</i></div>
-        </a>`;
-  };
-  return ["interior", "exterior"]
-    .map((cat) => `      <h4 class="addon-grp">${cat === "interior" ? "Interior" : "Exterior"}</h4>
-      <div class="addon-grid">
-${packagesFor(cat).filter((p) => !p.requiresPriorDetail).map(card).join("\n")}
-      </div>`)
-    .join("\n");
 }
 
 /* ---------------- add-ons ---------------- */
@@ -343,7 +320,9 @@ function splice(file, html, name, body, { inline = false } = {}) {
 }
 
 const pages = Object.fromEntries(PAGES.map((f) => [f, read(f)]));
-pages["index.html"] = splice("index.html", pages["index.html"], "TEASER", teaserHtml());
+// The full cards on both: the home page shows them as it always has, and
+// services.html carries them above the add-ons.
+pages["index.html"] = splice("index.html", pages["index.html"], "SERVICES", servicesHtml());
 pages["services.html"] = splice("services.html", pages["services.html"], "SERVICES", servicesHtml());
 pages["index.html"] = splice("index.html", pages["index.html"], "OFFERS", offersHtml());
 pages["services.html"] = splice("services.html", pages["services.html"], "ADDONS", addonsHtml());

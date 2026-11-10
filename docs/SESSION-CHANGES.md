@@ -207,6 +207,17 @@ reorganization only. Reference sites: *links not yet provided*.
   - The header Book Now still opens the form.
 - **Note:** this was the owner's call over my recommendation, which was to merge `#quote` into Contact so every Book Now stays instant. Worth checking in analytics once GA4 is live: compare `booking_open` from the hero against before.
 
+### 8. Third review round (November 10)
+
+| Item | Root cause | Fix | Verified |
+|---|---|---|---|
+| Contact pills: the words sat outside the pills, overlapping the next one | `.field input { width: 100%; padding; border; background }` (meant for text boxes) also matched the radios. Each radio filled its pill; my earlier `nowrap` then pushed the word out | `.contact-pref .pref input { width: auto; padding: 0; border: 0; background: none; flex: none }` | 2× capture at 1100 px: radio and word side by side inside each pill. Words inside the pill at 1440 and 1100 |
+| Footer logo: black trigger invisible | The PNG's trigger is black, and the footer is near-black | A light rounded tile behind the logo (44×54, shadow) in the footer and the mobile menu, on all pages | 2× capture of the footer |
+| Home services section "messed up" | I replaced the full cards with a compact teaser | **Reverted:** the full cards and tabs are back on the home page, rendered from the same source as `services.html`. "See all add-ons" goes to `services.html#addons`. The teaser renderer, its CSS and the tab-on-arrival code are removed | Home has 7 package cards and 2 tabs |
+| Duplicate "Services & Pricing" heading on `services.html` | The add-ons section reused the packages section's heading | The second section's heading is now **"Additionals"** | Read back in the page |
+| "How it works" looked different on add-on cards and in the coating explainer | Three separate styles: `.svc-how` (the agreed one), `.ad-how` (plain text), `.svc-explain` (a white box with a display-font heading) | One shared style for all three: the same red toggle (+ / -) and the same grey panel with a 2 px left rule. The explainer's content is wrapped in `.how-body` (white panel, because it sits in the grey tier box) | 2× captures: add-on cards with panels open, the coating explainer open, package cards |
+| Ohio county headings; travel-price colors | Handed to a parallel session (`range-travel-colors`, port 8791) | Pending its report | |
+
 ### Reference sites reviewed (design lessons only, nothing copied)
 - **dksdetailing.com:**
   - **What works:** one short line of social proof ("Trusted by 250+"), a one-line headline, and two buttons (a main one plus Call). Packages are grouped by Full, Exterior and Interior.

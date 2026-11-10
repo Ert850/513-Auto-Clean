@@ -166,14 +166,6 @@
       });
     });
   });
-  // The home page's package cards link to services.html#panel-exterior and
-  // friends. That panel is hidden until its tab is chosen, so choose it, then
-  // land on it (a hidden element cannot be scrolled to).
-  var wantedPanel = /^#panel-([\w-]+)$/.exec(location.hash);
-  if (wantedPanel) {
-    var wantedTab = document.querySelector('.svc-tab[data-panel="' + wantedPanel[1] + '"]');
-    if (wantedTab) { wantedTab.click(); pinTo(location.hash.slice(1), 'instant'); }
-  }
 
   /* ---------- Before / after sliders ----------
      Exposed so js/gallery.js can bind the ones it injects from the manifest,

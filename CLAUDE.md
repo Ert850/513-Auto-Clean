@@ -81,7 +81,7 @@ Read this before changing anything. Every rule below came from a real bug or an 
 - Node: `export PATH=/opt/homebrew/opt/node@22/bin:$PATH`. Build with `npm run build` at the root.
 - Tests: `cd web && TZ=America/New_York npx vitest run`. 14 scheduling tests fail in any other timezone; that's a known issue in the tests, not a bug in the change.
 - Generated, never hand-edited:
-  - `CATALOG:*` regions: `TEASER` and `OFFERS` in `index.html`; `SERVICES` (all package cards, the correction tiers, the offers banner) and `ADDONS` in `services.html`; `FAQPRICE` in `faq.html` (source: `web/lib/catalog/`, `web/scripts/render-site.mjs`);
+  - `CATALOG:*` regions: `SERVICES` (all package cards, the correction tiers, the offers banner) in both `index.html` and `services.html`; `OFFERS` in `index.html`; `ADDONS` in `services.html`; `FAQPRICE` in `faq.html` (source: `web/lib/catalog/`, `web/scripts/render-site.mjs`);
   - `TERMS:*` and `PRIVACY:*` regions (source: `web/lib/site/capabilities.ts`, `web/scripts/render-legal.mjs`);
   - `js/pricing.bundle.js`, `netlify/functions/_pricing.mjs`, `js/config.js`, `dist/`;
   - every `?v=` stamp.
@@ -95,7 +95,9 @@ Read this before changing anything. Every rule below came from a real bug or an 
   - `sitemap.xml`.
   It must also load `js/config.js` and `js/analytics.js`.
 - A page whose Book buttons should open the booking form in place needs `<div id="bookFunnel" hidden>`, `book.css`, `js/vendors.js`, `js/pricing.bundle.js` and `js/funnel.js` (as on `index.html` and `services.html`), and its Book links must be `href="book.html"`, which the form intercepts. On pages without the form, Book links are `index.html#book`.
-- Links to a hidden tab panel (`services.html#panel-exterior`) work because `script.js` selects that tab on arrival. Never link to a hidden element without something to reveal it.
+- **The home page keeps the full package cards** (the owner reverted a compact teaser: "it looked fine before"). `CATALOG:SERVICES` is rendered into both `index.html` and `services.html`. Ask before replacing an established section's look, even for a decided restructure.
+- **Never link to a hidden element** (such as an inactive tab panel) without something that reveals it first.
+- **One "How it works" style everywhere:** a small red toggle reading "How it works +" ("-" when open), and a grey panel with a 2 px left rule (`.svc-how`, `.ad-how`, `.svc-explain .how-body`). A new collapsible joins those selectors; it doesn't get its own look.
 - When a section moves to another page, re-point the links *inside* it (`book.html` becomes `index.html#book`, `#inquiry` becomes `index.html#inquiry`).
 
 ## Scrolling and layout (bugs fixed November 9–10)
@@ -104,8 +106,10 @@ Read this before changing anything. Every rule below came from a real bug or an 
 - **Content that loads late moves anchors.** The gallery, the review ticker and the web fonts all grow the page after first paint. `script.js` `pinTo()` holds a jump's target for 2.5 s. New late-loading content above an anchor either reserves its space or relies on that hold.
 - **Anchor targets sit where the scroll should land:** `#top` is the first element in `<body>`, above the top bar.
 - **Check the page's real width at 375 and 320 px**, not just for scrolling: compare `innerWidth` with the device width, and check `visualViewport.offsetTop`. A header 4 px too wide made phones zoom out, and every jump to a section landed about 9 px low, while `scrollWidth > innerWidth` still said everything was fine.
+- **`.field input` (width 100%, padding, border, background) is for text boxes, but it matches radios and checkboxes inside `.field` too.** The contact pills' radios stretched to the full pill and pushed the words outside. Any control that isn't a text box, inside `.field`, needs `width: auto; padding: 0; border: 0; background: none`.
 - **`.field label { display: block }` beats single-class component rules.** Any component built from `<label>`s inside `.field` (such as the `.pref` pills) has to restate its display, or it falls back to block and stacks.
 - **Form rows align on their boxes (`align-items: end`).** A label that wraps must not push its input below its neighbour's.
+- **The logo's spray trigger is black.** On dark backgrounds (the footer, the mobile menu) it sits on a light rounded tile (`.footer .brand .mark-img`, `.mobile-menu .brand .mark-img`). Any new dark placement needs the same tile.
 - **`images/logo-mark.png` is mostly transparent**: the bottle fills only x 40–78 and y 18–93 of 120×120. Size it with `object-fit: cover` and a narrow width, not as a square.
 
 ## Service cards (bugs fixed November 10)
