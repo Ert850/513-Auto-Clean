@@ -836,7 +836,7 @@ function localDayStart(ms, timeZone) {
 
 // lib/pricing/surcharge.ts
 function computeSurcharge(ctx, r) {
-  const isEarlyOrLate = ctx.startMinutesLocal < r.earlyBeforeMinutes || ctx.startMinutesLocal >= r.lateFromMinutes;
+  const isEarlyOrLate = !ctx.timeOfDayWaived && (ctx.startMinutesLocal < r.earlyBeforeMinutes || ctx.startMinutesLocal >= r.lateFromMinutes);
   const timeOfDayBp = isEarlyOrLate ? r.timeOfDayBp : 0;
   const priorityBp = ctx.priorityBooking ? r.priorityBp : 0;
   const uncapped = timeOfDayBp + priorityBp;
@@ -1894,8 +1894,23 @@ var OWNER = {
   does: ["interior", "exterior"],
   availabilityCalendarId: "",
   bookingsCalendarId: "",
-  owner: true
+  owner: true,
+  noFeeStarts: null
 };
+function parseRange(text) {
+  const m = /^\s*(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})\s*$/.exec(String(text ?? ""));
+  if (!m) return null;
+  const fromMin = Number(m[1]) * 60 + Number(m[2]);
+  const toMin = Number(m[3]) * 60 + Number(m[4]);
+  return fromMin <= toMin && toMin < 24 * 60 ? { fromMin, toMin } : null;
+}
+function waivesFeeAt(d, startMs) {
+  return waivesTimeFee(d, localMinutesOfDay(startMs));
+}
+function waivesTimeFee(d, startMinutesLocal) {
+  const r = d?.noFeeStarts;
+  return Boolean(r && startMinutesLocal >= r.fromMin && startMinutesLocal <= r.toMin);
+}
 var CAL_ID = /^[\w.+-]+@[\w.-]+$/;
 function slug(name) {
   return name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 30);
@@ -1933,6 +1948,8 @@ function parseDetailers(raw) {
       return problems.push(`${name} needs both an availability and a bookings calendar id`);
     }
     const does = String(e["does"] ?? "all").toLowerCase();
+    const noFeeStarts = e["noFeeStarts"] === void 0 ? null : parseRange(e["noFeeStarts"]);
+    if (e["noFeeStarts"] !== void 0 && !noFeeStarts) problems.push(`${name}: noFeeStarts should look like "18:00-19:00"`);
     seen.add(id);
     crew.push({
       id,
@@ -1940,7 +1957,8 @@ function parseDetailers(raw) {
       does: does === "interior" ? ["interior"] : does === "exterior" ? ["exterior"] : ["interior", "exterior"],
       availabilityCalendarId: availability,
       bookingsCalendarId: bookings,
-      owner: false
+      owner: false,
+      noFeeStarts
     });
   });
   if (!ownerPlaced) crew.push(OWNER);
@@ -2466,7 +2484,7 @@ function priceFromWire(wire, opts = {}) {
     // Priority is DERIVED from the slot. The browser used to send a boolean
     // and this trusted it, which was a 20% discount for anyone who edited one
     // word of the request. Without a slot there is no window to be inside.
-    surchargeContext: wire.slot ? { startMinutesLocal: localMinutesOfDay(wire.slot), priorityBooking: priority } : null,
+    surchargeContext: wire.slot ? { startMinutesLocal: localMinutesOfDay(wire.slot), priorityBooking: priority, ...opts.timeOfDayWaived ? { timeOfDayWaived: true } : {} } : null,
     zip: wire.zip ?? null,
     ...payInFull ? { payInFull: true } : {},
     ...wire.promoCode ? { promoCode: wire.promoCode } : {},
@@ -2542,5 +2560,6 @@ export {
   slotNeedsPriority,
   unavailableReason,
   validateWire,
-  vehicleSize
+  vehicleSize,
+  waivesFeeAt
 };

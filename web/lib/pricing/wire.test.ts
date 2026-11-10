@@ -186,6 +186,15 @@ describe("priceFromWire after validation", () => {
     expect(slotNeedsPriority(zonedToUtc(2026, 9, 17, 10, 0, 0, TZ), tue, r)).toBe(true);
   });
 
+  it("drops the late fee only when the server says the detailer waives it", () => {
+    // Kris works 6 to 7pm anyway (DETAILERS noFeeStarts). A 6:30pm start a
+    // week out carries the 20% late fee, unless the server waives it.
+    const wire = { vehicles: [{ sizeId: "small", packageIds: ["full-interior"] }], zip: "45220",
+      slot: zonedToUtc(2026, 9, 21, 18, 30, 0, TZ) };
+    expect(priceFromWire(wire, { nowMs: monday }).surchargeBp).toBe(DEFAULT_RULES.surcharge.timeOfDayBp);
+    expect(priceFromWire(wire, { nowMs: monday, timeOfDayWaived: true }).surchargeBp).toBe(0);
+  });
+
   it("pay in full comes only from the option", () => {
     const wire = { vehicles: [{ sizeId: "large", packageIds: ["full-interior"] }], zip: "45220", payInFull: true };
     const a = priceFromWire(wire, { nowMs: monday });

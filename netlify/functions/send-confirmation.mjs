@@ -1,4 +1,4 @@
-import { priceFromWire, validateWire, findPackage, findAddon, vehicleSize, isLive, ADVICE_HOLD_MIN, parseDetailers } from "./_pricing.mjs";
+import { priceFromWire, validateWire, findPackage, findAddon, vehicleSize, isLive, ADVICE_HOLD_MIN, parseDetailers, waivesFeeAt } from "./_pricing.mjs";
 import { createBookingEvent, gcalAuthMode, gcalConfigured } from "./_gcal.mjs";
 import { measuredOneWayMinutes } from "./_routes.mjs";
 import { limited } from "./_ratelimit.mjs";
@@ -392,13 +392,17 @@ export async function handler(event) {
    * in the inbox and $20 everywhere else.
    */
   const measured = await measuredOneWayMinutes(cart);
+  // Who the time was given to, as THIS server knows them (DETAILERS). Their
+  // no-fee hours (Kris at 6 to 7pm) are applied here too, so the receipt in
+  // the email matches the price the customer saw.
+  const detailer = detailerFor(text(payload?.detailer, 40));
   const priced = priceFromWire(cart, {
     measuredOneWayMinutes: measured,
     nowMs: Date.now(),
     payInFull,
+    timeOfDayWaived: Boolean(detailer && cart.slot && waivesFeeAt(detailer, cart.slot)),
   });
   const when = whenLabel(cart.slot);
-  const detailer = detailerFor(text(payload?.detailer, 40));
   const ctx = { contact, when, priced, kind, cart, slot: cart.slot ?? null, detailer };
 
   const rawCart = payload?.cart ?? {};

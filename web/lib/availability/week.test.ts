@@ -115,6 +115,14 @@ describe("recommendTimes", () => {
     expect(recs).toHaveLength(3);
   });
 
+  it("recommends a late start when the detailer taking it charges no late fee", () => {
+    // Kris works evenings and has no fee from 6 to 7pm: his 6pm counts as standard.
+    const evening = [at(11, 17, 18), at(11, 17, 20)];
+    expect(recommendTimes({ slots: evening, travelGapMin: 60 })).toEqual([]);
+    const isPremium = (ms: number) => ms !== at(11, 17, 18);
+    expect(recommendTimes({ slots: evening, travelGapMin: 60, isPremium })).toEqual([at(11, 17, 18)]);
+  });
+
   it("returns what there is when the week is thin", () => {
     expect(recommendTimes({ slots: [at(11, 19, 10), at(11, 19, 7)], travelGapMin: 60 })).toEqual([at(11, 19, 10)]);
     expect(recommendTimes({ slots: [], travelGapMin: 60 })).toEqual([]);

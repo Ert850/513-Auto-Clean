@@ -9,6 +9,12 @@ export interface SurchargeContext {
   startMinutesLocal: number;
   /** Customer opted into Priority Booking to reach a slot inside the lead window. */
   priorityBooking: boolean;
+  /**
+   * No early or late fee for this start, because the detailer taking it works
+   * those hours anyway (DETAILERS `noFeeStarts`, e.g. Kris at 6 to 7pm). The
+   * rush fee still applies: that one is about notice, not the hour.
+   */
+  timeOfDayWaived?: boolean;
 }
 
 /** Convenience for building a context from a wall clock. */
@@ -38,8 +44,8 @@ export interface SurchargeBreakdown {
  */
 export function computeSurcharge(ctx: SurchargeContext, r: SurchargeRules): SurchargeBreakdown {
   const isEarlyOrLate =
-    ctx.startMinutesLocal < r.earlyBeforeMinutes ||
-    ctx.startMinutesLocal >= r.lateFromMinutes;
+    !ctx.timeOfDayWaived &&
+    (ctx.startMinutesLocal < r.earlyBeforeMinutes || ctx.startMinutesLocal >= r.lateFromMinutes);
 
   const timeOfDayBp = isEarlyOrLate ? r.timeOfDayBp : 0;
   const priorityBp = ctx.priorityBooking ? r.priorityBp : 0;

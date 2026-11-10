@@ -13,6 +13,44 @@ Built overnight, November 10 to 11, for you to evaluate. It combines your 8 answ
   - `web/lib/browser-entry.ts`, `js/pricing.bundle.js` (built), `web/lib/funnel.smoke.test.mjs`.
   - The build also re-stamps `?v=` on every page. Those page changes were left out of the commit; a rebuild after merging restamps them.
 
+## Round 6 (November 10, night): weather by kind of job, cover, Kris's fee hours
+
+### Weather rules (owner's answers; numbers in `web/lib/availability/weather.ts`)
+| Work | Coldest | Rain stops it | Clear sun and hotter than |
+|---|---|---|---|
+| Interior | any | over 20 mm/h | never |
+| Exterior | 40°F | over 4 mm/h (mist and light rain are fine) | 100°F |
+| Correction and polishing | **50°F** (design choice: between exterior's 40 and coating's 60; the owner said "colder than 60 to some extent") | any rain | 85°F |
+| Ceramic coating | 60°F | any rain | 85°F |
+
+- **"Clear sun"** means under 30% cloud in the forecast, read from the NWS `skyCover` layer. A hot overcast hour, or a clear cool one, is workable, so mornings and evenings stay open naturally.
+- **Garage or covered spot:** an optional, unticked box on the address step for everyone (owner's choice). It lifts the rain and sun limits, never the cold. It's printed in your email.
+- **"Correction books anyway":** ceramic coating never blocks a time. When a start suits the rest of the job but not the coating, the time is offered with "The coating moves to a warmer day". The summary explains it, and your email says "COATING: ... book the coating for a warmer day".
+- **The note under the legend** now names the reason: too cold for which work, rain, a downpour, or heat. It suggests the covered box when rain or heat is the reason.
+- **Warm spells:** inside the 7-day forecast a warm day is bookable even in winter. Past it, the season decides: exterior March to October, correction April to October, coating May to September.
+- Interior jobs now read the forecast too (for downpours), except when covered.
+
+### Kris: no late fee on 6 to 7pm starts
+- **Setting:** `DETAILERS` gets `"noFeeStarts": "18:00-19:00"` (first and last start, inclusive). The rush fee still applies.
+- **Same price on both sides:** the pricing engine has one flag, `timeOfDayWaived`. The browser sets it for whoever the start is assigned to, and the server sets it on its own from its copy of `DETAILERS`, so the email receipt matches what the customer saw and a request can't claim it.
+- **Recommendations:** they skip early and late hours, but now ask "does a fee actually apply for this detailer?". Without that, Kris's fee-free evening starts could never be recommended.
+- **Not covered:** card and PayPal payments (both switched off) don't pass the detailer yet. Wire that in before turning payments on.
+
+### No daily cap
+Nothing built, by the owner's direction: the hours on each availability calendar set the pattern. The example and the `noFeeStarts` setting are in `docs/ADD-A-DETAILER.md`.
+
+### Verified
+- **Tests:** 461 of 461 in Eastern time. The weather, crew, week and recommendation tests also pass on a UTC clock (36).
+  - New: every weather rule, including cover, heat needing both hot and clear, and coating needing 60°F even covered; the fee waiver in the engine and in server repricing (6:30pm: 20% without, 0% with); evening recommendations for a fee-free detailer.
+- **Headless Chrome with a test Kris (preview only):**
+  - Friday 6pm and 7pm read "standard price" and 8pm reads "+$25 late start fee";
+  - the 6pm total is $134.75 (no fee) and the 8pm total $161.70 (with the fee).
+- **With a made-up forecast inside the page:**
+  - cold for exterior: no times, with "below 40°F, too cold for exterior work";
+  - a downpour for interior: those days drop, the note says so, and suggests the box;
+  - the same, ticked "covered": the times come back and the note goes.
+- **Test lesson:** a calendar click redraws the grid, so a test must find a cell again after each click. A stored reference points at a cell that's gone.
+
 ## Round 5 (November 10, night): Extras layout, block text, late rows
 
 ### Extras

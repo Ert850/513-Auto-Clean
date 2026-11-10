@@ -58,7 +58,7 @@ import {
 } from "./availability/slots.js";
 import { addWeeks, buildWeek, FIRST_ROW_MIN, lastRowFor, recommendTimes, weekStartOf } from "./availability/week.js";
 import { parseGridpoint, WEATHER_RULES, weatherVerdict } from "./availability/weather.js";
-import { assignStarts, canDo, parseDetailers } from "./availability/crew.js";
+import { assignStarts, canDo, parseDetailers, waivesFeeAt } from "./availability/crew.js";
 import {
   addableComponents,
   componentsOf,
@@ -187,6 +187,7 @@ const api = {
   parseDetailers,
   canDo,
   assignStarts,
+  waivesFeeAt,
   recommendAddons,
   quote,
   QUOTE_TTL_HOURS,
