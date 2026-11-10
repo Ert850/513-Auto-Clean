@@ -280,6 +280,11 @@
     map = L.map(host, {
       center: [39.14, -84.5],
       zoom: 9,
+      // Quarter steps, so fitBounds below can land between whole levels.
+      // With whole levels, a map 20px shorter (to keep the legend on a
+      // 1280x720 screen) dropped from zoom 9 to 8 and every dot shrank into
+      // a knot around Cincinnati.
+      zoomSnap: 0.25,
       // Off at the start. A map that eats the page scroll the moment your
       // cursor crosses it is the most hated widget on the internet. Clicking
       // the map arms it.
