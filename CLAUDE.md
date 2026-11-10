@@ -155,6 +155,10 @@ Read this before changing anything. Every rule below came from a real bug or an 
   - `js/reviews.js` puts the Google score into `#rvScore`, beside the "Cincinnati keeps coming back." title.
   - `.reviews` is transparent there, because its background cut the portrait's shadow.
 
+- **Round 3: show the lists where they fit, and ask before folding them.** The owner wants every package checklist visible wherever there is room: the growing lists show the price steps. The home page keeps full lists, with spacing trimmed only. On `services.html`, `script.js` opens every "N more included" and hides the toggles (`.svc-full`) on windows at least 1000 × 900 px; below that height the fold stays. If a card grows, re-measure that 900 px threshold: with full lists the banner must end inside it.
+- **Home page rules use `body > #services` / `body > #quote`.** The sub-pages wrap their sections in `<main>`, and the home page has its own `#services`. The hero and the trust bar are the owner's first screen; leave them alone unless asked.
+- **When the owner must choose between layouts, render the options** as real screenshots of the page, with the changes injected in headless Chrome (see `fold-shots/*option*`). They pick quickly and precisely from images, and the pick is logged.
+
 ## Results carousel (built November 10)
 - **No `.reveal` on anything inside a sideways track.** A card parked off to the side never intersects the viewport, so it stays invisible and fades up late when it slides in. Put `.reveal` on the carousel.
 - **No hover pause on the carousel** (the owner found it non-intuitive: the sweep kept freezing as the mouse crossed the photos). Clicks, drags, the chevrons, the dots and keyboard focus on a handle take over.
