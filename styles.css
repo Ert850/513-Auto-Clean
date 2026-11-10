@@ -905,8 +905,10 @@ html.scrolling-fast .reveal { transition: none; transition-delay: 0s; }
   .field-row { grid-template-columns: 1fr 1fr; }
   .gal-grid { grid-template-columns: repeat(3, 1fr); }
 }
+/* Three package columns only from 1000px: at 820px each card was 230px wide
+   and three-word checklist items left one word alone on a line. */
+@media (min-width: 1000px) { .svc-grid { grid-template-columns: repeat(3, 1fr); } }
 @media (min-width: 820px) {
-  .svc-grid { grid-template-columns: repeat(3, 1fr); }
   /* Search on top of the extras on the left, the map down the right. */
   .areas-tool {
     grid-template-columns: 22rem 1fr; grid-template-rows: auto 1fr;
@@ -1015,7 +1017,7 @@ html.scrolling-fast .reveal { transition: none; transition-delay: 0s; }
    separate stacked sections on the home page; here it only pushed the title
    60 to 90px down and, on Contact, the bottom of the form off a laptop
    screen. */
-main > section:first-child { padding-top: clamp(20px, 2.6vw, 32px); }
+main > section:first-child { padding-top: clamp(20px, 2vw, 24px); }
 /* A sub-page's title is a compact page header, the size Contact already used
    (.inq-head). The home page's 2.7 to 3rem section titles took two or three
    lines and 140px of a laptop screen before any of the page's content. */
@@ -1032,7 +1034,7 @@ main > section:first-child :where(.section-head) { margin-bottom: clamp(18px, 2v
    160px from the title, which then ran to three lines. */
 .svc-intro .svc-tabs-row { margin-bottom: 1.5rem; }
 @media (min-width: 1000px) {
-  .svc-intro { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 0 2rem; margin-bottom: clamp(18px, 1.6vw, 22px); }
+  .svc-intro { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 0 2rem; margin-bottom: clamp(16px, 1.4vw, 18px); }
   .svc-intro .section-head { margin-bottom: 0; max-width: 46rem; }
   .svc-intro .svc-tabs-row { margin-bottom: 0; flex-direction: column; align-items: flex-end; gap: .55rem; }
 }
@@ -1041,21 +1043,41 @@ main > section:first-child :where(.section-head) { margin-bottom: clamp(18px, 2v
    works", in that toggle's look (see .svc-how); whichever is opened takes
    the full width, so an opened list continues the checklist above it. */
 .svc-card ul.feat:has(+ .svc-toggles) { margin-bottom: 0; }
-.svc-toggles { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 0 1.2rem; margin: .5rem 0 1rem; }
+.svc-toggles { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 0 1.2rem; margin: .4rem 0 .8rem; }
 .svc-toggles > details { margin: 0; }
 .svc-toggles > details[open] { flex-basis: 100%; }
 .svc-more ul.feat { margin: .38rem 0 .3rem; }
 /* Sub-page card density. The price line was set at the body's 1.6 line
    height, so a 1.85rem price made a 47px row; the tagline, at 1.6 too, ran
    five lines on Full Exterior. */
-main .svc-card { padding-block: 1.25rem; }
+/* 1.2rem sides, not 1.4rem: at 1280px the Full Exterior tagline needed 3px
+   more to fit four lines instead of five. */
+main .svc-card { padding: 1.1rem 1.2rem; }
 main .svc-card .svc-meta { line-height: 1.2; margin-bottom: .55rem; }
-main .svc-card .svc-desc { line-height: 1.5; margin-bottom: .7rem; }
+main .svc-card .svc-desc { line-height: 1.5; margin-bottom: .6rem; }
+main .svc-card ul.feat { gap: .32rem; }
 main .svc-card .svc-how { margin-bottom: 1rem; }
-/* About: the copy column holds the Google badge under the buttons, so the
-   promises' spacing is tighter than the home page's was. */
-.about-copy .promises { margin: 1rem 0 1.25rem; gap: .55rem; }
-.about-copy .g-badge { margin-top: .9rem; padding-block: .7rem; }
+/* About: the team and the reviews on one laptop screen (owner's acceptance
+   test: the 5.0 Google score and the tops of the first review cards visible
+   without scrolling). From 1000px the portrait is a narrow column as tall as
+   the copy beside it, instead of a 4:5 frame 555px tall, and the reviews
+   title shares a row with the score. Below 1000px the page is unchanged. */
+.rv-intro .section-head h2 { font-size: clamp(1.7rem, 2.6vw, 2.3rem); margin: .35rem 0 .5rem; }
+@media (min-width: 1000px) {
+  .about { padding-bottom: 0; }
+  .about-grid { grid-template-columns: 15rem minmax(0, 1fr); align-items: stretch; gap: 2.5rem; }
+  .about-photo .frame { aspect-ratio: auto; height: 100%; }
+  .about-photo .sig { right: -1.1rem; bottom: 1rem; }
+  .about-copy > p { margin-bottom: .75rem; }
+  .about-copy .promises { margin: .75rem 0 1rem; gap: .45rem; }
+  /* Transparent (the body is the same paper): with no gap between the two
+     sections, its own background cut the portrait's shadow off in a hard line. */
+  .reviews { padding-top: 20px; background: transparent; }
+  .rv-intro { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 0 2rem; margin-bottom: 1rem; }
+  .rv-intro .section-head { margin: 0; text-align: left; }
+  .rv-intro .section-head .eyebrow { justify-content: flex-start; }
+  .rv-intro .rv-head { margin: 0; }
+}
 /* Contact page: the heading sits at the top of the side column, so the form
    starts right under the header (a full-width heading band put the bottom of
    the form below a laptop screen). */

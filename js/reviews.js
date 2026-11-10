@@ -235,6 +235,11 @@
         '</button>'
       : '';
 
+    // The About page keeps the score beside the section title (#rvScore), so
+    // the rating and the tops of the cards fit the first laptop screen.
+    var scoreSlot = document.getElementById('rvScore');
+    if (scoreSlot) { scoreSlot.innerHTML = head; head = ''; }
+
     mount.innerHTML = head +
       '<div class="rv-stage">' + nav +
         '<div class="rv-grid" id="rvGrid" aria-live="polite"></div>' +
