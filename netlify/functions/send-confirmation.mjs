@@ -1,4 +1,5 @@
-import { priceFromWire, validateWire, findPackage, findAddon, vehicleSize, isLive, ADVICE_HOLD_MIN, parseDetailers, waivesFeeAt } from "./_pricing.mjs";
+import { priceFromWire, validateWire, findPackage, findAddon, vehicleSize, isLive, ADVICE_HOLD_MIN } from "./_pricing.mjs";
+import { detailerFor, timeFeeWaived } from "./_detailers.mjs";
 import { createBookingEvent, gcalAuthMode, gcalConfigured } from "./_gcal.mjs";
 import { measuredOneWayMinutes } from "./_routes.mjs";
 import { limited } from "./_ratelimit.mjs";
@@ -292,18 +293,6 @@ function eventDescription({ contact, cart, priced, extras, payInFull, kind }) {
   return lines.join("\n");
 }
 
-/**
- * The detailer the browser assigned, if the server knows them.
- *
- * Only a name in this deploy's own DETAILERS setting counts, so a booking
- * cannot be written to a calendar of the sender's choosing. Anything else,
- * including no name at all, is the owner: the default calendar, as before.
- */
-function detailerFor(id) {
-  const { crew } = parseDetailers(process.env.DETAILERS);
-  return crew.find((d) => d.id === id && !d.owner) ?? null;
-}
-
 async function writeCalendar({ contact, cart, priced, extras, payInFull, key, kind, detailer }) {
   if (!gcalConfigured()) return { ok: false, reason: "unconfigured" };
   if (!cart.slot) return { ok: false, reason: "no_slot" };
@@ -395,12 +384,12 @@ export async function handler(event) {
   // Who the time was given to, as THIS server knows them (DETAILERS). Their
   // no-fee hours (Kris at 6 to 7pm) are applied here too, so the receipt in
   // the email matches the price the customer saw.
-  const detailer = detailerFor(text(payload?.detailer, 40));
+  const detailer = detailerFor(payload?.detailer);
   const priced = priceFromWire(cart, {
     measuredOneWayMinutes: measured,
     nowMs: Date.now(),
     payInFull,
-    timeOfDayWaived: Boolean(detailer && cart.slot && waivesFeeAt(detailer, cart.slot)),
+    timeOfDayWaived: timeFeeWaived(detailer, cart.slot),
   });
   const when = whenLabel(cart.slot);
   const ctx = { contact, when, priced, kind, cart, slot: cart.slot ?? null, detailer };

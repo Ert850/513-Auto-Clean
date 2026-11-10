@@ -179,39 +179,65 @@ export function buildWeek(req: {
 }
 
 /**
- * "Our recommended times": the three we would most like this customer to take.
+ * How "Our recommended times" is built. One place to tune it, and the hook
+ * analytics plugs into later (which starts actually get booked).
  *
- * Owner, November 10: few choices, sooner is better even with the rush fee,
- * and Kris before Elijah. So:
- *   - soonest day first, rush days included;
+ *   days            day bars shown
+ *   timesPerDay     suggested starts inside each bar (morning and afternoon)
+ *   maxFeeDays      at most this many bars whose every time carries a fee
+ *                   (a rush day). Owner, November 10: only one or two of the
+ *                   slots offered should be upsells, so a customer who does
+ *                   not want to pay extra always has a quick choice.
+ */
+export const TIME_RECOMMENDATION_RULES = {
+  days: 3,
+  timesPerDay: 2,
+  maxFeeDays: 1,
+};
+
+export interface RecommendedDay {
+  dayStart: number;
+  /** The suggested starts that day, best first. */
+  starts: number[];
+  /** Every start that day carries a fee (rush, or early or late). */
+  fee: boolean;
+}
+
+/**
+ * "Our recommended times": a few DAYS, each with its two best starts.
+ *
+ *   - soonest day first;
  *   - on each day, the starts that pack it (straight after an existing job,
  *     else 10am and 4pm, 10am, 1pm and 4pm at weekends), never an early or
- *     late hour;
- *   - within a day, a start the preferred detailer can take comes first;
- *   - at most two from one day, so the three are a real choice.
+ *     late hour; a start the first-choice detailer can take comes first;
+ *   - at most `maxFeeDays` fee days, so the rest are the soonest days at the
+ *     standard price. Fee days fill any gap only when nothing else is open.
+ *   - `scoreFor` (optional, e.g. from analytics: how often a start converts)
+ *     reorders the starts within a day, best first.
  */
-export function recommendTimes(req: {
+export function recommendDays(req: {
   slots: number[];
   busy?: Interval[];
   travelGapMin: number;
   /** Starts the first-choice detailer is free for (Kris before Elijah). */
   preferred?: Set<number>;
   /**
-   * Does this start carry an early or late fee? Defaults to the clock (before
-   * 10am, from 6pm). The funnel passes its own answer, because a detailer who
-   * works those hours anyway charges none (Kris at 6 to 7pm), and those starts
-   * must be recommendable.
+   * Does this start carry an early or late fee? Defaults to the clock. The
+   * funnel passes its own answer: a detailer who works those hours anyway
+   * charges none (Kris at 6 to 7pm), and those starts are recommendable.
    */
   isPremium?: (ms: number) => boolean;
-  limit?: number;
-  perDay?: number;
+  /** Does this start carry any fee at all (rush included)? */
+  isFee?: (ms: number) => boolean;
+  scoreFor?: (ms: number) => number;
+  rules?: typeof TIME_RECOMMENDATION_RULES;
   timeZone?: string;
-}): number[] {
+}): RecommendedDay[] {
   const tz = req.timeZone ?? TZ;
-  const limit = req.limit ?? 3;
-  const perDay = req.perDay ?? 2;
-  const byDay = new Map<number, number[]>();
+  const rules = req.rules ?? TIME_RECOMMENDATION_RULES;
   const premium = req.isPremium ?? ((ms: number) => Boolean(bandOf(localMinutesOfDay(ms, tz))?.premium));
+  const isFee = req.isFee ?? premium;
+  const byDay = new Map<number, number[]>();
   for (const ms of [...new Set(req.slots)].sort((a, b) => a - b)) {
     if (premium(ms)) continue;
     const day = localDayStart(ms, tz);
@@ -220,22 +246,36 @@ export function recommendTimes(req: {
     else byDay.set(day, [ms]);
   }
 
-  const out: number[] = [];
-  for (const [day, starts] of [...byDay].sort((a, b) => a[0] - b[0])) {
-    if (out.length >= limit) break;
-    const weekday = localWeekday(day + 12 * 3600_000, tz);
+  const candidates: RecommendedDay[] = [];
+  for (const [dayStart, starts] of [...byDay].sort((a, b) => a[0] - b[0])) {
+    const weekday = localWeekday(dayStart + 12 * 3600_000, tz);
     const theirs = req.preferred ? starts.filter((ms) => req.preferred!.has(ms)) : [];
     const pool = theirs.length ? theirs : starts;
-    const picks = recommendStarts({
+    let picks = recommendStarts({
       starts: pool,
       busy: req.busy ?? [],
       travelGapMin: req.travelGapMin,
       limit: weekday === 0 || weekday === 6 ? 3 : 2,
       timeZone: tz,
     }).map((r) => r.ms);
-    for (const ms of picks.slice(0, perDay)) {
-      if (out.length < limit) out.push(ms);
-    }
+    if (req.scoreFor) picks = picks.slice().sort((a, b) => req.scoreFor!(b) - req.scoreFor!(a) || a - b);
+    else picks = picks.slice(0, rules.timesPerDay).sort((a, b) => a - b);
+    picks = picks.slice(0, rules.timesPerDay);
+    if (picks.length) candidates.push({ dayStart, starts: picks, fee: picks.every(isFee) });
   }
-  return out;
+
+  const chosen: RecommendedDay[] = [];
+  let feeDays = 0;
+  for (const c of candidates) {
+    if (chosen.length >= rules.days) break;
+    if (c.fee && feeDays >= rules.maxFeeDays) continue;
+    chosen.push(c);
+    if (c.fee) feeDays++;
+  }
+  // Nothing else open: better a fee day than an empty list.
+  for (const c of candidates) {
+    if (chosen.length >= rules.days) break;
+    if (!chosen.includes(c)) chosen.push(c);
+  }
+  return chosen.sort((a, b) => a.dayStart - b.dayStart);
 }

@@ -1581,6 +1581,9 @@ var LEGAL = {
   // banner, and the arrival source kept for the visit.
   // 2026-11-10: a question started mid-booking is carried to the question
   // form (now on faq.html) for one page load.
+  // 2026-11-10: the booking form checks the National Weather Service forecast
+  // at the detail's approximate location (weatherCheck). Same day as the
+  // entry above and neither was live yet, so the date stands.
   privacyEffective: "2026-11-10"
 };
 function longDate(iso) {
@@ -1891,7 +1894,7 @@ function mergeBusy(list) {
 var OWNER = {
   id: "owner",
   name: "Elijah",
-  does: ["interior", "exterior"],
+  does: ["*"],
   availabilityCalendarId: "",
   bookingsCalendarId: "",
   owner: true,
@@ -1947,14 +1950,14 @@ function parseDetailers(raw) {
     if (!CAL_ID.test(availability) || !CAL_ID.test(bookings)) {
       return problems.push(`${name} needs both an availability and a bookings calendar id`);
     }
-    const does = String(e["does"] ?? "all").toLowerCase();
+    const does = parseDoes(e["does"]);
     const noFeeStarts = e["noFeeStarts"] === void 0 ? null : parseRange(e["noFeeStarts"]);
     if (e["noFeeStarts"] !== void 0 && !noFeeStarts) problems.push(`${name}: noFeeStarts should look like "18:00-19:00"`);
     seen.add(id);
     crew.push({
       id,
       name,
-      does: does === "interior" ? ["interior"] : does === "exterior" ? ["exterior"] : ["interior", "exterior"],
+      does,
       availabilityCalendarId: availability,
       bookingsCalendarId: bookings,
       owner: false,
@@ -1963,6 +1966,10 @@ function parseDetailers(raw) {
   });
   if (!ownerPlaced) crew.push(OWNER);
   return { crew, problems };
+}
+function parseDoes(raw) {
+  const list = (Array.isArray(raw) ? raw : [raw ?? "all"]).map((w) => String(w ?? "").trim().toLowerCase()).filter(Boolean);
+  return !list.length || list.includes("all") ? ["*"] : [...new Set(list)];
 }
 
 // lib/pricing/cancellation.ts
@@ -2260,6 +2267,17 @@ var CAPABILITIES = [
     what: "Cloudflare Turnstile in front of the payment step",
     live: false,
     blockedBy: "TURNSTILE_SECRET_KEY in Netlify and turnstileSiteKey in js/config.js"
+  },
+  {
+    id: "weatherCheck",
+    what: "Checking the forecast at the detail's location before offering weather-affected times and offers",
+    // Live: the booking form asks the National Weather Service for the
+    // forecast at the approximate location of the detail (address pick or
+    // ZIP centre, rounded to two decimals, about a kilometre). The privacy
+    // policy names it while this is on, and the form fetches nothing while
+    // it is off, so the two cannot drift.
+    live: true,
+    blockedBy: "nothing: api.weather.gov is free and needs no key"
   }
 ];
 var PROCESSORS = [
@@ -2282,7 +2300,8 @@ var PROCESSORS = [
   { name: "Google Analytics", does: "counts visits, the pages viewed, and how people found us, only if you accept analytics. It sets cookies to tell one visit from the next. We have turned off Google's advertising features for it.", capability: "siteAnalytics" },
   { name: "Microsoft Clarity", does: "records how pages are used, such as clicks, scrolling and where people leave, only if you accept analytics. It sets cookies to do so. What you type into forms is hidden from it, and we have told it not to use anything for advertising.", capability: "siteAnalytics" },
   { name: "Neon", does: "stores bookings in our database so your booking link works.", capability: "bookingLink" },
-  { name: "Cloudflare Turnstile", does: "checks that a booking is being made by a person, before payment. It may set a cookie to do so.", capability: "botCheck" }
+  { name: "Cloudflare Turnstile", does: "checks that a booking is being made by a person, before payment. It may set a cookie to do so.", capability: "botCheck" },
+  { name: "National Weather Service", does: "provides the forecast we check before offering times and offers for weather-affected work. Your browser sends it the approximate location of the detail, rounded to within about a kilometre, never your name, contact details or street address. Like any website, it receives your IP address.", capability: "weatherCheck" }
 ];
 function liveProcessors() {
   return PROCESSORS.filter((p) => !p.capability || isLive(p.capability));

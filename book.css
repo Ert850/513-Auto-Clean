@@ -307,6 +307,38 @@ body.bk-open { overflow: hidden; }
 .bk-rec em { font-style: normal; font-size: .76rem; font-weight: 700; color: #7a5209; }
 .bk-rec-go { flex: none; width: 22px; height: 22px; color: var(--red); }
 .bk-rec-go svg { width: 22px; height: 22px; }
+/* A recommended DAY: one bar listing its two times; tapped, it opens into
+   two small bars, one per time. */
+.bk-recday { margin: 0 0 .55rem; }
+.bk-recday .bk-rec { margin: 0; }
+.bk-rec-pick { display: none; font-size: .86rem; font-weight: 700; color: var(--text-soft); }
+.bk-recday.open > .bk-rec { border-color: var(--red); }
+.bk-recday.open .bk-rec-times { display: none; }
+.bk-recday.open .bk-rec-pick { display: block; }
+.bk-rec-go svg { transition: transform .2s var(--ease); }
+.bk-recday.open > .bk-rec .bk-rec-go svg { transform: rotate(90deg); }
+.bk-recday-opts { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .25s var(--ease); }
+.bk-recday.open .bk-recday-opts { grid-template-rows: 1fr; }
+.bk-recday-in {
+  overflow: hidden; min-height: 0; visibility: hidden; transition: visibility 0s .25s;
+  display: grid; grid-template-columns: 1fr 1fr; gap: .5rem;
+}
+/* Room for the focus ring: the panel clips to animate, so the times sit 4px
+   inside it (and the panel 4px wider) or the ring is cut off. */
+.bk-recday.open .bk-recday-in { visibility: visible; transition: none; padding: .5rem 4px 4px; margin: 0 -4px; }
+.bk-rec-opt {
+  display: flex; align-items: center; justify-content: space-between; gap: .5rem; flex-wrap: wrap;
+  font: inherit; text-align: left; cursor: pointer; color: var(--text);
+  background: var(--paper-2); border: 1.5px solid var(--line); border-radius: var(--r-md); padding: .7rem .9rem;
+}
+.bk-rec-opt:hover { border-color: var(--red); box-shadow: 0 0 0 3px var(--red-ghost); }
+.bk-rec-opt.on { border: 2px solid var(--red); }
+.bk-rec-opt b { font-family: var(--font-display); font-size: 1rem; }
+.bk-rec-opt em { flex-basis: 100%; order: 3; font-style: normal; font-size: .74rem; font-weight: 700; color: #7a5209; }
+@media (max-width: 559.98px) { .bk-recday-in { grid-template-columns: 1fr; } }
+@media (prefers-reduced-motion: reduce) {
+  .bk-recday-opts, .bk-rec-go svg { transition: none; }
+}
 .bk-recs-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .5rem 1rem; margin-top: .9rem; }
 .bk-recs-all {
   font: inherit; font-size: .88rem; font-weight: 700; cursor: pointer;
@@ -427,6 +459,12 @@ button.bk-wk-c:hover { box-shadow: 0 0 0 2px var(--red-ghost); }
 .bk-wk-line { opacity: .75; }
 .bk-wk-line.h { align-self: start; height: 1.5px; margin-top: -2.25px; background: repeating-linear-gradient(90deg, var(--amber) 0 4px, transparent 4px 8px); }
 .bk-wk-line.v { justify-self: end; width: 1.5px; margin-right: -2.25px; background: repeating-linear-gradient(180deg, var(--amber) 0 4px, transparent 4px 8px); }
+/* Cells under a block (chosen or previewed) keep their outline and hide what
+   is in them, so a half-covered price never peeks out above or below. */
+.bk-wk-c.under > *, .bk-wk-c.pvunder > * { visibility: hidden; }
+/* A suggested start keeps its star, on the block's time bar. */
+.bk-wk-span-star { float: right; line-height: 0; margin-top: .1rem; color: #fff; }
+.bk-wk-span-star svg { width: 10px; height: 10px; }
 .bk-wk-span b {
   display: block; background: var(--red); color: #fff; font-size: .62rem; font-weight: 800;
   padding: .12rem .3rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;

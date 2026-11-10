@@ -138,6 +138,9 @@ function automaticPara() {
   if (isLive("botCheck")) {
     parts.push("Before payment, Cloudflare Turnstile checks that a person is booking. It may set a cookie to do that.");
   }
+  if (isLive("weatherCheck")) {
+    parts.push("Some of our work depends on the weather, so before offering times and offers for it, your browser asks the National Weather Service, a United States government service, for the forecast at the approximate location of the detail. That location comes from your address or ZIP code and is rounded to within about a kilometre. It does not include your name, contact details or street address, but like any website the service receives your IP address.");
+  }
   return parts.map((p) => `<p>${p}</p>`).join("\n    ");
 }
 

@@ -18,7 +18,10 @@
  * - `bookings`: where their jobs are written. Shared publicly as free/busy
  *   ONLY, and read through Google's free/busy endpoint, so customer names
  *   and addresses on it are never public.
- * - `does`: "interior", "exterior" or "all" (the default).
+ * - `does`: what they can take on, as one word or a list of words, or "all"
+ *   (the default). Today's words: "interior", "exterior", "correction"
+ *   (polishing and paint correction), "coating". A job needs every word that
+ *   applies to it, so a new kind of work is a new word, not new code.
  * - `noFeeStarts` (optional): "18:00-19:00", the first and last start, in
  *   Cincinnati time, that carry no early or late fee when this detailer takes
  *   the job, because they work those hours anyway (owner, November 10: Kris
@@ -30,7 +33,8 @@
  */
 import { localMinutesOfDay } from "./slots.js";
 
-export type Work = "interior" | "exterior";
+/** A skill a job can need. Free text, so a new one needs no code change. */
+export type Work = string;
 
 export interface Detailer {
   id: string;
@@ -48,7 +52,7 @@ export interface Detailer {
 export const OWNER: Detailer = {
   id: "owner",
   name: "Elijah",
-  does: ["interior", "exterior"],
+  does: ["*"],
   availabilityCalendarId: "",
   bookingsCalendarId: "",
   owner: true,
@@ -121,14 +125,14 @@ export function parseDetailers(raw: string | null | undefined): { crew: Detailer
     if (!CAL_ID.test(availability) || !CAL_ID.test(bookings)) {
       return problems.push(`${name} needs both an availability and a bookings calendar id`);
     }
-    const does = String(e["does"] ?? "all").toLowerCase();
+    const does = parseDoes(e["does"]);
     const noFeeStarts = e["noFeeStarts"] === undefined ? null : parseRange(e["noFeeStarts"]);
     if (e["noFeeStarts"] !== undefined && !noFeeStarts) problems.push(`${name}: noFeeStarts should look like "18:00-19:00"`);
     seen.add(id);
     crew.push({
       id,
       name,
-      does: does === "interior" ? ["interior"] : does === "exterior" ? ["exterior"] : ["interior", "exterior"],
+      does,
       availabilityCalendarId: availability,
       bookingsCalendarId: bookings,
       owner: false,
@@ -140,9 +144,17 @@ export function parseDetailers(raw: string | null | undefined): { crew: Detailer
   return { crew, problems };
 }
 
-/** Can this detailer do every part of the job? */
-export function canDo(d: Detailer, needs: { interior: boolean; exterior: boolean }): boolean {
-  return (!needs.interior || d.does.includes("interior")) && (!needs.exterior || d.does.includes("exterior"));
+/** "interior", ["interior", "coating"] or "all" as a list of skills ("*" is everything). */
+function parseDoes(raw: unknown): Work[] {
+  const list = (Array.isArray(raw) ? raw : [raw ?? "all"])
+    .map((w) => String(w ?? "").trim().toLowerCase())
+    .filter(Boolean);
+  return !list.length || list.includes("all") ? ["*"] : [...new Set(list)];
+}
+
+/** Can this detailer do every part of the job? `needs` lists the skills it takes. */
+export function canDo(d: Detailer, needs: Work[]): boolean {
+  return d.does.includes("*") || needs.every((n) => d.does.includes(n));
 }
 
 /**

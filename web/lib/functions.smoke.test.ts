@@ -238,6 +238,32 @@ describe("every function survives hostile input with its key present", () => {
     }
   }, 30_000);
 
+  it("every booking function shares one view of detailers and their fee-free hours", async () => {
+    // send-confirmation, create-payment and paypal-order all price through
+    // _detailers.mjs, so a card charge cannot add a late fee the email waived.
+    const before = process.env.DETAILERS;
+    process.env.DETAILERS = JSON.stringify([{ name: "Kris", does: "interior", noFeeStarts: "18:00-19:00",
+      availability: "a@group.calendar.google.com", bookings: "b@group.calendar.google.com" }]);
+    try {
+      const { detailerFor, timeFeeWaived } = (await import(`../../netlify/functions/${"_detailers"}.mjs`)) as {
+        detailerFor: (id: unknown) => { id: string } | null;
+        timeFeeWaived: (d: unknown, ms: number) => boolean;
+      };
+      const kris = detailerFor("kris");
+      expect(kris?.id).toBe("kris");
+      expect(detailerFor("owner"), "the owner is never a detailer entry").toBeNull();
+      expect(detailerFor("someone-else")).toBeNull();
+      expect(detailerFor({ id: "kris" }), "only a string id counts").toBeNull();
+      const at = (h: number, m = 0) => Date.parse(`2026-11-20T${String(h + 5).padStart(2, "0")}:${String(m).padStart(2, "0")}:00Z`);
+      expect(timeFeeWaived(kris, at(18, 30))).toBe(true);
+      expect(timeFeeWaived(kris, at(19, 30))).toBe(false);
+      expect(timeFeeWaived(null, at(18, 30))).toBe(false);
+    } finally {
+      if (before === undefined) delete process.env.DETAILERS;
+      else process.env.DETAILERS = before;
+    }
+  });
+
   it("paypal-order: refuses an order id that is not an order id", async () => {
     const { handler } = await load("paypal-order");
     const r = await handler({

@@ -34,6 +34,9 @@ export const LEGAL = {
   // banner, and the arrival source kept for the visit.
   // 2026-11-10: a question started mid-booking is carried to the question
   // form (now on faq.html) for one page load.
+  // 2026-11-10: the booking form checks the National Weather Service forecast
+  // at the detail's approximate location (weatherCheck). Same day as the
+  // entry above and neither was live yet, so the date stands.
   privacyEffective: "2026-11-10",
 } as const;
 

@@ -56,7 +56,7 @@ import {
   mergeIntervals,
   subtractIntervals,
 } from "./availability/slots.js";
-import { addWeeks, buildWeek, FIRST_ROW_MIN, lastRowFor, recommendTimes, weekStartOf } from "./availability/week.js";
+import { addWeeks, buildWeek, FIRST_ROW_MIN, lastRowFor, recommendDays, TIME_RECOMMENDATION_RULES, weekStartOf } from "./availability/week.js";
 import { parseGridpoint, WEATHER_RULES, weatherVerdict } from "./availability/weather.js";
 import { assignStarts, canDo, parseDetailers, waivesFeeAt } from "./availability/crew.js";
 import {
@@ -178,7 +178,8 @@ const api = {
   weekStartOf,
   addWeeks,
   buildWeek,
-  recommendTimes,
+  recommendDays,
+  TIME_RECOMMENDATION_RULES,
   FIRST_ROW_MIN,
   lastRowFor,
   parseGridpoint,

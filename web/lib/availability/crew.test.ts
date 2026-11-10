@@ -24,9 +24,9 @@ describe("parseDetailers", () => {
     const kris = parseDetailers(JSON.stringify([KRIS])).crew[0]!;
     expect(kris.availabilityCalendarId).toBe(KRIS.availability);
     expect(kris.bookingsCalendarId).toBe(KRIS.bookings);
-    expect(canDo(kris, { interior: true, exterior: false })).toBe(true);
-    expect(canDo(kris, { interior: true, exterior: true })).toBe(false);
-    expect(canDo(OWNER, { interior: true, exterior: true })).toBe(true);
+    expect(canDo(kris, ["interior"])).toBe(true);
+    expect(canDo(kris, ["interior", "exterior"])).toBe(false);
+    expect(canDo(OWNER, ["interior", "exterior", "correction", "coating"])).toBe(true);
   });
 
   it("drops a bad entry and says why, never the whole list", () => {
@@ -65,5 +65,24 @@ describe("noFeeStarts (Kris at 6 to 7pm)", () => {
     const { crew, problems } = parseDetailers(JSON.stringify([{ ...KRIS, noFeeStarts: "6pm-7pm" }]));
     expect(crew[0]!.noFeeStarts).toBeNull();
     expect(problems[0]).toMatch(/noFeeStarts/);
+  });
+});
+
+describe("does: any skills, as a word or a list", () => {
+  it("reads one word, a list, or all", () => {
+    const [a, b, c] = parseDetailers(JSON.stringify([
+      { ...KRIS, name: "A", does: "Interior" },
+      { ...KRIS, name: "B", does: ["interior", "correction"] },
+      { name: "C", availability: KRIS.availability, bookings: KRIS.bookings },
+    ])).crew;
+    expect(a!.does).toEqual(["interior"]);
+    expect(canDo(b!, ["interior", "correction"])).toBe(true);
+    expect(canDo(b!, ["exterior"])).toBe(false);
+    expect(canDo(c!, ["coating"]), "no 'does' means everything").toBe(true);
+  });
+
+  it("takes a new kind of work without code changes", () => {
+    const [d] = parseDetailers(JSON.stringify([{ ...KRIS, does: ["interior", "boats"] }])).crew;
+    expect(canDo(d!, ["boats"])).toBe(true);
   });
 });

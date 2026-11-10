@@ -72,7 +72,10 @@ Site configuration, then Environment variables, then Add a variable:
 ```
 
 - **Order is the booking preference.** The first person free for a time gets the job. Kris is first here, then you.
-- **`does`:** `"interior"`, `"exterior"`, or `"all"`. A job with any exterior work only goes to someone who does exterior.
+- **`does`:** what this person can take on, as one word, a list, or `"all"` (the default):
+  - the words are `"interior"`, `"exterior"`, `"correction"` (polishing and paint correction) and `"coating"`, for example `["interior", "correction"]`;
+  - a job only goes to someone who has every word it needs, so a job with any exterior work only goes to someone who does exterior;
+  - a new kind of work is a new word here, with no code change.
 - **Your own entry** (`"owner": true`) only sets your place in the order; your calendars stay as they are. Leave it out and you book last.
 - **Several people can be booked at the same time.** Each is checked against their own calendars.
 - **`noFeeStarts`** (optional): the first and last start time, 24-hour clock, with **no early or late fee** when this person takes the job, because they work those hours anyway. `"18:00-19:00"` covers starts at 6pm, 6:30pm and 7pm; a 7:30pm start pays the late fee. The rush fee still applies. Leave it out for no waiver.

@@ -1,4 +1,5 @@
 import { MAX_BOOKING_CENTS, driveTooFar, priceFromWire, validateWire } from "./_pricing.mjs";
+import { detailerFor, timeFeeWaived } from "./_detailers.mjs";
 import { measuredOneWayMinutes } from "./_routes.mjs";
 import { limited } from "./_ratelimit.mjs";
 import { verifyTurnstile } from "./_turnstile.mjs";
@@ -94,7 +95,8 @@ export async function handler(event) {
       return json(400, { error: "too_far", message: "That address is further than we can drive for a mobile detail." });
     }
 
-    const priced = priceFromWire(cart, { measuredOneWayMinutes: measured, nowMs: Date.now(), payInFull: true });
+    const timeOfDayWaived = timeFeeWaived(detailerFor(payload?.detailer), cart.slot);
+    const priced = priceFromWire(cart, { measuredOneWayMinutes: measured, nowMs: Date.now(), payInFull: true, timeOfDayWaived });
     if (priced.rejected.length) return json(400, { error: "unknown_items", rejected: priced.rejected });
     if (priced.totalCents <= 0 || priced.totalCents > MAX_BOOKING_CENTS) {
       return json(400, { error: "amount_out_of_range" });
