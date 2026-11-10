@@ -1452,7 +1452,8 @@ main .svc-card .svc-how { margin-bottom: 1rem; }
 /* ============================================================
    CATALOG-RENDERED EXTRAS
    ============================================================ */
-.addon-grp { font-size: .74rem; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; color: var(--text-soft); margin: 1.15rem 0 .55rem; }
+.addon-grp { font-size: .95rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--text-soft); margin: 1.4rem 0 .65rem; }
+.addons > .addon-grp:first-child { margin-top: 0; }
 .addon .ad-price { display: block; font-style: normal; font-weight: 800; color: var(--red); font-size: .88rem; margin-top: .35rem; }
 .swide-main { display: flex; flex-direction: column; min-width: 0; }
 /* Stacked on a phone the tier box came straight after the Register button,

@@ -273,8 +273,9 @@ ${list.map(card).join("\n")}
       </div>`;
   });
 
-  return `      <h3 class="reveal">Add-ons</h3>
-${groups.join("\n")}`;
+  // No "Add-ons" heading here: the section above already says "Add-ons for any
+  // package", and a second, smaller one read as a duplicate.
+  return groups.join("\n");
 }
 
 /* ---------------- FAQ price sentence ---------------- */
