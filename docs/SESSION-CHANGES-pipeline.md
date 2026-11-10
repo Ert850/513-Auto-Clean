@@ -13,6 +13,21 @@ Built overnight, November 10 to 11, for you to evaluate. It combines your 8 answ
   - `web/lib/browser-entry.ts`, `js/pricing.bundle.js` (built), `web/lib/funnel.smoke.test.mjs`.
   - The build also re-stamps `?v=` on every page. Those page changes were left out of the commit; a rebuild after merging restamps them.
 
+## Round 4 (November 10, night): small fixes
+
+- **"More below" cue on every step.**
+  - **Cause:** on Extras at 1440×790 the first screen ended exactly at the bottom of a card, so it read as the end of the step (the "illusion of completeness" CLAUDE.md warns about).
+  - **Fix:** a small "More below" button over a fade at the bottom edge. It shows only while more than 48 px is below the fold, hides near the end, scrolls on tap, and updates as panels open or times arrive (`updateCue`).
+  - **Verified** in headless Chrome with real mouse input: shown on Extras, a click scrolls 338 px, hidden at the end.
+- **The day bar no longer shows the grid through it.** Two causes:
+  1. Past days (Sun, Mon) were faded with `opacity` on the whole header cell, so its background faded too and the hatched cells showed through. Now only the text fades.
+  2. The day bar is seven separate sticky cells with 3 px gaps, and rows scrolling underneath showed through the gaps. One solid strip now sits behind the whole bar.
+
+  **Lesson:** a sticky header built from separate cells needs one backdrop, and is never faded with `opacity`.
+- **Gold lines:** a fine 1.5 px dash at 75%, instead of a 2 px dashed border.
+- **The chosen block's fee:** in the Rush tag's gold, with a small grey note under it ("Rush 20%", "Early 20%", "Rush + late 30%"). Standard times show "Standard" in green with no note. Short blocks drop both.
+- **Verified:** 445 tests; headless Chrome screenshots at 1440×790 of Extras with the cue and of the grid scrolled under the day bar, with a "6pm | +$64.50 | Rush + late 30% | to 10pm" block.
+
 ## Round 3 (November 10, night): small fixes
 
 - **The chosen job reads as one price.**
