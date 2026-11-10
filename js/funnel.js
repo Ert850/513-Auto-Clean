@@ -466,6 +466,9 @@
     var sc = el('bkScroll'), cue = el('bkCue');
     if (!sc || !cue) return;
     cue.hidden = !(sc.scrollHeight - sc.clientHeight - sc.scrollTop > 48);
+    // Above the bar pinned to the bottom of the window, when there is one.
+    var pin = el('bkBody') && el('bkBody').querySelector('.bk-pinbar');
+    cue.style.transform = pin ? 'translateY(-' + pin.offsetHeight + 'px)' : '';
   }
 
   function render() {
@@ -2860,12 +2863,16 @@
       '</div>';
     });
     html += flexCard(calc) + weatherNote(calc) +
-      '<div class="bk-recs-foot">' +
+      // Pinned to the bottom of the window (owner, November 10): the ways on
+      // are always on screen, and the picks above it end cut off when there
+      // is more, so the "More below" cue still has something to point at.
+      '<div class="bk-recs-foot bk-pinbar">' +
         '<button type="button" class="bk-recs-all" id="bkShowAll">See additional times</button>' +
-        '<button type="button" class="bk-askwhen-link" id="bkAskMode2">None of these work? Tell us when does</button>' +
+        '<button type="button" class="bk-askwhen-link" id="bkAskMode2"><span class="bk-long">None of these work? Tell us when does</span><span class="bk-short">Tell us when suits</span></button>' +
       '</div></div>';
     box.innerHTML = html;
     fitPicks(box);
+    updateCue();
     renderNav();
     renderTotal();
     updatePick();
@@ -2877,14 +2884,20 @@
    * stays while the card itself ends inside the first screen. "Everything
    * fits" never happened (the flexible card and the links fill the rest), so
    * those may now start below the fold, cut off, which is the cue to scroll.
+   * The pinned bar and a peek of the next card come off the room first.
    */
   function fitPicks(box) {
     var sc = el('bkScroll');
     if (!sc) return;
     var top = sc.getBoundingClientRect().top;
+    var pin = box.querySelector('.bk-pinbar');
+    // The pinned bar covers the foot of the window, and the next card should
+    // still show its top above it (PEEK), so the screen ends cut off.
+    var PEEK = 44;
+    var limit = sc.clientHeight - (pin ? pin.offsetHeight : 0) - PEEK;
     var full = false;
     box.querySelectorAll('.bk-pickday.extra').forEach(function (d) {
-      if (!full && d.getBoundingClientRect().bottom - top > sc.clientHeight) full = true;
+      if (!full && d.getBoundingClientRect().bottom - top > limit) full = true;
       d.hidden = full;
     });
   }
@@ -3031,8 +3044,12 @@
     var later = state.step > ti;
     var price = (fee ? fee + ' ' + feeWhy(ms) : 'Standard price') + (shortNotice(ms) ? ', short notice' : '');
     var to = steerFor(ms);
+    // Labelled as the chosen time (owner, November 10: it has to read as
+    // "this is your time", not as one more option).
     setPick(
-      '<span class="bk-pick-txt"><b>' + esc(tzDay(ms, { weekday: 'short', month: 'short', day: 'numeric' }) + ', ' + spanLabel(ms, holdMinutes())) + '</b>' +
+      '<span class="bk-pick-ic" aria-hidden="true">' + TICK + '</span>' +
+      '<span class="bk-pick-txt"><i class="bk-pick-eye">Your time</i>' +
+        '<b>' + esc(tzDay(ms, { weekday: 'short', month: 'short', day: 'numeric' }) + ', ' + spanLabel(ms, holdMinutes())) + '</b>' +
         '<span><span class="bk-pick-price">' + esc(price) + '</span>' +
         (later ? '<button type="button" class="bk-pick-change" id="bkPickChange">Change</button>' : '') + '</span></span>' +
       (to
@@ -3080,7 +3097,11 @@
     var html = '<div class="bk-wk">' + unconfiguredNote(calc) +
       '<button type="button" class="bk-wk-more bk-wk-recs" id="bkShowRecs">' + CHEV_L + 'Our recommended times</button>';
 
-    html += '<div class="bk-wk-h"><h4 id="bkWkTitle">' + esc(title) + '</h4><div class="bk-wk-nav">' +
+    // The time zone under the dates it applies to (was a paragraph under the
+    // grid, November 10).
+    html += '<div class="bk-wk-h"><div class="bk-wk-ttl"><h4 id="bkWkTitle">' + esc(title) + '</h4>' +
+      '<span class="bk-wk-tz">Hours are in Cincinnati Time Zone (' + zoneName(first.dayStart + DAY / 2) + ')' +
+      (canNext ? '' : '. We take bookings up to 3 months ahead') + '</span></div><div class="bk-wk-nav">' +
       (canPrev ? '<button type="button" class="bk-wk-today" id="bkWkToday">This week</button>' : '') +
       '<button type="button" class="bk-wk-arrow" id="bkWkPrev" aria-label="Previous week"' + (canPrev ? '' : ' disabled') + '>' + CHEV_L + '</button>' +
       '<button type="button" class="bk-wk-arrow" id="bkWkNext" aria-label="Next week"' + (canNext ? '' : ' disabled') + '>' + CHEV_R + '</button>' +
@@ -3091,6 +3112,9 @@
       '<span><i class="bk-wk-key fee">+$</i>Small fee: early, late or rush</span>' +
       '<span><i class="bk-wk-key sug">' + STAR + '</i>Suggested</span>' +
       '<span><i class="bk-wk-key no"></i>Unavailable</span>' +
+      // What the fee key means, right beside it rather than under the grid.
+      '<p class="bk-wk-rules">Early is before 10am and late is 6pm or later; rush is within ' +
+        RULES.window.minLeadDays + ' days. Early or late plus rush is ' + (RULES.surcharge.maxTotalBp / 100) + '% in total.</p>' +
       '</div>' + weatherNote(calc);
 
     if (!week.openCount) {
@@ -3120,17 +3144,14 @@
     }
     html += narrow ? weekList(week, dur) : weekGrid(week, dur);
 
-    html += '<p class="bk-wk-fine">Early is before 10am and late is 6pm or later; rush is within ' +
-      RULES.window.minLeadDays + ' days. Early or late plus rush is ' + (RULES.surcharge.maxTotalBp / 100) +
-      '% in total. Hours are in Cincinnati Time Zone (' + zoneName(first.dayStart + DAY / 2) + ')' +
-      (canNext ? '.' : ', and we take bookings up to 3 months ahead.') + '</p>';
-
-    // Go to a date, and the way out, in one bar.
-    html += '<div class="bk-wk-gobar"><label class="bk-wk-go">Go to a date ' +
+    // Go to a date, and the way out, in one bar pinned to the bottom of the
+    // window, like the one under our recommended times.
+    html += '<div class="bk-wk-gobar bk-pinbar"><label class="bk-wk-go"><span class="bk-long">Go to a date</span><span class="bk-short">Go to</span> ' +
       '<input type="date" data-weekjump min="' + dateInputValue(now) + '" max="' + dateInputValue(lastBookableMs()) + '" /></label>' +
-      '<button type="button" class="bk-askwhen-link" id="bkAskMode2">None of these work? Tell us when does</button></div>';
+      '<button type="button" class="bk-askwhen-link" id="bkAskMode2"><span class="bk-long">None of these work? Tell us when does</span><span class="bk-short">Tell us when suits</span></button>' + '</div>';
 
     box.innerHTML = html + '</div>';
+    updateCue();
     box.querySelectorAll('.bk-wk-span:not(.preview)').forEach(fitSpan);
     renderNav();
     renderTotal();
@@ -3279,7 +3300,11 @@
         }
         var fee = feeText(cell.pick);
         var on = cellHas(cell, state.slot);
-        html += '<button type="button" class="bk-wk-c ' + (fee ? 'fee' : 'ok') + (on ? ' on' : '') + under +
+        // No "selected" look on the box itself: the block drawn over it is the
+        // selection. A half-past start's block begins halfway down its box, and
+        // the box's red outline showed above it as an empty red band
+        // (owner's screenshot after Back, November 10).
+        html += '<button type="button" class="bk-wk-c ' + (fee ? 'fee' : 'ok') + under +
           '" role="gridcell" aria-selected="' + on + '" style="' + at + where +
           (cell.suggested ? '" data-sug="' + cell.pick : '') +
           // Every start in this hour: with a mouse, the bottom half of the box
@@ -3570,7 +3595,7 @@
     // listener in mount() cancels the rest.
     return '<form class="bk-form" id="bkContactForm" autocomplete="on" novalidate>' +
       // One row on wider screens: name, phone, email. It is what keeps the two
-      // required answers below (filming, terms) on a laptop's first screen.
+      // required answers below (terms, filming) on a laptop's first screen.
       '<div class="bk-row2 bk-contact-row">' +
       '<div class="bk-field"><label for="bkName">Name</label>' +
       '<input type="text" id="bkName" name="name" data-c="name" value="' + esc(c.name) + '" autocomplete="name" maxlength="80" data-focus /></div>' +
@@ -3579,10 +3604,6 @@
       '<div class="bk-field"><label for="bkEmail">Email <i>(optional)</i></label>' +
       '<input type="email" id="bkEmail" name="email" data-c="email" value="' + esc(c.email) + '" inputmode="email" autocomplete="email" maxlength="120" data-optional /></div>' +
       '</div>' +
-
-      // Filming first among the questions: a required answer, and short, so
-      // its Yes and No sit on the first screen (owner, November 10).
-      mediaQuestion() +
 
       // The two clauses that actually affect someone are stated HERE, not
       // hidden behind a link. A card network deciding a chargeback wants to
@@ -3606,6 +3627,9 @@
         'if you agree to it first.' +
         '<a class="bk-readmore" href="terms.html#cancellation" target="_blank" rel="noopener">Read the full terms and cancellation policy</a>' +
         '<a class="bk-readmore" href="privacy.html" target="_blank" rel="noopener">Read the privacy policy</a>') +
+
+      // Filming after the terms (owner, November 10): still a required answer.
+      mediaQuestion() +
 
       consentBox('sms', 'bkSms',
         '<b>Text me about this booking</b> <em class="bk-opt">Optional</em>',
