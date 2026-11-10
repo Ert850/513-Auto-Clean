@@ -246,7 +246,7 @@ describe("every function survives hostile input with its key present", () => {
       availability: "a@group.calendar.google.com", bookings: "b@group.calendar.google.com" }]);
     try {
       const { detailerFor, timeFeeWaived } = (await import(`../../netlify/functions/${"_detailers"}.mjs`)) as {
-        detailerFor: (id: unknown) => { id: string } | null;
+        detailerFor: (id: unknown, cart?: unknown) => { id: string } | null;
         timeFeeWaived: (d: unknown, ms: number) => boolean;
       };
       const kris = detailerFor("kris");
@@ -254,6 +254,10 @@ describe("every function survives hostile input with its key present", () => {
       expect(detailerFor("owner"), "the owner is never a detailer entry").toBeNull();
       expect(detailerFor("someone-else")).toBeNull();
       expect(detailerFor({ id: "kris" }), "only a string id counts").toBeNull();
+      // Only for a job he does: a request naming Kris for an exterior job
+      // gets neither his calendar nor his fee-free 6pm (engine check, November 10).
+      expect(detailerFor("kris", { vehicles: [{ packageIds: ["full-exterior"], addons: [] }] })).toBeNull();
+      expect(detailerFor("kris", { vehicles: [{ packageIds: ["basic-interior"], addons: [] }] })?.id).toBe("kris");
       const at = (h: number, m = 0) => Date.parse(`2026-11-20T${String(h + 5).padStart(2, "0")}:${String(m).padStart(2, "0")}:00Z`);
       expect(timeFeeWaived(kris, at(18, 30))).toBe(true);
       expect(timeFeeWaived(kris, at(19, 30))).toBe(false);

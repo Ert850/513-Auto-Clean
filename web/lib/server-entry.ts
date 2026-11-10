@@ -207,7 +207,28 @@ export { LEGAL, longDate } from "./site/legal.js";
 export { legalFingerprint } from "./site/legalFingerprint.js";
 export { PROMOS, findPromo, normalisePromo, promoDiscountCents, promoMessage } from "./pricing/promos.js";
 export { parseIcsBusy, mergeBusy } from "./booking/ics.js";
-export { parseDetailers, waivesFeeAt } from "./availability/crew.js";
+export { parseDetailers, waivesFeeAt, canDo } from "./availability/crew.js";
+
+/**
+ * The kinds of work a cart needs, the way the booking form works it out
+ * (js/funnel.js jobNeeds), so the server can check that the detailer named
+ * in a request does every part of it before giving them the job or their
+ * fee-free hours (engine check, November 10: a cart naming Kris for an
+ * exterior job got his 6pm waiver).
+ */
+export function wireNeeds(wire: WireCart): string[] {
+  if ((wire as { kind?: string }).kind === "advice") return ["interior", "exterior", "correction", "coating"];
+  const vs = wire.vehicles ?? [];
+  const pkgIn = (cat: string) => vs.some((v) => (v.packageIds ?? []).some((id) => findPackage(id)?.category === cat));
+  const addIn = (scope: string) => vs.some((v) => (v.addons ?? []).some((a) => (findAddon(a.addonId) as { scope?: string } | undefined)?.scope === scope));
+  const addId = (ids: string[]) => vs.some((v) => (v.addons ?? []).some((a) => ids.includes(a.addonId)));
+  const needs: string[] = [];
+  if (pkgIn("interior") || addIn("interior")) needs.push("interior");
+  if (pkgIn("exterior") || addIn("exterior")) needs.push("exterior");
+  if (vs.some((v) => Boolean(v.correction)) || addId(["paint-correction", "paint-polish"])) needs.push("correction");
+  if (addId(["ceramic-coating"])) needs.push("coating");
+  return needs;
+}
 export { averageOneWayMinutes, mileageFeeCents } from "./pricing/mileage.js";
 export {
   computeCancellation,

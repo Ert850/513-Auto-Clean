@@ -385,7 +385,7 @@ export async function handler(event) {
   // Who the time was given to, as THIS server knows them (DETAILERS). Their
   // no-fee hours (Kris at 6 to 7pm) are applied here too, so the receipt in
   // the email matches the price the customer saw.
-  const detailer = detailerFor(payload?.detailer);
+  const detailer = detailerFor(payload?.detailer, cart);
   const priced = priceFromWire(cart, {
     measuredOneWayMinutes: measured,
     nowMs: Date.now(),

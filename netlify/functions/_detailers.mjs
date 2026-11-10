@@ -8,17 +8,27 @@
  * send-confirmation alone, and the payment functions charged the late fee
  * the booking email had waived (November 10).
  *
- * Only a name in this deploy's own DETAILERS setting counts, so a request
- * cannot pick a calendar or claim a waiver. Anything else is the owner.
+ * Only a name in this deploy's own DETAILERS setting counts, and only for a
+ * job they do, so a request cannot pick a calendar or claim a waiver.
+ * Anything else is the owner.
  */
-import { parseDetailers, waivesFeeAt } from "./_pricing.mjs";
+import { parseDetailers, waivesFeeAt, canDo, wireNeeds } from "./_pricing.mjs";
 
-/** The detailer for an id from a request body, or null for the owner. */
-export function detailerFor(raw) {
+/**
+ * The detailer for an id from a request body, or null for the owner.
+ *
+ * With the cart, only a detailer who does every part of that job: a request
+ * naming Kris for an exterior job used to get his fee-free 6pm and his
+ * calendar (engine check, November 10). The booking form never sends that;
+ * only an edited request does.
+ */
+export function detailerFor(raw, cart) {
   const id = typeof raw === "string" ? raw.trim().slice(0, 40) : "";
   if (!id) return null;
   const { crew } = parseDetailers(process.env.DETAILERS);
-  return crew.find((d) => d.id === id && !d.owner) ?? null;
+  const d = crew.find((x) => x.id === id && !x.owner) ?? null;
+  if (d && cart && !canDo(d, wireNeeds(cart))) return null;
+  return d;
 }
 
 /** No early or late fee for this start, because this detailer works it anyway. */

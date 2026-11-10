@@ -960,7 +960,8 @@ describe("what the screen says about money and time", () => {
 
   it("asks about filming before booking, and needs an answer", () => {
     expect(fn("rAgree", 4000)).toContain("mediaQuestion()");
-    expect(fn("vAgree", 1600)).toContain("state.consent.media === null");
+    expect(fn("lAgree", 1600)).toContain("state.consent.media === null");
+    expect(fn("vAgree", 400)).toContain("lAgree()");
   });
 });
 

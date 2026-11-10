@@ -13,6 +13,57 @@ Built overnight, November 10 to 11, for you to evaluate. It combines your 8 answ
   - `web/lib/browser-entry.ts`, `js/pricing.bundle.js` (built), `web/lib/funnel.smoke.test.mjs`.
   - The build also re-stamps `?v=` on every page. Those page changes were left out of the commit; a rebuild after merging restamps them.
 
+## Round 16 (November 10, late): the checkout as folding sections, two reviews, an engine check
+
+### What changed
+- **The checkout works like the first page.** Contact, Address, Time, Almost done, Review: one open at a time, each with its own Continue, folding to a summary row with Change. The top bar has two groups, YOUR DETAIL and CHECKOUT. `*` Required and "(optional)" labels are back.
+- **From the two checkout reviews (fixed):**
+  - A chosen time stays done only while it still fits. An extra or a second vehicle that makes the job longer re-checks the time; if it no longer fits, Time reopens and says why ("Your detail now takes about 3 hrs, so the time you picked no longer fits"). *Root cause:* the time was checked only at Confirm, which then said, wrongly, "Someone booked that time".
+  - A resumed draft whose time has passed reopens Time ("The time you picked has passed"). *Root cause:* drafts kept `slot` with no age check.
+  - "Someone booked that time" now shows at the top of Time. *Root cause:* `flash()` had no field to sit by, so it went to the foot of the form, under the week grid.
+  - Every problem in a section shows at once, each inside its own field's box, so the row keeps its shape. The outline and the message stay until that field is right, then go (they used to stay or vanish on a 3 s timer). `aria-invalid` and `aria-describedby` are set.
+  - Leaving a finished section that has since been broken (phone changed to "555") keeps it open, with the message. *Root cause:* opening another section did not re-check the one being left.
+  - After a section opens, focus goes to its first field, or else to its heading. *Root cause:* only Contact and Address had `data-focus`, so focus fell to `<body>`.
+  - After Continue, the whole checkout is shown from the top when it fits; otherwise the folded row just above the open section. *Root cause:* scrolling to the section title left the rows above half under the header.
+  - The chosen time reads one way everywhere: "Fri, Nov 13 · arrive 10 to 11am · about 2 hrs". "10am to 12pm" next to "arrive 10 to 11am" read as two promises.
+  - The time in Review is ink, not red (CLAUDE.md, Colors). Once Time is done, the bottom bar no longer repeats it, unless it carries a suggestion. The suggestion's "Moved to Friday" message is grey, not red.
+  - Said once: "Nothing is charged today" left the terms box; "first 10 minutes free" left the travel hint.
+  - The calendar legend no longer says "point at one". Its back link reads "Back to recommended times".
+  - On/off buttons (recording, water, power, the request days and times, flexible days) carry `aria-pressed`. The week grid is a group of buttons, not a `grid` with no rows.
+  - A flexible day already chosen shows as chosen, with its panel open, when Time is reopened.
+  - Help me decide shows no "$0" on the Review tab. A promo shows one saving (under the total, tax included), not two different figures.
+  - Bigger touch targets for the bottom bar's Change and "Tell us when suits". On phones, summary rows wrap to two lines, and the price table's labels no longer wrap.
+  - The "More below" cue hides while the section's Continue is on screen.
+  - The leave panel says contact details reach us only when a phone or email we could use was given. Enter in the notes box no longer jumps to the optional water question.
+- **From the engine check (fixed):**
+  - *All-day events were 4 to 5 hours early.* A bare date ("2026-11-20") was read as midnight UTC, 7pm the evening before in Cincinnati, so an all-day Vacation left its own evening bookable. Now local midnight (`eventTime`).
+  - *OPEN and BEST matched any title starting with those letters* ("Opening night", "Bestie's wedding"). Now the whole word (`titleIs`). "Open house" and "Best Buy" still read as the keywords; see Questions.
+  - *6pm starts went missing.* `computeSlots` stopped scanning at the first start whose drive home did not fit, but from 6pm the drive home is not needed, so a later start could fit. It now carries on.
+  - *The 6pm drive-home exemption applied with a job booked later that day* (a 7pm start ending at a 9pm job). It now applies only at the real end of the day.
+  - *A recommended time with a late fee led a day that had a fee-free best time* (Kris's 6pm ahead of Elijah's 10am). No fee now comes before priority.
+  - *The steer and the calendar stars ignored a detailer with no BEST events* once anyone had some. They now use that detailer's day suggestions, as the recommended times do.
+  - *The server gave any named detailer the job and their fee-free hours,* even for work they don't do (Kris on an exterior job: no late fee, his calendar). `detailerFor` now checks `canDo` against the cart (`wireNeeds`).
+  - *Fee-free hours accepted malformed text* ("Sun Mon", "Tue-Sat-Sun", "18:99"). Now refused, with the problem message.
+  - *The heat check paired cloud with the whole hot span,* not the job's hours. Now all three must overlap.
+  - `Priority: 1000` read as 100.
+
+### What to test
+- Checkout: Continue with everything empty (every message at once); fix one field (its message goes); reopen Contact, break the phone, click Time (stays open).
+- Pick a 10pm Saturday, then add Pet Hair at Review: Time reopens with the reason.
+- Keep a draft, come back after its time: Time reopens with "has passed".
+- An all-day event on an availability calendar blocks that whole day, and only that day.
+
+### Questions for the owner
+- **Titles:** should only upper-case `OPEN` and `BEST` count? Today "Open house party" still switches a calendar to working-hours mode, and a Busy "Best Buy pickup" is read as a best time.
+- **First job of the day:** the drive out is ignored only for starts by 10am, so an OPEN block from noon cannot offer noon.
+- **No OPEN events:** a detailer with none is offered 5am to 1am every day (for example Kris on holiday). Should no OPEN mean no bookings?
+- **Rain for paint correction:** "any rain" is more than 0.25 mm an hour today.
+- **Server time rules:** the server checks only that a time is in the future and within 400 days; the 6am to 10pm window, the 30-minute grid, 60 minutes' notice and 92 days are enforced in the browser only.
+
+### Checked
+- Tests 489 of 489 (Eastern time), 20 new.
+- Headless Chrome at 1440×900 and 375×812, using the reviewers' own scenarios: errors, the stale time, the past draft, the flexible day, focus, scroll. No console errors.
+
 ## Round 15 (November 10, night): two pages, a checkout, recommended times from the calendars
 
 Built from the owner's two transcripts and your notes. The numbered list is `docs/PIPELINE-ROUND-15-PLAN.md`, and the calendar setup for Kris and Elijah is `docs/CALENDAR-SETUP.md`.

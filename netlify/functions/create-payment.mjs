@@ -95,7 +95,7 @@ export async function handler(event) {
 
   // The detailer's fee-free hours, as this deploy knows them, so the charge
   // matches the booking email (both use _detailers.mjs).
-  const timeOfDayWaived = timeFeeWaived(detailerFor(payload?.detailer), cart.slot);
+  const timeOfDayWaived = timeFeeWaived(detailerFor(payload?.detailer, cart), cart.slot);
   const priced = priceFromWire(cart, { measuredOneWayMinutes: measured, nowMs: Date.now(), payInFull, timeOfDayWaived });
   if (priced.rejected.length) {
     return json(400, { error: "unknown_items", rejected: priced.rejected });

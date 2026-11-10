@@ -66,13 +66,23 @@ export const OWNER: Detailer = {
   noFeeStarts: null,
 };
 
-const DAY_NAMES = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
 
 /** "Tue-Sat" or "Sun,Mon" as weekday numbers, or null if it does not read. */
+const FULL_DAYS = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
+/** "tue", "tues" or "tuesday": letters only, at least three, the start of a day's name. */
+function dayIndex(word: string): number {
+  if (!/^[a-z]{3,}$/.test(word)) return -1;
+  return FULL_DAYS.findIndex((d) => d.startsWith(word));
+}
+
 function parseDays(text: string): number[] | null {
   const out = new Set<number>();
   for (const part of text.toLowerCase().split(",").map((x) => x.trim()).filter(Boolean)) {
-    const [a, b] = part.split("-").map((x) => DAY_NAMES.indexOf(x.slice(0, 3)));
+    // One day or one run of two. "Sun Mon", "Mon to Fri" or "Tue-Sat-Sun"
+    // used to read as their first day only (engine check, November 10).
+    const names = part.split("-").map((x) => x.trim());
+    if (names.length > 2) return null;
+    const [a, b] = names.map(dayIndex);
     if (a === undefined || a < 0 || (b !== undefined && b < 0)) return null;
     // Tue-Sat, or a run that wraps, like Sat-Mon.
     for (let i = a, n = 0; n < 7; i = (i + 1) % 7, n++) { out.add(i); if (b === undefined || i === b) break; }
@@ -93,6 +103,7 @@ function parseRanges(text: unknown): FeeFree[] | null {
     if (!m) return null;
     const days = m[1] ? parseDays(m[1]) : null;
     if (m[1] && !days) return null;
+    if (Number(m[3]) > 59 || Number(m[5]) > 59) return null;
     const fromMin = Number(m[2]) * 60 + Number(m[3]);
     const toMin = Number(m[4]) * 60 + Number(m[5]);
     if (!(fromMin <= toMin && toMin < 24 * 60)) return null;

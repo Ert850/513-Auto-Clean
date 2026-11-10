@@ -83,6 +83,19 @@ describe("noFeeStarts (Kris at 6 to 7pm)", () => {
     expect(bad.crew[0]!.noFeeStarts).toBeNull();
     expect(bad.problems[0]).toMatch(/noFeeStarts/);
   });
+
+  it("rejects day lists and times it would otherwise misread (engine check, November 10)", () => {
+    for (const x of ["Sun Mon 18:00-19:00", "Mon Tue Wed 18:00-19:00", "Mon to Fri 18:00-19:00",
+      "Tue-Sat-Sun 18:00-19:00", "18:00-18:99", "18:60-19:00", "Tu 18:00-19:00"]) {
+      const r = parseDetailers(JSON.stringify([{ ...KRIS, noFeeStarts: x }]));
+      expect(r.crew[0]!.noFeeStarts, x).toBeNull();
+      expect(r.problems[0], x).toMatch(/noFeeStarts/);
+    }
+    const long = parseDetailers(JSON.stringify([{ ...KRIS, noFeeStarts: "Tuesday-Saturday 18:00-19:00; Tues 08:00-09:00" }]));
+    expect(long.problems).toEqual([]);
+    expect(waivesTimeFee(long.crew[0]!, 18 * 60, 6)).toBe(true);
+    expect(waivesTimeFee(long.crew[0]!, 8 * 60, 2)).toBe(true);
+  });
 });
 
 describe("does: any skills, as a word or a list", () => {

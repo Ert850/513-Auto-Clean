@@ -325,10 +325,13 @@ export function recommendBestDays(req: {
 
   const order = (offers: Offer[]) => {
     const rank = new Map(req.members.map((m, i) => [m.id, i]));
+    // A best time with no early or late fee leads, whoever's it is; then
+    // priority. Priority first put Kris's 6pm with its fee ahead of
+    // Elijah's fee-free 10am (engine check, November 10).
     return offers.slice().sort((a, b) =>
+      (Number(premium(a.ms)) - Number(premium(b.ms))) ||
       (rank.get(a.id)! - rank.get(b.id)!) ||
       (req.scoreFor ? req.scoreFor(b.ms) - req.scoreFor(a.ms) : 0) ||
-      (Number(premium(a.ms)) - Number(premium(b.ms))) ||
       a.ms - b.ms);
   };
 
