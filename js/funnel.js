@@ -480,11 +480,15 @@
         '<span class="bk-seg-t">' + esc(label) + '</span>' +
         (sum ? '<span class="bk-seg-s">' + esc(sum) + '</span>' : '') + '</button>';
     };
-    var build = STEPS.map(function (st, i) {
-      // A step that does not apply gets no tab.
-      if (skipped(i) || inCheckout(i)) return '';
-      return seg('data-step="' + i + '"', st.tab, st.sum ? st.sum() : '', i === state.step, i < reach && !st.valid(), i <= reach);
-    }).join('');
+    var build = onCheckout()
+      // At checkout the detail is one chip: what they are buying, and Edit
+      // (owner, November 11: a top bar that takes less room at checkout).
+      ? seg('data-step="' + lastBuildStep() + '"', detailChip(), (veh().size ? P.vehicleSize(veh().size).label + ' · ' : '') + 'Edit', false, true, true)
+      : STEPS.map(function (st, i) {
+          // A step that does not apply gets no tab.
+          if (skipped(i) || inCheckout(i)) return '';
+          return seg('data-step="' + i + '"', st.tab, st.sum ? st.sum() : '', i === state.step, i < reach && !st.valid(), i <= reach);
+        }).join('');
     var openId = onCheckout() ? ckOpenId() : '';
     var ck = CK_TABS.map(function (t) {
       var first = t.secs[0];
@@ -496,15 +500,41 @@
       var sum = t.tab === 'Review' ? (q().totalCents > 0 ? sPay() : '') : done ? (c0.tabSum ? c0.tabSum() : c0.sum()) : '';
       return seg('data-cksec="' + target + '"', t.tab, sum, t.secs.indexOf(openId) > -1, done, canOpen);
     }).join('');
+    // Back and close live in the header, and in the bar itself at checkout,
+    // where the title row is gone and "Checkout" is the bar's own heading.
+    // Put back first, so replacing the bar never takes them with it.
+    var head = root.querySelector('.bk-head');
+    var backBtn = el('bkBack'), closeBtn = el('bkClose');
+    if (head && backBtn.parentNode !== head) head.insertBefore(backBtn, head.firstChild);
+    if (head && closeBtn.parentNode !== head) head.appendChild(closeBtn);
     el('bkNav').innerHTML =
       '<div class="bk-navgrp"><span class="bk-navgrp-l">Your detail</span><div class="bk-navgrp-t">' + build + '</div></div>' +
-      '<div class="bk-navgrp"><span class="bk-navgrp-l">Checkout</span><div class="bk-navgrp-t">' + ck + '</div></div>';
+      '<div class="bk-navgrp bk-navgrp-ck"><span class="bk-navgrp-l">Checkout</span><div class="bk-navgrp-t">' + ck + '</div></div>';
+    root.querySelector('.bk-modal').classList.toggle('ck', onCheckout());
+    if (onCheckout()) {
+      el('bkNav').insertBefore(backBtn, el('bkNav').firstChild);
+      el('bkNav').appendChild(closeBtn);
+    }
     // Keep the active segment in view on a narrow screen.
     var now = el('bkNav').querySelector('.now');
     if (now && now.scrollIntoView) now.scrollIntoView({ block: 'nearest', inline: 'center' });
   }
 
   var BUILD_IDS = ['size', 'intent', 'package', 'addons'];
+
+  /** The last first-page step that applies: where "Edit" from checkout lands. */
+  function lastBuildStep() {
+    var i = LOC_I - 1;
+    while (i > 0 && skipped(i)) i--;
+    return i;
+  }
+  /** "Basic Interior", "Full Interior + Basic Exterior", or "Help me decide". */
+  function detailChip() {
+    if (state.advice) return 'Help me decide';
+    var names = veh().packageIds.map(function (id) { return (P.findPackage(id) || {}).name; }).filter(Boolean);
+    var more = state.vehicles.length > 1 ? ' +' + (state.vehicles.length - 1) + ' vehicle' + (state.vehicles.length > 2 ? 's' : '') : '';
+    return (names.join(' + ') || 'Your detail') + more;
+  }
 
   function reducedMotion() {
     return Boolean(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
