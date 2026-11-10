@@ -65,3 +65,10 @@ Each item says how it will be checked. Status is updated as work lands.
 |---|---|
 | K1 | A PDF for the owner: the questions about the landing pages and offers. |
 | K2 | Overnight, once you send the logins: analytics (GA4 and Clarity) switched on, and the magazine landing pages built. |
+
+## Status (end of round 15)
+All of A to H are built and checked in headless Chrome. The details, and what's left to verify, are in `docs/SESSION-CHANGES-pipeline.md`, Round 15:
+- **A (best times):** waiting on the real BEST events in the calendars, so the fallback suggestions ran.
+- **C3 (unfinished checkout):** emails the owner now; GoHighLevel takes it over once its keys are in.
+- **K1 (landing-page and offer questions PDF):** next.
+- **K2 (analytics and landing pages):** overnight, once the keys are in.
