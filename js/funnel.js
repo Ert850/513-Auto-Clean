@@ -485,6 +485,7 @@
     var sub = el('bkTitleSub');
     if (sub) { sub.textContent = s.sub || ''; sub.hidden = !s.sub; }
     renderNav();
+    setPick('');
     el('bkBody').innerHTML = s.render();
 
     var back = el('bkBack');
@@ -2625,6 +2626,9 @@
   var CHEV_R = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg>';
   var TICK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg>';
   var STAR = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2.8l2.8 5.8 6.3.9-4.6 4.4 1.1 6.3L12 17.2 6.4 20.2l1.1-6.3L2.9 9.5l6.3-.9z"/></svg>';
+  // The two middle choices on the leave dialog: save for later, and ask.
+  var LEAVE_SAVE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h12v18l-6-4-6 4z"/></svg>';
+  var LEAVE_ASK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/></svg>';
 
   /** "EST" in winter, "EDT" in summer: the abbreviation for that date in Cincinnati. */
   function zoneName(ms) {
@@ -2781,6 +2785,7 @@
    * TIME_RECOMMENDATION_RULES (week.ts), with a hook for analytics scores.
    */
   function paintRecs(box, calc, dur) {
+    setPick('');
     var days = P.recommendDays({
       slots: calc.slots, busy: calc.busy, travelGapMin: calc.buffer,
       preferred: calc.preferred || undefined, timeZone: TZ,
@@ -2900,9 +2905,11 @@
         '</div>';
     }
 
-    // The chosen time, start to finish, sits above the grid.
+    // The chosen time, start to finish, sits in the bottom bar; the coating
+    // note is too long for it and stays here.
+    setPick(slotHere ? weekSummary(week, dur) : '');
     if (slotHere) {
-      html += weekSummary(week, dur);
+      html += coatingNote(state.slot, dur) ? '<p class="bk-wk-sum other">' + coatingNote(state.slot, dur) + '</p>' : '';
     } else if (state.slot) {
       html += '<p class="bk-wk-sum other">You picked <b>' +
         esc(tzDay(state.slot, { weekday: 'long', month: 'long', day: 'numeric' }) + ', ' + spanLabel(state.slot, dur)) +
@@ -3185,9 +3192,10 @@
   }
 
   /**
-   * The chosen time in words, start to finish, and the other starts within
-   * its hour. Those are one-tap choices like the recommendations: picking
-   * one books it and moves on.
+   * The chosen time, in the middle of the bottom bar beside the price and
+   * Continue (owner, November 10), with the other starts within its hour.
+   * Those chips are one tap like the recommendations: picking one books it
+   * and moves on. Short: the bar has to stay a bar.
    */
   function weekSummary(week, dur) {
     var ms = state.slot;
@@ -3199,22 +3207,26 @@
     });
 
     var chips = cell && cell.starts.length > 1
-      ? '<span class="bk-wk-chips">Or start at ' + cell.starts.filter(function (s) { return !sameMinute(s, ms); })
+      ? '<span class="bk-pick-chips">Or start at ' + cell.starts.filter(function (s) { return !sameMinute(s, ms); })
           .map(function (s) {
-            return '<button type="button" class="bk-wk-chip" data-slot="' + s + '" data-go="1">' +
+            return '<button type="button" class="bk-wk-chip" data-slot="' + s + '" data-go="1" data-via="summary">' +
               esc(spanLabel(s, dur)) + '</button>';
           }).join('') + '</span>'
       : '';
 
-    return '<div class="bk-wk-sum" aria-live="polite">' +
-      '<b>' + esc(tzDay(ms, { weekday: 'long', month: 'long', day: 'numeric' }) + ', ' + spanLabel(ms, dur)) + '</b>' +
-      '<span>We arrive between ' + endLabel(start) + ' and ' + endLabel(start + 60) + '. The detail takes about ' +
-        esc(fmtDur(dur)) + ', so it runs to about ' + endLabel(start + dur) + '. ' +
-        (fee ? esc(fee + ' ' + feeWhy(ms)) + '.' : 'Standard price.') + '</span>' +
-      (shortNotice(ms) ? '<span class="bk-wk-short">Short notice, so this is a request until a detailer accepts it. We reply as fast as we can.</span>' : '') +
-      coatingNote(ms, dur) +
-      chips +
-      '</div>';
+    return '<b>' + esc(tzDay(ms, { weekday: 'short', month: 'short', day: 'numeric' }) + ', ' + spanLabel(ms, dur)) + '</b>' +
+      '<span>Arrive ' + endLabel(start) + ' to ' + endLabel(start + 60) + ' &middot; ' +
+        (fee ? esc(fee + ' ' + feeWhy(ms)) : 'Standard price') + '</span>' +
+      (shortNotice(ms) ? '<span class="bk-pick-short">Short notice: a request until a detailer accepts it</span>' : '') +
+      chips;
+  }
+
+  /** The bottom bar's middle: the chosen time on the week view, else nothing. */
+  function setPick(html) {
+    var box = el('bkPick');
+    if (!box) return;
+    box.innerHTML = html || '';
+    box.hidden = !html;
   }
 
   function localMin(ms) { return P.localMinutesOfDay(ms); }
@@ -4624,15 +4636,14 @@
       return render();
     }
     if (t.dataset.slot) {
-      selectSlot(Number(t.dataset.slot), t.dataset.via || (t.closest('.bk-wk-sum') ? 'summary' : 'calendar'));
+      selectSlot(Number(t.dataset.slot), t.dataset.via || 'calendar');
       renderTotal();
-      // Our recommended times, and the chips in the summary, are one tap:
-      // the time is chosen and checked, and the next step opens.
-      if (t.dataset.go) return advance();
-      // The weekly calendar repaints from what it already holds, which also
-      // updates the summary under it. No render(), so nothing is re-read
-      // from the calendar and the page holds still while times are compared.
-      if (t.closest('.bk-wk')) { renderNav(); return repaintSlots(); }
+      // Every time on the time step is one tap (owner, November 10): our
+      // recommended times, the chips in the bottom bar, and a start picked on
+      // the week (its hover block already showed the whole detail, start to
+      // finish). The time is chosen and checked, and the next step opens.
+      // Coming back shows it as the block and in the bottom bar.
+      if (t.dataset.go || t.closest('.bk-wk')) return advance();
       // The multi-day list: mark the choice in place.
       root.querySelectorAll('[data-slot]').forEach(function (b) {
         b.classList.toggle('on', b === t);
@@ -5380,6 +5391,7 @@
         '<div class="bk-total" id="bkTotal" hidden>' +
           '<span class="bk-total-amt"></span><span class="bk-total-sub"></span>' +
         '</div>' +
+        '<div class="bk-pick" id="bkPick" aria-live="polite" hidden></div>' +
         '<button type="button" class="bk-nextbtn" id="bkNext"><span>Continue</span>' +
           '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 12h14M13 6l6 6-6 6"/></svg>' +
         '</button>' +
@@ -5594,10 +5606,12 @@
             '</ul>'
           : '') +
         '<div class="bk-leave-acts">' +
-          '<button type="button" class="bk-leave-go" id="bkLeaveStay">Back to my booking</button>' +
-          '<button type="button" class="bk-leave-keep" id="bkLeaveKeep">Keep it for next time</button>' +
-          '<button type="button" class="bk-leave-ask" id="bkLeaveAsk">I have a question</button>' +
-          '<button type="button" class="bk-leave-drop" id="bkLeaveDrop">Throw it away</button>' +
+          '<button type="button" class="bk-leave-go" id="bkLeaveStay">' + CHEV_L + 'Back to my booking</button>' +
+          '<div class="bk-leave-pair">' +
+            '<button type="button" id="bkLeaveKeep">' + LEAVE_SAVE + 'Keep it for next time</button>' +
+            '<button type="button" id="bkLeaveAsk">' + LEAVE_ASK + 'I have a question</button>' +
+          '</div>' +
+          '<button type="button" class="bk-leave-drop" id="bkLeaveDrop">Cancel my booking</button>' +
         '</div>' +
         '<p class="bk-leave-note">Keeping it stores your answers in this browser only, for ' +
           DRAFT_DAYS + ' days. They never reach us until you book.</p>' +
