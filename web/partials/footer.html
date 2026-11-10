@@ -1,0 +1,60 @@
+<!-- Edit THIS file, not the pages. web/scripts/render-chrome.mjs copies it into
+     every page between CHROME:FOOTER markers at build time. The {{...}} values
+     are filled per page; see web/scripts/chrome.mjs. -->
+<!-- ============ FOOTER ============ -->
+<footer class="footer">
+  <div class="wrap">
+    <div class="footer-grid">
+      <div>
+        <span class="brand"><img class="mark-img" src="images/logo-mark.png" alt="" width="40" height="40" /><span class="b-name">513 Auto Clean</span></span>
+        <p class="f-about">UC student-owned mobile car detailing across Greater Cincinnati. Honest pricing, reliable service, and every vehicle detailed with care by our team.</p>
+        <div class="f-socials">
+          <a href="https://www.instagram.com/513autoclean/" target="_blank" rel="noopener" aria-label="Instagram"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/></svg></a>
+          <a href="https://www.facebook.com/61588108894760" target="_blank" rel="noopener" aria-label="Facebook"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg></a>
+          <a href="https://www.yelp.com/biz/513-auto-clean-cincinnati-2" target="_blank" rel="noopener" aria-label="Yelp"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M11.5 2.5c.8-.3 1.6.2 1.6 1v8.2c0 1-1.2 1.5-1.9.8L7 8.7c-.5-.5-.4-1.3.2-1.6zM10.2 14.3c.6-.6 1.7-.2 1.7.7v6.3c0 .8-.8 1.3-1.5 1l-3.5-1.6c-.7-.3-.8-1.2-.3-1.7zM13.9 14.6c-.2-.8.6-1.5 1.4-1.2l5.9 2.1c.8.3.9 1.3.3 1.8l-2.6 2.3c-.6.5-1.5.2-1.7-.5z"/></svg></a>
+        </div>
+      </div>
+      <div>
+        <h4>Explore</h4>
+        <div class="f-links">
+          <a href="{{gallery}}">Results</a>
+          <a href="services.html">Services</a>
+          <a href="about.html">Meet the Team</a>
+          <a href="about.html#reviews">Reviews</a>
+          <a href="service-area.html">Range &amp; Travel</a>
+          <a href="faq.html">FAQ</a>
+          <a href="{{contact}}">Contact Us</a>
+        </div>
+      </div>
+      <div>
+        <h4>Service Areas</h4>
+        <div class="f-links">
+          <a href="{{areas}}#area-oh">Cincinnati, OH</a>
+          <a href="{{areas}}#area-ky">Northern Kentucky</a>
+          <a href="{{areas}}#area-in">SE Indiana</a>
+          <a href="{{areas}}#area-oh">West Chester / Mason</a>
+          <a href="{{areas}}#area-ky">Florence / Covington</a>
+        </div>
+      </div>
+      <div>
+        <h4>Get in Touch</h4>
+        <ul class="f-contact">
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.9.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/></svg> <a href="tel:+15132792915">(513) 279-2915</a></li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 7l-10 6L2 7"/></svg> <a href="mailto:513autoclean@gmail.com">513autoclean@gmail.com</a></li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v4l3 2"/></svg> 7 days/week · 7 AM to 10 PM</li>
+        </ul>
+        <a class="btn btn-primary" href="{{book}}" style="margin-top:.4rem">Book Now</a>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>© <span id="year">2026</span> 513 Auto Clean · Mobile Detailing in Cincinnati, OH</span>
+      <span><a href="privacy.html">Privacy Policy</a> &middot; <a href="terms.html">Terms</a> &middot; <a href="terms.html#cancellation">Cancellation Policy</a><span data-analytics-choices hidden> &middot; <button type="button" class="linklike">Analytics choices</button></span> &middot; Built with care for a local small business.</span>
+    </div>
+  </div>
+</footer>
+
+<!-- ============ STICKY MOBILE BAR ============ -->
+<div class="mobile-bar" id="mobileBar">
+  <a class="mb-call" href="{{contact}}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> Contact Us</a>
+  <a class="mb-quote" href="{{book}}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> Book Now</a>
+</div>

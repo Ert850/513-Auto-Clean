@@ -84,11 +84,12 @@ Read this before changing anything. Every rule below came from a real bug or an 
   - `CATALOG:*` regions: `SERVICES` (all package cards, the correction tiers, the offers banner) in both `index.html` and `services.html`; `OFFERS` in `index.html`; `ADDONS` in `services.html`; `FAQPRICE` in `faq.html` (source: `web/lib/catalog/`, `web/scripts/render-site.mjs`);
   - `TERMS:*` and `PRIVACY:*` regions (source: `web/lib/site/capabilities.ts`, `web/scripts/render-legal.mjs`);
   - `js/pricing.bundle.js`, `netlify/functions/_pricing.mjs`, `js/config.js`, `dist/`;
-  - every `?v=` stamp.
+  - every `?v=` stamp;
+  - everything between `CHROME:*` markers (source: `web/partials/`).
 - If the legal wording changes, bump the date in `web/lib/site/legal.ts`, then run `npm run lock:legal`.
 
 ## Pages
-- `index.html`, `services.html`, `about.html`, `service-area.html`, `faq.html` and `contact.html` share a header, mobile menu, footer and mobile bar, **copied into each file**. A change to any of them goes into all six.
+- **The header (top bar, header, phone menu) and footer (footer, phone bar) come from ONE source: `web/partials/header.html` and `footer.html`.** `npm run build` (`web/scripts/render-chrome.mjs`) writes them into every page between `CHROME:HEADER` and `CHROME:FOOTER` markers. **Never edit a page's header or footer; edit the partial and rebuild.** `chrome.test.ts` fails on drift. Five values differ per page (`{{home}}`, `{{gallery}}`, `{{book}}`, `{{contact}}`, `{{areas}}`); they're derived in `web/scripts/chrome.mjs` from the page itself, e.g. `{{book}}` is `book.html` wherever the page has `#bookFunnel`. A new page gets the markers, is added to `CHROME_PAGES`, and gets everything else listed below.
 - A new page has to be added to:
   - `FILES` in `web/scripts/build-dist.mjs`, or it is never published;
   - `PAGES` in `web/scripts/stamp-assets.mjs`;
