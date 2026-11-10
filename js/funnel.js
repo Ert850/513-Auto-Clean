@@ -362,16 +362,6 @@
     return '<s>+' + $(cents) + '</s> <span class="bk-cut">+' + $(cents - off) + '</span>';
   }
 
-  /**
-   * A package note without its first sentence. Every note opens by listing
-   * the work, which "What is included" now shows just above it, so the
-   * sentence said the same thing twice (owner, November 10).
-   */
-  function noteWithoutList(note) {
-    var m = /^[^.]*\.\s+/.exec(String(note || ''));
-    return m ? note.slice(m[0].length) : note;
-  }
-
   function pkgPrice(p) { return svc(p.priceCents, p.pricePlus ? '+' : ''); }
 
   function pkgDuration(p) {
@@ -1738,10 +1728,19 @@
         // One line each (owner, November 10): the name, the one-line promise,
         // the price. What is included and how it goes are under "How it
         // works", inside the card. The card books; the toggle sits above it.
-        var feat = p.supersetOf
-          ? '<b>Everything in ' + esc((P.findPackage(p.supersetOf) || {}).name || '') + '</b>, plus ' +
-            comps.slice(P.componentsOf(P.findPackage(p.supersetOf), P.CATALOG).length).join(', ')
-          : comps.join(', ');
+        // Option A (owner, November 11): what is in, what is not, and one
+        // line on what to do about it.
+        var base = p.supersetOf ? P.findPackage(p.supersetOf) : null;
+        var ins = base ? comps.slice(P.componentsOf(base, P.CATALOG).length) : comps;
+        var how = '<div class="bk-how-box">' +
+          '<span class="bk-how-sub">' + (base ? 'Everything in ' + esc(base.name) + ', plus' : 'Includes') + '</span>' +
+          '<ul class="bk-incl yes">' + ins.map(function (c) { return '<li>' + TICK + '<span>' + c + '</span></li>'; }).join('') + '</ul>' +
+          (p.notIncluded && p.notIncluded.length
+            ? '<span class="bk-how-sub">Not included</span><ul class="bk-incl no">' +
+              p.notIncluded.map(function (c) { return '<li>' + CROSS + '<span>' + esc(c) + '</span></li>'; }).join('') + '</ul>'
+            : '') +
+          (p.tip ? '<span class="bk-how-tip">' + tipHtml(p.tip) + '</span>' : '') +
+          '</div>';
         html += '<div class="bk-pkgcard' + (on ? ' on' : '') + '">' +
           '<button type="button" class="bk-pkg" data-pkg="' + p.id + '" data-cat="' + cat + '">' +
             '<span class="bk-pkg-l">' +
@@ -1752,8 +1751,7 @@
             '<span class="bk-pkg-r"><b>' + pkgPrice(p) + '</b><i>' + dur + '</i></span>' +
           '</button>' +
           '<details class="bk-how bk-how-pkg"><summary>How it works</summary>' +
-            '<div class="bk-how-body"><p><span class="bk-how-sub">What is included</span>' + feat + '.' +
-            (p.note ? '<span class="bk-how-more">' + esc(noteWithoutList(p.note)) + '</span>' : '') + '</p></div>' +
+            '<div class="bk-how-body">' + how + '</div>' +
           '</details>' +
         '</div>';
       });
@@ -1768,6 +1766,13 @@
     if (needsCorrection(v)) html += rCorrection(v);
     return html;
   }
+
+  /** "Pet hair or stains? Add ..." with the question in bold. */
+  function tipHtml(t) {
+    var i = t.indexOf('?');
+    return i > -1 ? '<b>' + esc(t.slice(0, i + 1)) + '</b>' + esc(t.slice(i + 1)) : esc(t);
+  }
+  var CROSS = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>';
 
   function needsCorrection(v) {
     return v.packageIds.some(function (id) {

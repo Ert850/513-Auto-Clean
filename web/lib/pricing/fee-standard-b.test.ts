@@ -56,3 +56,16 @@ describe("the surcharge with a calendar fee", () => {
     expect(ctx(7, true, undefined)).toBe(3000);
   });
 });
+
+describe("fee blocks over a plain OPEN day (live-safe layout, November 11)", () => {
+  it("the higher fee wins where blocks overlap", () => {
+    const win = resolveWindow([
+      ev("OPEN", at(16, 6), at(17, 0)),
+      { ...ev("OPEN +20%", at(16, 6), at(16, 10)), transparent: true },
+      { ...ev("OPEN +20%", at(16, 18), at(17, 0)), transparent: true },
+    ], at(16, 0), at(17, 0));
+    expect(blockFeeAt(win, at(16, 7))).toBe(2000);
+    expect(blockFeeAt(win, at(16, 10))).toBe(0);
+    expect(blockFeeAt(win, at(16, 18))).toBe(2000);
+  });
+});

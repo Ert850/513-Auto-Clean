@@ -85,6 +85,8 @@ Today Kris is Priority 1 and you are Priority 2. When two people are free at the
 2. Click **+ Create**, **Event**, title `OPEN +20%` (or any percentage), from 6:00pm to 12:00am, repeating on the same days, on the same availability calendar, left **Busy**. Save.
 3. Blocks that touch count as one stretch, so a job can still run across the line.
 
+**Or lay fee blocks over a plain day.** Keep one `OPEN` event for the whole day and add `OPEN +20%` events over the hours that cost more, set to **Free**. Where blocks overlap, the higher fee wins. Your own calendar (513 Availability) must use this layout until the new booking form is live: the current live site ignores Free events, but it mishandles a day split into touching blocks (no times for two-day jobs, and 10am read as the start of a day).
+
 **Home addresses, in Netlify (server-only, never shown on the site):**
 1. **Site configuration**, **Environment variables**, **Add a variable**: key `DETAILER_HOMES`, and tick **Contains secret values**.
 2. Value, by name, any number of people: `{"Kris": "123 Example St, Cincinnati, OH 45202"}`
@@ -167,7 +169,7 @@ A job only goes to someone who does every part of it. Save, then **Trigger deplo
 ## You (Elijah) today
 
 - **Best times:** 10am and 4pm every day, and 6pm Monday to Friday. Your 6pm carries the late fee.
-- **Prices (fee standard B, set up November 11):** your OPEN 6am to midnight becomes `OPEN +20%` 6 to 10am, `OPEN` 10am to 6pm and `OPEN +20%` 6pm to midnight, the same prices as today's clock rule.
+- **Prices (fee standard B, November 11):** one `OPEN` 6am to midnight (Busy), with `OPEN +20%` 6 to 10am and 6pm to midnight laid over it, set to **Free**. The same prices as today's clock rule, and the live site sees only the plain OPEN.
 - **Priority:** 2. **Does:** everything.
 - **Calendars:** 513 Availability `9f26a370ac8629b6df3f7f4e8181aa1086f3acb2b47866e01a1b868cd4ab8161@group.calendar.google.com` (your OPEN and BEST events), and 513 Auto Clean `75726fed82aa92a27201386beda7b3a15f550a3a5691e5e6cfc51382f0f0b9cf@group.calendar.google.com` (your jobs).
 - **Netlify `GOOGLE_BUSY_ONLY_CALENDAR_IDS`** is set to the 513 Auto Clean ID, so the new booking form reads your jobs as busy times only, never their details.

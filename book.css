@@ -1135,7 +1135,7 @@ button.bk-wk-c:hover { box-shadow: 0 0 0 2px var(--red-ghost); }
 .bk-how summary::after, .bk-howbtn::after { content: "+"; font-weight: 800; }
 .bk-how[open] summary::after, .bk-howbtn[aria-expanded="true"]::after { content: "\2212"; }
 .bk-how-body, .bk-how-panel { overflow: hidden; }
-.bk-how p, .bk-how-panel p {
+.bk-how p, .bk-how-panel p, .bk-how .bk-how-box {
   margin: .5rem 0 0; font-size: .82rem; line-height: 1.6; color: var(--text-soft);
   background: var(--paper); border-left: 2px solid var(--line); padding: .6rem .75rem;
   border-radius: 0 var(--r-sm) var(--r-sm) 0;
@@ -1766,3 +1766,14 @@ button.bk-wk-c:hover { box-shadow: 0 0 0 2px var(--red-ghost); }
   #bookFunnel .bk-donerow-ic { width: 22px; height: 22px; }
   #bookFunnel .bk-donerow-ic .bk-pic-ic { width: 20px; height: 20px; }
 }
+
+/* Package "How it works", option A (owner, November 11): what is in, what is not. */
+#bookFunnel .bk-incl { list-style: none; margin: .15rem 0 .55rem; padding: 0; display: grid; gap: .2rem; }
+#bookFunnel .bk-incl li { display: flex; gap: .45rem; align-items: flex-start; font-size: .82rem; line-height: 1.45; color: var(--text); }
+#bookFunnel .bk-incl li svg { width: 14px; height: 14px; flex: none; margin-top: .18rem; }
+#bookFunnel .bk-incl.yes svg { color: #1a8a3f; }
+#bookFunnel .bk-incl.no li { color: var(--text-soft); }
+#bookFunnel .bk-incl.no svg { color: var(--text-soft); }
+#bookFunnel .bk-how-tip { display: block; font-size: .8rem; line-height: 1.5; color: var(--text-soft); }
+#bookFunnel .bk-how-tip b { color: var(--text); }
+@media (min-width: 560px) { #bookFunnel .bk-incl { grid-template-columns: 1fr 1fr; column-gap: .9rem; } }

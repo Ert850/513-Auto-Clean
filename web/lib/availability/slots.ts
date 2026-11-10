@@ -220,11 +220,15 @@ export function computeSlots(req: SlotRequest): number[] {
   const free = subtractIntervals(req.openBlocks, req.busy);
   // Where the working day actually opens, as opposed to where a gap happens
   // to open after a job. Only the former lets the drive out sit outside it.
-  const dayOpens = new Set(req.openBlocks.map((b) => b.start));
+  // From the MERGED blocks: two OPEN blocks that touch (a price split at
+  // 10am) are one working stretch, and 10am is not the start of a day
+  // (live-site check, November 11).
+  const stretches = mergeIntervals(req.openBlocks);
+  const dayOpens = new Set(stretches.map((b) => b.start));
   // And where it closes. The drive home can run past the end of the day, but
   // not into the next job: with a job booked at 9pm, a 7pm start ending at
   // 9pm left no time to drive there (engine check, November 10).
-  const dayCloses = new Set(req.openBlocks.map((b) => b.end));
+  const dayCloses = new Set(stretches.map((b) => b.end));
   const step = Math.max(1, req.granularityMin) * MIN;
   const out: number[] = [];
   const wanted = req.preferredStartsMin;

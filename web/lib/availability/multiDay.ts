@@ -27,7 +27,7 @@
  */
 
 import { localDayStart, localTimeOnDay, localWeekday } from "../time/zone.js";
-import type { Interval } from "./slots.js";
+import { mergeIntervals, type Interval } from "./slots.js";
 
 /** Earliest arrival and latest finish, local minutes past midnight. */
 export interface DayWindow {
@@ -267,8 +267,10 @@ export interface MultiDayOption {
   blocks: Interval[];
 }
 
+// Touching OPEN blocks are one stretch: a day split at 10am and 6pm for
+// prices is still one working day (live-site check, November 11).
 const covered = (block: Interval, open: Interval[]): boolean =>
-  open.some((o) => o.start <= block.start && o.end >= block.end);
+  mergeIntervals(open).some((o) => o.start <= block.start && o.end >= block.end);
 
 const clashes = (block: Interval, busy: Interval[]): boolean =>
   busy.some((b) => b.start < block.end && b.end > block.start);
