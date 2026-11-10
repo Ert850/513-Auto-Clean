@@ -13,6 +13,23 @@ Built overnight, November 10 to 11, for you to evaluate. It combines your 8 answ
   - `web/lib/browser-entry.ts`, `js/pricing.bundle.js` (built), `web/lib/funnel.smoke.test.mjs`.
   - The build also re-stamps `?v=` on every page. Those page changes were left out of the commit; a rebuild after merging restamps them.
 
+## Round 13 (November 10): a bigger "More times" target, the suggestion as a grey pill
+
+### "More times on Saturday": a bigger target
+- **The problem:** the link was a thin line of text inside a card that books on any other tap, so a near miss booked the card's time.
+- **Fix:** an invisible area 10 to 12 px wider on every side (`.bk-pick-more::before`). The words don't move.
+- **Verified:** taps 8 to 10 px above, below, left and right of the words all open the day's times.
+
+### Bug: "Change to suggested?" overflowed, and read as part of the chosen time (owner's screenshot)
+- **Root cause:** the round 12 tab was capped at the box's width (`max-width: calc(100% - 1rem)`) and never wrapped. With a short time like "12pm to 2pm" the box is narrower than the tab's text, so "10am to 12pm" ran past the tab's edge. In red and joined to the box, it also looked like part of the choice.
+- **Fix:** it's now a separate small grey pill, 4 px under the box: neutral colours, a thin grey border, sized to its own text and centred on the box. It's an offer, not a warning; hovering only darkens the text and border.
+- **Room:** the bar's bottom padding grows while the pill shows. On phones the row below the box has 1.2rem more space, so the pill clears Continue.
+- **Verified at 1440×900 and 375×812:**
+  - the pill's text fits;
+  - it stays inside the bar and clear of Continue;
+  - taking it still switches the time and the pill disappears.
+- **Tests:** 470/470.
+
 ## Round 12 (November 10): spacing, hour labels, fees in gold, the suggestion as a tab
 
 ### Spacing and the hour labels
