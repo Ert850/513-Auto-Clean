@@ -46,7 +46,7 @@
       href="images/hero-exterior-960.webp"
       imagesrcset="images/hero-exterior-640.webp 640w, images/hero-exterior-960.webp 960w, images/hero-exterior-1280.webp 1280w, images/hero-exterior-1600.webp 1600w"
       imagesizes="100vw" />
-<link rel="stylesheet" href="styles.css?v=00f419f94c" />
+<link rel="stylesheet" href="styles.css?v=436a393b7b" />
 <!-- Public configuration and third party loaders live in js/, not inline,
      so the Content-Security-Policy can forbid inline scripts outright.
      js/config.js holds publishable keys only. Secret keys never go in a page. -->
@@ -643,7 +643,11 @@
   <div class="hero-overlay"></div>
   <div class="wrap">
     <div class="hero-inner">
-      <span class="hero-badge reveal"><span class="dot"></span> Mobile detailing across Greater Cincinnati</span>
+      <!-- The Google rating on the first screen at every size (owner, round 4):
+           the trust strip below starts under a laptop's fold. Same words as
+           the trust badge; the build stamps the count and js/reviews.js keeps
+           it live. -->
+      <span class="hero-badge reveal"><span class="hb-stars" aria-hidden="true">★★★★★</span> <span class="hb-text">Rated 5.0 from 32 reviews on Google &amp; Yelp</span></span>
       <h1 class="reveal" data-d="1">Car detailing in Cincinnati, <span class="grad">brought to your door.</span></h1>
       <p class="hero-sub reveal" data-d="2">513 Auto Clean is a UC student-owned team bringing professional interior and exterior detailing to your home or workplace. Get a showroom-clean car without losing your day to a shop.</p>
       <div class="hero-cta reveal" data-d="3">
@@ -651,11 +655,11 @@
           Book Now
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
         </a>
-        <a class="btn btn-light btn-lg" href="book.html" data-book-browse>
+        <a class="btn btn-ghost on-dark btn-lg" href="book.html" data-book-browse>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
           View Services
         </a>
-        <a class="btn btn-light btn-lg" href="contact.html">
+        <a class="btn btn-ghost on-dark btn-lg" href="contact.html">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
           Contact Us
         </a>
@@ -1091,7 +1095,7 @@
 <!-- Deferred, in order: the pricing bundle must run before the funnel. -->
 <script src="js/pricing.bundle.js?v=5018f5a403" defer></script>
 <script src="js/gallery.js?v=d8ec2a17ef" defer></script>
-<script src="js/reviews.js?v=49c3fefd3b" defer></script>
+<script src="js/reviews.js?v=bdd1232676" defer></script>
 <script src="js/funnel.js?v=a202124dae" defer></script>
 <script src="script.js?v=62c84151cf" defer></script>
 </body>
