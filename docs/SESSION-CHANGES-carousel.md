@@ -3,7 +3,47 @@
 Branch: `claude/results-carousel-347a0d`. Not pushed.
 Files: `index.html` (`#gallery` only), `js/gallery.js`, `styles.css` (gallery block, plus one gallery-only line in the 820px block and a 1100px rule after it). `script.js` is unchanged: the carousel drives the existing slider markup.
 
-**Newest round first. Round 4 ties the return to the middle to the shift. Round 3 changed the timings and the step size; everything else from round 2 stands (the button as the state, no hover pause, the endless loop, rAF easing, the edge fades, reduced motion).**
+**Newest round first. Round 5 makes every card in view wipe in every cycle. Round 4 tied the return to the middle to the shift. Round 3 changed the timings and the step size; everything else from round 2 stands (the button as the state, no hover pause, the endless loop, rAF easing, the edge fades, reduced motion).**
+
+# Round 5
+
+Merged `eNov6` first (a3a275e). Gallery files only.
+
+The owner, in substance: all visible wipers move in the same cycle. With 3 in view a card can wipe twice, and that's fine: one card standing still beside two moving ones looks wrong.
+
+## Changes
+
+| # | Change | Where | How to test |
+|---|---|---|---|
+| 5.1 | **Every card in view wipes in every cycle.** Round 4's "a card wipes once per visit" is gone. After each shift, every card in view starts a new wipe: the ones that stayed and the ones that just slid in. The cards start left to right, 2.5 s apart, as before. | `js/gallery.js` `run()` (the `_done` flag is removed) | At 1440: after each step all three handles move, none sits still. |
+| 5.2 | **Cards that slide in join the very next cycle.** The new cycle starts the moment the track lands, with every card in view in it. The shared return also waits until every card in view has started (none still waiting for its photos), so a card can never be skipped. | `js/gallery.js` `run()` | At 820 the card that slides in on the right wipes in the same cycle as the one beside it. |
+
+Kept: round 4's shared return to the middle right before the shift (1.5 s, the shift starts 1.1 s in), the slower pace, the 1-or-2 card step, the edge fade, the button as the state, the endless loop, reduced motion.
+
+## Timings now
+
+Every cycle runs the full stagger: one card in view, about 15.3 s a cycle; two in view, about 17.8 s; three, about 20.3 s. Full set of 6: about 92 s on a phone, 107 s at 820 (6 steps of 1), 61 s at 1440 (3 steps of 2). The cycle is longer than round 4 at 820 and 1440, because the left card, which used to rest, now wipes too and the stagger spans every card in view. A 1.5 s stagger instead of 2.5 s would take 2 s off at 1440 and 1 s at 820; I left it at 2.5 s, as nobody asked to change it.
+
+## Root cause
+
+Round 4 counted a wipe per visit (`_done`), so a card that stayed in view after a shift rested in the middle while the newcomers wiped. That was meant to avoid repeats, but it left one card visibly idle in a moving row.
+
+## Verified (round 5)
+
+- `npm run build` OK; `cd web && TZ=America/New_York npx vitest run`: 416 of 416.
+- Every frame recorded in headless Chrome (47 s at 1440, 36 s at 820 and 375). For every cycle, each card in view after the track lands must reach the whole before (≥ 99) and the whole after (≤ 1) before the next shift:
+  - 1440: cycle 1, cards 1, 2, 3 all 100/0; cycle 2, cards 3, 4, 5 all 100/0. Card 3 stayed in view and wiped again; 4 and 5 slid in and joined at once.
+  - 820: cycle 1, cards 1 and 2; cycle 2, cards 2 and 3: all 100/0.
+  - 375: card 1, then card 2: 100/0.
+- Returns start on the same frame (1440: cards 1, 2, 3 at 18 400 ms, cards 3, 4, 5 at 38 750 ms; 820: 15 908 and 33 758 ms; 375: 13 399 and 28 766 ms). The shift follows about 1.1 s later each time.
+- No jumps: the largest handle step between frames is 1.64% of the photo, and the largest card move per frame is 38 px (the glide). Longest frame 17 ms.
+- Interactions re-checked at 1440 and 375:
+  - no sideways scroll, and nav jumps land at 73 px;
+  - moving the mouse over a photo does nothing;
+  - a click shows Play, and Pause again after 12 s;
+  - Pause holds through 13 s and through scrolling away and back;
+  - dot 6 then Next wraps forward;
+  - reduced motion stays still.
 
 # Round 4
 
