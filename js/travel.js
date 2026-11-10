@@ -40,12 +40,26 @@
 
   // Thresholds are set so every band actually holds ZIPs. Wider bands would
   // paint most of the map one colour, which is the same as not colouring it.
+  //
+  // Colours: green means free, and is used for nothing else (it is also the
+  // free radius circle). The paid bands are one warm ramp starting at the
+  // site's --amber and darkening to brown, so "darker costs more" reads
+  // without the legend. It used to be a traffic light (green, light green,
+  // amber, orange, red): two greens, one of them paid; amber and light green
+  // nearly identical to red-green colour blind eyes; and the dearest band in
+  // the same red as the buttons and the error messages. Red now means only
+  // the brand and "that did not work".
+  // Checked with the dataviz validator against the map tiles (#f2efe9):
+  // lightness falls in even steps, the lightest amber clears 2:1, green to
+  // the lightest amber is far enough apart for protanopia, and neighbouring
+  // paid steps are about as far apart as four steps of one hue can be on a
+  // light map. The legend and the popups carry the exact amounts.
   var BANDS = [
     { id: 0, max: 0, label: 'No travel fee', color: '#2f9e5e' },
-    { id: 1, max: 1000, label: 'About $5 to $10', color: '#7cb342' },
-    { id: 2, max: 2000, label: 'About $15 to $20', color: '#f0a93f' },
-    { id: 3, max: 3500, label: 'About $25 to $35', color: '#ec6d2a' },
-    { id: 4, max: Infinity, label: 'About $45 and up', color: '#c62828' }
+    { id: 1, max: 1000, label: 'About $5 to $10', color: '#e19b1b' },
+    { id: 2, max: 2000, label: 'About $15 to $20', color: '#b66f14' },
+    { id: 3, max: 3500, label: 'About $25 to $35', color: '#89480e' },
+    { id: 4, max: Infinity, label: 'About $45 and up', color: '#5c2507' }
   ];
 
   function feeCents(min) { return P.mileageFeeCents(min, P.RULES.mileage); }
@@ -209,8 +223,11 @@
 
     var time = 'roughly ' + d.minMin + ' to ' + d.maxMin + ' minutes from us';
 
+    // The price is plain ink: in red it read as an error. The dot beside it
+    // is the band colour, so the answer points at its place on the map.
+    var band = bandOf(feeCents(Math.round((d.minMin + d.maxMin) / 2)));
     out.innerHTML =
-      '<b>' + esc(d.range) + '</b>' +
+      '<b><i class="fee-dot" style="background:' + band.color + '"></i>' + esc(d.range) + '</b>' +
       '<span>' + where + ', ' + time + '. ' +
       (d.hiCents === 0
         ? 'That is inside our free radius.'
@@ -334,8 +351,10 @@
 
     POINTS.forEach(function (p) {
       var m = L.circleMarker([p.lat, p.lon], {
+        // Solid, not 0.92: see-through dots took on the colour of the road
+        // or park under them, so no dot quite matched its legend key.
         radius: 8, color: '#ffffff', weight: 2,
-        fillColor: p.band.color, fillOpacity: 0.92
+        fillColor: p.band.color, fillOpacity: 1
       }).addTo(map);
 
       m.bindTooltip(p.area + ': ' + p.range, { direction: 'top' });
