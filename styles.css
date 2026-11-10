@@ -99,6 +99,15 @@ ul { list-style: none; }
 
 /* ---------- Type ---------- */
 h1, h2, h3, h4 { font-family: var(--font-display); font-weight: 700; line-height: 1.05; letter-spacing: -.02em; }
+/* NO ORPHANED WORDS. Text used to wrap greedily: each line took as many words
+   as fit and the remainder fell to the last line, often a single word
+   ("Good questions, straight / answers."). It got worse on WIDE screens,
+   because heading sizes grow with the viewport while .section-head stays
+   660px wide. Measured: 156 one-word last lines across 6 pages x 6 widths.
+   Headings balance their lines; running text avoids a lone last word.
+   Browsers without support simply wrap as before. */
+h1, h2, h3, h4, .svc-tag, .eyebrow { text-wrap: balance; }
+p, li, figcaption, label, legend, summary, blockquote { text-wrap: pretty; }
 .eyebrow {
   font-family: var(--font-body);
   font-weight: 700; font-size: .8rem; letter-spacing: .14em; text-transform: uppercase;
