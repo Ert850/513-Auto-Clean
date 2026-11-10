@@ -30,6 +30,7 @@ const FILES = [
   "about.html",
   "service-area.html",
   "faq.html",
+  "contact.html",
   "styles.css",
   "book.css",
   "script.js",
