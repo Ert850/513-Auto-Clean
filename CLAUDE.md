@@ -177,9 +177,12 @@ Read this before changing anything. Every rule below came from a real bug or an 
 - **Pause from the visitor is final**: only their Play restarts it. A pause from a touch (click, drag, chevron, dot, keyboard focus) ends on its own after 12 s idle or when the carousel is scrolled away and back. Off screen and a hidden tab only suspend it.
 
 ## Colors (fixed November 10)
-- **Red means the brand and "that did not work", nothing else.** A price or any good answer is ink (`--text`). The travel fee in `--red` looked exactly like the error message under it.
+- **Red means the brand and "that did not work", nothing else.** A price or any good answer is ink (`--text`). The travel fee in `--red` looked exactly like the error message under it. One exception, the owner's call: the dearest band on the travel map is red (next rule).
 - **Changing a section's background means re-checking every color in it.** Colors picked on a dark band (red accents, white rings, a red top band on a traffic-light scale) changed meaning on paper.
-- **An ordered scale is one hue, light to dark, not a traffic light.** Check it with the dataviz validator (`validate_palette.js --ordinal` and the categorical check against its neighbours): the old travel scale had two bands 2.2 apart for red-green colour blindness.
+- **The travel map is a traffic light, by the owner's decision (November 10):** green, light green, amber, orange, red (`#2f9e5e #7cb342 #f0a93f #ec6d2a #c62828`).
+  - He tried a one-hue amber-to-brown ramp and rejected it: the top bands were hard to tell apart, while orange next to red reads at a glance.
+  - Its known weak spot: the two greens are close for red-green colour blindness, so the legend and the popups always carry the amounts.
+  - Don't change it back to one hue. Any other ordered scale: one hue, light to dark, checked with the dataviz validator (`validate_palette.js --ordinal`).
 - **A legend key is drawn exactly like the mark it explains.** Travel fee colors live only in `BANDS` in `js/travel.js`; map dots are solid (`fillOpacity: 1`) and every key or dot in the page uses `.tmap-key i, .sg-dot, .fee-dot` (18px, 2px white ring = Leaflet radius 8, weight 2).
 
 ## Verifying UI changes

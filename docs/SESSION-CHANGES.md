@@ -350,6 +350,27 @@ reorganization only. Reference sites: *links not yet provided*.
   - A WebKit view in a window that's never shown paints no images and pauses CSS animations. Snapshots from it showed a grey hero with no text, a false alarm.
   - Headless Chrome's `--window-size` can't go below about 500 px, so a "375" screenshot is cropped. Use CDP device emulation or the pane's mobile preset for phone widths.
 
+### 19. Travel map colours back to the traffic light (November 10, owner's request)
+- **Change:** the travel fee dots and their legend keys are back to green, light green, amber, orange, red (`#2f9e5e #7cb342 #f0a93f #ec6d2a #c62828`), as before `e5b7cb5`.
+- **Why:** the owner found red better than brown, and orange easier to tell from red than from burgundy.
+- **Kept from `e5b7cb5`:** solid dots that match their legend keys, the dot beside the answer, and the price in ink rather than red.
+- **Rules updated in `CLAUDE.md`:** "An ordered scale is one hue" now names the travel map as the owner's exception, so it isn't changed back. The red rule notes it too.
+- **Verified:** all 77 map dots and all 5 legend keys use the restored colours; tests 416/416.
+- **What to test:** Range & Travel at 1440 and 375. The legend matches the dots, and the "Check" answer dot matches its band.
+
+### 20. Home page Book Now section: "Ready to book?" first on smaller screens (November 10, owner's request)
+- **Change:** below 960 px, where the section is one column, the "Ready to book?" card now comes straight after the intro ("Let's get your car booked." and its paragraph). Call, text, email and the hours come after the card. This steers people into the booking form, and phones always have the Contact Us button anyway.
+- **How:** CSS only (`styles.css`, in a `max-width: 959.98px` block). `.contact-info` joins the grid (`display: contents`) and `order` places the card. The grid gap becomes margins, so the spacing inside the text stays as it was.
+- **Unchanged:** the HTML, and the two-column layout from 960 px, with the card on the right. Screen readers keep the original order: contacts, then the card.
+- **Verified (headless Chrome, port 8799 demo):**
+  - at 375 and 820 px the order is intro, card (32 px below), then call, text and email (40 px below the card);
+  - at 1440 px the layout is as before;
+  - no sideways scroll;
+  - tests 416/416.
+- **Already there before this change:** at 375 px the email address wraps onto two lines ("...gmail.co" / "m").
+- **What to test:** the home page's Book Now section at 375, 820 and 1440.
+- **Also on the pipeline branch:** merged into `eNov10PipelineBranch`, so the two don't conflict.
+
 ### Reference sites reviewed (design lessons only, nothing copied)
 - **dksdetailing.com:**
   - **What works:** one short line of social proof ("Trusted by 250+"), a one-line headline, and two buttons (a main one plus Call). Packages are grouped by Full, Exterior and Interior.
