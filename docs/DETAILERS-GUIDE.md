@@ -151,7 +151,7 @@ A job only goes to someone who does every part of it. Save, then **Trigger deplo
 
 - **Hours (OPEN):** Sunday and Monday 8am to midnight; Tuesday to Saturday 6pm to midnight. Jobs finish by midnight.
 - **Best times (BEST):** Sunday and Monday 10am; Tuesday to Saturday 6pm.
-- **Prices (to set up, owner's fee standard B):** Sunday and Monday `OPEN +20%` 8 to 10am, `OPEN` 10am to 6pm, `OPEN +20%` 6pm to midnight. Tuesday to Saturday `OPEN` 6 to 7:30pm (so 6, 6:30 and 7pm starts are standard), `OPEN +20%` 7:30pm to midnight.
+- **Prices (fee standard B, set up November 11):** Sunday and Monday `OPEN +20%` 8 to 10am, `OPEN` 10am to 6pm, `OPEN +20%` 6pm to midnight. Tuesday to Saturday `OPEN` 6 to 7:30pm (so 6, 6:30 and 7pm starts are standard), `OPEN +20%` 7:30pm to midnight.
 - **Priority:** 1. **Does:** interior only.
 - **Calendars:**
   - 513 Kris Availability: `18f753f8e633da3dec644bca2d658fdccc42ee05a043adbf46dbc939ec88f2dd@group.calendar.google.com` (public, all event details).
@@ -167,7 +167,7 @@ A job only goes to someone who does every part of it. Save, then **Trigger deplo
 ## You (Elijah) today
 
 - **Best times:** 10am and 4pm every day, and 6pm Monday to Friday. Your 6pm carries the late fee.
-- **Prices (to set up, owner's fee standard B):** your OPEN 6am to midnight becomes `OPEN +20%` 6 to 10am, `OPEN` 10am to 6pm and `OPEN +20%` 6pm to midnight, the same prices as today's clock rule.
+- **Prices (fee standard B, set up November 11):** your OPEN 6am to midnight becomes `OPEN +20%` 6 to 10am, `OPEN` 10am to 6pm and `OPEN +20%` 6pm to midnight, the same prices as today's clock rule.
 - **Priority:** 2. **Does:** everything.
 - **Calendars:** 513 Availability `9f26a370ac8629b6df3f7f4e8181aa1086f3acb2b47866e01a1b868cd4ab8161@group.calendar.google.com` (your OPEN and BEST events), and 513 Auto Clean `75726fed82aa92a27201386beda7b3a15f550a3a5691e5e6cfc51382f0f0b9cf@group.calendar.google.com` (your jobs).
 - **Netlify `GOOGLE_BUSY_ONLY_CALENDAR_IDS`** is set to the 513 Auto Clean ID, so the new booking form reads your jobs as busy times only, never their details.
