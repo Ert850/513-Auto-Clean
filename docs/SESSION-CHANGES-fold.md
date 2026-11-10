@@ -100,3 +100,124 @@ The measuring script is `fold.mjs` in the same folder: serve `dist/` on 8793, th
 6. **Narrow widths:**
    - At 900 px, the home and Services cards stack one per row.
    - At 375 and 320 px, there is no horizontal scroll, and About still has its tall photo on top.
+
+---
+
+# Round 2: toned back to a moderate step, plus Range & Travel
+
+## What the owner said
+Summarised from the owner's review, their screenshots (11, 12 and 13) and later messages:
+1. **Services, top:** "unnecessarily dense in the top right." Put the tabs and "See all add-ons" back on their own row, under the title.
+2. **Services, below the cards:** too much white space before Additionals, and the page didn't show that another section follows. Later: "The offer banner should be visible and it should clearly imply that add-ons are below … Keep the down arrow." The owner chose from three rendered options: **B, the whole banner** (`fold-shots/services-option-A/B/C.png`).
+3. **About:** the headshot was too small and the text too dense; the reviews may be cut off more, but the score should stay in view. Later: "it is not clear … that there are more full text reviews below."
+4. **Range & Travel:** "Indiana isn't even visible above the fold and a ton of content is now getting cut … properly redesign the lower half."
+5. **Overall:** "a moderate step between previous and current."
+
+## Before and after
+Each value is the bottom, in page px, of the item. The fold is 790, 720 and 950. **Bold** means it now fits. "Before" is round 1, as merged into `eNov6` (4c1aad1).
+
+| Page | Item | 1440×790 | 1280×720 | 1920×950 |
+|---|---|---|---|---|
+| Services, Interior | Book buttons | 699 → **670** | 692 → **662** | 699 → **670** |
+| Services, Exterior | Book buttons | 724 → **694** | 716 → **687** | 724 → **694** |
+| Services, Interior | Offers banner, whole | 845 ✗ → **773** | 837 ✗ → 765 ✗ | 845 → **773** |
+| Services, Interior | Additionals heading | 1069 ✗ → 894 ✗ | 1046 ✗ → 885 ✗ | 1069 ✗ → **894** |
+| About | Google 5.0 score | 672 → **716** | 626 → **705** | 672 → **716** |
+| About | First review cards (top edge) | 688 → **732** | 642 → **721** (just under) | 688 → **732** |
+| Range & Travel | Ohio / Kentucky / Indiana cards | 1259 / 1107 / 1259 ✗ → **509 / 618 / 720** | 1230 / 1078 / 1230 ✗ → **505 / 614 / 717** | ✗ → **509 / 618 / 720** |
+| Range & Travel | Map legend | 737 → 757 (inside) | 708 → **708** | 737 → **757** |
+| FAQ / Contact | Last question / Send | 695 / 689 (unchanged) | 691 / 689 | 695 / 689 |
+
+There is no horizontal scroll at 1440, 1280, 1920, 820, 375 or 320.
+
+Screenshots (2×) are in the side-session notes folder, under `fold-shots/`: `r2before-*` (round 1), `r2final-*` (this round), and `services-option-A/B/C.png` (the three renders the owner chose from).
+
+## Services
+| Round 1 | Round 2 | Why |
+|---|---|---|
+| Tabs and "See all add-ons" stacked at the top right, beside the title | The tabs row is back under the title, on the left | Owner: "unnecessarily dense". |
+| "SERVICES & PRICING" eyebrow above the title | Removed on this page | Owner's pick (option B). The nav already says where you are, and it pays for part of the banner. |
+| 4 checklist items, then "N more included" | 3, then "N more included" | Option B: it pays for the rest of the banner. Every item is still one click away, and the home page still lists them all. |
+| Offers banner: 98 px tall, 1.8rem under the cards, below the screen | Compact (no rule between the offers), 0.6rem under the cards, with **"Add-ons for any package ↓"** on its right, the same arrow as "See all add-ons ↓" | Owner: the banner should be visible and say that add-ons follow. The first offer drops the repeated "when you book together", since it already starts with "Booking … together?". |
+| The section's 72 px bottom padding plus Additionals' 72 px top padding | One gap: `main > #services` padding-bottom 28 to 40 px; `#addons` padding-top 0 | Root cause of the blank band (a false floor). Scoped with `main >` because the home page has its own `#services`. |
+
+On phones, the banner's link goes on its own line under the offers. Without a flex-basis on the offers, the link stayed beside them and squeezed them to one word per line.
+
+The Exterior tab has the full-width correction card under its three package cards, so its banner is a scroll away on that tab; the Book buttons still fit. At 1280×720 the banner ends 45 px below the screen; the owner's target for it was 1440×790.
+
+## About
+| Round 1 | Round 2 | Why |
+|---|---|---|
+| Portrait: a 15rem strip stretched to the copy's height | Its own 4:5 frame at 20rem (320 × 400) | Owner: too small. The original was 445 × 555. |
+| Story at full column width, line-height 1.6, tight gaps | 40rem measure (about 75 characters a line), line-height 1.65, wider gaps around the promises and buttons | Owner: too dense. 45 to 75 characters a line is the usual comfortable range (WCAG 1.4.8: no more than 80). |
+| Review cards fully in view (names and stars) | The first screen ends on the cards' top edges, with avatars and names showing | Owner accepted more cut-off for a calmer About; a partly shown card is the cue that full reviews follow. |
+
+## Range & Travel: the lower half redesigned
+**What a visitor needs, in order:**
+1. "Do you come to me?", which means the three states, at a glance.
+2. "What does it cost?": the estimator.
+3. Only then, the full town lists.
+
+The old layout answered these in the reverse order. Two cards of town names sat under the map, and Indiana started at 1259 px.
+
+**Pattern:** service-area pages typically lead with the regions served and their main counties or cities, a map, and a lookup. The full town list (written for search) comes after or behind a disclosure, not as a wall above the fold.
+
+**Layout:**
+- From 820 px wide, the left column is 24rem: the estimator, then three compact state cards, then the fine print and buttons. The map and its legend fill the right.
+- Each state card shows:
+  - the state name;
+  - its area codes;
+  - its counties (Indiana, which has only six towns, shows the towns themselves);
+  - "All 51 towns +" or "All 17 towns +", which opens the county-grouped list in the card's own type. The toggle uses the same style as "How it works".
+- On phones the order is estimator, map, states, then extras.
+
+**Kept:**
+- all 74 towns, still in the HTML (closed, not removed), the same set as the `robots.txt` comment;
+- the ids `#area-oh`, `#area-ky` and `#area-in` on the cards, for the footer links;
+- the "Don't see your town? Just ask" line under the tool;
+- the look: the same cards, pin icons, red area codes and dotted county rules.
+
+**The map:**
+- It is 20 px shorter on short screens (`clamp(320px, 100vh - 385px, 380px)`), so its legend, which now takes two rows in the narrower column, stays visible at 1280×720.
+- **Bug fixed:** at that height Leaflet's `fitBounds` snapped from zoom 9 to 8 (whole levels only), and every dot shrank into a knot around Cincinnati. `zoomSnap: 0.25` in `js/travel.js` lets it land between levels.
+
+**Removed:** the `.area-lists` layout rules, orphaned now that the cards live in `.at-states`.
+
+## Root causes, round 2
+1. **Two same-paper sections stacked both paddings** (72 + 72 px). That band read as the end of the page.
+2. **The first screen ended on clean edges:** the card bottoms on Services, and the end of the team section on About. With nothing cut off, there was no sign that the page continues.
+3. **Stacked margin inside the cards:** `main .svc-card .svc-how { margin-bottom: 1rem }` outranked `.svc-toggles > details { margin: 0 }`, adding 16 px to every folded card (always the tallest card in the row).
+4. **Range & Travel listed every town before saying which states are covered,** in a separate block under a 380 px map.
+5. **Leaflet snaps to whole zoom levels,** so a slightly shorter map dropped a full level.
+
+## Files
+| File | Change |
+|---|---|
+| `services.html` | <ul><li>The tabs row is back under the title.</li><li>The eyebrow is removed.</li><li>"See all add-ons" has a ↓ icon.</li></ul> |
+| `web/scripts/render-site.mjs` | `FOLD_AT` is 3. With `fold` (services.html only), the banner's first offer is shorter and the `.svc-next` link is added. |
+| `about.html` | Unchanged since round 1 (the `#rvScore` slot). |
+| `service-area.html` | `.area-lists` is replaced by `.at-states`, inside `.areas-tool`, with compact state cards and "All N towns" disclosures. |
+| `js/travel.js` | `zoomSnap: 0.25`. |
+| `styles.css` | <ul><li>Services: intro spacing, the `#services` / `#addons` gap, the compact banner, `.svc-next`, the phone banner wrap, card padding and the toggle-margin fix.</li><li>About: the round-2 block.</li><li>Range & Travel: `.at-states`, the card rules, the grid areas, the map height and the area section-head margin.</li><li>`.area-more` joins the toggle selectors.</li></ul> |
+| `CLAUDE.md` | The "Sub-page fold" section is updated: the owner's "too dense" rejection, ending the first screen on something cut off, the section-padding and margin-stacking rules, and the About and Range & Travel layouts. |
+
+## How to test
+1. `export PATH=/opt/homebrew/opt/node@22/bin:$PATH && npm run build`
+2. `cd web && TZ=America/New_York npx vitest run` (409 of 409 pass).
+3. Serve `dist/` with the cache disabled, in a 1440×790 window:
+   - **Services:** on the first screen you see the title, the tabs row, three cards with Book buttons, and the whole pink banner with "Add-ons for any package ↓".
+     - Click it, or "See all add-ons ↓": the page lands on Additionals just under the header.
+     - All six Book buttons open the form with their package (checked over CDP).
+     - "N more included +" opens the rest of the list.
+   - **About:** a full-size portrait, an easy-to-read story, the buttons, the reviews title with the 5.0 score, and the tops of three review cards at the bottom of the screen.
+   - **Range & Travel:**
+     - The estimator, the Ohio, Kentucky and Indiana cards, and the map with its legend are all on the first screen, at 1280×720 too.
+     - "All 51 towns +" opens the county lists.
+     - The footer link "SE Indiana" lands on the Indiana card.
+     - The map opens at the usual zoom, with the dots spread out.
+4. **Phones:** at 375 and 320 px there is no horizontal scroll. The Services banner's link sits on its own line, and the Range & Travel order is estimator, map, states, extras.
+
+## Open
+- The **Exterior** tab's banner is a scroll away: the correction card sits between the packages and the banner.
+- At **1280×720** the Services banner ends 45 px below the screen, and the About cards' top edge is 1 px below it.
+- The Range & Travel intro is still three centred lines. Widening it to two would push lines past about 120 characters.
