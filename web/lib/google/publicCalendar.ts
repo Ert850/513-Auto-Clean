@@ -177,11 +177,13 @@ export function openFeeBp(summary: string): number {
 /**
  * The fee the calendar sets for a start: the OPEN block it starts in. Null
  * when the calendar has no OPEN blocks, or none holds this start: then the
- * clock rule applies. Where blocks overlap, the lower fee.
+ * clock rule applies. Where blocks overlap, the HIGHER fee, so a fee block
+ * can sit on top of a plain OPEN day ("OPEN" 6am to midnight, with
+ * "OPEN +20%" 6 to 10am over it, set to Free so the live site ignores it).
  */
 export function blockFeeAt(win: Pick<CalendarWindow, "fees"> | null | undefined, startMs: number): number | null {
   const hits = (win?.fees ?? []).filter((f) => startMs >= f.start && startMs < f.end);
-  return hits.length ? Math.min(...hits.map((f) => f.bp)) : null;
+  return hits.length ? Math.max(...hits.map((f) => f.bp)) : null;
 }
 
 export function isConfigured(cfg: Partial<PublicCalendarConfig> | null | undefined): boolean {

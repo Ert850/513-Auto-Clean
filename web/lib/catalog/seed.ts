@@ -129,6 +129,8 @@ const PACKAGES: Package[] = [
     tagline: "Keeps a already-detailed car right, at a lower price.",
     note:
       "The same work as a Basic Interior, priced lower because a car detailed a month or two ago has far less built up in it. It resets the everyday mess: crumbs, dust, fingerprints, mats. It does NOT include shampooing, stain work or anything deep, because there should not be anything deep left. If it has been longer than three months, or something has been spilled since, start from Basic or Full instead.",
+    notIncluded: ["Shampoo or stain work", "Anything deep: there should be nothing deep left"],
+    tip: "Been longer than three months, or a spill since? Start from Basic or Full instead.",
     priceCents: 9500,
     durationMin: 105,
     componentIds: [...BASIC_INT_IDS],
@@ -145,6 +147,8 @@ const PACKAGES: Package[] = [
     tagline: "A solid clean that gets the everyday grime out.",
     note:
       "A blowout and thorough vacuum through the seats, carpet and trunk, mats cleaned, surfaces wiped down, and the visible grime taken off. The car looks and feels clean when you get back in it. It does NOT shampoo or extract the upholstery, treat set-in stains, condition leather, or brush out every seam and crevice. A vacuum and air compressor blow out alone does not lift what has worked its way down into the upholstery, so engrained fibers, pet hair and grit in the carpet will not all come out, and stains already in the fabric will still be there. Most will come out with a Full Interior, or with Basic plus pet hair removal, a stain treatment, or both.",
+    notIncluded: ["Shampooing or extracting the upholstery", "Treating set-in stains", "Leather conditioning", "Every seam and crevice brushed out"],
+    tip: "Pet hair or stains? Add pet hair removal or a stain treatment, or pick Full Interior.",
     priceCents: 12500,
     durationMin: 120,
     componentIds: [...BASIC_INT_IDS],
@@ -159,6 +163,8 @@ const PACKAGES: Package[] = [
     tagline: "A deep, top to bottom detail that makes it feel new again.",
     note:
       "Everything in Basic, then the deep work: engrained particles pulled out of the carpet, upholstery shampooed and scrubbed, mats washed and dressed, leather conditioned, glass and door jams cleaned, and every crack and crevice brush detailed. Stain reduction is part of it. It does NOT guarantee a stain comes out completely, steam sanitize the whole vehicle, or remove the seats to get underneath them. Most engrained fibers and pet hair come out at this level, but the truly stubborn ones woven deep into the carpet backing need the individual fiber lifting in Showroom Ready. Deep set stains want the extraction add-on and lingering smells want ozone.",
+    notIncluded: ["A promise every stain comes out completely", "Steam sanitizing the whole vehicle", "Taking the seats out to clean underneath"],
+    tip: "Deep stains or smells? Add the extraction or ozone extra. The most stubborn pet hair needs Showroom Ready.",
     priceCents: 21500,
     durationMin: 240,
     componentIds: [...FULL_INT_IDS],
@@ -173,6 +179,8 @@ const PACKAGES: Package[] = [
     tagline: "Everything in Full, taken to its limit.",
     note:
       "Everything in Full, then taken as far as an interior goes: the whole cabin steamed and sanitized, engrained fibers lifted out individually rather than vacuumed at, floor mats given a water resistant treatment, and a ceramic coating on the trim and on the interior metal and paint so it stays this way. It does NOT repair damage. Tears, burns, cracked trim and worn out material are still tears, burns, cracked trim and worn out material. This makes everything that is there as good as it can get.",
+    notIncluded: ["Repairing tears, burns, cracked trim or worn out material"],
+    tip: "It makes everything that is there as good as it can get.",
     priceCents: 39500,
     durationMin: 420, // 6 to 8 hours, quoted at 7
     durationMaxMin: 480,
@@ -199,6 +207,8 @@ const PACKAGES: Package[] = [
     tagline: "A clean hand wash and dry to bring back the shine.",
     note:
       "A rinse, hubcaps scrubbed, a gentle hand wash and a towel dry, with the windows and mirrors cleaned. It takes the surface dirt off and it is quick. It does NOT decontaminate or clay the paint, dress the tires, touch the engine bay, or leave any protection behind. The paint will still feel rough to the touch afterwards, because a wash cannot remove what is bonded to it.",
+    notIncluded: ["Decontaminating or claying the paint", "Tire dressing", "The engine bay", "Any lasting protection"],
+    tip: "Paint still rough to the touch? A wash cannot remove what is bonded to it. Basic or Full can.",
     priceCents: 7500,
     durationMin: 75,
     componentIds: ["ext-rinse-hubcaps", "ext-handwash-gentle", "ext-windows", "ext-towel-dry"],
@@ -213,6 +223,8 @@ const PACKAGES: Package[] = [
     tagline: "A thorough hand wash with wheels and tires done properly.",
     note:
       "A pre-wash to lift the loose grit before anything touches the paint, bug removal, a proper hand wash, blow dry and towel dry, and the wheels done properly: hubcaps, tires and wheel wells scrubbed, then tires dressed. It does NOT decontaminate or clay the paint, remove water spotting, clean the engine bay, or leave a ceramic wax sealant on it. The paint is clean but still not smooth, and there is no lasting protection. That is the step up to Full.",
+    notIncluded: ["Decontaminating or claying the paint", "Removing water spotting", "The engine bay", "A ceramic wax sealant"],
+    tip: "Want smooth, protected paint? That is the step up to Full Exterior.",
     priceCents: 12500,
     durationMin: 120,
     componentIds: [...BASIC_EXT_IDS],
@@ -228,6 +240,8 @@ const PACKAGES: Package[] = [
       "Strips what a wash cannot reach, then protects the paint underneath. Decontaminated, clayed, engine bay cleaned and finished with a ceramic wax sealant.",
     note:
       "Everything in Basic, then the paint is actually decontaminated: iron and fallout dissolved chemically, a clay towel to shear off what is left, hard water spotting treated, the engine bay cleaned and protected, and a ceramic wax sealant applied so water beads and dirt struggles to stick. It does NOT correct the paint. Swirl marks, scratches and etching stay exactly as they are, and the sealant goes on over the top of them. Removing those means machine polishing, which is Showroom Ready.",
+    notIncluded: ["Correcting swirl marks, scratches or etching"],
+    tip: "Want those gone? That takes machine polishing, which is Showroom Ready.",
     priceCents: 24500,
     durationMin: 240,
     componentIds: [
@@ -257,6 +271,8 @@ const PACKAGES: Package[] = [
       "Everything in Full Exterior, then the swirls come out and a real ceramic coating goes on. Pick how far to take it below.",
     note:
       "Everything in Full Exterior, then the paint is machine corrected and a durable ceramic coating goes on the paint, wheels, plastic trim and glass. How much correction depends on the tier you pick below. It does NOT repair physical damage. Dents, rock chips and any scratch deep enough to have gone through the clear coat cannot be polished out, because correction removes a little clear coat, it does not add any. We will tell you what will and will not come out before we start.",
+    notIncluded: ["Repairing dents, rock chips or scratches through the clear coat"],
+    tip: "We will tell you what will and will not come out before we start.",
     priceCents: 24500,
     durationMin: 240,
     requiresCorrectionTier: true,

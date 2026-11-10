@@ -52,3 +52,14 @@ describe("the arrival window is set per detailer", () => {
     expect(bad.problems[0]).toMatch(/arrivalWindow/);
   });
 });
+
+describe("touching OPEN blocks are one working stretch (live-site check, November 11)", () => {
+  it("a price split at 10am is not the start of a day: no 10am start straight after a job ending at 10", () => {
+    const split = [{ start: at(21, 6), end: at(21, 10) }, { start: at(21, 10), end: at(21, 18) }, { start: at(21, 18), end: at(22, 0) }];
+    const busy = [{ start: at(21, 8), end: at(21, 10) }];
+    const got = hours(computeSlots({ ...base, notBefore: at(21, 0), notAfter: at(22, 0), openBlocks: split, busy }));
+    const single = hours(computeSlots({ ...base, notBefore: at(21, 0), notAfter: at(22, 0), openBlocks: [{ start: at(21, 6), end: at(22, 0) }], busy }));
+    expect(got).toEqual(single);
+    expect(got).not.toContain(10);
+  });
+});

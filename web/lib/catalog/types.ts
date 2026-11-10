@@ -108,6 +108,15 @@ export interface Package {
    * cheapest one they hoped would be enough.
    */
   note?: string;
+  /**
+   * "How it works" as two short lists (owner, November 11, option A): what
+   * the package leaves out, taken from the note's own "It does NOT" sentence,
+   * and one line on what to do about it. The "Includes" list is the
+   * components.
+   */
+  notIncluded?: string[];
+  /** One line under the lists. Bold up to its first "?" when it has one. */
+  tip?: string;
 }
 
 export interface Catalog {

@@ -25,6 +25,10 @@ Built overnight, November 10 to 11, for you to evaluate. It combines your 8 answ
 - **Icons in the done rows (owner).** Vehicle, Service, Package and Extras show their picture between the step name and the answer (the size's car, the service's picture, a sparkle for extras).
 - **Both: on to the exterior list (owner).** Picking an interior package with no exterior yet scrolls the Exterior list up.
 
+- **Live-site check after the calendar split (November 11).** The live site's code (main) reads the split blocks as separate days in two places. Jobs that run across two days got no times; 10:00 counted as a start of day, so a 10am booking could follow a job ending at 10am with no drive time; and the first evening time today moved from 6:30 to 7pm. Ordinary single-day times and prices were unchanged.
+  - *Root cause:* `computeSlots` built `dayOpens` (and `dayCloses`) from the unmerged OPEN blocks, and `multiDay.ts` `covered()` needed one block to cover a whole day. Fixed in the pipeline: both use merged stretches.
+  - *Live fix, calendar only:* Elijah's 513 Availability goes back to one `OPEN` 6am to midnight, Busy, with the two `OPEN +20%` blocks laid over it, set to Free. Main ignores Free events. The pipeline counts OPEN Busy or Free and takes the higher fee where blocks overlap (`blockFeeAt`).
+
 ### Must happen before this goes live
 - ~~Retag the OPEN blocks~~ Done November 11 by the setup session, checked: Kris and Elijah read +20% before 10am and from 6pm, standard 10am to 6pm, Kris standard 6 to 7:30pm Tuesday to Saturday, in the booking form and in the server's own read. The live site is unaffected (it reads `OPEN +20%` as OPEN and merges touching blocks).
 - **`DETAILER_HOMES`** with Kris's address, for his drive to be his own.
