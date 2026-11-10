@@ -321,6 +321,22 @@ reorganization only. Reference sites: *links not yet provided*.
 - **Fix:** the demo on port 8799 now serves a separate preview folder that's swapped in by rename after a passing build, and the server is never stopped. Checked: 200 before and after a swap, without a restart. **Production is unaffected:** Netlify publishes each deploy atomically.
 - **Running:** home-page whitespace and fold, round 3, in the `subpages-fold` session; carousel round 4 in the `results-carousel` session.
 
+### 17. Book Now opens where you are, and the shared scripts come from one source (November 10, night)
+- **Bug:** the header's Book Now (and the footer's and phone bar's) on About, Range & Travel, FAQ and Contact sent visitors to the home page.
+  - **Root cause:** the booking form was loaded only on Home and Services, so on the other pages Book Now had to link to `index.html#book`.
+  - **Fix:** the booking form is on every page. The shared header and footer switch Book Now to `book.html` (opens in place) automatically. Book links inside those pages' content, such as About's "Book Now" and Range & Travel's "Get an exact quote", open in place too.
+- **No duplicated setup (owner's note):** the form's mount, stylesheet and scripts, and the three head scripts, are now partials, as the header and footer already were:
+  - `web/partials/head.html`: config, Turnstile, analytics;
+  - `web/partials/scripts.html`: form mount, fonts, `book.css`, pricing bundle, `funnel.js`, `script.js`.
+  - Pages keep only their own scripts after the shared block (Home: gallery and reviews; About: reviews; Range & Travel: travel). Those now run after the pricing bundle, which `travel.js` needs.
+  - The drift test covers all four shared blocks and ignores `?v=` stamps.
+- **Verified:**
+  - Real clicks on the header Book Now (1440) and the phone bar Book Now (375) on all 6 pages: **12/12 open the form on the same page**.
+  - A hand edit to a page's head block fails `chrome.test.ts`.
+  - The carousel has 6 comparisons, and the reviews ticker shows.
+  - The travel estimator answers ZIP 45040 with "$20 to $35".
+  - Tests 416/416.
+
 ### Reference sites reviewed (design lessons only, nothing copied)
 - **dksdetailing.com:**
   - **What works:** one short line of social proof ("Trusted by 250+"), a one-line headline, and two buttons (a main one plus Call). Packages are grouped by Full, Exterior and Interior.

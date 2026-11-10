@@ -24,7 +24,9 @@ import { fileURLToPath } from "node:url";
 
 export const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 export const CHROME_PAGES = ["index.html", "services.html", "about.html", "service-area.html", "faq.html", "contact.html"];
-const PARTS = ["HEADER", "FOOTER"];
+const PARTS = ["HEAD", "HEADER", "FOOTER", "SCRIPTS"];
+/** The build stamps asset URLs (?v=hash) after this step; compare without them. */
+export const unstamp = (s) => s.replace(/\?v=[0-9a-f]{10}/g, "");
 
 const partial = (name) =>
   fs.readFileSync(path.join(root, "web/partials", `${name}.html`), "utf8")
@@ -36,7 +38,9 @@ export function valuesFor(page, html) {
   return {
     home: page === "index.html" ? "#top" : "index.html",
     gallery: page === "index.html" ? "#gallery" : "index.html#gallery",
-    book: /\bid="bookFunnel"/.test(html) ? "book.html" : "index.html#book",
+    // Every page with the shared SCRIPTS block carries the booking form, so
+    // Book Now opens it in place; index.html#book is for a page without it.
+    book: /CHROME:SCRIPTS:START|\bid="bookFunnel"/.test(html) ? "book.html" : "index.html#book",
     contact: page === "contact.html" ? "#inquiry" : "contact.html",
     areas: page === "service-area.html" ? "" : "service-area.html",
   };
@@ -71,6 +75,9 @@ export function applyChrome(page, html) {
     const start = `<!-- CHROME:${part}:START -->\n`, end = `\n<!-- CHROME:${part}:END -->`;
     const i = html.indexOf(start), j = html.indexOf(end);
     if (i < 0 || j < 0) throw new Error(`chrome: CHROME:${part} markers missing in ${page}`);
+    const have = html.slice(i + start.length, j);
+    // Same apart from the ?v= stamps: leave it, so a rebuild changes nothing.
+    if (unstamp(have) === want[part]) continue;
     html = html.slice(0, i + start.length) + want[part] + html.slice(j);
   }
   return html;
