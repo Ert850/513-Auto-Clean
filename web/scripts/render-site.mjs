@@ -114,7 +114,13 @@ function correctionBlock() {
           </div>`;
 }
 
-function packageCard(p) {
+// On services.html each package card lists its first FOLD_AT inclusions and
+// folds the rest behind a toggle, so all three cards (name, price, hours,
+// the key inclusions and the Book button) fit on a laptop screen. The home
+// page keeps the full lists: the owner reverted a compact teaser there.
+const FOLD_AT = 4;
+
+function packageCard(p, { fold = false } = {}) {
   const comps = componentsOf(p, SEED_CATALOG);
   const base = p.supersetOf ? findPackage(p.supersetOf) : null;
   const shown = base ? comps.slice(componentsOf(base, SEED_CATALOG).length) : comps;
@@ -124,10 +130,12 @@ function packageCard(p) {
 
   // NOTE: the (i) video markers go here, driven by component.videoUrl.
   // Nothing is rendered until those clips exist.
-  const feats = (base ? [`<strong>Everything in ${esc(base.name)}</strong>`] : [])
+  const items = (base ? [`<strong>Everything in ${esc(base.name)}</strong>`] : [])
     .concat(shown.map((c) => esc(c.name)))
-    .map((label) => `            <li>${TICK} ${label}</li>`)
-    .join("\n");
+    .map((label) => `            <li>${TICK} ${label}</li>`);
+  const cut = fold && !p.requiresCorrectionTier && items.length > FOLD_AT ? FOLD_AT : items.length;
+  const feats = items.slice(0, cut).join("\n");
+  const more = items.slice(cut);
 
   // The correction package is a different kind of product and a different
   // order of price, so it gets a full width card underneath the tier row
@@ -150,11 +158,15 @@ function packageCard(p) {
           <ul class="feat">
 ${feats}
           </ul>
-          ${
-            p.note
+          ${(() => {
+            const how = p.note
               ? `<details class="svc-how"><summary>How it works</summary><p>${esc(p.note)}</p></details>`
-              : ""
-          }
+              : "";
+            if (!more.length) return how;
+            // Both toggles share one row; an opened one takes the full width.
+            const fold = `<details class="svc-more"><summary>${more.length} more included</summary><ul class="feat">\n${more.join("\n")}\n          </ul></details>`;
+            return `<div class="svc-toggles">${fold}${how}</div>`;
+          })()}
           <div class="svc-foot">${
             p.comingSoon
               ? `<a class="btn btn-ghost btn-block" href="book.html" data-book-interest="${esc(p.id)}">Register interest</a>`
@@ -175,12 +187,12 @@ ${p.featured ? '          <span class="svc-tag">Most Popular</span>\n' : ""}${
         </article>`;
 }
 
-function servicesHtml() {
+function servicesHtml({ fold = false } = {}) {
   const panel = (cat) => {
     const cards = packagesFor(cat)
       // Maintenance is returning-customer pricing and is not offered publicly.
       .filter((p) => !p.requiresPriorDetail)
-      .map(packageCard)
+      .map((p) => packageCard(p, { fold }))
       .join("\n\n");
     return `    <div class="svc-panel${cat === "interior" ? " active" : ""}" id="panel-${cat}">
       <div class="svc-grid">
@@ -323,7 +335,7 @@ const pages = Object.fromEntries(PAGES.map((f) => [f, read(f)]));
 // The full cards on both: the home page shows them as it always has, and
 // services.html carries them above the add-ons.
 pages["index.html"] = splice("index.html", pages["index.html"], "SERVICES", servicesHtml());
-pages["services.html"] = splice("services.html", pages["services.html"], "SERVICES", servicesHtml());
+pages["services.html"] = splice("services.html", pages["services.html"], "SERVICES", servicesHtml({ fold: true }));
 pages["index.html"] = splice("index.html", pages["index.html"], "OFFERS", offersHtml());
 pages["services.html"] = splice("services.html", pages["services.html"], "ADDONS", addonsHtml());
 pages["faq.html"] = splice("faq.html", pages["faq.html"], "FAQPRICE", faqPriceText(), { inline: true });

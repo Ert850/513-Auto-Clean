@@ -123,6 +123,13 @@ Read this before changing anything. Every rule below came from a real bug or an 
 - **No `flex-wrap` on an icon + text row.** The text's flex-basis is its full one-line width, so it always wraps onto a row of its own under the icon. Use `nowrap` and give the text `flex: 1; min-width: 0`.
 - **A mobile-only rule written after a `min-width` media query overrides desktop too** (same specificity, later wins). Wrap it in `max-width: 819.98px`.
 
+## Sub-page fold (fixed November 10)
+- **Each sub-page's core content fits the first screen at 1440×790 and 1920×950** (Services: tabs and all three cards down to the Book buttons; About: the story and the Google rating badge; Range & Travel: the estimator, map and legend; FAQ: every question; Contact: the form). Measure with `fold.mjs` in the shared side-session notes folder before and after any change above the cards. 1280×720 fits too except the Exterior tab, whose Full Exterior tagline runs five lines.
+- **Sub-page titles are the compact size** (`main > section:first-child .section-head h2`, the size `.inq-head` set on Contact). Home-page section titles at 2.7rem took three lines and 140 px of a laptop screen.
+- **Page-wide defaults on sub-pages go through `:where()`.** `main > section:first-child .section-head { margin-bottom }` outranked `.svc-intro .section-head { margin-bottom: 0 }` and quietly added 26 px under the Services title.
+- **`index.html` has no `<main>`**, so `main …` rules reach the sub-pages only. The card density rules rely on that; if the home page gains a `<main>`, they spread to it.
+- **On `services.html` a package checklist folds after 4 items** behind "N more included", on one row with "How it works" (`render-site.mjs` `servicesHtml({ fold: true })`). The home page keeps the full lists. A toggle that opens takes the full row (`.svc-toggles > details[open]`).
+
 ## Results carousel (built November 10)
 - **No `.reveal` on anything inside a sideways track.** A card parked off to the side never intersects the viewport, so it stays invisible and fades up late when it slides in. Put `.reveal` on the carousel.
 - **Hover means a pointer that moved.** Chrome fires pointer events when the page scrolls under a resting cursor; a plain `mouseenter` pause stopped the carousel for anyone scrolling with the mouse mid-screen. Check `movementX`/`movementY`.
