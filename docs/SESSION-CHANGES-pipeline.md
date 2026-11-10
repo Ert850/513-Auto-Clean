@@ -13,6 +13,95 @@ Built overnight, November 10 to 11, for you to evaluate. It combines your 8 answ
   - `web/lib/browser-entry.ts`, `js/pricing.bundle.js` (built), `web/lib/funnel.smoke.test.mjs`.
   - The build also re-stamps `?v=` on every page. Those page changes were left out of the commit; a rebuild after merging restamps them.
 
+## Round 15 (November 10, night): two pages, a checkout, recommended times from the calendars
+
+Built from the owner's two transcripts and your notes. The numbered list is `docs/PIPELINE-ROUND-15-PLAN.md`, and the calendar setup for Kris and Elijah is `docs/CALENDAR-SETUP.md`.
+
+### A. Recommended times come from Google Calendar
+- **BEST events:** events titled `BEST...` on an availability calendar mark ideal start times. They never block time, whether set to Busy or Free (`web/lib/google/publicCalendar.ts`). That was the only code change the setup needed; the times themselves are set in Google Calendar.
+- **Priority:** "Priority: N" in a calendar's Description orders the detailers (`parsePriority`; lower goes first; the `DETAILERS` order breaks a tie). It's read from the events list Google already returns, so it costs no extra request.
+- **The three days** (`recommendBestDays` in `week.ts`, `TIME_RECOMMENDATION_RULES` version `best-1`):
+  - **Soonest;**
+  - **the first day past the rush window,** labelled by its distance ("In 3 days", or "Tomorrow"), never by its price;
+  - **Weekend.**
+  - Each leads with the first-priority detailer's best time that day. If that detailer isn't free for the whole job, the next one's best time leads instead.
+- **"More times on Friday":** only the other detailers' best times that day, plus one quiet "Need a different start?" dropdown for any other start. A detailer with no BEST events falls back to the day-packing suggestions.
+- **Same source everywhere:** the calendar's stars and the "Change to suggested?" pill now follow the BEST times too.
+- **Fees on the cards are quiet:** one plain line, and nothing at all for the standard price.
+
+### B. The calendar view
+- **Opens on the regular hours:** a frame shows 10am to 6pm, with the day names pinned inside it.
+- **Markers:** "Earlier times" above and "Later times" below. They fade when there's nothing more in that direction, and a click scrolls 4 hours.
+- **Not changed:** the phone day list.
+
+### C. Checkout: Where, Time, Accept and Confirm on one page
+- **Order:** Your details (name, phone, email) → Where → When → Almost done (terms, "Can we record during the detail?", texts, "Where did you hear about us?") → Review and book.
+- **Same steps underneath:** the same renders and validators, checked top to bottom, and an error points at the field on the same page.
+- **Picking a time** selects it, redraws the summary below (its fee, "your time is held") and moves the page down to "Almost done". Confirm still checks the time is free (`verifySlot`).
+- **The calendar is read on entering checkout** and when the job, the address or cover changes, not on every tick box (`slotsKey`). An address typed on the checkout refreshes the times once it settles.
+- **Shorter text:**
+  - the terms are one line with their two cancellation numbers;
+  - recording is "For short clips on our social media. We always blur faces, license plates and anything private."
+  - email no longer says "(optional)", though it still isn't required.
+- **"Where did you hear about us?":** an optional dropdown. The answer goes with the booking and into the calendar event, and analytics records `heard_about`.
+
+### C3. A checkout left unfinished (owner: "capture now, send via GHL later")
+- **What happens:** someone who typed their name plus a phone or email at checkout, and leaves without booking, is emailed to the owner once (`netlify/functions/cart-capture.mjs`, `/api/cart-capture`), with what they had picked.
+- **When it fires:** on closing the form or leaving the page. It's sent once per contact and cart, and never after "Cancel my booking".
+- **Safeguards:** it sends only while the privacy capability `checkoutFollowUp` is live, it only ever emails the owner's own address, and it's rate limited.
+- **GoHighLevel:** its "you didn't finish" reminder replaces this email once its keys are set. That part isn't built, because it can't be tested yet.
+- **Privacy (legal process):**
+  - the policy now lists "where you heard about us" and the unfinished-checkout details;
+  - the browser-draft paragraph no longer says nothing reaches us;
+  - the leave dialog says the checkout details reach us.
+  - The date stays 2026-11-10 (same day, not live yet). The lock was re-run, and the legal tests pass.
+
+### D to G. The first page: Vehicle, Service, Package and Extras grow in place
+- **One growing page:** each answer folds to a one-line "VEHICLE: Medium, Change" row, and the next question slides up under it (respecting reduced motion).
+- **Vehicle:** three picture cards, Small, Medium, Large, with the extra price as its own mark ("No extra cost", "+$10", "+$25").
+- **Service:** three picture cards, left to right Interior, Both ("Save $25"), Exterior, then "Not sure? Help me decide" as its own row. The "See all services and prices" sentence is gone; "Browse through all options" stays.
+- **Packages:**
+  - one line each (name, the one-line promise, price, time), with "How it works" inside the card: what's included, then the note;
+  - "Have a promo code?" folded;
+  - at 1440×900, all three interior packages are fully visible.
+- **Extras:** hidden behind "View additional options for your detail" (opened by itself once one is added). The cards are smaller, with "How it works" beside the description. The second-vehicle line stays.
+- **Continue** reads "Continue to checkout".
+- **Reading level** (Flesch-Kincaid grade): vehicle 1.1, service 1.1, recommended times 2.0, the yeses 4.0, packages 5.3 (the owner's own lines), extras 7.7 (the owner's own button wording).
+
+### H. The results carousel
+- **What changed:** built on `eNov6` (`8f6f180`) by a helper and merged here. The 6 s cycle runs in sync on every card: 1 s still, 1 s right, 1 s left (ending on the after), 2 s hold, 1 s shift with the handles going back to the middle.
+- **Measured:** timings to within 50 ms at 1440 and 375, with 0 ms skew between cards. `CLAUDE.md` is updated on `eNov6`.
+
+### Bugs found and fixed while checking
+- **Scroll overshoot:** scrolling to a section overshot by 132 px, because `offsetTop` counts from the modal, not the scroll area. Fixed with `scrollToEl`.
+- **The site's section padding** (styles.css `section { padding-block }`) put about 150 px above every first-page question. Fixed with `#bookFunnel .bk-sec { padding: 0 }`.
+- **The "More below" fade** washed out the "See additional times" bar whenever any pinned bar existed. It now lifts only while the bar is really stuck at the bottom.
+- **The calendar-frame code** threw in the test page's simplified DOM, and any throw drops the calendar to "tell us when suits". It's now wrapped, since it's only cosmetic.
+- **Stale summary:** picking a time didn't redraw the summary below it. The checkout now redraws, with the times painted from memory in the same pass.
+
+### Verified (headless Chrome, live calendar, test Kris; tests 476/476, types clean)
+- **The flow at 1440×900 and 375×812:**
+  - picture cards, and the answered-question rows with the slide-in;
+  - 3 packages visible, and "How it works" opens without selecting;
+  - extras folded, then 5 shown;
+  - the checkout's 5 sections;
+  - recommended times "Soonest / In 3 days / Weekend";
+  - "More times" (best chip plus a 31-option dropdown);
+  - a pick moves to "Almost done" (8 px from the top);
+  - Confirm with the terms unticked holds, with the right message;
+  - the calendar opens with 10am first, with both markers.
+- **No script errors.**
+
+### Not verified yet
+- **The BEST times and Priority with real events:** the calendars don't have them yet, so the fallback suggestions are what ran. Check again once Kris's and Elijah's calendars are set up.
+- **The unfinished-checkout email:** it needs the production email key, so it's untested end to end. The function is tested without a key.
+- **A real booking sent from the new checkout:** I never press Confirm on live services.
+- **The "Both" picture** may want a better drawing.
+- **Lessons for `CLAUDE.md` after the merge:**
+  - scroll by measuring against the scroll area;
+  - the site's `section` padding reaches inside the booking form;
+  - cosmetic code must never throw inside the calendar painter.
+
 ## Round 14 (November 10): setup questions optional again, two layout bugs
 
 ### "Getting set up on the day" is optional again (owner)
