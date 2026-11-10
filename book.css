@@ -521,12 +521,36 @@ button.bk-wk-c:hover { box-shadow: 0 0 0 2px var(--red-ghost); }
 .bk-wk-sum .bk-wk-short { margin-top: .3rem; color: #7a5209; font-weight: 600; }
 .bk-wk-sum.other { border-color: var(--line); }
 .bk-wk-sum.other b { display: inline; font-family: inherit; font-size: inherit; }
-.bk-wk-chips { display: flex !important; flex-wrap: wrap; align-items: center; gap: .4rem; margin-top: .5rem; color: var(--text) !important; font-weight: 700; font-size: .8rem; }
 .bk-wk-chip {
   font: inherit; font-size: .82rem; font-weight: 700; cursor: pointer; padding: .35rem .7rem; min-height: 36px;
   background: var(--paper); border: 1.5px solid var(--line); border-radius: 999px; color: var(--text);
 }
 .bk-wk-chip:hover { border-color: var(--red); }
+
+/* The chosen time, in the middle of the bottom bar (the week view only). */
+.bk-pick {
+  flex: 0 1 auto; min-width: 0; margin: 0 auto; text-align: center;
+  padding: .4rem .75rem; border: 1.5px solid var(--red); border-radius: var(--r-sm); background: var(--paper-2);
+  font-size: .76rem; line-height: 1.35; color: var(--text-soft);
+}
+.bk-pick b { display: block; font-family: var(--font-display); font-size: .92rem; color: var(--text); }
+.bk-pick span { display: block; }
+.bk-pick .bk-pick-short { color: #7a5209; font-weight: 600; }
+.bk-pick .bk-pick-chips {
+  display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: .35rem;
+  margin-top: .3rem; color: var(--text); font-weight: 700;
+}
+.bk-pick .bk-wk-chip { min-height: 30px; padding: .15rem .6rem; font-size: .76rem; }
+.bk-pick:not([hidden]) ~ .bk-nextbtn { margin-left: 0; }
+@media (max-width: 559.98px) {
+  .bk-foot { flex-wrap: wrap; row-gap: .6rem; }
+  .bk-pick { order: -1; flex-basis: 100%; text-align: left; }
+  .bk-pick .bk-pick-chips { justify-content: flex-start; }
+  .bk-pick { padding: .35rem .65rem; }
+  .bk-pick .bk-pick-chips { margin-top: .2rem; }
+  .bk-pick .bk-wk-chip { min-height: 32px; }
+  .bk-pick:not([hidden]) ~ .bk-nextbtn { margin-left: auto; }
+}
 .bk-wk-fine { font-size: .76rem; color: var(--text-soft); line-height: 1.5; margin: .6rem 0 .6rem; }
 .bk-wk-gobar {
   display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .5rem 1rem;
@@ -1175,20 +1199,30 @@ button.bk-wk-c:hover { box-shadow: 0 0 0 2px var(--red-ghost); }
 }
 .bk-leave-sum li + li { margin-top: .2rem; }
 
-.bk-leave-acts { display: flex; flex-direction: column; gap: .45rem; }
+/* One way back (the funnel's own red Continue), two equal choices side by
+   side, and the way out as quiet text: four stacked buttons in four styles
+   read as noise (owner, November 10). */
+.bk-leave-acts { display: flex; flex-direction: column; gap: .5rem; }
 .bk-leave-acts button {
   font: inherit; font-size: .92rem; font-weight: 700; cursor: pointer;
-  border-radius: var(--r-sm); padding: .72rem .9rem; text-align: center;
-  border: 1.5px solid var(--line); background: var(--paper); color: var(--text);
-  transition: border-color .16s, background .16s;
+  display: inline-flex; align-items: center; justify-content: center; gap: .45rem;
+  border-radius: var(--r-sm); padding: .75rem .9rem; text-align: center;
+  border: 1.5px solid var(--line); background: var(--paper-2); color: var(--text);
+  transition: border-color .16s, background .16s, color .16s;
 }
-.bk-leave-acts button:hover { border-color: var(--red); }
-.bk-leave-go { background: var(--ink) !important; color: #fff !important; border-color: var(--ink) !important; }
-.bk-leave-go:hover { background: var(--ink-2) !important; }
-.bk-leave-keep { border-color: var(--red) !important; color: var(--red) !important; }
-.bk-leave-ask { /* the plain outlined default: a third option, not a third shout */ }
-.bk-leave-drop { color: var(--text-soft) !important; font-weight: 500 !important; border-color: transparent !important; }
-.bk-leave-drop:hover { color: var(--red) !important; }
+.bk-leave-acts svg { width: 16px; height: 16px; flex: none; }
+.bk-leave-acts .bk-leave-go { background: var(--red); border-color: var(--red); color: #fff; }
+.bk-leave-acts .bk-leave-go:hover { background: var(--red-deep); border-color: var(--red-deep); }
+.bk-leave-pair { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; }
+.bk-leave-pair button { flex-direction: column; gap: .3rem; padding: .7rem .5rem; font-size: .86rem; line-height: 1.25; }
+.bk-leave-pair svg { width: 19px; height: 19px; color: var(--red); }
+.bk-leave-pair button:hover { border-color: var(--red); background: var(--paper); }
+.bk-leave-acts .bk-leave-drop {
+  align-self: center; background: none; border-color: transparent; padding: .45rem .8rem;
+  color: var(--text-soft); font-weight: 600; font-size: .86rem;
+  text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--line);
+}
+.bk-leave-acts .bk-leave-drop:hover { color: var(--red); text-decoration-color: currentColor; }
 .bk-leave-note { margin: .85rem 0 0; font-size: .76rem; color: var(--text-soft); line-height: 1.5; }
 
 /* ---------- A word after the modal has gone ---------- */

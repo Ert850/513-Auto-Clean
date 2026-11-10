@@ -249,6 +249,7 @@ The modal is up to 680px wide (`book.css:41`).
 - **One tap selects** the suggested start in that hour: the `:00` start if there is one, otherwise `:30`. Use `recommendStarts()` within the hour so a start right after an existing job wins, as the bands do now.
 - If both `:00` and `:30` exist, show two small chips under the grid ("10:00am" / "10:30am") with the suggested one selected. No extra tap needed.
 - Under the grid, one summary line: "Tuesday Nov 11, 10am. We arrive between 10 and 11, and a 4 hour detail runs to about 2pm. Standard price." For a fee: "+$36 early start fee." Then Continue, which still runs `verifySlot()`.
+  - *Built differently (rounds 3 and 8):* a click on the grid books the start and moves on, like the recommended times. Back shows the chosen time in the middle of the bottom bar, with the other starts in that hour as one-tap chips.
 - **Day-packing:** the band picker hides all but the suggested start in each band on purpose, so that one 1pm booking does not ruin a day that could take 10am and 4pm (`js/funnel.js:2451-2477`). A full grid shows every hour. Options: (a) show every valid hour and mark suggested ones with a small dot, or (b) color only the suggested starts and put the rest behind "Show all times". **Owner question.** (a) is simpler for customers; (b) protects the schedule.
 
 ### 5.6 Phones (560px and narrower)

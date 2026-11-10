@@ -13,6 +13,44 @@ Built overnight, November 10 to 11, for you to evaluate. It combines your 8 answ
   - `web/lib/browser-entry.ts`, `js/pricing.bundle.js` (built), `web/lib/funnel.smoke.test.mjs`.
   - The build also re-stamps `?v=` on every page. Those page changes were left out of the commit; a rebuild after merging restamps them.
 
+## Round 8 (November 10): the chosen time in the bottom bar, one-tap calendar, the leave dialog
+
+### The chosen time sits in the bottom bar
+- **What:** on the week view ("See additional times"), the chosen time's box now sits in the middle of the bottom bar, between the price and Continue, instead of above the grid. It keeps its red outline. On phones it takes the full width of the bar, above the price and Continue.
+- **What it says, shortened so the bar stays a bar:**
+  - day and span ("Fri, Nov 13, 10:30am to 2:30pm");
+  - arrival window and price ("Arrive 10:30am to 11:30am · Standard price", or the fee and why);
+  - the short-notice line when it applies;
+  - the "Or start at" chips, which still book in one tap.
+- **Kept in the page:** the coating note ("we book the coating for a warmer day") is too long for the bar and stays above the grid. So does "You picked … Show that week" when the chosen time is in another week.
+- **Shown only on the week view.** Our recommended times, and every other step, clear it (`setPick('')` in `render()` and `paintRecs`).
+
+### One tap on the calendar
+- **What:** clicking a start on the week grid (the hover block already shows the whole detail) chooses it and moves on to Details, like the recommended times. On phones, tapping a time in the day's list does the same, because each row already shows the span and the fee.
+- **Coming back** with Back shows the choice as the block on the grid and in the bottom bar, with the "Or start at" chips as the second chance to change it.
+- **Same checks as before:** the move goes through `advance()`, so the live calendar check (`verifySlot`) still runs first.
+- **Analytics:** `time_pick` still says `via: calendar` or `via: summary` (a chip in the bar).
+- **Trade-off:** on a touch screen 520 px or wider (a tablet showing the grid), there's no hover, so a tap moves on without showing the block first. The cell already shows the start and the price, and Back shows the block.
+
+### The leave dialog
+- **"Throw it away" is now "Cancel my booking"** (sentence case, like the other buttons). It does the same thing: deletes the saved answers and closes.
+- **Layout, from four buttons in four styles to three levels:**
+  - one primary, "Back to my booking", in the booking form's own red Continue style, focused on open;
+  - "Keep it for next time" and "I have a question" side by side, same outlined style, each with a small red icon;
+  - "Cancel my booking" as quiet underlined text below.
+- **CSS:** the `!important` overrides are gone; the rules use `.bk-leave-acts .bk-leave-go` specificity instead.
+
+### Verified (headless Chrome, live calendar, test Kris)
+- **1440×900:** clicking a grid start goes to Details; Back shows the bar box with the right span, fee and chip; the chip books and moves on; switching to recommended times clears the bar.
+- **375×812 and 320×640:** the same, through the phone list. No sideways scroll; the bar is about 165 px tall, or 190 px with the short-notice line.
+- **Leave dialog:** buttons render at 1440, 375 and 320; focus starts on "Back to my booking"; "Cancel my booking" closes and leaves no saved draft.
+- **Tests:** 467/467.
+
+### To test
+- Week view: pick a start, press Back, check the bottom bar, then try an "Or start at" chip.
+- Phone: the same, from the day list.
+- Close with ✕ partway through, and try each of the four choices.
+
 ## Round 7 (November 10): privacy, payments, block fixes, recommended days, futureproofing
 
 ### Privacy policy (legal process followed)
