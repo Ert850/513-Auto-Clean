@@ -129,6 +129,9 @@
       browseMax: null,
       browseFilters: {},
       browseSort: 'price',
+      // On by default, and on top of whichever sort is chosen (owner,
+      // November 10): packages, then add-ons, each in that order.
+      browsePkgFirst: true,
       separateTimes: false,
       payMethod: 'card',
       payState: null
@@ -1576,6 +1579,7 @@
     var pOf = function (i) { return i.priceCents === null ? Infinity : i.priceCents; };
     list = list.slice().sort(function (a, b) {
       if (a.unavailable !== b.unavailable) return a.unavailable ? 1 : -1;
+      if (state.browsePkgFirst && (a.kind === 'package') !== (b.kind === 'package')) return a.kind === 'package' ? -1 : 1;
       if (state.browseSort === 'popular') {
         var d = P.popularityOf(b.id) - P.popularityOf(a.id);
         // Ties break on price so the order is stable rather than arbitrary,
@@ -1622,6 +1626,8 @@
       '</div>' +
       '<div class="bk-filters">' +
         '<span class="bk-filtlab">Sort</span>' +
+        // A switch of its own, so it can be on with any one of the others.
+        '<button type="button" class="bk-chip' + (state.browsePkgFirst ? ' on' : '') + '" data-pkgfirst aria-pressed="' + state.browsePkgFirst + '">Packages first</button>' +
         '<button type="button" class="bk-chip' + (state.browseSort === 'popular' ? ' on' : '') + '" data-sort="popular">Most popular</button>' +
         '<button type="button" class="bk-chip' + (state.browseSort === 'price' ? ' on' : '') + '" data-sort="price">Price, low first</button>' +
         '<button type="button" class="bk-chip' + (state.browseSort === 'priceDesc' ? ' on' : '') + '" data-sort="priceDesc">Price, high first</button>' +
@@ -5390,7 +5396,7 @@
   function onClick(e) {
     var t = e.target.closest(
       '[data-size],[data-intent],[data-pkg],[data-addon],[data-clear],[data-win],[data-slot],' +
-      '[data-pay],[data-delveh],[data-browsepick],[data-max],[data-sort],' +
+      '[data-pay],[data-delveh],[data-browsepick],[data-max],[data-sort],[data-pkgfirst],' +
       '[data-kind],[data-paymethod],[data-corr],[data-coating],[data-garage],[data-step],' +
       '[data-prefday],[data-prefpart],[data-interest],[data-wkday],[data-more],[data-steer],[data-flexday],[data-wkedge],[data-ckcont],[data-cksec],[data-access],[data-extrarm],' +
       '#bkWkPrev,#bkWkNext,#bkWkNext2,#bkWkToday,#bkWkBack,#bkShowAll,#bkShowRecs,' +
@@ -5422,6 +5428,11 @@
       return render();
     }
     if (t.dataset.sort) { state.browseSort = t.dataset.sort; return render(); }
+    if (t.dataset.pkgfirst !== undefined) {
+      state.browsePkgFirst = !state.browsePkgFirst;
+      track('browse_pkgfirst', { on: state.browsePkgFirst });
+      return render();
+    }
     if (t.dataset.kind) { cycleFilter(t.dataset.kind); return render(); }
     if (t.dataset.paymethod) {
       /*
