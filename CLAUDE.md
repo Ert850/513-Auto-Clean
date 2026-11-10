@@ -125,23 +125,32 @@ Read this before changing anything. Every rule below came from a real bug or an 
 - **No `flex-wrap` on an icon + text row.** The text's flex-basis is its full one-line width, so it always wraps onto a row of its own under the icon. Use `nowrap` and give the text `flex: 1; min-width: 0`.
 - **A mobile-only rule written after a `min-width` media query overrides desktop too** (same specificity, later wins). Wrap it in `max-width: 819.98px`.
 
-## Sub-page fold (fixed November 10)
-- **The owner's acceptance test, at 1440×790, 1280×720 and 1920×950** (laptop and desktop windows), with nothing scrolled:
-  - Services: every visible package card's Book button.
-  - About: the 5.0 Google score and the tops of the first review cards (name and stars).
-  - Range & Travel: the estimator, the map and its legend.
+## Sub-page fold (fixed November 10, toned back in round 2)
+- **The owner's acceptance test, at 1440×790** (a laptop window; 1280×720 and 1920×950 are checked too), with nothing scrolled:
+  - Services: every visible package card's Book button, and the whole offers banner with its "Add-ons for any package ↓" link (owner's pick of three rendered options).
+  - About: the 5.0 Google score, and the tops of the first review cards as the cue that the reviews follow.
+  - Range & Travel: the estimator, the Ohio, Kentucky and Indiana cards, the map and its legend.
   - FAQ: every question.
   - Contact: the Send button.
 
   Measure with `fold.mjs` (side-session notes folder; serve `dist/` on your port) before and after any change above these.
-- **The margins are thin.** The Services Exterior tab ends 4 px inside 720. Full Exterior's tagline fits four lines only because the card has 1.2rem side padding (at 1.4rem it ran five lines). A longer tagline, a fifth visible checklist item, or more padding above the cards breaks the test.
+- **Fitting is not the only goal: the owner rejected "too dense".** Round 1 put the Services tabs beside the title and shrank the About photo to a 15rem strip. The owner called the first "unnecessarily dense" and the second "too small". Fit the core content with a moderate amount of air; if it won't fit, say so rather than squeeze.
+- **End the first screen on something cut off, not on a clean edge** (NN/g "illusion of completeness"). A screen that stopped just under the card bottoms, followed by a 144 px blank band, read as the end of the page twice.
+- **Two adjacent sections on the same background must not both keep their full padding.** `#services` (72 px bottom) on top of `#addons` (72 px top) made the false floor. Sub-pages now use one gap (`main > #services + #addons { padding-top: 0 }`).
+- **Check every margin inside a flex column for stacking.** `main .svc-card .svc-how { margin-bottom: 1rem }` outranked `.svc-toggles > details { margin: 0 }` and added 16 px to every folded card.
+- **The margins are thin.** Book buttons sit about 25 to 40 px inside 790. Full Exterior's tagline fits four lines only because the card has 1.2rem side padding (at 1.4rem it ran five lines).
 - **Sub-page titles are the compact size** (`main > section:first-child .section-head h2`, the size `.inq-head` set on Contact). Home-page section titles at 2.7rem took three lines and 140 px of a laptop screen.
 - **Page-wide defaults on sub-pages go through `:where()`.** `main > section:first-child .section-head { margin-bottom }` outranked `.svc-intro .section-head { margin-bottom: 0 }` and quietly added 26 px under the Services title.
-- **`index.html` has no `<main>`**, so `main …` rules reach the sub-pages only. The card density rules rely on that; if the home page gains a `<main>`, they spread to it.
-- **On `services.html` a package checklist folds after 4 items** behind "N more included", on one row with "How it works" (`render-site.mjs` `servicesHtml({ fold: true })`). The home page keeps the full lists. A toggle that opens takes the full row (`.svc-toggles > details[open]`).
+- **`index.html` has no `<main>`**, so `main …` rules reach the sub-pages only. The card density rules and the `#services` gap rules rely on that; the home page has its own `#services`.
+- **On `services.html` a package checklist folds after 3 items** (`FOLD_AT`) behind "N more included", on one row with "How it works" (`render-site.mjs` `servicesHtml({ fold: true })`). The same option makes the banner compact and adds its add-ons link. The home page keeps the full lists and the old banner. A toggle that opens takes the full row (`.svc-toggles > details[open]`). The Services page has no eyebrow (owner's pick).
+- **Range & Travel leads with the states, not the towns:**
+  - Three compact cards (`.at-states`) sit under the estimator, in its left column: name, area codes, counties, and "All N towns +".
+  - All 74 towns stay in the HTML. Keep `#area-oh`, `#area-ky` and `#area-in` on the cards; the footer links point there.
+  - The map uses `zoomSnap: 0.25`: with whole zoom levels, a map 20 px shorter dropped from zoom 9 to 8.
 - **Package cards go three across only from 1000 px.** At 820 px each card was 230 px wide, and three-word checklist items left one word alone on a line.
 - **About from 1000 px:**
-  - The portrait is a narrow column as tall as the copy, not a 4:5 frame.
+  - The portrait keeps its 4:5 frame at 20rem wide.
+  - The story is held to 40rem (about 75 characters a line) at line-height 1.65.
   - `js/reviews.js` puts the Google score into `#rvScore`, beside the "Cincinnati keeps coming back." title.
   - `.reviews` is transparent there, because its background cut the portrait's shadow.
 
