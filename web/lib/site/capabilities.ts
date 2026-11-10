@@ -197,6 +197,18 @@ export const CAPABILITIES: Capability[] = [
     live: true,
     blockedBy: "nothing: api.weather.gov is free and needs no key",
   },
+  {
+    id: "checkoutFollowUp",
+    what: "Following up once on a booking left unfinished at checkout",
+    // Live (owner, November 10, round 15: "capture now, send via GHL later"):
+    // someone who types their name and a phone number or email at the top of
+    // the checkout and leaves without booking is sent to the owner by email
+    // (netlify/functions/cart-capture.mjs), so they can be followed up once.
+    // The privacy policy says so while this is on, and the form sends
+    // nothing while it is off.
+    live: true,
+    blockedBy: "nothing: it uses the booking email service",
+  },
 ];
 
 /**

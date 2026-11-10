@@ -277,3 +277,35 @@ describe("every function survives hostile input with its key present", () => {
     expect(r.body).not.toContain("userinfo");
   }, 30_000);
 });
+
+describe("cart-capture (a checkout left unfinished, round 15)", () => {
+  const load = async () =>
+    (await import(`../../netlify/functions/${"cart-capture"}.mjs`)) as {
+      captureFrom: (p: unknown) => Record<string, string> | null;
+      handler: (e: unknown) => Promise<{ statusCode: number; body: string }>;
+    };
+
+  it("needs a name and a way to reach them, and keeps what they picked", async () => {
+    const { captureFrom } = await load();
+    expect(captureFrom({ contact: { name: "Ada" } })).toBeNull();
+    expect(captureFrom({ contact: { name: "", phone: "5135551212" } })).toBeNull();
+    expect(captureFrom({ contact: { name: "Ada", phone: "123" } })).toBeNull();
+    const c = captureFrom({ contact: { name: "Ada", phone: "+1 (513) 555-1212" }, summary: "Small, Basic Interior", heard: "Instagram" })!;
+    expect(c.phone).toBe("5135551212");
+    expect(c.picked).toBe("Small, Basic Interior");
+    expect(c.heard).toBe("Instagram");
+    expect(captureFrom({ contact: { name: "Ada", email: "ada@example.com" } })!.email).toBe("ada@example.com");
+  });
+
+  it("sends nothing without the email key, and only ever to the owner", async () => {
+    const { handler } = await load();
+    const prev = process.env.RESEND_API_KEY;
+    delete process.env.RESEND_API_KEY;
+    const r = await handler({ httpMethod: "POST", headers: {}, body: JSON.stringify({ contact: { name: "Ada", phone: "5135551212", email: "someone@else.com" } }) });
+    expect(JSON.parse(r.body)).toEqual({ captured: false, reason: "unconfigured" });
+    if (prev) process.env.RESEND_API_KEY = prev;
+    const src = (await import("node:fs")).readFileSync(new URL("../../netlify/functions/cart-capture.mjs", import.meta.url), "utf8");
+    expect(src, "the recipient is the owner's own address").toContain("to: [owner]");
+    expect((await handler({ httpMethod: "GET" })).statusCode).toBe(405);
+  });
+});
