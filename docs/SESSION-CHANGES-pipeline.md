@@ -53,6 +53,13 @@ Built overnight, November 10 to 11, for you to evaluate. It combines your 8 answ
 - Pick a 10pm Saturday, then add Pet Hair at Review: Time reopens with the reason.
 - Keep a draft, come back after its time: Time reopens with "has passed".
 - An all-day event on an availability calendar blocks that whole day, and only that day.
+- On the next pipeline deploy preview: one of Elijah's booked jobs on 513 Auto Clean removes its time from the booking form (it is now read busy-only, through `GOOGLE_BUSY_ONLY_CALENDAR_IDS`).
+
+### Left from the calendar setup (November 10)
+- Share 513 Kris Bookings with Kris, once we have his email.
+- Writing booked jobs onto the calendars: not set up (no Google credentials in Netlify). Until it is, every job, Kris's included, goes onto its calendar by hand, or the time stays offered. Steps in `docs/DETAILERS-GUIDE.md`.
+- After the merge: make the 513 Auto Clean jobs calendar free/busy only. The Netlify half is done.
+- If the fee standard changes (option B), Kris's `DETAILERS` entry changes with it.
 
 ### Questions for the owner
 - **Titles:** should only upper-case `OPEN` and `BEST` count? Today "Open house party" still switches a calendar to working-hours mode, and a Busy "Best Buy pickup" is read as a best time.
