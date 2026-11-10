@@ -544,7 +544,10 @@
       tabSum: function () { return state.address.city || state.address.zip; } },
     { id: 'when', title: 'Pick your time', render: function () { return rTime(); }, valid: function () { return vTime(); },
       sum: function () {
-        if (state.slot) return tzDay(state.slot, { weekday: 'short', month: 'short', day: 'numeric' }) + ', ' + spanLabel(state.slot, holdMinutes());
+        // With the hour we arrive in (owner, November 10: a 1 hour arrival
+        // window, aimed at its start).
+        if (state.slot) return tzDay(state.slot, { weekday: 'short', month: 'short', day: 'numeric' }) + ', ' + spanLabel(state.slot, holdMinutes()) +
+          ' · arrive ' + arrivalWindow(state.slot);
         return isInquiry() ? preferenceSummary() : '';
       },
       tabSum: function () { return state.slot ? tzDay(state.slot, { month: 'short', day: 'numeric' }) + ', ' + tzTime(state.slot) : isInquiry() ? 'Requested' : ''; } },
@@ -632,6 +635,12 @@
     });
     return html;
   }
+  /** "10 to 11am": the hour we arrive in, from the start time. */
+  function arrivalWindow(ms) {
+    var m = localMin(ms);
+    return endLabel(m).replace(/(am|pm)$/, endLabel(m).slice(-2) === endLabel(m + 60).slice(-2) ? '' : '$1') + ' to ' + endLabel(m + 60);
+  }
+
   /** "(513) 555-0123" from whatever was typed, or what was typed when it is not ten digits. */
   function prettyPhone(raw) {
     var d = String(raw || '').replace(/\D/g, '').replace(/^1(?=\d{10}$)/, '');
@@ -5141,8 +5150,8 @@
     var tax = quote.taxIsEstimate ? '<tr class="pending"><td>Sales tax</td><td>added at confirmation</td></tr>' : '';
     var when = state.slot
       ? '<tr class="when"><td>Your time</td><td>' +
-        new Date(state.slot).toLocaleString('en-US', { timeZone: TZ, weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) +
-        '</td></tr>'
+        esc(tzDay(state.slot, { weekday: 'short', month: 'short', day: 'numeric' }) + ', ' + spanLabel(state.slot, holdMinutes())) +
+        '<i class="bk-arrive">We arrive between ' + esc(arrivalWindow(state.slot).replace(' to ', ' and ')) + '</i></td></tr>'
       : '';
 
     // Every discount, against what the same booking would cost with none of

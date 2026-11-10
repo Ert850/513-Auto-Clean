@@ -317,8 +317,11 @@ export function resolveWindow(
   const best = [...new Set(events.filter((e) => isBest(e) && !e.allDay && e.start >= fromMs && e.start < toMs).map((e) => e.start))]
     .sort((a, b) => a - b);
   const usable = events.filter((e) => !e.transparent && !isBest(e));
-  const openEvents = usable.filter((e) =>
-    e.summary.toUpperCase().startsWith(AVAILABILITY_PREFIX),
+  // OPEN blocks count whatever their Busy/Free setting. An OPEN event set to
+  // Free used to be dropped with the other Free events, silently taking
+  // those hours away (found by the calendar setup walkthrough, November 10).
+  const openEvents = events.filter((e) =>
+    !isBest(e) && e.summary.toUpperCase().startsWith(AVAILABILITY_PREFIX),
   );
 
   if (openEvents.length > 0) {
