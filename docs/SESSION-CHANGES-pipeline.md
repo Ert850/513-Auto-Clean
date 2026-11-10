@@ -13,6 +13,34 @@ Built overnight, November 10 to 11, for you to evaluate. It combines your 8 answ
   - `web/lib/browser-entry.ts`, `js/pricing.bundle.js` (built), `web/lib/funnel.smoke.test.mjs`.
   - The build also re-stamps `?v=` on every page. Those page changes were left out of the commit; a rebuild after merging restamps them.
 
+## Round 12 (November 10): spacing, hour labels, fees in gold, the suggestion as a tab
+
+### Spacing and the hour labels
+- **Above "Our recommended times":** the gap is down from 35 px to about 24 px. The time list's 16 px top margin no longer applies when nothing sits above it (`.bk-body > .bk-slots:first-child`).
+- **Hour labels:** .72rem becomes .8rem. The hour column narrows from 2.9rem to 2.55rem and the Early/Late column from 1.3rem to 1.2rem. That's less empty space between the labels and the hours, and each day column is about 1 px wider.
+
+### Fees easier to spot
+- **Calendar and legend:** calendar fees are bold, in the gold of the Rush, Early and Late tags. The "+$" key in the legend matches. A light gold background was tried and taken out (owner: "looks weird and worse").
+- **Elsewhere:** the phone list, "More times" and the bottom bar show the fee in the same gold.
+- **Bottom bar wording:** the fee is now compact, "+$37.50 rush + early". The full wording, short notice included, is on the later steps. The price block keeps "about 2 hrs on site" on one line (it wrapped when the bar got busy).
+
+### Bug: the suggestion was a downsell (owner's screenshot)
+- **What happened:** for a 6am pick at +$37.50 (rush and early), the bar suggested 10am at +$25 (rush only).
+- **Root cause:** in round 9 I read "not at the cost of a timing fee upsell" as "never suggest a time that adds a fee". It means never steer anyone off a time they're paying an early or late fee for.
+- **Fix:** the suggestion now has to cost exactly the same (`steerFor`). Suggested starts are never early or late, so a fee pick gets no suggestion.
+- **Verified:** the 6am pick shows no suggestion. A 10:30am standard-price pick still offers 10am.
+
+### The suggestion as a tab under the box
+- **Wording:** "★ Change to suggested? 10am to 12pm" (was a "SUGGESTED" button inside the box).
+- **Look:** a thin tab hanging from the bottom of the "Your time" box, outside it. It covers the box's bottom border where they meet, so the two read as one piece.
+- **Room:** the bar's bottom padding grows a little while the tab shows (`.bk-foot.steering`). On phones, the row under the box gets more space (`.bk-pick.has-steer`).
+- **Also:** with the button gone from inside the box, the tick moved into the "Your time" label.
+
+### Verified (headless Chrome, live calendar, test Kris)
+- **Sizes:** 1440×900 and 375×812. No sideways scroll. The box is as tall as Continue (53 px).
+- **The tab:** shows and switches the time; it never shows for a fee pick.
+- **Tests:** 470/470. The first run failed 14 tests: the test page's stand-in DOM gives the bar box no parent element. Now guarded in `markSteering`.
+
 ## Round 11 (November 10): rush fee check, fine print, pinned bars, "Your time", filming after the terms
 
 ### Rush fee: checked, no bug
