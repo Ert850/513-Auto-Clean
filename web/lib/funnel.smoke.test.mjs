@@ -223,6 +223,24 @@ function fillWhere(env) {
   // Continue between them.
 }
 
+/**
+ * Round 16: the checkout is folding sections, each with its own Continue.
+ * These walk them the way a customer does.
+ */
+function toTime(env) {
+  type(env, { dataset: { c: "name" } }, "Ada");
+  type(env, { dataset: { c: "phone" } }, "5135551212");
+  click(env, { dataset: { ckcont: "details" } });
+  fillWhere(env);
+  click(env, { dataset: { ckcont: "where" } });
+}
+function agreeToReview(env) {
+  change(env, { dataset: { consentbox: "terms" }, checked: true });
+  click(env, { dataset: { media: "no" } });
+  click(env, { dataset: { ckcont: "agree" } });
+  return env.lookup("bkBody").innerHTML;
+}
+
 /** Ticking or unticking a box, through the funnel's own change handler. */
 function change(env, attrs) {
   const stub = {
@@ -297,13 +315,16 @@ describe("the booking funnel opens", () => {
         vs: [{ z: "small", i: "interior", p: ["basic-interior"] }],
         ad: ["1 Main St", "Cincinnati", "OH", "45220"],
         ct: ["Ada", "5135551212", "ada@example.com"],
+        sl: Date.now() + 6 * 86_400_000,
       },
       "https://513autoclean.com/",
     );
     const hash = url.slice(url.indexOf("#"));
 
     const fresh = loadFunnel(hash);
-    const body = fresh.lookup("bkBody").innerHTML;
+    // Round 16: the link fills Contact, Address and Time, so the checkout
+    // opens on the yeses; the review follows them.
+    const body = agreeToReview(fresh);
 
     expect(body.length, "the confirm step rendered nothing").toBeGreaterThan(200);
     expect(body, "the promo field should be on the confirm step").toContain("bkPromo");
@@ -368,7 +389,7 @@ describe("the booking funnel opens", () => {
     // drive there and the weather at that address.
     // Round 15: the address and the times are on the one checkout page.
     expect(fresh.lookup("bkTitle").textContent).toBe("Checkout");
-    fillWhere(fresh);
+    toTime(fresh);
     const body = fresh.lookup("bkBody").innerHTML;
     expect(body, "the real picker, not the when-suits form").toContain("bkSlots");
     expect(body, "and it says how much time is being held").toMatch(/holding <b>\d+ hours<\/b>/);
@@ -404,6 +425,7 @@ describe("the booking funnel opens", () => {
     expect(fresh.lookup("bkTitle").textContent, "recording unanswered must hold the booking")
       .toBe("Checkout");
     click(fresh, { dataset: { media: "no" } });
+    click(fresh, { dataset: { ckcont: "agree" } });
 
     const last = fresh.lookup("bkBody").innerHTML;
 
@@ -458,12 +480,13 @@ describe("the booking funnel opens", () => {
         vs: [{ z: "small", i: "interior", p: ["basic-interior"] }],
         ad: ["1 Main St", "Cincinnati", "OH", "45220"],
         ct: ["Ada", "5135551212", "ada@example.com"],
+        sl: Date.now() + 6 * 86_400_000,
       },
       "https://513autoclean.com/",
     );
-    const body = loadFunnel(url.slice(url.indexOf("#")), {
+    const body = agreeToReview(loadFunnel(url.slice(url.indexOf("#")), {
       stripePublishableKey: "pk_test_smoke",
-    }).lookup("bkBody").innerHTML;
+    }));
 
     /*
      * TWO LOCKS ON THE CARD STEP, not just on pay-now.
@@ -531,7 +554,7 @@ describe("the booking funnel opens", () => {
       .toContain("s.id === 'addons' ? 'Continue to checkout'");
 
     click(fresh, { id: "bkNext" });   // past extras, to the checkout
-    fillWhere(fresh);
+    toTime(fresh);
 
     expect(fresh.lookup("bkTitle").textContent).toBe("Checkout");
 
@@ -610,10 +633,11 @@ describe("the booking funnel opens", () => {
         vs: [{ z: "small", i: "exterior", p: ["basic-exterior"] }],
         ad: ["1 Main St", "Cincinnati", "OH", "45220"],
         ct: ["Ada", "5135551212", ""],
+        sl: Date.now() + 6 * 86_400_000,
       },
       "https://513autoclean.com/",
     );
-    const body = loadFunnel(url.slice(url.indexOf("#"))).lookup("bkBody").innerHTML;
+    const body = agreeToReview(loadFunnel(url.slice(url.indexOf("#"))));
 
     const options = [...body.matchAll(/<option value="([^"|]+)\|([^"]+)"/g)].map((m) => m[1]);
     expect(options.length, "the picker should offer something").toBeGreaterThan(2);
@@ -646,7 +670,7 @@ describe("the booking funnel opens", () => {
       },
       "https://513autoclean.com/",
     );
-    const body = loadFunnel(url.slice(url.indexOf("#"))).lookup("bkBody").innerHTML;
+    const body = agreeToReview(loadFunnel(url.slice(url.indexOf("#"))));
 
     expect(body, "the confirm step should show the quoted time").toContain("Your time");
     const day = new Date(slot).toLocaleDateString("en-US", { month: "short", day: "numeric" });
@@ -717,7 +741,7 @@ describe("the booking funnel opens", () => {
       },
       "https://513autoclean.com/",
     );
-    const body = loadFunnel(url.slice(url.indexOf("#"))).lookup("bkBody").innerHTML;
+    const body = agreeToReview(loadFunnel(url.slice(url.indexOf("#"))));
     expect(body, "the notes box belongs with the other day-of questions").toContain("bkNotes");
     expect(body).toContain("Anything else we should know");
   });
@@ -1101,7 +1125,7 @@ describe("help me choose a time", () => {
     click(env, { dataset: { intent: "interior" } });
     click(env, { dataset: { pkg: "basic-interior", cat: "interior" } });
     click(env, { id: "bkNext" });
-    fillWhere(env);
+    toTime(env);
     expect(env.lookup("bkTitle").textContent).toBe("Checkout");
     return env;
   };
@@ -1154,7 +1178,7 @@ describe("help me choose a time", () => {
     fresh.window.ACFunnel.open();
     click(fresh, { dataset: { size: "small" } });
     click(fresh, { dataset: { intent: "advice" } });
-    fillWhere(fresh);
+    toTime(fresh);
     const advice = fresh.lookup("bkBody").innerHTML;
     expect(advice, "they have already told us they cannot choose").toContain("bk-timeswitch nudge");
     expect(advice).toContain("Not sure when, either?");
