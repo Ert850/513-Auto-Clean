@@ -114,8 +114,15 @@ Read this before changing anything. Every rule below came from a real bug or an 
 - **No `flex-wrap` on an icon + text row.** The text's flex-basis is its full one-line width, so it always wraps onto a row of its own under the icon. Use `nowrap` and give the text `flex: 1; min-width: 0`.
 - **A mobile-only rule written after a `min-width` media query overrides desktop too** (same specificity, later wins). Wrap it in `max-width: 819.98px`.
 
+## Colors (fixed November 10)
+- **Red means the brand and "that did not work", nothing else.** A price or any good answer is ink (`--text`). The travel fee in `--red` looked exactly like the error message under it.
+- **Changing a section's background means re-checking every color in it.** Colors picked on a dark band (red accents, white rings, a red top band on a traffic-light scale) changed meaning on paper.
+- **An ordered scale is one hue, light to dark, not a traffic light.** Check it with the dataviz validator (`validate_palette.js --ordinal` and the categorical check against its neighbours): the old travel scale had two bands 2.2 apart for red-green colour blindness.
+- **A legend key is drawn exactly like the mark it explains.** Travel fee colors live only in `BANDS` in `js/travel.js`; map dots are solid (`fillOpacity: 1`) and every key or dot in the page uses `.tmap-key i, .sg-dot, .fee-dot` (18px, 2px white ring = Leaflet radius 8, weight 2).
+
 ## Verifying UI changes
 - **The in-app browser pane, when hidden, does not run smooth scrolling or the browser's own jump-to-section on page load.** Don't trust scroll measurements from it. Drive headless Chrome over CDP with real mouse events instead (the nav click checker lives in the session scratchpad).
 - **Disable the browser cache, or add a query string, when testing a rebuilt `dist/`.** A cached `index.html` keeps loading the old scripts. Two test runs were wasted on stale pages.
+- **A full-page CDP capture (`captureBeyondViewport`) is not what a visitor sees.** It drew the fixed mobile bar over the middle of the map, showed untiled grey maps and dropped the Check button. Confirm anything odd with a plain viewport screenshot after scrolling to it.
 - **Parallel sessions each use their own preview port** (main session 8799; give each other session its own, e.g. 8790, 8791). Two sessions on 8765 stopped each other's servers and mixed one session's files into another's test run.
 - Check at 1440, 820 and 375 px wide: no horizontal scroll, and nothing overlaps the mobile bar.
