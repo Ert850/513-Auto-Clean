@@ -37,6 +37,10 @@ export const LEGAL = {
   // 2026-11-10: the booking form checks the National Weather Service forecast
   // at the detail's approximate location (weatherCheck). Same day as the
   // entry above and neither was live yet, so the date stands.
+  // 2026-11-10 (round 15): checkout details of a booking left unfinished
+  // reach the owner for one follow-up (checkoutFollowUp), and "where you
+  // heard about us" is collected. Same day again, nothing live yet, so the
+  // date stands.
   privacyEffective: "2026-11-10",
 } as const;
 

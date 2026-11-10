@@ -529,9 +529,12 @@
     var sc = el('bkScroll'), cue = el('bkCue');
     if (!sc || !cue) return;
     cue.hidden = !(sc.scrollHeight - sc.clientHeight - sc.scrollTop > 48);
-    // Above the bar pinned to the bottom of the window, when there is one.
+    // Above a bar pinned to the bottom of the window, but only while it is
+    // actually stuck there: lifted over a bar sitting mid-page, its fade
+    // washed the bar out (round 15).
     var pin = el('bkBody') && el('bkBody').querySelector('.bk-pinbar');
-    cue.style.transform = pin ? 'translateY(-' + pin.offsetHeight + 'px)' : '';
+    var stuck = pin && pin.getBoundingClientRect && Math.abs(pin.getBoundingClientRect().bottom - sc.getBoundingClientRect().bottom) < 3;
+    cue.style.transform = stuck ? 'translateY(-' + pin.offsetHeight + 'px)' : '';
   }
 
   function render() {
@@ -601,11 +604,7 @@
        // The next question slid in under the answered ones: bring it up.
        el('bkScroll').scrollTop = keptScroll;
        var fresh = el('bkBody').querySelector('.bk-sec-in');
-       if (fresh) {
-         var top = fresh.offsetTop - 12;
-         try { el('bkScroll').scrollTo({ top: top, behavior: reducedMotion() ? 'auto' : 'smooth' }); }
-         catch (e) { el('bkScroll').scrollTop = top; }
-       }
+       if (fresh) scrollToEl(fresh, 12);
      } else {
        el('bkBody').scrollTop = 0;
        el('bkScroll').scrollTop = 0;
@@ -3368,9 +3367,10 @@
     // (owner, November 10): early hours above, late below, with a marker on
     // whichever side has more.
     html += narrow ? weekList(week, dur)
-      : '<div class="bk-wk-frame"><div class="bk-wk-scroll" id="bkWkScroll">' + weekGrid(week, dur) + '</div>' +
-        '<button type="button" class="bk-wk-edge up" data-wkedge="-1" hidden>' + CHEV_UP + 'Earlier times</button>' +
-        '<button type="button" class="bk-wk-edge down" data-wkedge="1" hidden>' + CHEV_DN + 'Later times</button></div>';
+      : '<div class="bk-wk-frame">' +
+        '<button type="button" class="bk-wk-edge up" data-wkedge="-1">' + CHEV_UP + 'Earlier times</button>' +
+        '<div class="bk-wk-scroll" id="bkWkScroll">' + weekGrid(week, dur) + '</div>' +
+        '<button type="button" class="bk-wk-edge down" data-wkedge="1">' + CHEV_DN + 'Later times</button></div>';
 
     // Go to a date, and the way out, in one bar pinned to the bottom of the
     // window, like the one under our recommended times.
@@ -3456,8 +3456,9 @@
     var edges = function () {
       var up = sc.parentNode.querySelector('.bk-wk-edge.up');
       var down = sc.parentNode.querySelector('.bk-wk-edge.down');
-      if (up) up.hidden = sc.scrollTop < 4;
-      if (down) down.hidden = sc.scrollTop + sc.clientHeight >= sc.scrollHeight - 4;
+      // Faded rather than removed, so the page never shifts as they appear.
+      if (up) up.classList.toggle('off', sc.scrollTop < 4);
+      if (down) down.classList.toggle('off', sc.scrollTop + sc.clientHeight >= sc.scrollHeight - 4);
     };
     edges();
     sc.addEventListener('scroll', edges, { passive: true });
@@ -3737,9 +3738,18 @@
 
   function scrollToSection(id) {
     var sec = el('bkBody') && el('bkBody').querySelector('[data-sec="' + id + '"]');
+    if (sec) scrollToEl(sec, 8);
+  }
+
+  /**
+   * Bring an element to the top of the booking form's scroll area. Measured
+   * against the scroll area itself: offsetTop counts from the modal, so it
+   * overshot by the height of the header (132px, November 10).
+   */
+  function scrollToEl(node, gap) {
     var sc = el('bkScroll');
-    if (!sec || !sc) return;
-    var top = sec.offsetTop - 8;
+    if (!sc || !node || !node.getBoundingClientRect || !sc.getBoundingClientRect) return;
+    var top = sc.scrollTop + node.getBoundingClientRect().top - sc.getBoundingClientRect().top - (gap || 0);
     try { sc.scrollTo({ top: top, behavior: reducedMotion() ? 'auto' : 'smooth' }); } catch (e) { sc.scrollTop = top; }
   }
 
@@ -5364,7 +5374,8 @@
       state.step = 0;
       return render();
     }
-    if (t.id === 'bkLeaveDrop') { clearDraft(); return close(); }
+    // Cancelling is a clear no: no follow-up for this booking.
+    if (t.id === 'bkLeaveDrop') { clearDraft(); state.noFollowUp = true; return close(); }
     if (t.id === 'bkFresh') { clearDraft(); reset(); return render(); }
   }
 
@@ -6212,7 +6223,9 @@
           '<button type="button" class="bk-leave-drop" id="bkLeaveDrop">Cancel my booking</button>' +
         '</div>' +
         '<p class="bk-leave-note">Keeping it stores your answers in this browser only, for ' +
-          DRAFT_DAYS + ' days. They never reach us until you book.</p>' +
+          DRAFT_DAYS + ' days.' + (P.isLive('checkoutFollowUp') && onCheckout() && state.contact.name
+            ? ' The contact details you gave at checkout reach us, so we can follow up once about this booking.'
+            : ' They never reach us until you book.') + '</p>' +
       '</div>';
 
     var first = box.querySelector('#bkLeaveStay');
@@ -6279,8 +6292,37 @@
     location.href = 'contact.html';
   }
 
+  /**
+   * A checkout left unfinished (owner, November 10, round 15): once someone
+   * has typed their name and a phone number or email at the top of the
+   * checkout and leaves without booking, what they had picked goes to the
+   * owner for one follow-up (netlify/functions/cart-capture.mjs). Only while
+   * the privacy policy says so (checkoutFollowUp), and once per contact and
+   * cart, however they leave.
+   */
+  function captureUnfinished(reason) {
+    try {
+      if (!P.isLive('checkoutFollowUp') || state.done || state.noFollowUp || !onCheckout()) return;
+      var c = state.contact;
+      var digits = String(c.phone || '').replace(/\D/g, '').replace(/^1(?=\d{10}$)/, '');
+      var email = String(c.email || '').trim();
+      if (!String(c.name || '').trim() || (digits.length !== 10 && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email))) return;
+      var lines = draftSummary();
+      var key = [c.name, digits, email, lines.join('|')].join('#');
+      try { if (sessionStorage.getItem('ac-captured') === key) return; sessionStorage.setItem('ac-captured', key); } catch (e) { /* private mode: send anyway */ }
+      var body = JSON.stringify({
+        contact: { name: c.name, phone: c.phone, email: c.email },
+        summary: lines.join('\n'), reason: reason, source: source(), heard: state.heard
+      });
+      var sent = navigator.sendBeacon && navigator.sendBeacon('/api/cart-capture', new Blob([body], { type: 'application/json' }));
+      if (!sent) fetch('/api/cart-capture', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: body, keepalive: true }).catch(function () {});
+      track('checkout_left', { reason: reason });
+    } catch (e) { /* a follow-up must never get in the way of leaving */ }
+  }
+
   function close() {
     if (!host) return;
+    if (!host.hidden) captureUnfinished('closed');
     state.leaving = false;
     renderLeave();
     host.hidden = true;
@@ -6293,6 +6335,8 @@
   function mount() {
     host = document.getElementById('bookFunnel');
     if (!host) return;
+    // Leaving the page from the checkout counts as leaving it unfinished.
+    window.addEventListener('pagehide', function () { if (host && !host.hidden) captureUnfinished('left_page'); });
     host.innerHTML = SHELL;
     root = host;
 

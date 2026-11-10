@@ -1584,6 +1584,10 @@ var LEGAL = {
   // 2026-11-10: the booking form checks the National Weather Service forecast
   // at the detail's approximate location (weatherCheck). Same day as the
   // entry above and neither was live yet, so the date stands.
+  // 2026-11-10 (round 15): checkout details of a booking left unfinished
+  // reach the owner for one follow-up (checkoutFollowUp), and "where you
+  // heard about us" is collected. Same day again, nothing live yet, so the
+  // date stands.
   privacyEffective: "2026-11-10"
 };
 function longDate(iso) {
@@ -2278,6 +2282,18 @@ var CAPABILITIES = [
     // it is off, so the two cannot drift.
     live: true,
     blockedBy: "nothing: api.weather.gov is free and needs no key"
+  },
+  {
+    id: "checkoutFollowUp",
+    what: "Following up once on a booking left unfinished at checkout",
+    // Live (owner, November 10, round 15: "capture now, send via GHL later"):
+    // someone who types their name and a phone number or email at the top of
+    // the checkout and leaves without booking is sent to the owner by email
+    // (netlify/functions/cart-capture.mjs), so they can be followed up once.
+    // The privacy policy says so while this is on, and the form sends
+    // nothing while it is off.
+    live: true,
+    blockedBy: "nothing: it uses the booking email service"
   }
 ];
 var PROCESSORS = [

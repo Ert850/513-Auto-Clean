@@ -127,6 +127,11 @@
   to = "/.netlify/functions/send-confirmation"
   status = 200
 
+[[redirects]]
+  from = "/api/cart-capture"
+  to = "/.netlify/functions/cart-capture"
+  status = 200
+
 # ---------------------------------------------------------------------------
 # Headers
 # ---------------------------------------------------------------------------

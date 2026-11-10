@@ -1586,7 +1586,8 @@ button.bk-wk-c:hover { box-shadow: 0 0 0 2px var(--red-ghost); }
 .bk-donerow span { flex: none; width: 5.2rem; font-size: .7rem; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; color: var(--text-soft); }
 .bk-donerow b { flex: 1; min-width: 0; font-size: .9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .bk-donerow em { flex: none; font-style: normal; font-size: .78rem; font-weight: 700; color: var(--red); text-decoration: underline; text-underline-offset: 2px; }
-.bk-sec { margin: .9rem 0 0; }
+/* The site's own section padding (styles.css) must not reach these. */
+#bookFunnel .bk-sec { padding: 0; margin: .9rem 0 0; }
 .bk-sec:first-child { margin-top: 0; }
 .bk-sec-h { margin: 0 0 .65rem; font-family: var(--font-display); font-size: 1.12rem; }
 .bk-sec-in { animation: bkSecIn .38s var(--ease) both; }
@@ -1667,7 +1668,7 @@ button.bk-wk-c:hover { box-shadow: 0 0 0 2px var(--red-ghost); }
 .bk-addon-row:has(.bk-how-side[open]) { flex-wrap: wrap; }
 
 /* The checkout: one page, section by section. */
-.bk-ck { padding: 0 0 1rem; margin: 0 0 1rem; border-bottom: 1px solid var(--line); }
+#bookFunnel .bk-ck { padding: 0 0 1rem; margin: 0 0 1rem; border-bottom: 1px solid var(--line); }
 .bk-ck:last-child { border-bottom: 0; margin-bottom: 0; }
 .bk-ck .bk-sub { margin-bottom: .7rem; }
 .bk-ck[data-sec="details"] .bk-form { margin: 0; }
@@ -1694,13 +1695,11 @@ button.bk-wk-c:hover { box-shadow: 0 0 0 2px var(--red-ghost); }
 .bk-wk-scroll::-webkit-scrollbar { width: 8px; }
 .bk-wk-scroll::-webkit-scrollbar-thumb { background: var(--line); border-radius: 8px; }
 .bk-wk-edge {
-  position: absolute; left: 50%; transform: translateX(-50%); z-index: 6;
-  display: inline-flex; align-items: center; gap: .3rem;
+  display: flex; align-items: center; gap: .3rem; width: max-content; margin: .35rem auto;
   font: inherit; font-size: .74rem; font-weight: 700; color: var(--text-soft); cursor: pointer;
-  background: var(--paper-2); border: 1px solid var(--line); border-radius: 999px; padding: .22rem .7rem;
-  box-shadow: var(--shadow-sm);
+  background: var(--paper-2); border: 1px solid var(--line); border-radius: 999px; padding: .2rem .7rem;
+  transition: opacity .2s;
 }
 .bk-wk-edge:hover { color: var(--text); border-color: var(--text-soft); }
 .bk-wk-edge svg { width: 12px; height: 12px; }
-.bk-wk-edge.up { top: 58px; }
-.bk-wk-edge.down { bottom: 6px; }
+.bk-wk-edge.off { opacity: 0; pointer-events: none; }

@@ -105,7 +105,13 @@ function collectList() {
     "The address where the work will be done",
     "The services you picked, the time you picked, and any notes",
     "Your answers to the three questions we ask when you book: whether you accept the terms, whether we may text you, and whether we may film the detail",
+    "Where you heard about us, if you choose to tell us",
   ];
+  if (isLive("checkoutFollowUp")) {
+    items.push(
+      "If you reach checkout and leave without booking: the name, phone number and email you typed there, and what you had picked",
+    );
+  }
   if (isLive("cardOnFile")) {
     items.push(
       "Your card details, which go straight to Stripe over an encrypted connection. We never see or store the card number. Stripe gives us a token that lets us charge the card only as the terms describe, and a record of the authorization you gave when you booked.",
@@ -155,6 +161,9 @@ function useList() {
       ? "Take payment, and keep a card on file so we can settle up when the work is done and apply the cancellation terms you agreed to"
       : "Settle up when the work is done",
   );
+  if (isLive("checkoutFollowUp")) {
+    items.push("Follow up once about a booking you started and did not finish, if you gave us your contact details at checkout");
+  }
   items.push("Follow up after service to make sure you are happy with the work");
   items.push("Keep the business and tax records the law requires");
   return `<ul>
@@ -181,7 +190,9 @@ function cookiesParas() {
     ...(isLive("siteAnalytics")
       ? ["If you arrive through a link we tagged, such as the QR code in a magazine ad, your browser remembers which link it was until you close the tab, and it is sent with a booking or question so we know how you found us. That works whether or not you accept analytics, identifies nobody, and goes to no one else."]
       : []),
-    (isLive("siteAnalytics") ? "Apart from those two, there is one more thing we can keep in your browser" : "There is one thing we can keep in your browser") + ", and only if you ask for it. If you start a booking and leave before finishing, we offer to keep your answers so they are still there next time. Say yes and they are stored in your own browser for 14 days, so that the next time you tap Book Now you carry on where you stopped. That information stays on your device, never reaches us until you actually book, and you can throw it away from the same screen that offered to keep it. Say no, or say nothing, and there is nothing to throw away.",
+    (isLive("siteAnalytics") ? "Apart from those two, there is one more thing we can keep in your browser" : "There is one thing we can keep in your browser") + ", and only if you ask for it. If you start a booking and leave before finishing, we offer to keep your answers so they are still there next time. Say yes and they are stored in your own browser for 14 days, so that the next time you tap Book Now you carry on where you stopped. " + (isLive("checkoutFollowUp")
+      ? "That saved copy stays on your device, and you can throw it away from the same screen that offered to keep it. Say no, or say nothing, and there is nothing to throw away. This is separate from checkout: if you type your contact details there and leave without booking, we receive them and what you had picked, so we can follow up once, as described above."
+      : "That information stays on your device, never reaches us until you actually book, and you can throw it away from the same screen that offered to keep it. Say no, or say nothing, and there is nothing to throw away."),
     "If you are part way through booking and choose to ask us a question instead, what you had entered is carried to the question form in your browser for that one step, then deleted.",
   ];
   const setters = [];
