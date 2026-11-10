@@ -60,31 +60,35 @@ export function addWeeks(weekStart: number, n: number, timeZone = TZ): number {
 
 /**
  * Rows: every start hour of the booking window, 6am to 10pm (the site's
- * standard last start), plus only the rows THIS job needs to finish in.
+ * standard last start), plus only the rows an offered job really runs into.
  *
  * - They once stopped at the week's latest open hour (never before 5pm), so a
  *   week with no evening openings ended at 5pm and read as "we close at 5".
  *   Every start hour is drawn now, grey where nothing fits.
  * - They then stopped at the last START hour, but the block drawn for a chosen
  *   time is the whole job, and a job runs past its start: a 4 hour detail from
- *   8pm ends at midnight, and its block ran off the bottom of the grid
- *   (November 10).
+ *   8pm ends at midnight, and its block ran off the bottom of the grid.
+ * - Then lastRowFor worked the extra rows out from the job's length and the
+ *   booking-window rules (November 10). It missed a rule: before 6pm the
+ *   drive home has to fit too, and the OPEN hours can end before midnight.
+ *   So a 7 hour job got an 11pm row for a 5pm start that is never offered
+ *   (5pm + 7 hours + the drive home runs past midnight); its latest real
+ *   block, 4pm to 11pm, ends at the top of that row, and the row could
+ *   never be reached (owner's screenshot, November 10).
  *
- * So the extra rows come from the job's length and the booking rules
- * (lastRowFor), not from this week's openings: the grid keeps its shape from
- * week to week and grows only for a job that can end later. Those rows are
- * never start times, so they are always grey.
+ * So the extra rows now come from the starts actually offered: the row the
+ * latest-finishing one ends in. Whatever rule removed a start, its row goes
+ * with it. Those rows are never start times, so they are always grey.
  */
 export const FIRST_ROW_MIN = DEFAULT_BOOKING_WINDOW.earliestStartMin;
 export const LAST_START_ROW_MIN = Math.floor(DEFAULT_BOOKING_WINDOW.latestStartMin / HOUR) * HOUR;
 
-/** The last row a job of this length can still be running in. */
-export function lastRowFor(durationMin: number, hasExterior = false, win = DEFAULT_BOOKING_WINDOW): number {
-  let latestStart = Math.min(win.latestStartMin, win.serviceEndByMin - durationMin);
-  if (hasExterior && win.latestExteriorStartMin !== undefined) latestStart = Math.min(latestStart, win.latestExteriorStartMin);
-  const end = latestStart + Math.max(0, durationMin);
+/** The last row any offered job of this length is still running in. */
+export function lastRowForSlots(slots: number[], durationMin: number, timeZone = TZ): number {
+  let end = 0;
+  for (const ms of slots) end = Math.max(end, localMinutesOfDay(ms, timeZone) + Math.max(0, durationMin));
   const endRow = Math.ceil(end / HOUR) * HOUR - HOUR;
-  return Math.min(Math.max(LAST_START_ROW_MIN, endRow), win.serviceEndByMin - HOUR);
+  return Math.min(Math.max(LAST_START_ROW_MIN, endRow), 24 * HOUR - HOUR);
 }
 
 export function buildWeek(req: {
@@ -96,7 +100,7 @@ export function buildWeek(req: {
   nowMs: number;
   /** Is this start inside the rush window? (slotNeedsPriority in the funnel.) */
   needsPriority: (ms: number) => boolean;
-  /** The last row to draw, from lastRowFor(). Defaults to the last start hour. */
+  /** The last row to draw, from lastRowForSlots(). Defaults to the last start hour. */
   lastRowMin?: number;
   timeZone?: string;
 }): Week {
@@ -179,103 +183,178 @@ export function buildWeek(req: {
 }
 
 /**
- * How "Our recommended times" is built. One place to tune it, and the hook
- * analytics plugs into later (which starts actually get booked).
+ * How "Our recommended times" is built (owner, November 10: top picks, each
+ * with its reason). One place to tune it, and the hook analytics plugs into.
  *
- *   days            day bars shown
- *   timesPerDay     suggested starts inside each bar (morning and afternoon)
- *   maxFeeDays      at most this many bars whose every time carries a fee
- *                   (a rush day). Owner, November 10: only one or two of the
- *                   slots offered should be upsells, so a customer who does
- *                   not want to pay extra always has a quick choice.
+ *   version         sent with every analytics event about these picks, so
+ *                   results can be compared when the rules change
+ *   reasons         tried in this order; each finds at most one pick, on a
+ *                   day no other pick uses
+ *   shown           picks always shown (when there are that many)
+ *   extraWhenRoom   more picks the funnel shows only when the screen has room
+ *   maxFeePicks     at most this many picks carry a fee. Owner, November 10:
+ *                   only one or two of the times offered should be upsells,
+ *                   so a customer who does not want to pay extra always has
+ *                   a quick choice. Only "soonest" may carry one.
  */
 export const TIME_RECOMMENDATION_RULES = {
-  days: 3,
-  timesPerDay: 2,
-  maxFeeDays: 1,
+  version: "picks-1",
+  reasons: ["soonest", "standard", "weekend", "otherHalf", "nextWeek"] as ReasonRule[],
+  shown: 3,
+  extraWhenRoom: 2,
+  maxFeePicks: 1,
 };
 
-export interface RecommendedDay {
+/** A reason in the rules; "otherHalf" turns into "morning" or "afternoon". */
+export type ReasonRule = "soonest" | "standard" | "weekend" | "otherHalf" | "nextWeek";
+
+/** Why a time is offered. "also" fills the list when the reasons run out. */
+export type PickReason = "soonest" | "standard" | "weekend" | "morning" | "afternoon" | "nextWeek" | "also";
+
+export interface RecommendedPick {
+  ms: number;
   dayStart: number;
-  /** The suggested starts that day, best first. */
-  starts: number[];
-  /** Every start that day carries a fee (rush, or early or late). */
+  reason: PickReason;
+  /** This start carries a fee (rush, or early or late). */
   fee: boolean;
 }
 
 /**
- * "Our recommended times": a few DAYS, each with its two best starts.
- *
- *   - soonest day first;
- *   - on each day, the starts that pack it (straight after an existing job,
- *     else 10am and 4pm, 10am, 1pm and 4pm at weekends), never an early or
- *     late hour; a start the first-choice detailer can take comes first;
- *   - at most `maxFeeDays` fee days, so the rest are the soonest days at the
- *     standard price. Fee days fill any gap only when nothing else is open.
- *   - `scoreFor` (optional, e.g. from analytics: how often a start converts)
- *     reorders the starts within a day, best first.
+ * A day's suggested starts, best first: the ones that keep the day packable
+ * (straight after an existing job, else 10am and 4pm, and 1pm at weekends),
+ * never an early or late start unless `isPremium` says the detailer taking
+ * it charges no fee for it. The funnel's bottom-bar suggestion uses this too.
  */
-export function recommendDays(req: {
+export function daySuggestions(req: {
+  starts: number[];
+  busy?: Interval[];
+  travelGapMin: number;
+  isPremium?: (ms: number) => boolean;
+  timeZone?: string;
+}): number[] {
+  const tz = req.timeZone ?? TZ;
+  if (!req.starts.length) return [];
+  const premium = req.isPremium ?? ((ms: number) => Boolean(bandOf(localMinutesOfDay(ms, tz))?.premium));
+  const weekday = localWeekday(localDayStart(req.starts[0]!, tz) + 12 * 3600_000, tz);
+  const open = req.starts.filter((ms) => !premium(ms));
+  return recommendStarts({
+    starts: open,
+    busy: req.busy ?? [],
+    travelGapMin: req.travelGapMin,
+    limit: weekday === 0 || weekday === 6 ? 3 : 2,
+    timeZone: tz,
+  }).map((r) => r.ms);
+}
+
+/**
+ * "Our recommended times": a few one-tap picks, each on its own day and each
+ * with the reason it is offered, so a jump from Tuesday to Friday explains
+ * itself ("Soonest", then "First at the standard price").
+ *
+ *   - a start the first-choice detailer can take wins within a day;
+ *   - `scoreFor` (optional, e.g. from analytics: how often a start is booked)
+ *     reorders each day's suggestions, best first;
+ *   - only "soonest" may carry a fee, and only `maxFeePicks` of them;
+ *   - when the reasons run out, the soonest standard-price days fill in
+ *     ("also"), and fee days only when nothing else is open.
+ */
+export function recommendPicks(req: {
   slots: number[];
   busy?: Interval[];
   travelGapMin: number;
   /** Starts the first-choice detailer is free for (Kris before Elijah). */
   preferred?: Set<number>;
-  /**
-   * Does this start carry an early or late fee? Defaults to the clock. The
-   * funnel passes its own answer: a detailer who works those hours anyway
-   * charges none (Kris at 6 to 7pm), and those starts are recommendable.
-   */
+  /** Does this start carry an early or late fee? Defaults to the clock. */
   isPremium?: (ms: number) => boolean;
   /** Does this start carry any fee at all (rush included)? */
   isFee?: (ms: number) => boolean;
   scoreFor?: (ms: number) => number;
-  rules?: typeof TIME_RECOMMENDATION_RULES;
+  nowMs?: number;
+  rules?: Omit<typeof TIME_RECOMMENDATION_RULES, "version"> & { version?: string };
   timeZone?: string;
-}): RecommendedDay[] {
+}): RecommendedPick[] {
   const tz = req.timeZone ?? TZ;
   const rules = req.rules ?? TIME_RECOMMENDATION_RULES;
   const premium = req.isPremium ?? ((ms: number) => Boolean(bandOf(localMinutesOfDay(ms, tz))?.premium));
   const isFee = req.isFee ?? premium;
+
   const byDay = new Map<number, number[]>();
   for (const ms of [...new Set(req.slots)].sort((a, b) => a - b)) {
-    if (premium(ms)) continue;
     const day = localDayStart(ms, tz);
     const list = byDay.get(day);
     if (list) list.push(ms);
     else byDay.set(day, [ms]);
   }
 
-  const candidates: RecommendedDay[] = [];
-  for (const [dayStart, starts] of [...byDay].sort((a, b) => a[0] - b[0])) {
-    const weekday = localWeekday(dayStart + 12 * 3600_000, tz);
-    const theirs = req.preferred ? starts.filter((ms) => req.preferred!.has(ms)) : [];
-    const pool = theirs.length ? theirs : starts;
-    let picks = recommendStarts({
-      starts: pool,
+  type Day = { dayStart: number; weekday: number; starts: number[] };
+  const days: Day[] = [];
+  for (const [dayStart, all] of [...byDay].sort((a, b) => a[0] - b[0])) {
+    const theirs = req.preferred ? all.filter((ms) => req.preferred!.has(ms)) : [];
+    let starts = daySuggestions({
+      starts: theirs.length ? theirs : all,
       busy: req.busy ?? [],
       travelGapMin: req.travelGapMin,
-      limit: weekday === 0 || weekday === 6 ? 3 : 2,
+      isPremium: premium,
       timeZone: tz,
-    }).map((r) => r.ms);
-    if (req.scoreFor) picks = picks.slice().sort((a, b) => req.scoreFor!(b) - req.scoreFor!(a) || a - b);
-    else picks = picks.slice(0, rules.timesPerDay).sort((a, b) => a - b);
-    picks = picks.slice(0, rules.timesPerDay);
-    if (picks.length) candidates.push({ dayStart, starts: picks, fee: picks.every(isFee) });
+    });
+    if (req.scoreFor) starts = starts.slice().sort((a, b) => req.scoreFor!(b) - req.scoreFor!(a) || a - b);
+    if (starts.length) days.push({ dayStart, weekday: localWeekday(dayStart + 12 * 3600_000, tz), starts });
   }
 
-  const chosen: RecommendedDay[] = [];
-  let feeDays = 0;
-  for (const c of candidates) {
-    if (chosen.length >= rules.days) break;
-    if (c.fee && feeDays >= rules.maxFeeDays) continue;
-    chosen.push(c);
-    if (c.fee) feeDays++;
+  const picks: RecommendedPick[] = [];
+  const used = new Set<number>();
+  const total = rules.shown + rules.extraWhenRoom;
+  let feePicks = 0;
+  const free = (d: Day) => d.starts.filter((ms) => !isFee(ms));
+  const avail = () => days.filter((d) => !used.has(d.dayStart));
+  const take = (d: Day, ms: number, reason: PickReason) => {
+    const fee = isFee(ms);
+    if (fee) feePicks++;
+    used.add(d.dayStart);
+    picks.push({ ms, dayStart: d.dayStart, reason, fee });
+  };
+  const isPm = (ms: number) => localMinutesOfDay(ms, tz) >= 12 * HOUR;
+  const thisWeek = weekStartOf(req.nowMs ?? Date.now(), tz);
+
+  for (const reason of rules.reasons) {
+    if (picks.length >= total) break;
+    if (reason === "soonest") {
+      const d = avail()[0];
+      if (!d) continue;
+      const ms = Math.min(...d.starts);
+      if (!isFee(ms) || feePicks < rules.maxFeePicks) take(d, ms, "soonest");
+    } else if (reason === "standard") {
+      // "First at the standard price" says nothing when a pick already is.
+      if (picks.some((p) => !p.fee)) continue;
+      const d = avail().find((x) => free(x).length);
+      if (d) take(d, free(d)[0]!, "standard");
+    } else if (reason === "weekend") {
+      const d = avail().find((x) => (x.weekday === 0 || x.weekday === 6) && free(x).length);
+      if (d) take(d, free(d)[0]!, "weekend");
+    } else if (reason === "otherHalf") {
+      // Every pick so far in the morning: offer an afternoon, and the reverse.
+      if (!picks.length) continue;
+      const pm = picks.map((p) => isPm(p.ms));
+      if (pm.some((x) => x) && pm.some((x) => !x)) continue;
+      const wantPm = !pm[0];
+      for (const d of avail()) {
+        const ms = free(d).find((x) => isPm(x) === wantPm);
+        if (ms !== undefined) { take(d, ms, wantPm ? "afternoon" : "morning"); break; }
+      }
+    } else if (reason === "nextWeek") {
+      const d = avail().find((x) => weekStartOf(x.dayStart, tz) > thisWeek && free(x).length);
+      if (d) take(d, free(d)[0]!, "nextWeek");
+    }
   }
-  // Nothing else open: better a fee day than an empty list.
-  for (const c of candidates) {
-    if (chosen.length >= rules.days) break;
-    if (!chosen.includes(c)) chosen.push(c);
+  // The reasons ran out: the soonest standard-price days, then (only when
+  // nothing else is open) fee days, up to the number always shown.
+  for (const d of avail()) {
+    if (picks.length >= total) break;
+    if (free(d).length) take(d, free(d)[0]!, "also");
   }
-  return chosen.sort((a, b) => a.dayStart - b.dayStart);
+  for (const d of avail()) {
+    if (picks.length >= rules.shown) break;
+    take(d, d.starts[0]!, "also");
+  }
+  return picks;
 }

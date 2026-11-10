@@ -13,6 +13,86 @@ Built overnight, November 10 to 11, for you to evaluate. It combines your 8 answ
   - `web/lib/browser-entry.ts`, `js/pricing.bundle.js` (built), `web/lib/funnel.smoke.test.mjs`.
   - The build also re-stamps `?v=` on every page. Those page changes were left out of the commit; a rebuild after merging restamps them.
 
+## Round 9 (November 10): recommended times as top picks (option C), the bottom bar, the 11pm row
+
+### Research behind it (short)
+- **Baymard** (delivery and booking slot pickers): people misread availability and miss workable times. The fix that tested best is a clear day-then-time hierarchy, with every option's fee visible.
+- **Agatz, Fan and Stam** (grocery delivery slots): a label alone steers choices about as well as a discount. Yang et al. rank slots from real booking data. So the picks carry reasons, and analytics records what is offered and what is booked.
+- **Calendly, Fresha, Square, Housecall Pro:** one sensible default already in front of the customer, explained rather than pushed.
+
+### Our recommended times: option C (owner's pick of three rendered options)
+- **Picks, not days:** each card is one tap that books, labelled with why it's offered. The day is the headline, the time beside it, and the tags (Standard price, or the fee and short notice) below.
+- **Reasons, in order:**
+  - Soonest;
+  - First at the standard price (only when the soonest carries a fee, which explains the old jump from Tuesday to Friday);
+  - Weekend;
+  - Morning or Afternoon (when every pick so far is the other half of the day);
+  - Next week;
+  - "Also open" fills any gaps.
+- **Fees:** only "Soonest" may carry a fee, and at most one pick does (`maxFeePicks`).
+- **More rows when there's room:** 3 always; up to 2 more while the card still ends inside the first screen. Today that's 4 on a laptop and on tall phones, and 3 on a 375 px phone.
+- **"More times on Friday"** (was "Other times that day", owner asked for clearer wording): opens that day's starts in place, one per hour, with the fee or "Standard price" and the star. One tap books.
+- **"Flexible on the time?" (owner: yes, no discount):**
+  - pick a day, and we text the start time by the evening before;
+  - it's the same request as "Tell us when does" (`state.prefer`), so it's priced, sent and confirmed the way requests always are;
+  - only days with a standard-price start are offered;
+  - the booking email says `FLEXIBLE DAY: any start that day. Text them the start time by the evening before.`
+- **Code:** `recommendPicks()` and `daySuggestions()` in `web/lib/availability/week.ts` replace `recommendDays()`. `TIME_RECOMMENDATION_RULES` holds the reasons, `shown`, `extraWhenRoom`, `maxFeePicks` and a `version`. `scoreFor` remains the hook for analytics scores.
+
+### The bottom bar
+- **One row, as tall as Continue** (it was 129 px on a laptop and 190 px on a phone).
+- **From the Time step to the last step:** the chosen time and its price. On later steps it adds "Change", which goes back to Time.
+- **Gone** when the booking is sent, and for requests.
+- **The suggestion (owner: "closest suggested time but not at the cost of a timing fee upsell"):**
+  - the nearest starred start the same day that costs no more than the chosen one, so the rush fee can't change either;
+  - shown as "★ Suggested 10am to 12pm";
+  - not shown when the chosen time is already a suggested one, or once they've taken a suggestion.
+- **Switching on a later step** checks the calendar in place (`verifySlot`) and stays on that step. If the time was just taken, they keep theirs, and a message says so.
+
+### Analytics (sent only once analytics is on and the visitor accepts)
+- **`time_recs_shown`:** rules version, count, the flexible option, and each pick as `reason:fee%:days ahead:start hour`. Sent once per distinct set.
+- **`time_pick`:** now adds `rank`, `reason` and `rules`. `via` is `recommended`, `recommended_more`, `calendar` or `steer`.
+- **New:** `time_more_open`, `time_flex_open`, `time_flex_pick`, `time_steer_shown`, `time_steer_used`, `time_change`.
+- **What this is for:** offer and booking rates per rank and reason, and an A/B test between rule versions.
+
+### Bug: an 11pm row nothing can reach (owner's screenshot, Showroom Ready)
+- **Root cause:** `lastRowFor()` predicted the latest end from the booking-window rules (latest start 10pm, done by midnight). It missed two rules that remove starts:
+  - before 6pm, the drive home has to fit inside the day too;
+  - the OPEN hours can end before midnight.
+
+  So it assumed a 7 hour job could start at 5pm and end at midnight. 5pm plus 7 hours plus the drive home runs past midnight, so 5pm is never offered. The latest real start is 4pm, its block ends at 11pm (the top of the 11pm row), and that row could never be reached.
+- **Fix:** `lastRowForSlots(slots, duration)` draws rows past 10pm only when a start actually offered runs into them. Whatever rule removed a start, its row goes with it.
+- **Verified on the live calendar, three weeks each:**
+  - Showroom Ready (7 hours): 17 rows, ending at the 10pm row;
+  - Basic Interior (2 hours): keeps the 11pm row, because a 10pm start really runs to midnight.
+- **Lesson for `CLAUDE.md` after the merge:** derive display limits from the real offered data, not from a copy of the rules.
+
+### Compared with what the original pipeline (`eNov6`) lets you book
+- **Same slot rules:** `computeSlots` uses the same buffer, last-job and first-job rules. The new pipeline only removes starts on purpose:
+  - weather by kind of job;
+  - a detailer who can't do the work;
+  - Kris's calendar;
+  - the 3 month cap.
+- **Half-hour starts:**
+  - **the original:** every start, :00 and :30, through "Expand to select other times";
+  - **the new calendar and "More times":** one start per hour (a starred start wins, otherwise :00), per the owner's "show every hour but steer";
+  - **round 8:** the :30 starts were reachable through the bar's "Or start at";
+  - **this round:** that space went to the clearer suggestion. A :30 start is now bookable only when it's the hour's suggested start.
+
+  An owner question, not changed.
+
+### Verified (headless Chrome, live calendar, test Kris)
+- **1440×900 and 375×812:**
+  - cards and reasons as above;
+  - "More times on Friday" opens with focus on the suggested time;
+  - a non-suggested pick shows the suggestion on Details;
+  - taking it switches in place and the suggestion disappears;
+  - Change returns to Time;
+  - a suggested pick shows no suggestion;
+  - the flexible day goes to Details as "Times requested", with no bar.
+- **Not checked:** the bar on the Done screen. It's cleared in code (`setPick('')`), but I didn't send a real booking to see it.
+- **Tests:** 467/467; types clean.
+
 ## Round 8 (November 10): the chosen time in the bottom bar, one-tap calendar, the leave dialog
 
 ### The chosen time sits in the bottom bar
