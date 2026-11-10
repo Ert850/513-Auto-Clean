@@ -1126,14 +1126,16 @@ button.bk-wk-c:hover { box-shadow: 0 0 0 2px var(--red-ghost); }
 
 /* mechanism explainer, collapsed so it informs without burying the price */
 .bk-how { margin: 0 0 .6rem; }
-.bk-how summary {
+.bk-how summary, .bk-howbtn {
   cursor: pointer; font-size: .81rem; font-weight: 700; color: var(--red);
   list-style: none; display: inline-flex; align-items: center; gap: .3rem;
 }
+.bk-howbtn { font-family: inherit; background: none; border: 0; padding: 0; flex: none; white-space: nowrap; }
 .bk-how summary::-webkit-details-marker { display: none; }
-.bk-how summary::after { content: "+"; font-weight: 800; }
-.bk-how[open] summary::after { content: "\2212"; }
-.bk-how p {
+.bk-how summary::after, .bk-howbtn::after { content: "+"; font-weight: 800; }
+.bk-how[open] summary::after, .bk-howbtn[aria-expanded="true"]::after { content: "\2212"; }
+.bk-how-body, .bk-how-panel { overflow: hidden; }
+.bk-how p, .bk-how-panel p {
   margin: .5rem 0 0; font-size: .82rem; line-height: 1.6; color: var(--text-soft);
   background: var(--paper); border-left: 2px solid var(--line); padding: .6rem .75rem;
   border-radius: 0 var(--r-sm) var(--r-sm) 0;
@@ -1662,10 +1664,8 @@ button.bk-wk-c:hover { box-shadow: 0 0 0 2px var(--red-ghost); }
 .bk-addon { padding: .7rem .85rem; margin-bottom: .5rem; }
 .bk-addon-row { display: flex; align-items: flex-start; gap: .8rem; margin: .2rem 0 .5rem; }
 .bk-addon-row .bk-addon-d { flex: 1; margin: 0; }
-.bk-how-side { flex: none; margin: 0; max-width: 45%; }
-.bk-how-side summary { white-space: nowrap; font-size: .78rem; }
-.bk-how-side[open] { flex-basis: 100%; max-width: none; }
-.bk-addon-row:has(.bk-how-side[open]) { flex-wrap: wrap; }
+.bk-how-panel { margin: -.1rem 0 .55rem; }
+.bk-how-panel p { margin-top: 0; }
 
 /* The checkout: one page, section by section. */
 #bookFunnel .bk-ck { padding: 0 0 1rem; margin: 0 0 1rem; border-bottom: 1px solid var(--line); }
@@ -1703,3 +1703,39 @@ button.bk-wk-c:hover { box-shadow: 0 0 0 2px var(--red-ghost); }
 .bk-wk-edge:hover { color: var(--text); border-color: var(--text-soft); }
 .bk-wk-edge svg { width: 12px; height: 12px; }
 .bk-wk-edge.off { opacity: 0; pointer-events: none; }
+
+/* How it works on a package: what is included as a small heading, then the
+   rest of the note under it (round 16). */
+.bk-how-sub { display: block; font-size: .7rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--text); margin-bottom: .15rem; }
+.bk-how-more { display: block; margin-top: .5rem; }
+/* Strokes stay even when a pictogram is drawn smaller inside another. */
+.bk-pic-ic * { vector-effect: non-scaling-stroke; }
+/* The way back from Browse, pinned with the search. */
+.bk-browseback {
+  display: inline-flex; align-items: center; gap: .25rem; margin: 0 0 .55rem; padding: 0;
+  font: inherit; font-size: .84rem; font-weight: 700; color: var(--red); background: none; border: 0; cursor: pointer;
+}
+.bk-browseback svg { width: 15px; height: 15px; }
+
+/* The top bar in two groups, YOUR DETAIL and CHECKOUT (round 16): a small
+   label over each group, the steps under it, a thin rule between groups. */
+.bk-nav { align-items: flex-end; gap: .2rem; }
+.bk-navgrp { flex: none; display: flex; flex-direction: column; gap: .05rem; }
+.bk-navgrp + .bk-navgrp { margin-left: .45rem; padding-left: .6rem; border-left: 1px solid var(--line); }
+.bk-navgrp-l { font-size: .58rem; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; color: var(--text-soft); padding: 0 .55rem; opacity: .8; }
+.bk-navgrp-t { display: flex; gap: .2rem; }
+
+/* Required and optional, said once and marked on every field. */
+.bk-req { color: var(--red); font-weight: 800; margin-left: .1rem; }
+.bk-reqnote { margin: 0 0 .5rem; font-size: .74rem; color: var(--text-soft); text-align: right; }
+
+/* Continue inside a checkout section: the next step of the same page, so a
+   quieter dark button; the red one at the foot books. */
+.bk-ckcont {
+  display: inline-flex; align-items: center; gap: .4rem; margin-top: .9rem;
+  font: inherit; font-size: .92rem; font-weight: 800; cursor: pointer; color: #fff;
+  background: var(--ink); border: 0; border-radius: var(--r-sm); padding: .7rem 1.2rem;
+}
+.bk-ckcont:hover { background: var(--ink-2); }
+.bk-ckcont svg { width: 15px; height: 15px; }
+#bookFunnel .bk-ck { border-bottom: 0; padding-bottom: .4rem; }

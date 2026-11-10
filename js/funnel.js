@@ -78,6 +78,9 @@
       prefer: { parts: [], days: [] },
       // "Where did you hear about us?", optional, on the checkout.
       heard: '',
+      // The checkout's sections: which is open, and which are done.
+      ckOpen: '',
+      ckDone: {},
       // What we need to know before loading the van. Asked on the last step
       // rather than promised as "a few quick questions" in a list of things
       // that will happen later, which is how it used to read and meant
@@ -351,6 +354,16 @@
     return '<s>+' + $(cents) + '</s> <span class="bk-cut">+' + $(cents - off) + '</span>';
   }
 
+  /**
+   * A package note without its first sentence. Every note opens by listing
+   * the work, which "What is included" now shows just above it, so the
+   * sentence said the same thing twice (owner, November 10).
+   */
+  function noteWithoutList(note) {
+    var m = /^[^.]*\.\s+/.exec(String(note || ''));
+    return m ? note.slice(m[0].length) : note;
+  }
+
   function pkgPrice(p) { return svc(p.priceCents, p.pricePlus ? '+' : ''); }
 
   function pkgDuration(p) {
@@ -456,27 +469,36 @@
     return STEPS.length - 1;
   }
 
+  /*
+   * The top bar in two groups, the way a shop does it (owner, November 10:
+   * "connect each step to things they already know"): YOUR DETAIL (Vehicle,
+   * Service, Package, Extras) and CHECKOUT (Contact, Address, Time, Review).
+   */
   function renderNav() {
     var reach = Math.max(state.step, furthestValid());
-    el('bkNav').innerHTML = STEPS.map(function (st, i) {
-      // A step that does not apply gets no tab. Showing "Package" greyed out
-      // to somebody who just told us they do not know which package they
-      // want is a reminder of the thing they could not answer.
-      if (skipped(i)) return '';
-      // Where, Time and Accept are part of the Checkout tab.
-      if (inCheckout(i) && i !== LAST) return '';
-      var done = i < reach && !st.valid();
-      var here = i === state.step;
-      var open = inCheckout(i) ? reach >= LOC_I : i <= reach;
-      var sum = st.sum ? st.sum() : '';
-      return '<button type="button" class="bk-seg' +
-        (here ? ' now' : '') + (done ? ' done' : '') + (open ? '' : ' locked') +
-        '" data-step="' + i + '"' + (open ? '' : ' disabled') +
-        (here ? ' aria-current="step"' : '') + '>' +
-        '<span class="bk-seg-t">' + esc(st.tab) + '</span>' +
-        (sum ? '<span class="bk-seg-s">' + esc(sum) + '</span>' : '') +
-        '</button>';
+    var seg = function (attrs, label, sum, here, done, open) {
+      return '<button type="button" class="bk-seg' + (here ? ' now' : '') + (done ? ' done' : '') + (open ? '' : ' locked') +
+        '" ' + attrs + (open ? '' : ' disabled') + (here ? ' aria-current="step"' : '') + '>' +
+        '<span class="bk-seg-t">' + esc(label) + '</span>' +
+        (sum ? '<span class="bk-seg-s">' + esc(sum) + '</span>' : '') + '</button>';
+    };
+    var build = STEPS.map(function (st, i) {
+      // A step that does not apply gets no tab.
+      if (skipped(i) || inCheckout(i)) return '';
+      return seg('data-step="' + i + '"', st.tab, st.sum ? st.sum() : '', i === state.step, i < reach && !st.valid(), i <= reach);
     }).join('');
+    var openId = onCheckout() ? ckOpenId() : '';
+    var ck = CK_TABS.map(function (t) {
+      var first = t.secs[0];
+      var target = t.tab === 'Review' && state.ckDone.agree ? 'review' : first;
+      var canOpen = reach >= LOC_I && ckCanOpen(target);
+      var done = Boolean(state.ckDone[first]);
+      var sum = done ? CK[ckIndex(first)].sum() : (t.tab === 'Review' ? sPay() : '');
+      return seg('data-cksec="' + target + '"', t.tab, sum, t.secs.indexOf(openId) > -1, done, canOpen);
+    }).join('');
+    el('bkNav').innerHTML =
+      '<div class="bk-navgrp"><span class="bk-navgrp-l">Your detail</span><div class="bk-navgrp-t">' + build + '</div></div>' +
+      '<div class="bk-navgrp"><span class="bk-navgrp-l">Checkout</span><div class="bk-navgrp-t">' + ck + '</div></div>';
     // Keep the active segment in view on a narrow screen.
     var now = el('bkNav').querySelector('.now');
     if (now && now.scrollIntoView) now.scrollIntoView({ block: 'nearest', inline: 'center' });
@@ -505,19 +527,110 @@
       '<h3 class="bk-sec-h">' + esc(s.title) + '</h3>' + s.render() + '</section>';
   }
 
-  /**
-   * The checkout page: one scroll, like a product checkout (owner, November
-   * 10). Your details first, so a booking left part way can be followed up.
+  /*
+   * THE CHECKOUT AS FOLDING SECTIONS (owner, November 10, round 16: "mimic
+   * the vehicle, service, package page"). Like a shop's checkout: Contact,
+   * Address, Time, then the yeses and the review. One section is open at a
+   * time, with its own Continue; a finished one folds to a line that opens
+   * it again. Nothing to scroll for.
    */
-  function rCheckout() {
-    var sec = function (id, title, body) {
-      return '<section class="bk-sec bk-ck" data-sec="' + id + '"><h3 class="bk-sec-h">' + esc(title) + '</h3>' + body + '</section>';
-    };
-    return sec('details', 'Your details', rDetails()) +
-      sec('where', 'Where are we detailing?', rLoc()) +
-      sec('when', 'When', rTime()) +
-      sec('agree', 'Almost done', rAgree()) +
-      sec('review', 'Review and book', rPay());
+  var CK = [
+    { id: 'details', title: 'Your details', render: function () { return rDetails(); }, valid: function () { return vDetails(); },
+      sum: function () { var c = state.contact; return [c.name, c.phone, c.email].filter(Boolean).join(' · '); } },
+    { id: 'where', title: 'Where are we detailing?', render: function () { return rLoc(); }, valid: function () { return vLoc(); },
+      sum: function () { var a = state.address; return [a.line1, a.city].filter(Boolean).join(', ') + (state.covered ? ' · covered spot' : ''); } },
+    { id: 'when', title: 'Pick your time', render: function () { return rTime(); }, valid: function () { return vTime(); },
+      sum: function () {
+        if (state.slot) return tzDay(state.slot, { weekday: 'short', month: 'short', day: 'numeric' }) + ', ' + spanLabel(state.slot, holdMinutes());
+        return isInquiry() ? preferenceSummary() : '';
+      } },
+    { id: 'agree', title: 'Almost done', render: function () { return rAgree(); }, valid: function () { return vAgree(); },
+      sum: function () {
+        return 'Terms accepted · Recording: ' + (state.consent.media ? 'yes' : 'no') + (state.consent.sms ? ' · Texts on' : '');
+      } },
+    { id: 'review', title: 'Review and book', render: function () { return rPay(); }, valid: function () { return vPay(); }, sum: function () { return ''; } }
+  ];
+  /* The top bar's checkout tabs, in a shop's words (owner, November 10). */
+  var CK_TABS = [
+    { tab: 'Contact', secs: ['details'] },
+    { tab: 'Address', secs: ['where'] },
+    { tab: 'Time', secs: ['when'] },
+    { tab: 'Review', secs: ['agree', 'review'] }
+  ];
+  var ckGrew = false;
+
+  function ckIndex(id) { for (var i = 0; i < CK.length; i++) if (CK[i].id === id) return i; return -1; }
+  /** A section can open once every section before it is done (or it is done). */
+  function ckCanOpen(id) {
+    var i = ckIndex(id);
+    if (i < 0) return false;
+    if (state.ckDone[id]) return true;
+    for (var j = 0; j < i; j++) if (!state.ckDone[CK[j].id]) return false;
+    return true;
+  }
+  /** The first section not done yet; the review once everything is. */
+  function ckNextOpen() {
+    for (var i = 0; i < CK.length - 1; i++) if (!state.ckDone[CK[i].id]) return CK[i].id;
+    return 'review';
+  }
+  function ckOpenId() {
+    if (!state.ckOpen || !ckCanOpen(state.ckOpen)) state.ckOpen = ckNextOpen();
+    return state.ckOpen;
+  }
+  /**
+   * Arriving with answers already in (a quote link, a resumed booking, back
+   * from the first page): every section that is already complete folds, so
+   * the open one is the first thing left to do.
+   */
+  function ckPrefill() {
+    for (var i = 0; i < CK.length - 1; i++) {
+      var c = CK[i];
+      if (state.ckDone[c.id]) continue;
+      if (c.valid()) break;
+      state.ckDone[c.id] = true;
+    }
+    state.ckOpen = ckNextOpen();
+  }
+  function ckOpenSection(id) {
+    if (!ckCanOpen(id)) return;
+    state.step = LAST;
+    state.ckOpen = id;
+    ckGrew = true;
+    track('checkout_open', { section: id });
+    render();
+  }
+  /** Continue in a section: check it, fold it, and open the next one. */
+  function ckAdvance(id) {
+    var c = CK[ckIndex(id)];
+    var prob = asProblem(c.valid(), LAST);
+    if (prob) { prob.sec = id; return showProblem(prob); }
+    state.ckDone[id] = true;
+    track('checkout_section', { section: id });
+    state.ckOpen = ckNextOpen();
+    ckGrew = true;
+    render();
+  }
+
+  function rCheckout(grew) {
+    var open = ckOpenId();
+    var html = '<p class="bk-reqnote"><span class="bk-req" aria-hidden="true">*</span> Required</p>';
+    CK.forEach(function (c) {
+      if (c.id === open) {
+        var cont = c.id === 'review' ? ''
+          : c.id === 'when' && !state.slot && !isInquiry() ? ''
+          : '<button type="button" class="bk-ckcont" data-ckcont="' + c.id + '">Continue' + CHEV_R + '</button>';
+        html += '<section class="bk-sec bk-ck' + (grew ? ' bk-sec-in' : '') + '" data-sec="' + c.id + '">' +
+          '<h3 class="bk-sec-h">' + esc(c.title) + '</h3>' + c.render() + cont + '</section>';
+      } else if (state.ckDone[c.id]) {
+        html += '<button type="button" class="bk-donerow" data-cksec="' + c.id + '">' +
+          '<span>' + esc(ckTabOf(c.id)) + '</span><b>' + esc(c.sum()) + '</b><em>Change</em></button>';
+      }
+    });
+    return html;
+  }
+  function ckTabOf(id) {
+    for (var i = 0; i < CK_TABS.length; i++) if (CK_TABS[i].secs.indexOf(id) > -1) return id === 'agree' ? 'Agree' : CK_TABS[i].tab;
+    return '';
   }
 
   /** Which step the last paint drew, and where the reader was in it. */
@@ -543,6 +656,7 @@
     // A checkout step is always drawn as the checkout page (a resumed draft
     // or an old quote link can land on Where or Time).
     if (onCheckout() && state.step !== LAST) state.step = LAST;
+    if (onCheckout() && !state.ckOpen) ckPrefill();
     var s = step();
     var scroller = el('bkScroll');
     keptScroll = scroller ? scroller.scrollTop : 0;
@@ -560,16 +674,19 @@
     renderNav();
     // Entering checkout reads the calendar fresh; re-rendering it does not.
     if (onCheckout() && lastRenderedStep !== s.id) lastSlotsKey = '';
-    var grew = !onCheckout() && lastRenderedStep !== s.id && BUILD_IDS.indexOf(lastRenderedStep) > -1;
+    var grew = onCheckout()
+      ? (lastRenderedStep === s.id && ckGrew)
+      : lastRenderedStep !== s.id && BUILD_IDS.indexOf(lastRenderedStep) > -1;
+    ckGrew = false;
     repaintAfterRender = false;
-    el('bkBody').innerHTML = onCheckout() ? rCheckout() : rBuild(grew);
+    el('bkBody').innerHTML = onCheckout() ? rCheckout(grew) : rBuild(grew);
     if (repaintAfterRender) { repaintAfterRender = false; repaintSlots(); }
 
     var back = el('bkBack');
     back.hidden = state.step === 0;
 
     var next = el('bkNext');
-    next.hidden = s.auto;
+    next.hidden = s.auto || (onCheckout() && ckOpenId() !== 'review');
     next.querySelector('span').textContent =
       s.id === 'pay'
         ? (isInquiry() ? 'Send request' : state.payInFull ? 'Pay and confirm' : 'Confirm booking')
@@ -598,13 +715,13 @@
      // they touched one.
      var sameStep = lastRenderedStep === s.id;
      lastRenderedStep = s.id;
-     if (sameStep) {
-       el('bkScroll').scrollTop = keptScroll;
-     } else if (grew) {
+     if (grew) {
        // The next question slid in under the answered ones: bring it up.
        el('bkScroll').scrollTop = keptScroll;
        var fresh = el('bkBody').querySelector('.bk-sec-in');
        if (fresh) scrollToEl(fresh, 12);
+     } else if (sameStep) {
+       el('bkScroll').scrollTop = keptScroll;
      } else {
        el('bkBody').scrollTop = 0;
        el('bkScroll').scrollTop = 0;
@@ -949,10 +1066,9 @@
         if (early) return early;
       }
       // The checkout reads top to bottom, so it is checked top to bottom.
-      var checks = [vDetails, vLoc, vTime, vAgree, vPay];
-      for (var c = 0; c < checks.length; c++) {
-        var found0 = asProblem(checks[c](), LAST);
-        if (found0) return found0;
+      for (var c = 0; c < CK.length; c++) {
+        var found0 = asProblem(CK[c].valid(), LAST);
+        if (found0) { found0.sec = CK[c].id; return found0; }
       }
       return null;
     }
@@ -965,6 +1081,12 @@
 
   /** Take them to it, point at it, and put the cursor in it. */
   function showProblem(prob) {
+    // On the checkout, open the section the problem is in.
+    if (prob.sec && onCheckout() && state.ckOpen !== prob.sec) {
+      state.ckOpen = prob.sec;
+      ckGrew = true;
+      render();
+    }
     if (prob.step !== state.step && !(inCheckout(prob.step) && onCheckout())) {
       state.step = prob.step;
       render();
@@ -983,7 +1105,7 @@
 
   function go(n) {
     var target = Math.max(0, Math.min(STEPS.length - 1, n));
-    if (inCheckout(target)) target = LAST;
+    if (inCheckout(target)) { target = LAST; ckPrefill(); }
     state.step = target;
     render();
     track('booking_step', { step: STEPS[target].id });
@@ -1075,6 +1197,7 @@
       // there, and say so plainly rather than letting them find out later.
       state.slot = null;
       state.checkedSlot = null;
+      if (onCheckout()) { state.ckDone.when = false; state.ckOpen = 'when'; ckGrew = true; }
       render();
       flash('Someone booked that time while you were deciding. These are the times still open.');
     });
@@ -1108,6 +1231,12 @@
 
   /** Back, past anything the forward walk skipped on the way here. */
   function goBack() {
+    var ci = onCheckout() ? ckIndex(ckOpenId()) : -1;
+    if (ci > 0) {
+      state.ckOpen = CK[ci - 1].id;
+      ckGrew = true;
+      return render();
+    }
     var i = (onCheckout() ? LOC_I : state.step) - 1;
     while (i > 0 && skipped(i)) i--;
     go(i);
@@ -1116,12 +1245,15 @@
   /* Pictograms for the first page (owner, November 10: "less words, more
      visuals"). Line drawings in the add-on icons' style. */
   var PIC = {
-    small: '<path d="M2.5 15.5v-2.3l2.4-.9 2.3-3.1a1.6 1.6 0 0 1 1.3-.7h6.2a1.6 1.6 0 0 1 1.2.6l2.6 3.2 2.5.7a1 1 0 0 1 .7 1v1.5"/><path d="M2.5 15.5h2.3M9.2 15.5h5.6M19.2 15.5h2.3"/><circle cx="7" cy="15.8" r="2"/><circle cx="17" cy="15.8" r="2"/><path d="M8.4 12.3h8.4"/>',
-    medium: '<path d="M2.5 16v-4.2l1.8-.6 1.6-3.6A1.5 1.5 0 0 1 7.3 6.7h9.5a1.5 1.5 0 0 1 1.3.8l1.9 3.6 1.3.5a1 1 0 0 1 .7 1V16"/><path d="M2.5 16h2.3M9.2 16h5.6M19.2 16h2.3"/><circle cx="7" cy="16.3" r="2"/><circle cx="17" cy="16.3" r="2"/><path d="M4.6 11.2h15.2M12 6.7v4.5"/>',
-    large: '<path d="M1.5 16.5V7.2a1.2 1.2 0 0 1 1.2-1.2h12.6a1.2 1.2 0 0 1 .9.4l4.6 5.1 1 .4a1 1 0 0 1 .7 1v3.6"/><path d="M1.5 16.5h2.8M9.2 16.5h5.6M19.2 16.5h3.3"/><circle cx="6.8" cy="16.8" r="2.1"/><circle cx="17" cy="16.8" r="2.1"/><path d="M1.5 11.5h19.4M8 6v5.5M14 6v5.5"/>',
+    // One car shape for the family: a car, then a taller SUV, then a van.
+    small: '<path d="M19 17h2a1 1 0 0 0 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4a1 1 0 0 0 1 1h2"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/><path d="M9 17h6"/>',
+    medium: '<path d="M19 17h2a1 1 0 0 0 1-1v-3.4a2 2 0 0 0-.9-1.7L18 9l-1.6-3.2A1.5 1.5 0 0 0 15 5H5.5A1.5 1.5 0 0 0 4 6.3L3 9.5l-.6.5a1 1 0 0 0-.4.8V16a1 1 0 0 0 1 1h2"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/><path d="M9 17h6M2.6 10h16.8M11 5v5"/>',
+    large: '<path d="M19 17h2a1 1 0 0 0 1-1v-3.6a2 2 0 0 0-.5-1.3l-3.4-3.8A3 3 0 0 0 15.9 6H4a2 2 0 0 0-2 2v8a1 1 0 0 0 1 1h2"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/><path d="M9 17h6M2 11h18.5M8 6v5M13.5 6v5"/>',
     interior: '<path d="M8.3 3h4.4a1.5 1.5 0 0 1 1.5 1.7l-.7 7.3H8.9L7 4.9A1.5 1.5 0 0 1 8.3 3z"/><path d="M8.9 12h7.6a2 2 0 0 1 2 2v2.8H7.9L8.9 12z"/><path d="M9.4 16.8v4M16.5 16.8v4"/>',
-    exterior: '<path d="M2.5 18v-2.4l2.3-.8 2.1-3a1.5 1.5 0 0 1 1.2-.6h7.8a1.5 1.5 0 0 1 1.2.6l2.1 3 2.3.8V18"/><circle cx="7" cy="18.2" r="1.8"/><circle cx="17" cy="18.2" r="1.8"/><path d="M12 2.5v4M10 4.5h4M18.5 5.5v3M17 7h3M5.5 6.5v2M4.5 7.5h2"/>',
-    both: '<path d="M2.5 18v-2.4l2.3-.8 2.1-3a1.5 1.5 0 0 1 1.2-.6h7.8a1.5 1.5 0 0 1 1.2.6l2.1 3 2.3.8V18"/><circle cx="7" cy="18.2" r="1.8"/><circle cx="17" cy="18.2" r="1.8"/><path d="M10.6 3.5h2.6a.9.9 0 0 1 .9 1l-.4 4h-3.1l-.9-4a.9.9 0 0 1 .9-1z"/><path d="M10.6 8.5h4.2a1 1 0 0 1 1 1v.7h-5.6z"/>',
+    // The same car, with a shine over it.
+    exterior: '<g transform="translate(0 2.5)"><path d="M19 17h2a1 1 0 0 0 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4a1 1 0 0 0 1 1h2"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/><path d="M9 17h6"/></g><path d="M11.5 1.8v3M10 3.3h3M17 2.6v2M16 3.6h2M6 3v1.6M5.2 3.8h1.6"/>',
+    // A seat and a car side by side: inside and out.
+    both: '<g transform="translate(-1.2 4.2) scale(.62)"><path d="M8.3 3h4.4a1.5 1.5 0 0 1 1.5 1.7l-.7 7.3H8.9L7 4.9A1.5 1.5 0 0 1 8.3 3z"/><path d="M8.9 12h7.6a2 2 0 0 1 2 2v2.8H7.9L8.9 12z"/><path d="M9.4 16.8v4M16.5 16.8v4"/></g><g transform="translate(9 6.4) scale(.62)"><path d="M19 17h2a1 1 0 0 0 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4a1 1 0 0 0 1 1h2"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/><path d="M9 17h6"/></g><path d="M11.2 7.5v3.8M9.3 9.4h3.8"/>',
     ask: '<circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 0 1 4.8.9c0 1.7-2.4 2.2-2.4 3.6"/><path d="M12 17h.01"/>'
   };
   function pic(id) {
@@ -1269,6 +1401,9 @@
     ];
     var caps = [5000, 12500, 21500, 39500];
     var html = '<div class="bk-browsehead">' +
+      // Pinned at the top with the search (owner, November 10: at the foot of
+      // a long list it was easy to get stuck in here).
+      '<button type="button" class="bk-browseback" id="bkBrowseBack">' + CHEV_L + 'Back to the quick picker</button>' +
       '<div class="bk-search">' +
         '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>' +
         '<input type="search" id="bkQ" data-browseq value="' + esc(state.browseQ) + '" placeholder="Search: leather, ceramic, pet hair, wash..." data-focus />' +
@@ -1336,7 +1471,6 @@
       html += '</div>';
     }
 
-    html += '<button type="button" class="bk-morelink" id="bkBrowseBack">Back to the quick picker</button>';
     return html;
   }
   function vIntent() {
@@ -1406,8 +1540,8 @@
             '<span class="bk-pkg-r"><b>' + pkgPrice(p) + '</b><i>' + dur + '</i></span>' +
           '</button>' +
           '<details class="bk-how bk-how-pkg"><summary>How it works</summary>' +
-            '<p class="bk-pkg-feat">' + feat + '.</p>' +
-            (p.note ? '<p>' + esc(p.note) + '</p>' : '') +
+            '<div class="bk-how-body"><p><span class="bk-how-sub">What is included</span>' + feat + '.' +
+            (p.note ? '<span class="bk-how-more">' + esc(noteWithoutList(p.note)) + '</span>' : '') + '</p></div>' +
           '</details>' +
         '</div>';
       });
@@ -1543,10 +1677,13 @@
       '</div>' +
       // "How it works" beside the description rather than under it (owner,
       // November 10): one less row on every card.
+      // The toggle stays put beside the description; its panel opens
+      // underneath, full width, so nothing jumps.
       '<div class="bk-addon-row"><p class="bk-addon-d">' + esc(a.description) + '</p>' +
       (a.note
-        ? '<details class="bk-how bk-how-side"><summary>How it works</summary><p>' + esc(a.note) + '</p></details>'
-        : '') + '</div>';
+        ? '<button type="button" class="bk-howbtn" aria-expanded="false" data-howfor="bkHow-' + esc(a.id) + '">How it works</button>'
+        : '') + '</div>' +
+      (a.note ? '<div class="bk-how-panel" id="bkHow-' + esc(a.id) + '" hidden><p>' + esc(a.note) + '</p></div>' : '');
 
     var wants = state.interest.indexOf(a.id) > -1;
 
@@ -1597,7 +1734,8 @@
 
     // The second vehicle first, as one slim line: worth seeing before anyone
     // scrolls, and quiet enough not to compete with the extras or Continue.
-    var html = '<p class="bk-sub">Optional. Most people carry straight on.</p>' + moreVehicles();
+    var html = '<p class="bk-sub">Optional. Extras are for specific needs, like pet hair, stains, odors or a deeper clean. ' +
+      'Skip this if your car does not need them.</p>' + moreVehicles();
 
     // Hidden until asked for (owner, November 10: do not flood the page).
     // Open by itself once something is added, so a choice is never hidden.
@@ -1669,25 +1807,25 @@
   function rLoc() {
     var a = state.address;
     return '<p class="bk-sub">We come to you. Travel is worked out from your address, and the first 10 minutes of drive time are free.</p>' +
-      '<div class="bk-field"><label for="bkL1">Street address</label>' +
-      '<input type="text" id="bkL1" data-addr="line1" value="' + esc(a.line1) + '" placeholder="Start typing your address" autocomplete="address-line1" data-focus />' +
+      '<div class="bk-field"><label for="bkL1">Street address <span class="bk-req" aria-hidden="true">*</span></label>' +
+      '<input type="text" id="bkL1" data-addr="line1" value="' + esc(a.line1) + '" placeholder="Start typing your address" autocomplete="address-line1" aria-required="true" data-focus />' +
       '<div class="bk-ac" id="bkAc" hidden></div></div>' +
       '<div class="bk-row3">' +
-        '<div class="bk-field"><label for="bkCity">City</label>' +
-        '<input type="text" id="bkCity" data-addr="city" value="' + esc(a.city) + '" autocomplete="address-level2" /></div>' +
+        '<div class="bk-field"><label for="bkCity">City <span class="bk-req" aria-hidden="true">*</span></label>' +
+        '<input type="text" id="bkCity" data-addr="city" value="' + esc(a.city) + '" autocomplete="address-level2" aria-required="true" /></div>' +
         '<div class="bk-field"><label for="bkState">State</label>' +
         '<select id="bkState" data-addr="region">' +
         STATES.map(function (s) {
           return '<option value="' + s + '"' + (a.region === s ? ' selected' : '') + '>' + s + '</option>';
         }).join('') + '</select></div>' +
-        '<div class="bk-field"><label for="bkZip">ZIP</label>' +
-        '<input type="text" id="bkZip" data-addr="zip" value="' + esc(a.zip) + '" inputmode="numeric" maxlength="5" autocomplete="postal-code" /></div>' +
+        '<div class="bk-field"><label for="bkZip">ZIP <span class="bk-req" aria-hidden="true">*</span></label>' +
+        '<input type="text" id="bkZip" data-addr="zip" value="' + esc(a.zip) + '" inputmode="numeric" maxlength="5" autocomplete="postal-code" aria-required="true" /></div>' +
       '</div>' +
       '<label class="bk-check"><input type="checkbox" id="bkCovered"' + (state.covered ? ' checked' : '') + ' />' +
       '<span><b>There is a garage or covered spot we can work in</b> <em class="bk-opt">Optional</em>' +
       '<i>It means we can work in the rain and on very hot, sunny days.</i></span></label>' +
       '<label class="bk-check"><input type="checkbox" id="bkNoLoc"' + (state.noGoodLocation ? ' checked' : '') + ' />' +
-      '<span>I do not have a good location for a detail near me</span></label>' +
+      '<span>I do not have a good location for a detail near me <em class="bk-opt">Optional</em></span></label>' +
       (state.noGoodLocation
         ? '<div class="bk-panel"><p>No problem, this is usually easy to solve. Local spots like retail parking lots often work well, especially for interior details. Tell us roughly where you are and we will sort somewhere out with you. If we cannot find somewhere near you, we can work out a location closer to us as well.</p>' +
           '<textarea data-note="loc" rows="3" maxlength="300" placeholder="e.g. I live in an apartment with no driveway, but there is a big lot behind the Kroger on Ludlow">' + esc(state.locationNote) + '</textarea></div>'
@@ -3729,11 +3867,12 @@
    * which checks the time is still free (advance).
    */
   function timeChosen() {
-    // The whole page, because the summary at the foot depends on the time
-    // (its fee, "your time is held", request or booking). The times are
-    // redrawn from memory, not re-read.
+    // Time is done: it folds to its line and the next section opens. The
+    // times are redrawn from memory, not re-read, when Time opens again.
+    state.ckDone.when = true;
+    state.ckOpen = ckNextOpen();
+    ckGrew = true;
     render();
-    scrollToSection('agree');
   }
 
   function scrollToSection(id) {
@@ -3907,11 +4046,11 @@
     var c = state.contact;
     return '<form class="bk-form" id="bkContactForm" autocomplete="on" novalidate>' +
       '<div class="bk-row2 bk-contact-row">' +
-      '<div class="bk-field"><label for="bkName">Name</label>' +
-      '<input type="text" id="bkName" name="name" data-c="name" value="' + esc(c.name) + '" autocomplete="name" maxlength="80" data-focus /></div>' +
-      '<div class="bk-field"><label for="bkPhone">Phone</label>' +
-      '<input type="tel" id="bkPhone" name="tel" data-c="phone" value="' + esc(c.phone) + '" inputmode="tel" autocomplete="tel" maxlength="20" /></div>' +
-      '<div class="bk-field"><label for="bkEmail">Email</label>' +
+      '<div class="bk-field"><label for="bkName">Name <span class="bk-req" aria-hidden="true">*</span></label>' +
+      '<input type="text" id="bkName" name="name" data-c="name" value="' + esc(c.name) + '" autocomplete="name" maxlength="80" aria-required="true" data-focus /></div>' +
+      '<div class="bk-field"><label for="bkPhone">Phone <span class="bk-req" aria-hidden="true">*</span></label>' +
+      '<input type="tel" id="bkPhone" name="tel" data-c="phone" value="' + esc(c.phone) + '" inputmode="tel" autocomplete="tel" maxlength="20" aria-required="true" /></div>' +
+      '<div class="bk-field"><label for="bkEmail">Email <i>(optional)</i></label>' +
       '<input type="email" id="bkEmail" name="email" data-c="email" value="' + esc(c.email) + '" inputmode="email" autocomplete="email" maxlength="120" data-optional /></div>' +
       '</div></form>';
   }
@@ -3933,7 +4072,7 @@
       HEARD_OPTIONS.map(function (o) { return '<option' + (state.heard === o ? ' selected' : '') + '>' + esc(o) + '</option>'; }).join('') +
       '</select></div>';
     return consentBox('terms', 'bkTerms',
-        '<b>I agree to the terms and privacy policy</b>',
+        '<b>I agree to the terms and privacy policy</b> <span class="bk-req" aria-hidden="true">*</span>',
         pctOf(RULES.cancelMidWindowBp) + ' cancellation fee inside ' + RULES.refundFullWindowHours + ' hours, ' +
         pctOf(RULES.cancelLateWindowBp) + ' inside ' + RULES.refundMidWindowHours + ' hours. Nothing is charged today. ' +
         '<a class="bk-readmore inline" href="terms.html#cancellation" target="_blank" rel="noopener">Terms</a> &middot; ' +
@@ -4137,7 +4276,7 @@
       return '<button type="button" class="bk-acc-b' + (on ? ' on' : '') + '" data-media="' + val + '">' + text + '</button>';
     };
     return '<div class="bk-acc bk-media' + (m === null ? '' : ' answered') + '">' +
-      '<div class="bk-media-t"><p class="bk-acc-q">Can we record during the detail?</p>' +
+      '<div class="bk-media-t"><p class="bk-acc-q">Can we record during the detail? <span class="bk-req" aria-hidden="true">*</span></p>' +
       '<p class="bk-acc-h">For short clips on our social media. We always blur faces, license plates and anything private. ' +
       '<a href="https://www.instagram.com/513autoclean/" target="_blank" rel="noopener">See what we post</a></p></div>' +
       '<div class="bk-acc-opts" role="group" aria-label="Can we record during the detail?">' +
@@ -5013,7 +5152,7 @@
       '[data-size],[data-intent],[data-pkg],[data-addon],[data-clear],[data-win],[data-slot],' +
       '[data-pay],[data-delveh],[data-browsepick],[data-max],[data-sort],' +
       '[data-kind],[data-paymethod],[data-corr],[data-coating],[data-garage],[data-step],' +
-      '[data-prefday],[data-prefpart],[data-interest],[data-wkday],[data-more],[data-steer],[data-flexday],[data-wkedge],[data-access],[data-extrarm],' +
+      '[data-prefday],[data-prefpart],[data-interest],[data-wkday],[data-more],[data-steer],[data-flexday],[data-wkedge],[data-ckcont],[data-cksec],[data-access],[data-extrarm],' +
       '#bkWkPrev,#bkWkNext,#bkWkNext2,#bkWkToday,#bkWkBack,#bkShowAll,#bkShowRecs,' +
       '#bkAddVeh,#bkNext,#bkBack,#bkClose,#bkScrim,#bkBrowse,#bkBrowseBack,' +
       '#bkAskMode,#bkAskMode2,#bkSlotMode,#bkFlexOpen,#bkPickChange,#bkShowExtras,' +
@@ -5191,7 +5330,7 @@
     }
     if (t.id === 'bkPickChange') {
       track('time_change', { step: step().id });
-      if (onCheckout()) return scrollToSection('when');
+      if (onCheckout()) return ckOpenSection('when');
       return go(timeStepIndex());
     }
     if (t.dataset.more) return openMoreTimes(t);
@@ -5205,8 +5344,7 @@
       state.checkedSlot = null;
       state.prefer = { parts: [], days: [cinciKey(flexMs)], flex: true };
       track('time_flex_pick', { days_ahead: Math.round((flexMs - Date.now()) / DAY), rules: P.TIME_RECOMMENDATION_RULES.version });
-      render();
-      return scrollToSection('agree');
+      return timeChosen();
     }
     if (t.dataset.slot) {
       selectSlot(Number(t.dataset.slot), t.dataset.via || 'calendar',
@@ -5296,6 +5434,8 @@
       renderTotal();
       return;
     }
+    if (t.dataset.ckcont) return ckAdvance(t.dataset.ckcont);
+    if (t.dataset.cksec) return ckOpenSection(t.dataset.cksec);
     if (t.dataset.wkedge) {
       var wsc = el('bkWkScroll');
       if (wsc) {
@@ -6320,6 +6460,26 @@
     } catch (e) { /* a follow-up must never get in the way of leaving */ }
   }
 
+  /** Open or close a How it works: a <details> (packages) or a toggle and its panel (extras). */
+  function toggleHow(det, btn) {
+    var body = det ? det.querySelector('.bk-how-body') : root.querySelector('#' + btn.dataset.howfor);
+    if (!body) return;
+    var isOpen = det ? det.open : !body.hidden;
+    var set = function (open) {
+      if (det) det.open = open; else { body.hidden = !open; btn.setAttribute('aria-expanded', String(open)); }
+    };
+    if (reducedMotion() || !body.animate) return set(!isOpen);
+    if (!isOpen) {
+      set(true);
+      var h = body.scrollHeight;
+      body.animate([{ height: '0px', opacity: 0 }, { height: h + 'px', opacity: 1 }], { duration: 220, easing: 'cubic-bezier(.2,.7,.2,1)' });
+    } else {
+      var h2 = body.scrollHeight;
+      var anim = body.animate([{ height: h2 + 'px', opacity: 1 }, { height: '0px', opacity: 0 }], { duration: 170, easing: 'ease-in' });
+      anim.onfinish = function () { set(false); };
+    }
+  }
+
   function close() {
     if (!host) return;
     if (!host.hidden) captureUnfinished('closed');
@@ -6335,6 +6495,15 @@
   function mount() {
     host = document.getElementById('bookFunnel');
     if (!host) return;
+    // How it works opens and closes with a short height animation, from the
+    // toggle the customer pressed (owner, November 10).
+    host.addEventListener('click', function (e) {
+      var sum = e.target.closest && e.target.closest('.bk-how > summary');
+      var btn = !sum && e.target.closest && e.target.closest('.bk-howbtn');
+      if (sum && sum.parentNode && sum.parentNode.querySelector && sum.parentNode.querySelector('.bk-how-body')) {
+        e.preventDefault(); toggleHow(sum.parentNode, null);
+      } else if (btn && btn.dataset && btn.dataset.howfor) { e.preventDefault(); toggleHow(null, btn); }
+    });
     // Leaving the page from the checkout counts as leaving it unfinished.
     window.addEventListener('pagehide', function () { if (host && !host.hidden) captureUnfinished('left_page'); });
     host.innerHTML = SHELL;
@@ -6468,7 +6637,10 @@
       // step().valid() FIRST was backwards: a half-filled step is exactly
       // when somebody wants the next field, and instead they got a
       // validation error scrolled to the middle of the screen.
-      if (!focusNext(t)) advance();
+      if (focusNext(t)) return;
+      // On the checkout, the last box of a section continues that section.
+      if (onCheckout() && ckOpenId() !== 'review') return ckAdvance(ckOpenId());
+      advance();
     });
 
     /**
