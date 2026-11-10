@@ -109,7 +109,7 @@ Read this before changing anything. Every rule below came from a real bug or an 
 - **Content that loads late moves anchors.** The gallery, the review ticker and the web fonts all grow the page after first paint. `script.js` `pinTo()` holds a jump's target for 2.5 s. New late-loading content above an anchor either reserves its space or relies on that hold.
 - **No orphaned words.** Headings use `text-wrap: balance`; running text uses `text-wrap: pretty` (base rules next to the `h1–h4` rule in `styles.css`). Don't override them. Greedy wrapping left 156 single-word last lines across 6 pages × 6 widths, worse on wide screens, where heading size grows but `.section-head` stays 660 px. What's left after the fix (10 at 820 px) comes from cards too narrow for their checklist items. Fix the column count, not the text.
 - **Rotating content gets a measured height, not a guessed one.** The reviews ticker used fixed rem heights (8.4 / 5.2) that wasted 4 to 31 px at every width. `js/reviews.js` `fitStage()` now measures the tallest review at the current width (again on resize and once fonts load). Do the same for any carousel or ticker.
-- **A sub-page's first section doesn't get home-page section padding.** `main > section:first-child` caps the top padding at 32 px. The usual 56 to 81 px separates stacked home sections; under the header it pushed every title 60 to 90 px down and the Contact form off a laptop screen. **Check that the main content of each page fits a 1440×790 viewport** (a laptop browser window).
+- **A sub-page's first section doesn't get home-page section padding.** `main > section:first-child` caps the top padding at 24 px. The usual 56 to 81 px separates stacked home sections; under the header it pushed every title 60 to 90 px down and the Contact form off a laptop screen. **Check that the main content of each page fits a 1440×790 viewport** (a laptop browser window).
 - **Anchor targets sit where the scroll should land:** `#top` is the first element in `<body>`, above the top bar.
 - **Check the page's real width at 375 and 320 px**, not just for scrolling: compare `innerWidth` with the device width, and check `visualViewport.offsetTop`. A header 4 px too wide made phones zoom out, and every jump to a section landed about 9 px low, while `scrollWidth > innerWidth` still said everything was fine.
 - **`.field input` (width 100%, padding, border, background) is for text boxes, but it matches radios and checkboxes inside `.field` too.** The contact pills' radios stretched to the full pill and pushed the words outside. Any control that isn't a text box, inside `.field`, needs `width: auto; padding: 0; border: 0; background: none`.
@@ -125,11 +125,24 @@ Read this before changing anything. Every rule below came from a real bug or an 
 - **A mobile-only rule written after a `min-width` media query overrides desktop too** (same specificity, later wins). Wrap it in `max-width: 819.98px`.
 
 ## Sub-page fold (fixed November 10)
-- **Each sub-page's core content fits the first screen at 1440×790 and 1920×950** (Services: tabs and all three cards down to the Book buttons; About: the story and the Google rating badge; Range & Travel: the estimator, map and legend; FAQ: every question; Contact: the form). Measure with `fold.mjs` in the shared side-session notes folder before and after any change above the cards. 1280×720 fits too except the Exterior tab, whose Full Exterior tagline runs five lines.
+- **The owner's acceptance test, at 1440×790, 1280×720 and 1920×950** (laptop and desktop windows), with nothing scrolled:
+  - Services: every visible package card's Book button.
+  - About: the 5.0 Google score and the tops of the first review cards (name and stars).
+  - Range & Travel: the estimator, the map and its legend.
+  - FAQ: every question.
+  - Contact: the Send button.
+
+  Measure with `fold.mjs` (side-session notes folder; serve `dist/` on your port) before and after any change above these.
+- **The margins are thin.** The Services Exterior tab ends 4 px inside 720. Full Exterior's tagline fits four lines only because the card has 1.2rem side padding (at 1.4rem it ran five lines). A longer tagline, a fifth visible checklist item, or more padding above the cards breaks the test.
 - **Sub-page titles are the compact size** (`main > section:first-child .section-head h2`, the size `.inq-head` set on Contact). Home-page section titles at 2.7rem took three lines and 140 px of a laptop screen.
 - **Page-wide defaults on sub-pages go through `:where()`.** `main > section:first-child .section-head { margin-bottom }` outranked `.svc-intro .section-head { margin-bottom: 0 }` and quietly added 26 px under the Services title.
 - **`index.html` has no `<main>`**, so `main …` rules reach the sub-pages only. The card density rules rely on that; if the home page gains a `<main>`, they spread to it.
 - **On `services.html` a package checklist folds after 4 items** behind "N more included", on one row with "How it works" (`render-site.mjs` `servicesHtml({ fold: true })`). The home page keeps the full lists. A toggle that opens takes the full row (`.svc-toggles > details[open]`).
+- **Package cards go three across only from 1000 px.** At 820 px each card was 230 px wide, and three-word checklist items left one word alone on a line.
+- **About from 1000 px:**
+  - The portrait is a narrow column as tall as the copy, not a 4:5 frame.
+  - `js/reviews.js` puts the Google score into `#rvScore`, beside the "Cincinnati keeps coming back." title.
+  - `.reviews` is transparent there, because its background cut the portrait's shadow.
 
 ## Results carousel (built November 10)
 - **No `.reveal` on anything inside a sideways track.** A card parked off to the side never intersects the viewport, so it stays invisible and fades up late when it slides in. Put `.reveal` on the carousel.

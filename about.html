@@ -22,7 +22,7 @@
 <link rel="manifest" href="manifest.webmanifest" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link rel="stylesheet" href="styles.css?v=72cd176408" />
+<link rel="stylesheet" href="styles.css?v=2941062b63" />
 <!-- Same public config and consent-gated analytics as the home page, so a
      visitor landing here is asked once and the arrival source is kept. -->
 <script src="js/config.js?v=56c28f557b"></script>
@@ -140,12 +140,6 @@
           <a class="btn btn-ink" href="index.html#book">Book Now</a>
           <a class="btn btn-ghost" href="contact.html">Ask a Question</a>
         </div>
-        <!-- The reviews' summary, on the first screen: the home page's Google
-             badge, its count stamped by the build and kept live by js/reviews.js. -->
-        <a class="g-badge reveal" data-d="3" id="google-badge" href="https://maps.app.goo.gl/PAAdpX7owQmc1cAz9" target="_blank" rel="noopener" aria-label="Read our reviews on Google">
-          <svg class="g-logo" viewBox="0 0 24 24"><path fill="#4285F4" d="M22 12c0-.6-.1-1.2-.2-1.8H12v3.6h5.6a4.8 4.8 0 0 1-2 3.1v2.6h3.2A9.6 9.6 0 0 0 22 12z"/><path fill="#34A853" d="M12 22c2.7 0 5-.9 6.6-2.4l-3.2-2.6c-.9.6-2 .9-3.4.9-2.6 0-4.8-1.7-5.6-4.1H3.1v2.6A10 10 0 0 0 12 22z"/><path fill="#FBBC05" d="M6.4 13.8a6 6 0 0 1 0-3.6V7.6H3.1a10 10 0 0 0 0 8.8z"/><path fill="#EA4335" d="M12 6.4c1.5 0 2.8.5 3.8 1.5l2.8-2.8A10 10 0 0 0 3.1 7.6l3.3 2.6C7.2 8 9.4 6.4 12 6.4z"/></svg>
-          <span class="g-meta"><span class="g-stars">★★★★★</span><span class="g-text">Rated 5.0 from 32 reviews on Google &amp; Yelp</span></span>
-        </a>
       </div>
     </div>
   </div>
@@ -154,10 +148,16 @@
 <!-- ============ REVIEWS ============ -->
 <section class="reviews" id="reviews">
   <div class="wrap">
-    <div class="section-head center reveal">
-      <span class="eyebrow">Reviews</span>
-      <h2>Cincinnati keeps coming back.</h2>
-      <p>Every review here comes from a real 513 Auto Clean customer on Google and Yelp.</p>
+    <!-- The title and the Google score share a row from 1000px (js/reviews.js
+         fills #rvScore), so the score and the tops of the first cards are on
+         the first laptop screen together with the team. -->
+    <div class="rv-intro">
+      <div class="section-head center reveal">
+        <span class="eyebrow">Reviews</span>
+        <h2>Cincinnati keeps coming back.</h2>
+        <p>Every review here comes from a real 513 Auto Clean customer on Google and Yelp.</p>
+      </div>
+      <div id="rvScore"></div>
     </div>
 
     <!-- Live Google reviews. Rendered by js/reviews.js from /api/reviews,
@@ -237,7 +237,7 @@
 </div>
 
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&family=Hanken+Grotesk:wght@400;500;600;700&display=swap" />
-<script src="js/reviews.js?v=e347e49b41" defer></script>
+<script src="js/reviews.js?v=49c3fefd3b" defer></script>
 <script src="script.js?v=3a75b08501" defer></script>
 </body>
 </html>
