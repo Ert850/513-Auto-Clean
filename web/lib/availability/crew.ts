@@ -29,12 +29,16 @@
  *   ranges may be listed (round 16: Kris waives 6 to 7pm only on the days he
  *   works evenings): "Tue-Sat 18:00-19:00", "Sun,Mon 10:00-18:00;
  *   Tue-Sat 18:00-19:00". A bare range means every day.
+ * - `arrivalWindow` (optional): minutes after a start time this detailer may
+ *   still arrive, which their drive may use (owner, November 11: "6pm" means
+ *   arriving 6 to 7pm). 60 when left out; 0 means the drive must end by the
+ *   start.
  * - The owner's own entry is optional and only sets his place in the order;
  *   his calendars stay the site's existing ones. Without it he books last.
  *
  * Detailers may overlap: each one's calendars are checked on their own.
  */
-import { localMinutesOfDay } from "./slots.js";
+import { ARRIVAL_WINDOW_MIN, localMinutesOfDay } from "./slots.js";
 import { localWeekday } from "../time/zone.js";
 
 /** A skill a job can need. Free text, so a new one needs no code change. */
@@ -51,6 +55,12 @@ export interface Detailer {
   owner: boolean;
   /** Starts (minutes past midnight, inclusive) with no early or late fee. */
   noFeeStarts: FeeFree[] | null;
+  /**
+   * Minutes after a start time they may still arrive ("6pm" means 6 to 7pm),
+   * which the drive may use (slots.ts arrivalWindowMin). DETAILERS
+   * `arrivalWindow`; 60 when left out.
+   */
+  arrivalWindowMin: number;
 }
 
 /** One fee-free range: its days (0 Sun to 6 Sat; null = every day) and its starts. */
@@ -64,6 +74,7 @@ export const OWNER: Detailer = {
   bookingsCalendarId: "",
   owner: true,
   noFeeStarts: null,
+  arrivalWindowMin: ARRIVAL_WINDOW_MIN,
 };
 
 
@@ -160,7 +171,7 @@ export function parseDetailers(raw: string | null | undefined): { crew: Detailer
   list.forEach((entry, i) => {
     const e = (entry ?? {}) as Record<string, unknown>;
     if (e["owner"] === true) {
-      if (!ownerPlaced) crew.push({ ...OWNER, name: String(e["name"] || OWNER.name).slice(0, 40) });
+      if (!ownerPlaced) crew.push({ ...OWNER, name: String(e["name"] || OWNER.name).slice(0, 40), arrivalWindowMin: windowOf(e, OWNER.name, problems) });
       ownerPlaced = true;
       return;
     }
@@ -185,11 +196,21 @@ export function parseDetailers(raw: string | null | undefined): { crew: Detailer
       bookingsCalendarId: bookings,
       owner: false,
       noFeeStarts,
+      arrivalWindowMin: windowOf(e, name, problems),
     });
   });
 
   if (!ownerPlaced) crew.push(OWNER);
   return { crew, problems };
+}
+
+/** `arrivalWindow`: whole minutes, 0 to 120; 60 when left out. */
+function windowOf(e: Record<string, unknown>, name: string, problems: string[]): number {
+  if (e["arrivalWindow"] === undefined) return ARRIVAL_WINDOW_MIN;
+  const n = Number(e["arrivalWindow"]);
+  if (Number.isInteger(n) && n >= 0 && n <= 120) return n;
+  problems.push(`${name}: arrivalWindow should be minutes, 0 to 120`);
+  return ARRIVAL_WINDOW_MIN;
 }
 
 /** "interior", ["interior", "coating"] or "all" as a list of skills ("*" is everything). */

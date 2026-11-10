@@ -90,6 +90,15 @@ export interface SlotRequest {
    */
   ignoreOutboundBeforeMin?: number;
   /**
+   * A start time is an arrival WINDOW: "6pm" means we arrive between 6 and
+   * 7pm (owner, November 11). So the drive may run into that window: a start
+   * is offered when the detailer, leaving the moment they are free (their
+   * OPEN block begins, or their previous job ends), arrives within it. The
+   * job is then planned from that arrival. 0 or absent: the drive must fit
+   * before the start, as before.
+   */
+  arrivalWindowMin?: number;
+  /**
    * Restrict to these weekdays, 0 Sun to 6 Sat. Correction work uses it to
    * offer weekend starts only, since it runs across several days.
    */
@@ -245,13 +254,17 @@ export function computeSlots(req: SlotRequest): number[] {
     // Earliest the CUSTOMER-FACING start can be. The drive out normally has to
     // fit inside the free interval ahead of it; at the very start of the day
     // it does not, because it happened before the day began.
+    const slack = Math.max(0, req.arrivalWindowMin ?? 0) * MIN;
     const earliest = outboundFree(ceilTo(Math.max(f.start, req.notBefore), step))
       ? Math.max(f.start, req.notBefore)
-      : Math.max(f.start + req.travelBeforeMin * MIN, req.notBefore);
+      : Math.max(f.start + req.travelBeforeMin * MIN - slack, f.start, req.notBefore);
     let t = ceilTo(earliest, step);
 
     while (true) {
-      const commitmentStart = outboundFree(t) ? t : t - req.travelBeforeMin * MIN;
+      // When they arrive: at the start, or later in the arrival window when
+      // the drive from where they were runs into it.
+      const arrival = outboundFree(t) ? t : Math.max(t, f.start + req.travelBeforeMin * MIN);
+      const late = arrival - t;
       // Last job of the day: nobody is waiting on the drive home, so it does
       // not need to fit inside the availability block.
       const returnMin =
@@ -260,18 +273,18 @@ export function computeSlots(req: SlotRequest): number[] {
         localMinutesOfDay(t, req.timeZone) >= req.ignoreReturnAfterMin
           ? 0
           : req.travelAfterMin;
-      const commitmentEnd = t + (req.serviceDurationMin + returnMin) * MIN;
+      const commitmentEnd = arrival + (req.serviceDurationMin + returnMin) * MIN;
       // The job itself no longer fits: nothing later will.
-      if (t + req.serviceDurationMin * MIN > f.end) break;
+      if (arrival + req.serviceDurationMin * MIN > f.end) break;
       // The drive home does not fit, but from 6pm it is not needed, so a
       // later start can still fit where this one does not. Breaking here
       // lost every 6pm start in a block ending 8pm (engine check, November 10).
       if (commitmentEnd > f.end) { t += step; continue; }
       if (t > req.notAfter) break;
       if (
-        commitmentStart >= f.start &&
+        late <= slack &&
         (!req.allowedWeekdays || req.allowedWeekdays.includes(localWeekday(t, req.timeZone ?? ZONE))) &&
-        withinBookingWindow(t, req.serviceDurationMin, win, req.timeZone, req.hasExterior) &&
+        withinBookingWindow(t, req.serviceDurationMin + late / MIN, win, req.timeZone, req.hasExterior) &&
         matchesPreferred(t, wanted, req.timeZone)
       ) {
         out.push(t);
@@ -339,6 +352,9 @@ export interface TimeBand {
  * what stops the oldest bug in this feature coming back: a time sold inside
  * a band labelled standard, then billed at the premium rate.
  */
+/** The arrival window customers are told: "we arrive between 6 and 7pm". */
+export const ARRIVAL_WINDOW_MIN = 60;
+
 export const TIME_BANDS: TimeBand[] = [
   {
     id: "early",

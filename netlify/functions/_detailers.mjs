@@ -12,7 +12,11 @@
  * job they do, so a request cannot pick a calendar or claim a waiver.
  * Anything else is the owner.
  */
-import { parseDetailers, waivesFeeAt, canDo, wireNeeds } from "./_pricing.mjs";
+import { parseDetailers, waivesFeeAt, canDo, wireNeeds, loadWindow, blockFeeAt, localMinutesOfDay, DEFAULT_RULES } from "./_pricing.mjs";
+
+/** Elijah's OPEN blocks live on 513 Availability (as js/config.template.js). */
+const OWNER_AVAILABILITY = process.env.GOOGLE_OWNER_AVAILABILITY_ID ||
+  "9f26a370ac8629b6df3f7f4e8181aa1086f3acb2b47866e01a1b868cd4ab8161@group.calendar.google.com";
 
 /**
  * The detailer for an id from a request body, or null for the owner.
@@ -29,6 +33,57 @@ export function detailerFor(raw, cart) {
   const d = crew.find((x) => x.id === id && !x.owner) ?? null;
   if (d && cart && !canDo(d, wireNeeds(cart))) return null;
   return d;
+}
+
+/**
+ * The early or late fee for this start, from the calendar of whoever takes
+ * it (fee standard B, owner, November 10): the OPEN block it starts in,
+ * "OPEN" for none, "OPEN +20%" for 20%. Returned as basis points for
+ * priceFromWire's `blockFeeBp`, or null for the clock rule (no OPEN blocks).
+ *
+ * If the calendar cannot be read right now, the fee the customer was shown
+ * stands, as long as it is no more than the clock rule would charge: a
+ * Google outage never costs a booking, and never charges more than was seen.
+ */
+export async function blockFeeFor(detailer, slotMs, shownBp) {
+  if (!slotMs) return null;
+  const apiKey = process.env.GOOGLE_CALENDAR_API_KEY || process.env.GOOGLE_API_KEY;
+  const calendarId = detailer ? detailer.availabilityCalendarId : OWNER_AVAILABILITY;
+  if (apiKey && calendarId) {
+    try {
+      const win = await loadWindow({ calendarId, apiKey }, slotMs - 12 * 3600_000, slotMs + 12 * 3600_000);
+      return blockFeeAt(win, slotMs);
+    } catch (e) {
+      console.error("fee calendar", String(e).slice(0, 200));
+    }
+  }
+  const m = localMinutesOfDay(slotMs);
+  const r = DEFAULT_RULES.surcharge;
+  const clock = (m < r.earlyBeforeMinutes || m >= r.lateFromMinutes) && !timeFeeWaived(detailer, slotMs) ? r.timeOfDayBp : 0;
+  const shown = Number(shownBp);
+  return Number.isFinite(shown) && shown >= 0 && shown <= clock ? Math.round(shown) : null;
+}
+
+/**
+ * Where a detailer drives from: DETAILER_HOMES in Netlify, a server-only
+ * setting (never written into the page, unlike DETAILERS, because it holds
+ * home addresses), as JSON by name, any number of detailers:
+ *   {"Kris": "123 Main St, Cincinnati, OH 45202"}
+ * Null for the owner, or anyone not listed: the shop address
+ * (SHOP_ORIGIN_ADDRESS), as before.
+ */
+export function homeFor(detailer) {
+  if (!detailer || detailer.owner) return null;
+  let homes;
+  try { homes = JSON.parse(process.env.DETAILER_HOMES || "{}"); } catch { return null; }
+  if (!homes || typeof homes !== "object") return null;
+  for (const [k, v] of Object.entries(homes)) {
+    const key = String(k).trim().toLowerCase();
+    if ((key === detailer.id || key === String(detailer.name || "").trim().toLowerCase()) && typeof v === "string" && v.trim()) {
+      return v.trim().slice(0, 200);
+    }
+  }
+  return null;
 }
 
 /** No early or late fee for this start, because this detailer works it anyway. */

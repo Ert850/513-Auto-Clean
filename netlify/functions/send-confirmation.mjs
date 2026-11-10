@@ -1,5 +1,5 @@
 import { priceFromWire, validateWire, findPackage, findAddon, vehicleSize, isLive, ADVICE_HOLD_MIN } from "./_pricing.mjs";
-import { detailerFor, timeFeeWaived } from "./_detailers.mjs";
+import { blockFeeFor, detailerFor, homeFor, timeFeeWaived } from "./_detailers.mjs";
 import { createBookingEvent, gcalAuthMode, gcalConfigured } from "./_gcal.mjs";
 import { measuredOneWayMinutes } from "./_routes.mjs";
 import { limited } from "./_ratelimit.mjs";
@@ -381,16 +381,18 @@ export async function handler(event) {
    * screen and the card both used the real drive. A Mason booking read $30
    * in the inbox and $20 everywhere else.
    */
-  const measured = await measuredOneWayMinutes(cart);
   // Who the time was given to, as THIS server knows them (DETAILERS). Their
   // no-fee hours (Kris at 6 to 7pm) are applied here too, so the receipt in
-  // the email matches the price the customer saw.
+  // the email matches the price the customer saw, and the drive is measured
+  // from their home (DETAILER_HOMES).
   const detailer = detailerFor(payload?.detailer, cart);
+  const measured = await measuredOneWayMinutes(cart, homeFor(detailer));
   const priced = priceFromWire(cart, {
     measuredOneWayMinutes: measured,
     nowMs: Date.now(),
     payInFull,
     timeOfDayWaived: timeFeeWaived(detailer, cart.slot),
+    blockFeeBp: await blockFeeFor(detailer, cart.slot, payload?.timeFeeBp),
   });
   const when = whenLabel(cart.slot);
   const ctx = { contact, when, priced, kind, cart, slot: cart.slot ?? null, detailer };

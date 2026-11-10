@@ -64,6 +64,11 @@ export interface PriceOptions {
    * a request body.
    */
   timeOfDayWaived?: boolean;
+  /**
+   * The fee the detailer's calendar sets for this start (the OPEN block's
+   * "+N%"), read by the server itself (_detailers.mjs). Null: clock rule.
+   */
+  blockFeeBp?: number | null;
 }
 
 export interface PricedCart {
@@ -167,7 +172,9 @@ export function priceFromWire(wire: WireCart, opts: PriceOptions = {}): PricedCa
     // and this trusted it, which was a 20% discount for anyone who edited one
     // word of the request. Without a slot there is no window to be inside.
     surchargeContext: wire.slot
-      ? { startMinutesLocal: localMinutesOfDay(wire.slot), priorityBooking: priority, ...(opts.timeOfDayWaived ? { timeOfDayWaived: true } : {}) }
+      ? { startMinutesLocal: localMinutesOfDay(wire.slot), priorityBooking: priority,
+          ...(opts.timeOfDayWaived ? { timeOfDayWaived: true } : {}),
+          ...(typeof opts.blockFeeBp === "number" ? { blockFeeBp: opts.blockFeeBp } : {}) }
       : null,
     zip: wire.zip ?? null,
     ...(payInFull ? { payInFull: true } : {}),
@@ -208,6 +215,8 @@ export { legalFingerprint } from "./site/legalFingerprint.js";
 export { PROMOS, findPromo, normalisePromo, promoDiscountCents, promoMessage } from "./pricing/promos.js";
 export { parseIcsBusy, mergeBusy } from "./booking/ics.js";
 export { parseDetailers, waivesFeeAt, canDo } from "./availability/crew.js";
+export { loadWindow, blockFeeAt } from "./google/publicCalendar.js";
+export { localMinutesOfDay } from "./availability/slots.js";
 
 /**
  * The kinds of work a cart needs, the way the booking form works it out

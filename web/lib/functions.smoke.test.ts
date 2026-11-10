@@ -268,6 +268,39 @@ describe("every function survives hostile input with its key present", () => {
     }
   });
 
+  it("with no calendar to read, the server keeps the fee shown, never more than the clock rule", async () => {
+    const before = { k: process.env.GOOGLE_CALENDAR_API_KEY, g: process.env.GOOGLE_API_KEY };
+    delete process.env.GOOGLE_CALENDAR_API_KEY; delete process.env.GOOGLE_API_KEY;
+    try {
+      const { blockFeeFor } = (await import(`../../netlify/functions/${"_detailers"}.mjs`)) as {
+        blockFeeFor: (d: unknown, ms: number, shown: unknown) => Promise<number | null>;
+      };
+      const at = (h: number) => Date.parse(`2026-11-20T${String(h + 5).padStart(2, "0")}:00:00Z`);
+      expect(await blockFeeFor(null, at(19), 2000), "7pm, shown 20%").toBe(2000);
+      expect(await blockFeeFor(null, at(19), 0), "7pm, shown standard").toBe(0);
+      expect(await blockFeeFor(null, at(12), 2000), "noon: more than the clock, so the clock").toBeNull();
+      expect(await blockFeeFor(null, at(19), "junk")).toBeNull();
+    } finally {
+      if (before.k !== undefined) process.env.GOOGLE_CALENDAR_API_KEY = before.k;
+      if (before.g !== undefined) process.env.GOOGLE_API_KEY = before.g;
+    }
+  });
+
+  it("each detailer drives from their own home, kept server-side in DETAILER_HOMES", async () => {
+    const before = process.env.DETAILER_HOMES;
+    process.env.DETAILER_HOMES = JSON.stringify({ Kris: "1 Test Rd, Mason, OH 45040" });
+    try {
+      const { homeFor } = (await import(`../../netlify/functions/${"_detailers"}.mjs`)) as { homeFor: (d: unknown) => string | null };
+      expect(homeFor({ id: "kris", name: "Kris", owner: false })).toBe("1 Test Rd, Mason, OH 45040");
+      expect(homeFor({ id: "owner", name: "Elijah", owner: true }), "the owner uses the shop address").toBeNull();
+      expect(homeFor({ id: "sam", name: "Sam", owner: false }), "not listed: the shop address").toBeNull();
+      process.env.DETAILER_HOMES = "not json";
+      expect(homeFor({ id: "kris", name: "Kris", owner: false })).toBeNull();
+    } finally {
+      if (before === undefined) delete process.env.DETAILER_HOMES; else process.env.DETAILER_HOMES = before;
+    }
+  });
+
   it("paypal-order: refuses an order id that is not an order id", async () => {
     const { handler } = await load("paypal-order");
     const r = await handler({
