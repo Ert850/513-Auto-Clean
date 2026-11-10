@@ -992,6 +992,18 @@ html.scrolling-fast .reveal { transition: none; transition-delay: 0s; }
 /* Three cards in view: a third of the container is still about a phone's
    card (310 to 330 points). Kept after the 820px block so it wins there. */
 @media (min-width: 1100px) { .ba-track { --ba-per: 3; } }
+/* One column (under 960px): "Ready to book?" comes straight after the intro,
+   above call, text and email (owner, November 10), to steer people into the
+   booking form. Phones always have the Contact Us button anyway. The
+   contact-info column joins the grid so the card can sit inside it; the
+   grid gap becomes margins so the spacing inside the text stays as it was. */
+@media (max-width: 959.98px) {
+  .contact-grid { gap: 0; }
+  .contact-info { display: contents; }
+  .contact-info > .eyebrow { justify-self: start; }
+  .contact-grid > .book-cta { order: 1; margin-bottom: 2.5rem; }
+  .contact-info > .contact-quick, .contact-info > .contact-hours { order: 2; }
+}
 @media (min-width: 960px) {
   .about-grid { grid-template-columns: .9fr 1.1fr; }
   .contact-grid { grid-template-columns: 1fr 1.1fr; }
