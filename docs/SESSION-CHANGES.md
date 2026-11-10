@@ -241,6 +241,26 @@ reorganization only. Reference sites: *links not yet provided*.
   - **Contact page:** 2× capture at 1440. Tests 409/409.
   - **Full nav click check** across 6 pages: re-running.
 
+### 11. Add-ons button on Services, reviews bar sizing, sub-page top spacing (November 10)
+- **`services.html`: "See all add-ons"** now sits beside the Interior/Exterior tabs (`.svc-tabs-row`), as on the home page. It links to `#addons` on the same page. A real click lands the Additionals section at 73 px, exactly under the header.
+- **Verified Google Reviews bar.**
+  - **Root cause:** a guessed fixed height (8.4 rem on narrow screens, 5.2 rem from 860 px). Measured over 27 reviews, it reserved 4 px more than the longest review at 1440, 31 px more at 820 and 8 px more at 375, with up to 79 px empty on short reviews. On narrow screens the arrows took a row of their own.
+  - **Fix:** `fitStage()` sizes the box to the tallest review at the current width (on load, resize and font load). Shorter reviews are centered. Below 860 px the arrows sit beside the label.
+  - **Result:**
+
+| Width | Bar height before | Bar height after |
+|---|---|---|
+| 1440 | 116 px | 112 px |
+| 820 | 237 px | 173 px |
+| 560 | 237 px | 196 px |
+| 375 | 237 px | 196 px |
+
+    Spare space beyond the longest review is 0 px at every width, and nothing clips.
+- **Sub-page top spacing.**
+  - **Root cause:** each sub-page's first section reused the home page's section padding (56 to 81 px), so titles sat 59 to 89 px below the header.
+  - **Fix:** `main > section:first-child { padding-top: clamp(20px, 2.6vw, 32px) }`. Every sub-page title now sits 40 px under the header.
+- **Contact page fits a laptop screen.** The form's bottom edge was at 1,030 px, below a 900 px screen. The heading (eyebrow, title, intro) now sits at the top of the side column on wide screens instead of in a full-width band, and the grid's duplicate top margin is gone. The form now spans 145 to 771 px at 1440 and 1280 wide. Below 1000 px the heading stacks above the call/email row.
+
 ### Reference sites reviewed (design lessons only, nothing copied)
 - **dksdetailing.com:**
   - **What works:** one short line of social proof ("Trusted by 250+"), a one-line headline, and two buttons (a main one plus Call). Packages are grouped by Full, Exterior and Interior.

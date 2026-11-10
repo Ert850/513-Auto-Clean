@@ -969,7 +969,20 @@ html.scrolling-fast .reveal { transition: none; transition-delay: 0s; }
    QUESTION / INQUIRY SECTION
    ============================================================ */
 .inquiry { background: var(--paper); padding-block: clamp(56px, 9vh, 96px); }
-.inq-grid { display: grid; grid-template-columns: 1fr; gap: 1.8rem; margin-top: 2.4rem; }
+.inq-grid { display: grid; grid-template-columns: 1fr; gap: 1.8rem; margin-top: 1.6rem; }
+/* Sub-pages (everything wrapped in <main>): the first section sits right
+   under the sticky header. Its usual top padding (56 to 81px) exists to
+   separate stacked sections on the home page; here it only pushed the title
+   60 to 90px down and, on Contact, the bottom of the form off a laptop
+   screen. */
+main > section:first-child { padding-top: clamp(20px, 2.6vw, 32px); }
+/* Contact page: the heading sits at the top of the side column, so the form
+   starts right under the header (a full-width heading band put the bottom of
+   the form below a laptop screen). */
+.inq-head { margin-bottom: 1.4rem; }
+.inq-grid:has(.inq-head) { margin-top: 0; }
+.inq-head h2 { font-size: clamp(1.7rem, 2.6vw, 2.3rem); }
+@media (max-width: 999px) { .inq-head { flex: 1 1 100%; margin-bottom: .2rem; } }
 
 .inq-side { align-self: start; }
 .inq-side h3 { font-family: var(--font-display); font-size: 1.3rem; margin: 0 0 .3rem; }
@@ -1097,7 +1110,10 @@ html.scrolling-fast .reveal { transition: none; transition-delay: 0s; }
    whole page every nine seconds. Sized for the longest review and held
    there; the text clamps rather than the box moving. */
 .rv-tick-stage { height: 8.4rem; overflow: hidden; }
-.rv-tick { height: 100%; display: flex; flex-direction: column; }
+/* js/reviews.js replaces that height with the tallest review measured at the
+   current width. A shorter review sits centred in it, so the spare space reads
+   as balance, not as a gap at the bottom. */
+.rv-tick { height: 100%; display: flex; flex-direction: column; justify-content: center; }
 .rv-tick header { display: flex; flex-wrap: wrap; align-items: baseline; gap: .5rem; margin-bottom: .35rem; }
 .rv-tick header b { font-family: var(--font-display); font-size: 1rem; }
 .rv-tick-stars { color: var(--amber); font-size: .8rem; letter-spacing: .05em; }
@@ -1118,6 +1134,14 @@ html.scrolling-fast .reveal { transition: none; transition-delay: 0s; }
 }
 .rv-tick-nav button:hover { border-color: var(--red-bright); color: var(--red-bright); }
 .rv-tick-count { font-size: .75rem; color: var(--text-inv-soft); font-variant-numeric: tabular-nums; }
+/* Narrow screens: the arrows sit beside the "Verified Google reviews" label
+   instead of on a row of their own under the review. */
+@media (max-width: 859px) {
+  .rv-tick-inner { grid-template-columns: 1fr auto; grid-template-areas: "badge nav" "stage stage"; row-gap: .45rem; align-items: center; }
+  .rv-tick-badge { grid-area: badge; align-self: center; }
+  .rv-tick-nav { grid-area: nav; }
+  .rv-tick-stage { grid-area: stage; }
+}
 @media (min-width: 860px) {
   .rv-tick-inner { grid-template-columns: auto 1fr auto; gap: 1.4rem; align-items: center; }
   .rv-tick-stage { height: 5.2rem; }
