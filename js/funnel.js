@@ -542,7 +542,8 @@
    */
   var CK = [
     { id: 'details', title: 'Your details', render: function () { return rDetails(); }, valid: function () { return vDetails(); }, all: lDetails,
-      sum: function () { var c = state.contact; return [c.name, prettyPhone(c.phone), c.email].filter(Boolean).join(' · '); },
+      // The phone number never splits across the two summary lines.
+      sum: function () { var c = state.contact; return [c.name, prettyPhone(c.phone).replace(/ /g, '\u00a0').replace(/-/g, '-\u2060'), c.email].filter(Boolean).join(' · '); },
       tabSum: function () { return state.contact.name.split(' ')[0]; } },
     { id: 'where', title: 'Where are we detailing?', render: function () { return rLoc(); }, valid: function () { return vLoc(); }, all: lLoc,
       sum: function () { var a = state.address; return [a.line1, a.city].filter(Boolean).join(', ') + (state.covered ? ' · covered spot' : ''); },
