@@ -13,6 +13,31 @@ Built overnight, November 10 to 11, for you to evaluate. It combines your 8 answ
   - `web/lib/browser-entry.ts`, `js/pricing.bundle.js` (built), `web/lib/funnel.smoke.test.mjs`.
   - The build also re-stamps `?v=` on every page. Those page changes were left out of the commit; a rebuild after merging restamps them.
 
+## Round 14 (November 10): setup questions optional again, two layout bugs
+
+### "Getting set up on the day" is optional again (owner)
+- **The original pipeline:** `eNov6` showed "Optional" in the heading, said "None of this is a requirement, and no answer here changes your price", and marked the parking box "(optional)". It has never blocked a booking, on either branch.
+- **Why it changed:** round 1 removed those labels after the owner's note that some questions should "still be mandatory feeling".
+- **Now:** the "Optional" tag and "(optional)" on parking are back. The intro says "None of this is required, and no answer changes your price", then "Skip any you are not sure about".
+- **Moving these questions to after the booking, still with one email:** investigated, not changed (owner: "keep as is for now"). Today `send-confirmation` writes the calendar event, then emails the owner and the customer, all at once when the booking is sent. Two ways to keep one email:
+  1. **Hold the owner's email.** Write the calendar event at once (that's what holds the time), send the customer's confirmation at once, and send the owner's single email when the customer finishes or skips the setup questions on the done screen. A safety net sends it anyway after about 10 minutes if they close the tab. That needs somewhere to keep the pending booking (Netlify Blobs) and a scheduled function: about half a day of work, plus tests.
+  2. **Keep the email as it is and add the setup answers to the calendar event.** The done-screen answers update that booking's event description through a small endpoint that only accepts a token issued for that one booking. No storage and no second email, but the answers are on the calendar, not in the email. About two hours.
+  
+  Owner decision needed before building either.
+
+### Bug: the filming error squeezed into the buttons (owner's screenshot)
+- **Root cause:** `flash()` puts the message after the nearest `.bk-field`, `.bk-check` or `.bk-cards`. The filming buttons sit in none of those, so the message went right after the Yes button, inside the Yes/No grid, and became a column one word wide. `showProblem()` outlined the Yes button alone for the same reason.
+- **Fix:** `.bk-acc`, the yes-or-no question block, joins both lists. The message now goes under the whole question, and the whole question is outlined.
+- **Verified:** the message is outside the button row, Yes keeps its 38 px height, and the outline is on the question.
+
+### Bug: the promo code box touched the payment card (owner's screenshot)
+- **Root cause:** `.bk-promo` had a top margin only, and `.bk-payopts` has none above it.
+- **Fix:** 1.1rem under the promo box (now 18 px between them).
+
+### Verified (headless Chrome, live calendar, test Kris)
+- **Sizes:** 1440×900 and 375×812.
+- **Tests:** 470/470.
+
 ## Round 13 (November 10): a bigger "More times" target, the suggestion as a grey pill
 
 ### "More times on Saturday": a bigger target

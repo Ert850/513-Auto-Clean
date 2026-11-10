@@ -813,7 +813,10 @@
     p.setAttribute('role', 'alert');
     p.textContent = msg;
 
-    var box = near && (near.closest('.bk-field,.bk-check,.bk-cards') || near);
+    // The whole question, never one of its buttons: a message inserted next to
+    // the filming Yes button became a squeezed column inside the button row
+    // (owner's screenshot, November 10). .bk-acc is the yes or no question.
+    var box = near && (near.closest('.bk-field,.bk-check,.bk-cards,.bk-acc') || near);
     if (box && box.parentNode) box.parentNode.insertBefore(p, box.nextSibling);
     else body.appendChild(p);
 
@@ -876,7 +879,7 @@
     var node = prob.focus ? el('bkBody').querySelector(prob.focus) : null;
     flash(prob.msg, node);
     if (node) {
-      var box = node.closest('.bk-field,.bk-check') || node;
+      var box = node.closest('.bk-field,.bk-check,.bk-acc') || node;
       box.classList.add('bk-invalid');
       setTimeout(function () { box.classList.remove('bk-invalid'); }, 3000);
       // preventScroll, because flash has already scrolled to the right place
@@ -3862,15 +3865,18 @@
    */
   function accessBlock() {
     return '<div class="bk-accbox">' +
-      '<h4>Getting set up on the day</h4>' +
-      '<p class="bk-hint">We bring our own water and power, so the detail goes ahead either way. ' +
-      'These tell us what to load for your driveway.</p>' +
+      // Optional again (owner, November 10), as on the original pipeline: it
+      // never blocked a booking, and now it says so.
+      '<h4>Getting set up on the day <i class="bk-opt">Optional</i></h4>' +
+      '<p class="bk-hint"><b>None of this is required, and no answer changes your price.</b> ' +
+      'We bring our own water and power, so the detail goes ahead either way. These just tell us what ' +
+      'to load for your driveway. Skip any you are not sure about.</p>' +
       askAccess('water', 'Is there an outdoor tap we could use?',
         'Saves filling the tank, and it is the one that matters most for an exterior.') +
       askAccess('power', 'Is there an outdoor outlet we could use?',
         'This helps keep our battery charged for the next details, and is helpful for longer more extensive ' +
         'details. We do not use a generator to be more environmentally friendly.') +
-      '<div class="bk-field"><label for="bkParking">Where should we park, and how do we reach the vehicle?</label>' +
+      '<div class="bk-field"><label for="bkParking">Where should we park, and how do we reach the vehicle? <i>(optional)</i></label>' +
       '<textarea id="bkParking" data-note="parking" rows="2" maxlength="300" ' +
       'placeholder="e.g. driveway on the left, gate code 4821, car is usually out front">' +
       esc(state.access.parking) + '</textarea></div>' +

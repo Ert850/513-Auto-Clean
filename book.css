@@ -794,7 +794,9 @@ button.bk-wk-c:hover { box-shadow: 0 0 0 2px var(--red-ghost); }
 }
 .bk-promolink:hover { color: var(--red); }
 
-.bk-promo { margin-top: .9rem; }
+/* Room below too: the payment cards that follow have no top margin, and
+   the two touched (owner's screenshot, November 10). */
+.bk-promo { margin: .9rem 0 1.1rem; }
 .bk-promo label { display: block; font-size: .8rem; font-weight: 700; margin-bottom: .35rem; }
 .bk-promo-row { display: flex; gap: .5rem; }
 .bk-promo-row input {
