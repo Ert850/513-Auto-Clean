@@ -191,6 +191,18 @@ describe("quote engine", () => {
     expect(upcharges[0]?.amountCents).toBe(2500);
   });
 
+  it("adds a bigger vehicle's extra time once, so the calendar holds enough", () => {
+    // Owner, November 10: medium takes about 15 minutes more, large about 30.
+    const large = {
+      label: "Tahoe", sizeUpchargeCents: 2500, sizeExtraMin: 30, sizeLabel: "Large",
+      packages: [FULL_INT, FULL_EXT], addons: [],
+    };
+    const small = { ...large, sizeUpchargeCents: 0, sizeExtraMin: 0, sizeLabel: "Small" };
+    const diff = quote(cart({ vehicles: [large] }), R).serviceDurationMin -
+      quote(cart({ vehicles: [small] }), R).serviceDurationMin;
+    expect(diff).toBe(30);
+  });
+
   it("does not add a size upcharge to a vehicle with no work on it", () => {
     const q = quote(
       cart({ vehicles: [{ label: "empty", sizeUpchargeCents: 2500, packages: [], addons: [] }] }),

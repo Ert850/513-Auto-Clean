@@ -6,6 +6,14 @@
  * the exclusion constraint and is transactionally correct, while Google is a
  * mirror with eventual consistency and rate limits.
  */
+import { localWeekday } from "../time/zone.js";
+
+/**
+ * Days and weekdays are Cincinnati's, never the visitor's. new Date().getDay()
+ * reads the browser's own zone, so a visitor in another one saw Saturday's
+ * weekend rules land on the wrong day (November 10).
+ */
+const ZONE = "America/New_York";
 
 export interface Interval {
   /** Epoch ms. */
@@ -252,7 +260,7 @@ export function computeSlots(req: SlotRequest): number[] {
       if (t > req.notAfter) break;
       if (
         commitmentStart >= f.start &&
-        (!req.allowedWeekdays || req.allowedWeekdays.includes(new Date(t).getDay())) &&
+        (!req.allowedWeekdays || req.allowedWeekdays.includes(localWeekday(t, req.timeZone ?? ZONE))) &&
         withinBookingWindow(t, req.serviceDurationMin, win, req.timeZone, req.hasExterior) &&
         matchesPreferred(t, wanted, req.timeZone)
       ) {
@@ -446,7 +454,7 @@ function matchesPreferred(
 ): boolean {
   if (!wanted) return true;
   const mins = localMinutesOfDay(ms, timeZone);
-  const day = new Date(ms).getDay();
+  const day = localWeekday(ms, timeZone ?? ZONE);
   const list = day === 0 || day === 6 ? wanted.weekend : wanted.weekday;
   return list.includes(mins);
 }
@@ -581,7 +589,7 @@ export function recommendStarts(req: {
   }
 
   // 3. The anchors for this weekday.
-  const day = new Date(starts[0]!).getDay();
+  const day = localWeekday(starts[0]!, req.timeZone ?? ZONE);
   const anchors = day === 0 || day === 6 ? DAY_ANCHORS_MIN.weekend : DAY_ANCHORS_MIN.weekday;
   for (const mins of anchors) {
     const hit = starts.find((s2) => localMinutesOfDay(s2, req.timeZone) === mins);

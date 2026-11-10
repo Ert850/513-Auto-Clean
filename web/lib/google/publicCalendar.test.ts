@@ -11,8 +11,10 @@
  * way to use one. The job did not block. Nothing in the suite noticed,
  * because nothing in the suite had ever looked at this function.
  */
-import { describe, expect, it } from "vitest";
-import { calendarIds, resolveWindow, type RawEvent } from "./publicCalendar.js";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { busyOnlyIds, businessHoursWindows, calendarIds, loadWindow, resolveWindow, type RawEvent } from "./publicCalendar.js";
+import { localMinutesOfDay } from "../availability/slots.js";
+import { zonedToUtc } from "../time/zone.js";
 
 const DAY = 24 * 60 * 60 * 1000;
 const from = Date.UTC(2026, 8, 14, 4, 0, 0); // 14 Sept 2026, local midnight
@@ -107,5 +109,58 @@ describe("blacklist mode, when nobody has written an OPEN block", () => {
   it("still ignores anything marked Free", () => {
     const w = resolveWindow([ev("Birthday", at(0, 9, 2), { transparent: true })], from, to);
     expect(w.busy).toHaveLength(0);
+  });
+});
+
+describe("businessHoursWindows (the fallback with no calendar key)", () => {
+  it("opens at 5am and closes at 1am in Cincinnati, whatever the visitor's clock", () => {
+    // Run under TZ=Europe/Paris this used to open at 11pm and close at 7pm
+    // Cincinnati time, so the week grid stopped at 5pm (November 10).
+    const from = zonedToUtc(2026, 11, 17, 0, 0, 0, "America/New_York");
+    const to = zonedToUtc(2026, 11, 19, 0, 0, 0, "America/New_York");
+    const w = businessHoursWindows(from, to);
+    expect(w).toHaveLength(2);
+    expect(localMinutesOfDay(w[0]!.start)).toBe(5 * 60);
+    expect(localMinutesOfDay(w[0]!.end)).toBe(60);
+    expect(w[0]!.end - w[0]!.start).toBe(20 * 3_600_000);
+  });
+});
+
+describe("jobs calendars read busy-only (free/busy, no titles)", () => {
+  afterEach(() => vi.unstubAllGlobals());
+  const from = Date.parse("2026-11-17T05:00:00Z");
+  const to = Date.parse("2026-11-18T05:00:00Z");
+  const cfg = { calendarId: "open@x", extraCalendarIds: ["jobs@x"], busyOnlyIds: ["jobs@x"], apiKey: "k" };
+
+  it("never reads a busy-only calendar's events", () => {
+    expect(calendarIds(cfg)).toEqual(["open@x"]);
+    expect(busyOnlyIds(cfg)).toEqual(["jobs@x"]);
+  });
+
+  it("counts its busy time against the OPEN blocks", async () => {
+    const urls: string[] = [];
+    vi.stubGlobal("fetch", async (url: string) => {
+      urls.push(String(url));
+      if (String(url).includes("/freeBusy")) {
+        return new Response(JSON.stringify({ calendars: { "jobs@x": { busy: [
+          { start: "2026-11-17T15:00:00Z", end: "2026-11-17T17:00:00Z" },
+        ] } } }));
+      }
+      return new Response(JSON.stringify({ items: [
+        { summary: "OPEN", start: { dateTime: "2026-11-17T11:00:00Z" }, end: { dateTime: "2026-11-18T03:00:00Z" } },
+      ] }));
+    });
+    const w = await loadWindow(cfg, from, to);
+    expect(w.mode).toBe("whitelist");
+    expect(w.busy).toEqual([{ start: Date.parse("2026-11-17T15:00:00Z"), end: Date.parse("2026-11-17T17:00:00Z") }]);
+    expect(urls.some((u) => u.includes(encodeURIComponent("jobs@x") + "/events")), "no event list for the jobs calendar").toBe(false);
+  });
+
+  it("refuses to guess when the jobs calendar cannot be read", async () => {
+    vi.stubGlobal("fetch", async (url: string) =>
+      String(url).includes("/freeBusy")
+        ? new Response(JSON.stringify({ calendars: { "jobs@x": { errors: [{ reason: "notFound" }] } } }))
+        : new Response(JSON.stringify({ items: [] })));
+    await expect(loadWindow(cfg, from, to)).rejects.toThrow(/unreadable/);
   });
 });

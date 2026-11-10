@@ -176,6 +176,8 @@ export async function createBookingEvent({
   startMs,
   endMs,
   key,
+  // A detailer's own bookings calendar (DETAILERS). Empty means the default.
+  calendarId,
 }) {
   if (!gcalConfigured()) return { ok: false, reason: "unconfigured" };
   if (!startMs || !endMs || endMs <= startMs) return { ok: false, reason: "bad_times" };
@@ -200,7 +202,7 @@ export async function createBookingEvent({
   };
 
   const url =
-    `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(bookedCalendarId())}/events`;
+    `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId || bookedCalendarId())}/events`;
   const res = await fetch(url, {
     method: "POST",
     headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },

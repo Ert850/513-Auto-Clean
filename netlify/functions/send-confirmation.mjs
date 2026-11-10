@@ -1,4 +1,4 @@
-import { priceFromWire, validateWire, findPackage, findAddon, vehicleSize, isLive, ADVICE_HOLD_MIN } from "./_pricing.mjs";
+import { priceFromWire, validateWire, findPackage, findAddon, vehicleSize, isLive, ADVICE_HOLD_MIN, parseDetailers } from "./_pricing.mjs";
 import { createBookingEvent, gcalAuthMode, gcalConfigured } from "./_gcal.mjs";
 import { measuredOneWayMinutes } from "./_routes.mjs";
 import { limited } from "./_ratelimit.mjs";
@@ -203,7 +203,7 @@ ${
   };
 }
 
-function ownerEmail({ contact, when, priced, kind, cart }) {
+function ownerEmail({ contact, when, priced, kind, cart, detailer }) {
   const a = cart?.address ?? {};
   const where = [a.line1, a.city, a.region, a.zip].filter(Boolean).join(", ");
   return {
@@ -218,6 +218,7 @@ function ownerEmail({ contact, when, priced, kind, cart }) {
 <tr><td style="padding:4px 0;color:#5a6069;width:90px">Who</td><td style="padding:4px 0">${esc(contact.name)}<br>${esc(contact.phone)}${contact.email ? `<br>${esc(contact.email)}` : ""}</td></tr>
 <tr><td style="padding:4px 0;color:#5a6069">When</td><td style="padding:4px 0">${esc(when || "not selected, they asked us to come back with a time")}</td></tr>
 <tr><td style="padding:4px 0;color:#5a6069">Where</td><td style="padding:4px 0">${esc(where || "not given")}</td></tr>
+${detailer ? `<tr><td style="padding:4px 0;color:#5a6069">Detailer</td><td style="padding:4px 0">${esc(detailer.name)}</td></tr>` : ""}
 </table>
 ${
   kind === "advice"
@@ -291,7 +292,19 @@ function eventDescription({ contact, cart, priced, extras, payInFull, kind }) {
   return lines.join("\n");
 }
 
-async function writeCalendar({ contact, cart, priced, extras, payInFull, key, kind }) {
+/**
+ * The detailer the browser assigned, if the server knows them.
+ *
+ * Only a name in this deploy's own DETAILERS setting counts, so a booking
+ * cannot be written to a calendar of the sender's choosing. Anything else,
+ * including no name at all, is the owner: the default calendar, as before.
+ */
+function detailerFor(id) {
+  const { crew } = parseDetailers(process.env.DETAILERS);
+  return crew.find((d) => d.id === id && !d.owner) ?? null;
+}
+
+async function writeCalendar({ contact, cart, priced, extras, payInFull, key, kind, detailer }) {
   if (!gcalConfigured()) return { ok: false, reason: "unconfigured" };
   if (!cart.slot) return { ok: false, reason: "no_slot" };
 
@@ -310,9 +323,9 @@ async function writeCalendar({ contact, cart, priced, extras, payInFull, key, ki
   return createBookingEvent({
     // The title is what Elijah reads at a glance on a phone, so it says the
     // thing he needs to know before setting off: nobody has chosen yet.
-    summary: kind === "advice"
+    summary: (detailer ? `${detailer.name}: ` : "") + (kind === "advice"
       ? `HELP ME DECIDE, ${contact.name}`
-      : `${names.join(" + ") || "Detail"}, ${contact.name}`,
+      : `${names.join(" + ") || "Detail"}, ${contact.name}`),
     description: eventDescription({ contact, cart, priced, extras, payInFull, kind }),
     location: [cart.address?.line1, cart.address?.city, cart.address?.region, cart.address?.zip]
       .filter(Boolean)
@@ -320,6 +333,7 @@ async function writeCalendar({ contact, cart, priced, extras, payInFull, key, ki
     startMs: cart.slot,
     endMs: cart.slot + minutes * 60_000,
     key,
+    calendarId: detailer ? detailer.bookingsCalendarId : "",
   });
 }
 
@@ -384,7 +398,8 @@ export async function handler(event) {
     payInFull,
   });
   const when = whenLabel(cart.slot);
-  const ctx = { contact, when, priced, kind, cart, slot: cart.slot ?? null };
+  const detailer = detailerFor(text(payload?.detailer, 40));
+  const ctx = { contact, when, priced, kind, cart, slot: cart.slot ?? null, detailer };
 
   const rawCart = payload?.cart ?? {};
   const rawAccess = rawCart.access ?? {};
@@ -406,6 +421,7 @@ export async function handler(event) {
       : await writeCalendar({
           contact, cart, priced, extras, payInFull, kind,
           key: text(payload?.idempotencyKey, 120),
+          detailer,
         }).catch((err) => {
           console.error("calendar write", err);
           return { ok: false, reason: "threw" };

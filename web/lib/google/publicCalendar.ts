@@ -1,4 +1,5 @@
 import type { Interval } from "../availability/slots.js";
+import { localDayStart, localTimeOnDay, localWeekday } from "../time/zone.js";
 
 /**
  * Reads a PUBLIC Google Calendar straight from the browser.
@@ -33,16 +34,71 @@ export interface PublicCalendarConfig {
    * makes no difference which one an OPEN block or a job lives on.
    */
   extraCalendarIds?: string[];
+  /**
+   * Calendars that hold JOBS, read through Google's free/busy endpoint: start
+   * and end only, never a title, a name or an address. Such a calendar is
+   * shared publicly as "See only free/busy (hide details)", so customer
+   * details on it stay private. Never list a calendar with OPEN blocks here:
+   * free/busy reports an OPEN block as busy. (Found November 10: the jobs
+   * calendar was public with full details.)
+   */
+  busyOnlyIds?: string[];
   apiKey: string;
   timeZone?: string;
 }
 
 /** Every calendar id to read, primary first, blanks and duplicates dropped. */
 export function calendarIds(cfg: Partial<PublicCalendarConfig>): string[] {
+  const busyOnly = new Set(busyOnlyIds(cfg));
   const all = [cfg.calendarId ?? "", ...(cfg.extraCalendarIds ?? [])]
     .map((s) => String(s ?? "").trim())
-    .filter(Boolean);
+    .filter((id) => id && !busyOnly.has(id));
   return all.filter((id, i) => all.indexOf(id) === i);
+}
+
+/** The calendars read for busy time only, deduplicated. */
+export function busyOnlyIds(cfg: Partial<PublicCalendarConfig>): string[] {
+  const all = (cfg.busyOnlyIds ?? []).map((s) => String(s ?? "").trim()).filter(Boolean);
+  return all.filter((id, i) => all.indexOf(id) === i);
+}
+
+/**
+ * Busy time from calendars shared as free/busy only, as plain busy events.
+ *
+ * A failure THROWS rather than returning nothing: these are the jobs, and
+ * offering a time on top of a job nobody could see is the double booking
+ * this whole module exists to prevent.
+ */
+export async function fetchBusyOnly(
+  apiKey: string,
+  ids: string[],
+  fromMs: number,
+  toMs: number,
+): Promise<RawEvent[]> {
+  if (!ids.length) return [];
+  const res = await fetch(`https://www.googleapis.com/calendar/v3/freeBusy?key=${encodeURIComponent(apiKey)}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    cache: "no-store",
+    body: JSON.stringify({
+      timeMin: new Date(fromMs).toISOString(),
+      timeMax: new Date(toMs).toISOString(),
+      items: ids.map((id) => ({ id })),
+    }),
+  });
+  if (!res.ok) throw new Error(`Google free/busy ${res.status}: ${await res.text()}`);
+  const json = (await res.json()) as {
+    calendars?: Record<string, { busy?: { start: string; end: string }[]; errors?: unknown[] }>;
+  };
+  const out: RawEvent[] = [];
+  for (const id of ids) {
+    const c = json.calendars?.[id];
+    if (!c || (c.errors && c.errors.length)) throw new Error(`Google free/busy: ${id} unreadable`);
+    for (const b of c.busy ?? []) {
+      out.push({ summary: "Busy", start: Date.parse(b.start), end: Date.parse(b.end), allDay: false, transparent: false });
+    }
+  }
+  return out;
 }
 
 export interface RawEvent {
@@ -180,20 +236,27 @@ export function businessHoursWindows(
   toMs: number,
   hours: BusinessHours = DEFAULT_HOURS,
 ): Interval[] {
+  /*
+   * IN CINCINNATI TIME. This built each day from the browser's own midnight
+   * (setHours(0,0,0,0)) and ignored `hours.timeZone`, so for a visitor in
+   * Europe "5am to 1am" became 11pm to 7pm in Cincinnati, and a two hour job
+   * could not start after 4pm. Found November 10 on a Mac set to CET: the
+   * week grid stopped at 5pm. Only the fallback (no calendar key) used it.
+   */
+  const tz = hours.timeZone ?? "America/New_York";
   const out: Interval[] = [];
-  const cursor = new Date(fromMs);
-  cursor.setHours(0, 0, 0, 0);
+  const day0 = localDayStart(fromMs, tz);
 
-  for (let guard = 0; cursor.getTime() < toMs && guard < 400; guard++) {
-    if (hours.days.includes(cursor.getDay())) {
-      const dayStart = new Date(cursor);
-      const start = dayStart.getTime() + hours.openMin * 60_000;
-      const end = dayStart.getTime() + hours.closeMin * 60_000;
+  for (let i = 0; i < 400; i++) {
+    const dayStart = localTimeOnDay(day0, i, 0, tz);
+    if (dayStart >= toMs) break;
+    if (hours.days.includes(localWeekday(dayStart + 12 * 3_600_000, tz))) {
+      const start = localTimeOnDay(day0, i, hours.openMin, tz);
+      const end = localTimeOnDay(day0, i, hours.closeMin, tz);
       if (end > fromMs && start < toMs) {
         out.push({ start: Math.max(start, fromMs), end: Math.min(end, toMs) });
       }
     }
-    cursor.setDate(cursor.getDate() + 1);
   }
   return out;
 }
@@ -255,8 +318,11 @@ export async function loadWindow(
   toMs: number,
   hours: BusinessHours = DEFAULT_HOURS,
 ): Promise<CalendarWindow> {
-  const events = await fetchEvents(cfg, fromMs, toMs);
-  return resolveWindow(events, fromMs, toMs, hours);
+  const [events, busy] = await Promise.all([
+    calendarIds(cfg).length ? fetchEvents(cfg, fromMs, toMs) : Promise.resolve([] as RawEvent[]),
+    fetchBusyOnly(cfg.apiKey, busyOnlyIds(cfg), fromMs, toMs),
+  ]);
+  return resolveWindow(events.concat(busy), fromMs, toMs, hours);
 }
 
 /**

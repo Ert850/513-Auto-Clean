@@ -138,6 +138,7 @@ export function priceFromWire(wire: WireCart, opts: PriceOptions = {}): PricedCa
     return {
       label: wv.label ?? "Vehicle",
       sizeUpchargeCents: size?.upchargeCents ?? 0,
+      sizeExtraMin: size?.extraMin ?? 0,
       sizeLabel: size?.label ?? "",
       packages,
       addons,
@@ -200,6 +201,7 @@ export { LEGAL, longDate } from "./site/legal.js";
 export { legalFingerprint } from "./site/legalFingerprint.js";
 export { PROMOS, findPromo, normalisePromo, promoDiscountCents, promoMessage } from "./pricing/promos.js";
 export { parseIcsBusy, mergeBusy } from "./booking/ics.js";
+export { parseDetailers } from "./availability/crew.js";
 export { averageOneWayMinutes, mileageFeeCents } from "./pricing/mileage.js";
 export {
   computeCancellation,

@@ -51,6 +51,8 @@ export interface CartVehicle {
   label: string;
   /** Flat upcharge for this vehicle's size, applied ONCE, not per package. */
   sizeUpchargeCents?: number;
+  /** Extra minutes for a bigger vehicle, once per vehicle. */
+  sizeExtraMin?: number;
   sizeLabel?: string;
   packages: PackageRef[];
   addons: AddonRef[];
@@ -235,7 +237,7 @@ export function quote(
         label: "Size, " + (vehicle.sizeLabel ?? "vehicle").toLowerCase() + " vehicle",
         vehicleIndex: vi,
         amountCents: vehicle.sizeUpchargeCents,
-        durationMin: 0,
+        durationMin: vehicle.sizeExtraMin ?? 0,
       });
     }
 
