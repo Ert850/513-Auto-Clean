@@ -287,3 +287,70 @@ Not touched:
 
 ## Open
 - At **1440×790** and **1280×720**, the home Services jump shows the title, tabs, prices and full checklists, but the Book buttons sit 36 px (1440×790) or about 100 px (1280×720) below the screen. That is the cost of keeping every checklist item visible, which the owner chose.
+
+---
+
+# Round 4: home first-screen review (suggestions only)
+
+The home page's unscrolled first screen, reviewed on `eNov6` at 3ef01d2 and served from a swapped preview folder (not `dist/`). **No site files were changed;** this section is the only commit. The hero image loaded at every size (1600w WebP on desktop, 960w on a phone).
+
+## Measurements
+Each value is the viewport y-coordinate (px) where the element ends. ✓ means fully on the first screen; "part" means it is cut by the bottom edge.
+
+| | 1440×790 | 1280×720 | 1920×950 | 1470×830 | 1512×860 | 375×812 |
+|---|---|---|---|---|---|---|
+| Header ends | 113 | 113 | 113 | 113 | 113 | 113 |
+| Hero badge ("Mobile detailing across Greater Cincinnati") | 216 ✓ | 211 ✓ | 229 ✓ | 219 ✓ | 222 ✓ | 218 ✓ |
+| Headline (lines) | 492 ✓ (3) | 487 ✓ (3) | 505 ✓ (3) | 495 ✓ (3) | 498 ✓ (3) | 423 ✓ (4) |
+| Sub-copy | 597 ✓ | 592 ✓ | 610 ✓ | 601 ✓ | 603 ✓ | 570 ✓ |
+| Book Now / View Services / Contact Us | 679 ✓ (one row) | 673 ✓ | 691 ✓ | 682 ✓ | 684 ✓ | 651 / 725 / 799 ✓ (stacked) |
+| Scroll cue (mouse icon) | 737 ✓ | 726, 6 px cut | 763 ✓ | 744 ✓ | 749 ✓ | not shown below 960 px |
+| Hero ends / trust strip starts | 759 | 748 (below) | 785 | 766 | 771 | 882 (below) |
+| Google badge | 852, 9 px visible | below | 878 ✓ | 859, half | 864, nearly | below |
+| Four promises | below | below | 872 ✓ | 1st row ✓ | both rows ✓ | below |
+| Reviews ticker | below | below | 50 px visible | below | below | below |
+
+No horizontal scroll at any size. Screenshots (2×): `fold-shots/r4-home-first-*.png`.
+
+## Is any change necessary? No.
+Judged against the rules from rounds 1 to 3:
+- **First-screen priorities:** what (detailing), where (Cincinnati), how (they come to you), who (a UC student-owned team) and the primary action (Book Now) are fully visible at all six sizes, with nothing overlapping.
+- **False floor:**
+  - From 1440×790 up, the screen ends on the dark trust strip's top edge, with the scroll icon above it: a clear cue that the page goes on.
+  - At 1280×720 and on a phone, the hero photo runs off the bottom edge. A cut-off image is itself a continuation cue, so nothing reads as the end of the page.
+- **Laptop windows:** all six sizes show the full pitch and all three buttons.
+- **Density:** the headline is large (252 px, three lines, about a third of a 790 px screen), but it is the page's signature, and the owner asked to keep the hero.
+
+The first screen does its job. The suggestions below are improvements, not fixes.
+
+## Suggested improvements, ranked by impact and effort
+Mock renders, made by injecting changes in headless Chrome only, are in `fold-shots/r4-mock-*.png`.
+
+**1. Put the Google rating in the hero badge.** *(Impact high, effort low.)*
+- **What:** replace the pill's text with "★★★★★ Rated 5.0 from 32 reviews on Google & Yelp" (`r4-mock-A-1440x790.png`).
+- **Rule:** social proof at the point of decision, and first-screen priorities.
+- **Gain:** the strongest proof would be on the first screen at all six sizes. Today it is fully visible only at 1920×950, partly at 1470 and 1512, and not at all at 1440×790, 1280×720 or on a phone. It costs 0 px on desktop.
+- **Work:** the pill's text; one more selector in `js/reviews.js` `syncBadges()` so the count stays live; and the build's rating stamp (`render-site.mjs`).
+- **Risks:**
+  - The rating would appear twice in a row (the hero, then the trust strip below).
+  - The "Mobile detailing across Greater Cincinnati" line goes, though the top bar ("Mobile detailing • We come to you") and the headline still say it.
+  - On a phone the pill wraps to two lines (+22 px), pushing Contact Us 9 px below an 812 px screen, unless it's paired with suggestion 2.
+
+**2. One primary button; the other two are secondary.** *(Impact medium, effort low.)*
+- **What:** "View Services" and "Contact Us" become outlined buttons on the photo (the existing `.btn-ghost.on-dark` look, with a light tint behind them). On phones they share one row under a full-width Book Now (`r4-mock-B-375x812.png`; desktop in `r4-mock-ABC-1280x720.png`).
+- **Rule:** one primary call to action per screen; competing equal-weight buttons cause hesitation.
+- **Gain:** Book Now becomes the only solid button. On a phone the buttons take 74 px less: the hero ends at 808 instead of 882, and all three buttons end by 725.
+- **Risks:**
+  - The two white buttons are part of the current look.
+  - Outlined buttons need enough contrast where the photo is bright. They read well in the renders, but check this on a real phone.
+
+**3. A slightly shorter hero on short windows.** *(Impact low to medium, effort low.)*
+- **What:** `.hero` padding becomes `clamp(32px, 5vh, 84px)`, down from `clamp(48px, 8vh, 84px)` (`r4-mock-C-*`).
+- **Rule:** end the first screen on something cut off, with the next band in view.
+- **Gain:** at 1280×720 the hero ends at 705, not 748, so the trust strip's edge shows. At 1470×830 the whole Google badge shows (it ends at 809). Taller screens don't change.
+- **Risk:** on short windows the scroll icon then overlaps the bottom of the buttons (visible in `r4-mock-ABC-1280x720.png`). It would need hiding below about 760 px of height. It also touches the hero, which the owner asked to keep.
+
+**4. Not recommended: a smaller headline.**
+Setting it in two lines on desktop would save about 84 px and bring the whole trust strip onto a 1440×790 screen. But it is the hero's signature look, and the owner asked to preserve it.
+
+If only one is done, do **1**: it adds no height and puts the 5.0 rating on every first screen. **1 + 2** together keep phones tidy.
