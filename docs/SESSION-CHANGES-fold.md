@@ -355,14 +355,20 @@ Setting it in two lines on desktop would save about 84 px and bring the whole tr
 
 If only one is done, do **1**: it adds no height and puts the 5.0 rating on every first screen. **1 + 2** together keep phones tidy.
 
-## Round 4, follow-up: suggestions 1 and 2 implemented (owner: "Do 1 and 2")
+---
+
+# Round 5: the Google rating in the hero, and one primary button
+
+The owner approved suggestions 1 and 2 from Round 4: first directly ("Do 1 and 2"), then through the main session. The changes were committed as ea0b030 and merged with `eNov6` at 9781daf. Suggestion 3 (a shorter hero) is **not** approved, so the hero's headline, photo, padding and scroll cue are unchanged. The trust strip keeps its Google badge.
+
+
 | File | Change |
 |---|---|
 | `index.html` (hero only) | <ul><li>The pill reads "★★★★★ Rated 5.0 from 32 reviews on Google & Yelp" (`.hb-stars`, `.hb-text`), replacing "Mobile detailing across Greater Cincinnati" and its pulsing dot.</li><li>View Services and Contact Us use `btn-ghost on-dark` instead of `btn-light`.</li><li>The hero `<picture>`/`<img>` is untouched.</li></ul> |
 | `js/reviews.js` `syncBadges()` | Updates `#google-badge .g-text` and `.hero-badge .hb-text` together, so the count stays live in both places. The build's existing stamp (`Rated … from N reviews on Google`) already covers both. |
 | `styles.css` | <ul><li>`.hero-badge .hb-stars` (amber).</li><li>`.hero-cta .btn-ghost.on-dark` gets a light tint behind it.</li><li>Below 560 px, Book Now is full width and the two outlined buttons share a row.</li><li>Removed, now unused: `.hero-badge .dot`, `@keyframes pulse`, `.btn-light`.</li></ul> |
 
-**After:**
+**After** (before: `fold-shots/r4-home-first-*.png`; after: `fold-shots/r5-home-first-*.png`):
 
 | | 1440×790 | 1280×720 | 1920×950 | 1470×830 | 1512×860 | 375×812 | 320×640 |
 |---|---|---|---|---|---|---|---|
@@ -375,3 +381,15 @@ If only one is done, do **1**: it adds no height and puts the 5.0 rating on ever
 - **Checks:** no horizontal scroll at any size (at 320 the two outlined buttons are 157 + 136 px, with no overflow). 416/416 tests pass.
 
 Screenshots (2×): `fold-shots/r4done-home-first-*.png`.
+
+**Verification after merging `eNov6`:**
+- **The build stamp covers both texts and is safe to re-run.**
+  - `web/scripts/render-site.mjs` replaces `/Rated [0-9.]+ from \d+ reviews on Google/g` across the pages. In `index.html` it now matches twice, the pill and the trust badge, both set from `data/reviews.json` (5.0, 32).
+  - A simulated 4.9 and 33 stamp changes both texts. A second run changes nothing (no double replacement).
+- **The live sync updates both.** In a test copy where `data/reviews.json` said 33 and the stamped HTML said 32, the page showed "Rated 5.0 from 33 reviews on Google & Yelp" in both the pill and the trust badge after `js/reviews.js` ran.
+- **Buttons:**
+  - View Services (`data-book-browse`) opens the booking form's browse view.
+  - Contact Us is still `contact.html`.
+  - Book Now still goes to `#quote`, its existing destination on the home page ("Let's get your car booked", where "Start My Booking" opens the form).
+- **Phone hero height:** 882 → **830 px** at 375 (52 px shorter). The button row saves 74 px, and the pill takes back 22 because the rating text wraps to two lines on a phone.
+- **Checks:** no horizontal scroll at 375 or 320. 416/416 tests pass.

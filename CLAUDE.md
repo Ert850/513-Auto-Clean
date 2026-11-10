@@ -159,6 +159,9 @@ Read this before changing anything. Every rule below came from a real bug or an 
 - **Home page rules use `body > #services` / `body > #quote`.** The sub-pages wrap their sections in `<main>`, and the home page has its own `#services`. The hero and the trust bar are the owner's first screen; leave them alone unless asked.
 - **When the owner must choose between layouts, render the options** as real screenshots of the page, with the changes injected in headless Chrome (see `fold-shots/*option*`). They pick quickly and precisely from images, and the pick is logged.
 
+- **The Google rating is in two places on the home page:** the hero pill (`.hero-badge .hb-text`) and the trust badge (`#google-badge .g-text`). Both use the same words, the build stamps both from `data/reviews.json` (the `Rated … from N reviews on Google` regex in `render-site.mjs`), and `js/reviews.js` `syncBadges()` updates both. A new copy of the rating needs all three, or it will drift.
+- **The hero has one solid button (Book Now).** View Services and Contact Us are `btn-ghost on-dark`; on phones they share a row. Don't bring back `btn-light` there.
+
 ## Results carousel (built November 10)
 - **No `.reveal` on anything inside a sideways track.** A card parked off to the side never intersects the viewport, so it stays invisible and fades up late when it slides in. Put `.reveal` on the carousel.
 - **No hover pause on the carousel** (the owner found it non-intuitive: the sweep kept freezing as the mouse crossed the photos). Clicks, drags, the chevrons, the dots and keyboard focus on a handle take over.
