@@ -148,10 +148,16 @@
 <!-- ============ REVIEWS ============ -->
 <section class="reviews" id="reviews">
   <div class="wrap">
-    <div class="section-head center reveal">
-      <span class="eyebrow">Reviews</span>
-      <h2>Cincinnati keeps coming back.</h2>
-      <p>Every review here comes from a real 513 Auto Clean customer on Google and Yelp.</p>
+    <!-- The title and the Google score share a row from 1000px (js/reviews.js
+         fills #rvScore), so the score and the tops of the first cards are on
+         the first laptop screen together with the team. -->
+    <div class="rv-intro">
+      <div class="section-head center reveal">
+        <span class="eyebrow">Reviews</span>
+        <h2>Cincinnati keeps coming back.</h2>
+        <p>Every review here comes from a real 513 Auto Clean customer on Google and Yelp.</p>
+      </div>
+      <div id="rvScore"></div>
     </div>
 
     <!-- Live Google reviews. Rendered by js/reviews.js from /api/reviews,
@@ -231,7 +237,7 @@
 </div>
 
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&family=Hanken+Grotesk:wght@400;500;600;700&display=swap" />
-<script src="js/reviews.js?v=e347e49b41" defer></script>
+<script src="js/reviews.js?v=49c3fefd3b" defer></script>
 <script src="script.js?v=3a75b08501" defer></script>
 </body>
 </html>
