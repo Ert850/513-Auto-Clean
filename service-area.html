@@ -22,7 +22,7 @@
 <link rel="manifest" href="manifest.webmanifest" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link rel="stylesheet" href="styles.css?v=b08b8e3c6c" />
+<link rel="stylesheet" href="styles.css?v=654a562b78" />
 <!-- Same public config and consent-gated analytics as the home page, so a
      visitor landing here is asked once and the arrival source is kept. -->
 <script src="js/config.js?v=56c28f557b"></script>
@@ -158,7 +158,7 @@
          Middletown under Butler, Springboro under Warren. Same towns as
          before and as the robots.txt comment, only regrouped. -->
     <div class="area-lists reveal">
-      <div class="area-col area-oh">
+      <div class="area-col area-oh" id="area-oh">
         <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2C8 2 5 5 5 9c0 5 7 13 7 13s7-8 7-13c0-4-3-7-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg> Ohio</h3>
         <div class="codes">Area codes 513 &amp; 937</div>
         <h4 class="area-grp">Hamilton County</h4>
@@ -170,7 +170,7 @@
         <h4 class="area-grp">Clermont County</h4>
         <p>Milford, Batavia</p>
       </div>
-      <div class="area-col">
+      <div class="area-col" id="area-ky">
         <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2C8 2 5 5 5 9c0 5 7 13 7 13s7-8 7-13c0-4-3-7-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg> Northern Kentucky</h3>
         <div class="codes">Area code 859</div>
         <h4 class="area-grp">Kenton County</h4>
@@ -180,7 +180,7 @@
         <h4 class="area-grp">Boone County</h4>
         <p>Florence, Union, Burlington, Hebron, Walton</p>
       </div>
-      <div class="area-col">
+      <div class="area-col" id="area-in">
         <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2C8 2 5 5 5 9c0 5 7 13 7 13s7-8 7-13c0-4-3-7-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg> Southeast Indiana</h3>
         <div class="codes">Area codes 812 &amp; 765</div>
         <p>Lawrenceburg, Aurora, Greendale, West Harrison, Brookville, Batesville</p>
@@ -219,11 +219,11 @@
       <div>
         <h4>Service Areas</h4>
         <div class="f-links">
-          <a href="service-area.html">Cincinnati, OH</a>
-          <a href="service-area.html">Northern Kentucky</a>
-          <a href="service-area.html">SE Indiana</a>
-          <a href="service-area.html">West Chester / Mason</a>
-          <a href="service-area.html">Florence / Covington</a>
+          <a href="#area-oh">Cincinnati, OH</a>
+          <a href="#area-ky">Northern Kentucky</a>
+          <a href="#area-in">SE Indiana</a>
+          <a href="#area-oh">West Chester / Mason</a>
+          <a href="#area-ky">Florence / Covington</a>
         </div>
       </div>
       <div>
@@ -251,7 +251,7 @@
 
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&family=Hanken+Grotesk:wght@400;500;600;700&display=swap" />
 <script src="js/pricing.bundle.js?v=5018f5a403" defer></script>
-<script src="js/travel.js?v=ccc602d44f" defer></script>
+<script src="js/travel.js?v=39c6f70eee" defer></script>
 <script src="script.js?v=3a75b08501" defer></script>
 </body>
 </html>

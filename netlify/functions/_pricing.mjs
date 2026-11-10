@@ -1579,7 +1579,9 @@ var LEGAL = {
   termsEffective: "2026-09-14",
   // 2026-11-09: Google Analytics and Microsoft Clarity behind a consent
   // banner, and the arrival source kept for the visit.
-  privacyEffective: "2026-11-09"
+  // 2026-11-10: a question started mid-booking is carried to the question
+  // form (now on faq.html) for one page load.
+  privacyEffective: "2026-11-10"
 };
 function longDate(iso) {
   const [y, m, d] = iso.split("-").map(Number);
