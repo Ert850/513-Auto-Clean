@@ -524,13 +524,22 @@
    * The first page: each answered question as a one-line summary (tap to
    * change it), then the current question in full. `grew` slides it in.
    */
+  /** The answer's picture, between the step's name and the answer (owner, November 11). */
+  function doneIcon(id) {
+    var v = veh();
+    var key = id === 'size' ? v.size
+      : id === 'intent' || id === 'package' ? (state.advice ? 'ask' : v.intent)
+      : id === 'addons' ? 'extras' : '';
+    return key && PIC[key] ? '<i class="bk-donerow-ic">' + pic(key) + '</i>' : '';
+  }
+
   function rBuild(grew) {
     var html = '';
     for (var i = 0; i < state.step; i++) {
       if (inCheckout(i) || skipped(i)) continue;
       var st = STEPS[i];
       html += '<button type="button" class="bk-donerow" data-step="' + i + '">' +
-        '<span>' + esc(st.tab) + '</span><b>' + esc(st.sum ? st.sum() : '') + '</b><em>Change</em></button>';
+        '<span>' + esc(st.tab) + '</span>' + doneIcon(st.id) + '<b>' + esc(st.sum ? st.sum() : '') + '</b><em>Change</em></button>';
     }
     var s = step();
     return html + '<section class="bk-sec' + (grew ? ' bk-sec-in' : '') + '" data-sec="' + s.id + '">' +
@@ -1452,6 +1461,8 @@
     exterior: '<g transform="translate(0 2.5)"><path d="M19 17h2a1 1 0 0 0 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4a1 1 0 0 0 1 1h2"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/><path d="M9 17h6"/></g><path d="M11.5 1.8v3M10 3.3h3M17 2.6v2M16 3.6h2M6 3v1.6M5.2 3.8h1.6"/>',
     // A seat and a car side by side: inside and out.
     both: '<g transform="translate(-1.2 4.2) scale(.62)"><path d="M8.3 3h4.4a1.5 1.5 0 0 1 1.5 1.7l-.7 7.3H8.9L7 4.9A1.5 1.5 0 0 1 8.3 3z"/><path d="M8.9 12h7.6a2 2 0 0 1 2 2v2.8H7.9L8.9 12z"/><path d="M9.4 16.8v4M16.5 16.8v4"/></g><g transform="translate(9 6.4) scale(.62)"><path d="M19 17h2a1 1 0 0 0 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4a1 1 0 0 0 1 1h2"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/><path d="M9 17h6"/></g><path d="M11.2 7.5v3.8M9.3 9.4h3.8"/>',
+    // Extras: a small sparkle, in the same line style.
+    extras: '<path d="M12 3.5l1.9 5.1 5.1 1.9-5.1 1.9L12 17.5l-1.9-5.1L5 10.5l5.1-1.9z"/><path d="M18.5 15.5l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7z"/>',
     ask: '<circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 0 1 4.8.9c0 1.7-2.4 2.2-2.4 3.6"/><path d="M12 17h.01"/>'
   };
   function pic(id) {
@@ -1690,11 +1701,11 @@
     // Folded to one line until it is wanted (owner, November 10: less on the
     // page); open whenever a code is already in.
     var html = '<details class="bk-promo-fold"' + (state.promoCode ? ' open' : '') + '><summary>Have a promo code?</summary>' +
-      promoBox(q(), true) + '</details>';
+      promoBox(q(), true, true) + '</details>';
 
     cats.forEach(function (cat) {
       if (v.intent === 'both') {
-        html += '<h3 class="bk-grp">' + (cat === 'interior' ? 'Interior' : 'Exterior') + '</h3>';
+        html += '<h3 class="bk-grp" data-grp="' + cat + '">' + (cat === 'interior' ? 'Interior' : 'Exterior') + '</h3>';
       }
       html += '<div class="bk-pkgs">';
       P.packagesFor(cat).forEach(function (p) {
@@ -4714,7 +4725,7 @@
    * not find anywhere to type it, which is a worse outcome than a few people
    * searching the internet for a code that does not exist.
    */
-  function promoBox(quote, early) {
+  function promoBox(quote, early, folded) {
     var applied = quote.promoCode && quote.promoDiscountCents > 0;
 
     if (applied) {
@@ -4730,7 +4741,9 @@
     // On the package screen, before anything is chosen, an empty discount box
     // at the top of the page is noise. It appears once there is a price for
     // it to act on.
-    if (early && !quote.lines.length && !state.promoCode) return '';
+    // Behind "Have a promo code?" it is asked for, so it always shows: an
+    // empty fold read as a broken button (owner, November 11).
+    if (early && !folded && !quote.lines.length && !state.promoCode) return '';
 
     var typed = state.promoCode || '';
     var bad = typed && quote.promoRejected ? P.promoMessage(quote.promoRejected) : '';
@@ -5597,7 +5610,15 @@
       // Showroom Ready needs a correction level, and "Both" needs one package
       // from each list, so only auto-advance once the step is actually done.
       if (!vPackage()) return advance();
-      return render();
+      render();
+      // "Both": an interior picked and no exterior yet, so bring the exterior
+      // list up (owner, November 11).
+      var hasExt = v.packageIds.some(function (id) { return P.findPackage(id).category === 'exterior'; });
+      if (v.intent === 'both' && cat === 'interior' && !was && !hasExt) {
+        var ext = el('bkBody').querySelector('[data-grp="exterior"]');
+        if (ext) scrollToEl(ext, 12);
+      }
+      return;
     }
 
     if (t.dataset.addon) {
