@@ -111,7 +111,7 @@ body.bk-open { overflow: hidden; }
   background: var(--paper-2);
   padding-bottom: calc(.8rem + env(safe-area-inset-bottom));
 }
-.bk-total { display: flex; flex-direction: column; line-height: 1.2; }
+.bk-total { flex: none; display: flex; flex-direction: column; line-height: 1.2; white-space: nowrap; }
 .bk-total-amt { font-family: var(--font-display); font-weight: 800; font-size: 1.25rem; }
 .bk-total-sub { font-size: .76rem; color: var(--text-soft); }
 .bk-nextbtn {
@@ -434,7 +434,7 @@ body.bk-open { overflow: hidden; }
 }
 .bk-wk-key svg { width: 12px; height: 12px; }
 .bk-wk-key.ok, .bk-wk-key.fee { background: rgba(26,138,63,.07); border: 1.5px solid rgba(26,138,63,.45); color: #1a8a3f; }
-.bk-wk-key.fee { color: var(--text-soft); }
+.bk-wk-key.fee { color: #7a5209; }
 .bk-wk-key.sug { color: var(--ink); }
 .bk-wk-key.no, .bk-wk-c.no {
   background: repeating-linear-gradient(135deg, var(--paper) 0 4px, var(--line) 4px 6px);
@@ -447,10 +447,10 @@ body.bk-open { overflow: hidden; }
 /* Desktop grid: Early/Late labels, a time column, seven days. Every item is
    placed by row and column, so labels and job blocks can span rows. Row
    height lives in funnel.js too (ROW_PX, GAP_PX): change both together. */
-.bk-wk-grid { display: grid; grid-template-columns: 1.3rem 2.9rem repeat(7, minmax(0, 1fr)); gap: 3px; }
+.bk-wk-grid { display: grid; grid-template-columns: 1.2rem 2.55rem repeat(7, minmax(0, 1fr)); gap: 3px; }
 .bk-wk-corner, .bk-wk-dh { position: sticky; top: 0; z-index: 4; background: var(--paper); }
 .bk-wk-headbg { position: sticky; top: 0; z-index: 3; background: var(--paper); box-shadow: 0 -14px 0 var(--paper), 0 3px 0 var(--paper); }
-.bk-wk-t { font-size: .72rem; font-weight: 700; color: var(--text-soft); text-align: right; padding-right: .3rem; align-self: center; }
+.bk-wk-t { font-size: .8rem; font-weight: 700; color: var(--text-soft); text-align: right; padding-right: .25rem; align-self: center; white-space: nowrap; }
 .bk-wk-dh { text-align: center; padding: .15rem 0 .3rem; line-height: 1.15; }
 .bk-wk-dh b { display: block; font-size: .72rem; font-weight: 700; color: var(--text-soft); text-transform: uppercase; letter-spacing: .04em; }
 .bk-wk-dh span { display: block; font-family: var(--font-display); font-size: 1.05rem; }
@@ -470,7 +470,11 @@ button.bk-wk-c {
   cursor: pointer; transition: box-shadow .14s;
   background: rgba(26,138,63,.07); border: 1.5px solid rgba(26,138,63,.45); color: #1a8a3f;
 }
-.bk-wk-c.fee { color: var(--text-soft); }
+/* A fee reads at a glance (owner, November 10): bold, in the gold of the
+   Rush, Early and Late tags. No gold ground (tried, owner: "looks weird").
+   The box stays green-edged: the time is as bookable as any other. */
+.bk-wk-c.fee { color: #7a5209; }
+.bk-wk-c.fee i { font-weight: 800; }
 .bk-wk-c i { font-style: normal; }
 .bk-wk-c svg { width: 14px; height: 14px; }
 .bk-wk-star { position: absolute; top: 2px; right: 3px; line-height: 0; color: var(--ink); }
@@ -557,6 +561,7 @@ button.bk-wk-c:hover { box-shadow: 0 0 0 2px var(--red-ghost); }
 }
 .bk-wk-item b { font-family: var(--font-display); font-size: .98rem; white-space: nowrap; }
 .bk-wk-item span { flex: 1; font-size: .78rem; font-weight: 600; color: var(--text-soft); }
+.bk-wk-item span.fee, .bk-pick-price.fee, .bk-more-t .fee { color: #7a5209; font-weight: 700; font-style: normal; }
 .bk-wk-item em { display: inline-flex; align-items: center; gap: .25rem; font-style: normal; font-size: .72rem; font-weight: 800; color: var(--ink); }
 .bk-wk-item em svg { width: 11px; height: 11px; }
 .bk-wk-item.on { border: 2px solid var(--red); background: var(--red-ghost); box-shadow: 0 0 0 3px var(--red-ghost); }
@@ -598,34 +603,38 @@ button.bk-wk-c:hover { box-shadow: 0 0 0 2px var(--red-ghost); }
   background: #fdf6f6; /* a faint red, so it reads as the chosen time */
   font-size: .74rem; line-height: 1.3; color: var(--text-soft);
 }
-.bk-pick-ic {
-  flex: none; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center;
-  background: var(--red); color: #fff;
-}
-.bk-pick-ic svg { width: 13px; height: 13px; }
 .bk-pick-txt { min-width: 0; padding-right: .45rem; }
-.bk-pick-eye { display: block; font-style: normal; font-size: .62rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--red); line-height: 1.2; }
-.bk-pick-txt > b { display: block; font-family: var(--font-display); font-size: .88rem; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bk-pick-eye { display: flex; align-items: center; gap: .2rem; font-style: normal; font-size: .62rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--red); line-height: 1.2; }
+.bk-pick-eye svg { width: 11px; height: 11px; flex: none; }
+.bk-pick-txt > b { display: block; font-family: var(--font-display); font-size: .86rem; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .bk-pick-txt > span { display: flex; gap: .45rem; white-space: nowrap; }
 .bk-pick-price { overflow: hidden; text-overflow: ellipsis; }
 .bk-pick-change {
   font: inherit; font-weight: 700; color: var(--red); background: none; border: 0; padding: 0; cursor: pointer;
   text-decoration: underline; text-underline-offset: 2px;
 }
+/* "Change to suggested?", as a thin tab hanging from the bottom of the box
+   (owner, November 10): outside it, so the box says only what was chosen.
+   It covers the box's bottom border where they meet, so the two read as
+   one piece. It sits in the bar's bottom padding, which grows a little. */
+.bk-pick { position: relative; }
 .bk-steer {
-  flex: none; align-self: stretch; display: flex; flex-direction: column; justify-content: center; gap: .05rem;
-  font: inherit; text-align: left; cursor: pointer; color: var(--text);
-  background: var(--paper); border: 1.5px solid var(--line); border-radius: calc(var(--r-sm) - 3px); padding: .15rem .6rem;
+  position: absolute; top: calc(100% - 1.5px); left: 50%; transform: translateX(-50%);
+  display: flex; align-items: center; gap: .25rem; max-width: calc(100% - 1rem);
+  font: inherit; font-size: .64rem; font-weight: 700; line-height: 1.2; white-space: nowrap; cursor: pointer;
+  color: var(--red); background: #fdf6f6; padding: .1rem .6rem .15rem;
+  border: 1.5px solid var(--red); border-top: 0; border-radius: 0 0 8px 8px;
 }
-.bk-steer:hover { border-color: var(--red); }
-.bk-steer i { display: flex; align-items: center; gap: .2rem; font-style: normal; font-size: .64rem; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; color: var(--red); }
-.bk-steer i svg { width: 10px; height: 10px; color: var(--text); }
-.bk-steer b { font-size: .8rem; white-space: nowrap; }
+.bk-steer:hover { background: var(--red); color: #fff; }
+.bk-steer svg { width: 9px; height: 9px; flex: none; }
+.bk-steer b { font-weight: 800; color: var(--text); }
+.bk-steer:hover b { color: #fff; }
+.bk-foot.steering { padding-bottom: calc(1.15rem + env(safe-area-inset-bottom)); }
 .bk-pick:not([hidden]) ~ .bk-nextbtn { margin-left: 0; }
 @media (max-width: 559.98px) {
   .bk-foot { flex-wrap: wrap; row-gap: .6rem; }
   .bk-pick { order: -1; flex-basis: 100%; min-height: 48px; }
-  .bk-steer { margin-left: auto; }
+  .bk-pick.has-steer { margin-bottom: .6rem; }
   .bk-pick:not([hidden]) ~ .bk-nextbtn { margin-left: auto; }
 }
 .bk-wk-gobar {
@@ -939,6 +948,8 @@ button.bk-wk-c:hover { box-shadow: 0 0 0 2px var(--red-ghost); }
 .bk-win i { font-style: normal; font-weight: 400; font-size: .76rem; color: var(--text-soft); }
 
 .bk-slots { margin-top: 1rem; }
+/* Nothing above the times: the body's own padding is gap enough. */
+.bk-body > .bk-slots:first-child { margin-top: 0; }
 .bk-loading, .bk-empty { color: var(--text-soft); font-size: .9rem; line-height: 1.55; }
 .bk-empty a { color: var(--red); }
 .bk-days { display: grid; gap: 1rem; }

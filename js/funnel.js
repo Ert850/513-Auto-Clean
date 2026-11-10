@@ -2963,7 +2963,7 @@
         return head + '<button type="button" class="bk-more-t' + (star ? ' sug' : '') + '" data-slot="' + ms +
           '" data-go="1" data-via="recommended_more" data-rank="' + btn.dataset.rank + '" data-reason="' + btn.dataset.reason + '" tabindex="-1">' +
           '<b>' + esc(tzTime(ms)) + (star ? STAR : '') + '</b>' +
-          '<span>to ' + esc(endLabel(localMin(ms) + dur)) + (fee ? ' &middot; ' + esc(fee) : '') + '</span></button>';
+          '<span>to ' + esc(endLabel(localMin(ms) + dur)) + (fee ? ' &middot; <em class="fee">' + esc(fee) + '</em>' : '') + '</span></button>';
       }).join('');
     }
     if (togglePanel(wrap, btn)) {
@@ -3011,9 +3011,12 @@
 
   /**
    * The suggested start to offer instead of the chosen one: the nearest
-   * starred start that same day, never one that adds a fee (owner, November
-   * 10: "not at the cost of a timing fee upsell"). Same day, so the rush fee
-   * cannot change either. None once they have taken a suggestion, or when
+   * starred start that same day AT THE SAME PRICE. Owner, November 10: "not
+   * at the cost of a timing fee upsell", which means never steering someone
+   * off a time they are paying an early or late fee for (round 9 read it as
+   * "never add a fee" and offered 10am, rush only, for a 6am rush + early
+   * pick: a downsell). Suggested starts are never early or late, so a fee
+   * pick gets no suggestion. None once they have taken a suggestion, or when
    * the time they picked is already one.
    */
   function steerFor(ms) {
@@ -3023,7 +3026,7 @@
     var bp = surchargeBp(ms);
     var best = null;
     sug.forEach(function (s) {
-      if (surchargeBp(s) > bp) return;
+      if (surchargeBp(s) !== bp) return;
       if (best === null || Math.abs(s - ms) < Math.abs(best - ms)) best = s;
     });
     return best;
@@ -3042,21 +3045,26 @@
     if (state.done || !ms || isInquiry() || state.timeMode === 'ask' || state.step < ti) return setPick('');
     var fee = feeText(ms);
     var later = state.step > ti;
-    var price = (fee ? fee + ' ' + feeWhy(ms) : 'Standard price') + (shortNotice(ms) ? ', short notice' : '');
+    // Compact, so the line fits beside a suggestion: "+$37.50 rush + early".
+    // The full wording, short notice included, is on the steps themselves.
+    var kinds = [];
+    if (needsPriority(ms)) kinds.push('rush');
+    if (timeFeeApplies(ms)) kinds.push(localMin(ms) < 12 * 60 ? 'early' : 'late');
+    var price = fee ? fee + ' ' + kinds.join(' + ') : 'Standard price';
     var to = steerFor(ms);
     // Labelled as the chosen time (owner, November 10: it has to read as
     // "this is your time", not as one more option).
     setPick(
-      '<span class="bk-pick-ic" aria-hidden="true">' + TICK + '</span>' +
-      '<span class="bk-pick-txt"><i class="bk-pick-eye">Your time</i>' +
+      '<span class="bk-pick-txt"><i class="bk-pick-eye">' + TICK + 'Your time</i>' +
         '<b>' + esc(tzDay(ms, { weekday: 'short', month: 'short', day: 'numeric' }) + ', ' + spanLabel(ms, holdMinutes())) + '</b>' +
-        '<span><span class="bk-pick-price">' + esc(price) + '</span>' +
+        '<span><span class="bk-pick-price' + (fee ? ' fee' : '') + '">' + esc(price) + '</span>' +
         (later ? '<button type="button" class="bk-pick-change" id="bkPickChange">Change</button>' : '') + '</span></span>' +
       (to
-        ? '<button type="button" class="bk-steer" data-steer="' + to + '">' +
-            '<i>' + STAR + 'Suggested</i><b>' + esc(spanLabel(to, holdMinutes())) + '</b></button>'
+        ? '<button type="button" class="bk-steer" data-steer="' + to + '">' + STAR +
+            'Change to suggested? <b>' + esc(spanLabel(to, holdMinutes())) + '</b></button>'
         : '')
     );
+    markSteering(Boolean(to));
     if (to && steerShown !== ms + '>' + to) {
       steerShown = ms + '>' + to;
       track('time_steer_shown', { step: step().id, shift_min: Math.round((to - ms) / 60000), rules: P.TIME_RECOMMENDATION_RULES.version });
@@ -3433,7 +3441,7 @@
       html += '<div class="bk-wk-row"><button type="button" class="bk-wk-item' + (on ? ' on' : '') +
         '" data-slot="' + ms + '" aria-pressed="' + on + '">' +
         '<b>' + esc(spanLabel(ms, dur)) + '</b>' +
-        '<span>' + (fee ? esc(fee + ' ' + feeWhy(ms)) : 'Standard price') + '</span>' +
+        '<span' + (fee ? ' class="fee"' : '') + '>' + (fee ? esc(fee + ' ' + feeWhy(ms)) : 'Standard price') + '</span>' +
         (cell.suggested && sameMinute(ms, cell.pick) ? '<em>' + STAR + 'Suggested</em>' : '') +
         '</button>' +
         alts.map(function (x) {
@@ -3445,10 +3453,19 @@
     return html + '</div>';
   }
 
+  /** Room under the box for the "Change to suggested?" tab, while it shows. */
+  function markSteering(on) {
+    var box = el('bkPick');
+    if (!box || !box.classList) return;
+    box.classList.toggle('has-steer', on);
+    if (box.parentNode && box.parentNode.classList) box.parentNode.classList.toggle('steering', on);
+  }
+
   /** The bottom bar's middle (updatePick decides what goes in it). */
   function setPick(html) {
     var box = el('bkPick');
     if (!box) return;
+    if (!html) markSteering(false);
     box.innerHTML = html || '';
     box.hidden = !html;
   }
