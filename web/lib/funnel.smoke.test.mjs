@@ -214,6 +214,26 @@ function type(env, attrs, value) {
   (host._on.input || []).forEach((fn) => fn({ target }));
 }
 
+/** Ticking or unticking a box, through the funnel's own change handler. */
+function change(env, attrs) {
+  const stub = {
+    classList: { add() {}, remove() {}, toggle() {}, contains() { return false; } },
+    querySelectorAll() { return []; },
+    querySelector() { return null; },
+  };
+  const target = {
+    id: attrs.id || "",
+    dataset: attrs.dataset || {},
+    value: attrs.value || "",
+    checked: !!attrs.checked,
+    closest() { return stub; },
+    hasAttribute: () => false,
+    focus() {},
+  };
+  const host = env.lookup("bookFunnel");
+  (host._on.change || []).forEach((fn) => fn({ target }));
+}
+
 /* ---------------- the tests ---------------- */
 
 describe("the booking funnel opens", () => {
@@ -277,7 +297,11 @@ describe("the booking funnel opens", () => {
 
     expect(body.length, "the confirm step rendered nothing").toBeGreaterThan(200);
     expect(body, "the promo field should be on the confirm step").toContain("bkPromo");
-    expect(body, "the access questions should be on the confirm step").toContain("data-access");
+    // Water, power, parking and filming are asked AFTER the booking is sent
+    // (owner, November 10), on the Done screen. The last screen before
+    // sending is about confirming.
+    expect(body, "the setup questions moved to the Done screen").not.toContain("data-access");
+    expect(body, "the one free-text box stays").toContain("bkNotes");
 
     // NO STRIPE KEY, SO NO CARD STEP AT ALL. This screen used to ask for a
     // card authorization, then load a form that announced online payment was
@@ -359,9 +383,15 @@ describe("the booking funnel opens", () => {
     click(fresh, { id: "bkNext" });
     type(fresh, { dataset: { c: "name" } }, "Ada");
     type(fresh, { dataset: { c: "phone" } }, "5135551212");
-    for (const name of ["terms", "sms", "media"]) {
-      click(fresh, { dataset: { consent: name, val: "1" } });
-    }
+    // One required tick box. Texts are optional and filming comes later.
+    const contact = fresh.lookup("bkBody").innerHTML;
+    expect(contact, "the terms are a tick box").toContain('data-consentbox="terms"');
+    expect(contact, "texts are an optional tick box").toContain('data-consentbox="sms"');
+    expect(contact, "filming is asked after booking, not here").not.toContain("media");
+    click(fresh, { id: "bkNext" });
+    expect(fresh.lookup("bkTitle").textContent, "terms unticked must hold the step")
+      .toBe("Your details, and what you agree to");
+    change(fresh, { dataset: { consentbox: "terms" }, checked: true });
 
     click(fresh, { id: "bkNext" });
     const last = fresh.lookup("bkBody").innerHTML;
@@ -470,8 +500,18 @@ describe("the booking funnel opens", () => {
     click(fresh, { dataset: { size: "small" } });
     click(fresh, { dataset: { intent: "interior" } });
     click(fresh, { dataset: { pkg: "basic-interior", cat: "interior" } });
-    click(fresh, { id: "bkNext" });   // past extras
-    click(fresh, { id: "bkNext" });   // past more vehicles
+    // Extras: our recommendations first, the rest folded, an easy way past,
+    // and a second vehicle as one line rather than a screen of its own.
+    const extras = fresh.lookup("bkBody").innerHTML;
+    expect(extras).toContain("Recommended for your Basic Interior");
+    expect(extras, "the full list is still one tap away").toContain("bk-allextras");
+    expect(extras, "a second vehicle is offered here").toContain("bkAddVeh");
+    expect(fresh.lookup("bkNav").innerHTML, "no Vehicles step any more").not.toContain("Vehicles");
+    // The way past is one tap, and says so (the stub DOM keeps no button text).
+    expect(fs.readFileSync(path.join(ROOT, "js/funnel.js"), "utf8"))
+      .toContain("s.id === 'addons' && !veh().addons.length ? 'No extras, continue'");
+
+    click(fresh, { id: "bkNext" });   // past extras, straight to the time
 
     expect(fresh.lookup("bkTitle").textContent).toBe("Pick your time");
 
@@ -483,8 +523,12 @@ describe("the booking funnel opens", () => {
 
     expect(slots, "the painter crashed and fell back to the inquiry panel")
       .not.toContain("bk-noslots");
-    expect(slots, "no parts of the day to choose from").toContain("data-band");
-    expect(slots, "no days rendered").toContain("bk-daygroup");
+    expect(slots, "no week calendar").toContain("bk-wk");
+    expect(slots, "no times to choose from").toContain("data-slot");
+    expect(slots, "the legend explains the colours").toContain("Early, late or rush fee");
+    // The steer: one of our suggested starts is already chosen.
+    expect(slots, "nothing preselected").toContain("Our suggestion");
+    expect(slots, "the rush box is gone; rush days are marked on the calendar").not.toContain("bkPrio");
   });
 
   it("actually loads the payment SDKs it checks for", () => {
@@ -849,20 +893,21 @@ describe("what the screen says about money and time", () => {
       .toContain("l.kind !== 'travel'");
   });
 
-  it("asks for a time with a list of half hours, not a clock", () => {
-    // A native time input on a phone opens on the current time: touching it
-    // at all asks for 4:37 this afternoon without meaning to.
-    const code = fn("jumpBox", 1200);
-    expect(code, "a time input defaults itself to now").not.toContain('type="time"');
-    expect(code).toContain("halfHours()");
+  it("takes bookings up to three months ahead, and no further", () => {
+    expect(src(), "owner, November 10: cap at 3 months").toContain("var MAX_BOOK_DAYS = 92;");
+    const code = fn("paintWeek", 1200);
+    expect(code, "the forward chevron stops at the cap").toContain("lastBookableMs()");
   });
 
-  it("offers the nearest times instead of refusing the one asked for", () => {
-    const code = fn("noteWantedTime", 2600);
-    expect(code).toContain("Here are the nearest times we have to");
-    for (const dead of ["Nothing at exactly", "not available", "isn't available"]) {
-      expect(code, `"${dead}" reads as a failure when nothing has failed`).not.toContain(dead);
-    }
+  it("charges the rush fee for the time picked, not for a ticked box", () => {
+    const code = fn("selectSlot", 700);
+    expect(code).toContain("state.priority = needsPriority(ms)");
+  });
+
+  it("never sends a filming answer nobody gave", () => {
+    const code = fn("consentPayload", 600);
+    expect(code).toContain("state.consent.media === null ? undefined");
+    expect(fn("prepBlock", 2400), "filming is asked on the Done screen").toContain("data-media");
   });
 });
 
