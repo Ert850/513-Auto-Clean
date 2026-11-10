@@ -958,6 +958,18 @@ describe("what the screen says about money and time", () => {
     expect(code).toContain("state.priority = needsPriority(ms)");
   });
 
+  it("never puts a message inside a row of side-by-side items (owner's screenshot, November 11)", () => {
+    // A message next to a control in a row became a squeezed column, or lifted
+    // its field above its neighbours. placeMsg climbs out of any such row;
+    // only the label, box and message tracks of .bk-row2 and .bk-row3 keep it
+    // inside its own field.
+    const place = fn("placeMsg", 1600);
+    expect(place).toContain("isRow(at.parentNode)");
+    expect(place).toMatch(/bk-row\[23\]/);
+    const css = fs.readFileSync(path.join(ROOT, "book.css"), "utf8");
+    expect(css).toMatch(/grid-template-rows: subgrid/);
+  });
+
   it("asks about filming before booking, and needs an answer", () => {
     expect(fn("rAgree", 4000)).toContain("mediaQuestion()");
     expect(fn("lAgree", 1600)).toContain("state.consent.media === null");

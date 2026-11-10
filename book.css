@@ -1809,3 +1809,16 @@ button.bk-wk-c:hover { box-shadow: 0 0 0 2px var(--red-ghost); }
 
 /* Air between the last done row and the open section's heading (owner, November 11). */
 #bookFunnel .bk-donerow + .bk-sec { margin-top: 1.1rem; }
+
+/* Side-by-side fields share three tracks: label, box, message (owner's
+   screenshot, November 11). A message under one field no longer lifts that
+   field above its neighbours; labels still align on their bottoms, so one
+   that wraps does not push its box down (CLAUDE.md, form rows). */
+@supports (grid-template-rows: subgrid) {
+  @media (min-width: 520px) {
+    #bookFunnel .bk-row2, #bookFunnel .bk-row3 { grid-template-rows: auto auto auto; row-gap: 0; align-items: stretch; }
+    #bookFunnel .bk-row2 > .bk-field, #bookFunnel .bk-row3 > .bk-field { display: grid; grid-row: span 3; grid-template-rows: subgrid; }
+    #bookFunnel .bk-row2 > .bk-field > label, #bookFunnel .bk-row3 > .bk-field > label { align-self: end; }
+    #bookFunnel .bk-row2 > .bk-field > .bk-err, #bookFunnel .bk-row3 > .bk-field > .bk-err { grid-row: 3; align-self: start; }
+  }
+}
