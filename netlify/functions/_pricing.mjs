@@ -833,6 +833,10 @@ function localDayStart(ms, timeZone) {
   const { y, mo, d } = localParts(ms, timeZone);
   return zonedToUtc(y, mo, d, 0, 0, 0, timeZone);
 }
+function localWeekday(ms, timeZone) {
+  const name = new Intl.DateTimeFormat("en-US", { timeZone, weekday: "short" }).format(new Date(ms));
+  return ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].indexOf(name);
+}
 
 // lib/pricing/surcharge.ts
 function computeSurcharge(ctx, r) {
@@ -1904,19 +1908,40 @@ var OWNER = {
   owner: true,
   noFeeStarts: null
 };
-function parseRange(text) {
-  const m = /^\s*(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})\s*$/.exec(String(text ?? ""));
-  if (!m) return null;
-  const fromMin = Number(m[1]) * 60 + Number(m[2]);
-  const toMin = Number(m[3]) * 60 + Number(m[4]);
-  return fromMin <= toMin && toMin < 24 * 60 ? { fromMin, toMin } : null;
+var DAY_NAMES = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
+function parseDays(text) {
+  const out = /* @__PURE__ */ new Set();
+  for (const part of text.toLowerCase().split(",").map((x) => x.trim()).filter(Boolean)) {
+    const [a, b] = part.split("-").map((x) => DAY_NAMES.indexOf(x.slice(0, 3)));
+    if (a === void 0 || a < 0 || b !== void 0 && b < 0) return null;
+    for (let i = a, n = 0; n < 7; i = (i + 1) % 7, n++) {
+      out.add(i);
+      if (b === void 0 || i === b) break;
+    }
+  }
+  return out.size ? [...out].sort((x, y) => x - y) : null;
+}
+function parseRanges(text) {
+  const parts = String(text ?? "").split(";").map((x) => x.trim()).filter(Boolean);
+  if (!parts.length) return null;
+  const out = [];
+  for (const part of parts) {
+    const m = /^(?:([A-Za-z,\s-]+?)\s+)?(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})$/.exec(part);
+    if (!m) return null;
+    const days = m[1] ? parseDays(m[1]) : null;
+    if (m[1] && !days) return null;
+    const fromMin = Number(m[2]) * 60 + Number(m[3]);
+    const toMin = Number(m[4]) * 60 + Number(m[5]);
+    if (!(fromMin <= toMin && toMin < 24 * 60)) return null;
+    out.push({ days, fromMin, toMin });
+  }
+  return out;
 }
 function waivesFeeAt(d, startMs) {
-  return waivesTimeFee(d, localMinutesOfDay(startMs));
+  return waivesTimeFee(d, localMinutesOfDay(startMs), localWeekday(startMs, "America/New_York"));
 }
-function waivesTimeFee(d, startMinutesLocal) {
-  const r = d?.noFeeStarts;
-  return Boolean(r && startMinutesLocal >= r.fromMin && startMinutesLocal <= r.toMin);
+function waivesTimeFee(d, startMinutesLocal, weekday) {
+  return Boolean(d?.noFeeStarts?.some((r) => startMinutesLocal >= r.fromMin && startMinutesLocal <= r.toMin && (!r.days || weekday === void 0 || r.days.includes(weekday))));
 }
 var CAL_ID = /^[\w.+-]+@[\w.-]+$/;
 function slug(name) {
@@ -1955,8 +1980,8 @@ function parseDetailers(raw) {
       return problems.push(`${name} needs both an availability and a bookings calendar id`);
     }
     const does = parseDoes(e["does"]);
-    const noFeeStarts = e["noFeeStarts"] === void 0 ? null : parseRange(e["noFeeStarts"]);
-    if (e["noFeeStarts"] !== void 0 && !noFeeStarts) problems.push(`${name}: noFeeStarts should look like "18:00-19:00"`);
+    const noFeeStarts = e["noFeeStarts"] === void 0 ? null : parseRanges(e["noFeeStarts"]);
+    if (e["noFeeStarts"] !== void 0 && !noFeeStarts) problems.push(`${name}: noFeeStarts should look like "18:00-19:00" or "Tue-Sat 18:00-19:00"`);
     seen.add(id);
     crew.push({
       id,

@@ -1739,3 +1739,4 @@ button.bk-wk-c:hover { box-shadow: 0 0 0 2px var(--red-ghost); }
 .bk-ckcont:hover { background: var(--ink-2); }
 .bk-ckcont svg { width: 15px; height: 15px; }
 #bookFunnel .bk-ck { border-bottom: 0; padding-bottom: .4rem; }
+.bk-arrive { display: block; font-style: normal; font-size: .76rem; font-weight: 600; color: var(--text-soft); }

@@ -66,6 +66,23 @@ describe("noFeeStarts (Kris at 6 to 7pm)", () => {
     expect(crew[0]!.noFeeStarts).toBeNull();
     expect(problems[0]).toMatch(/noFeeStarts/);
   });
+
+  it("can be limited to days, and listed (Kris waives 6 to 7pm on Tuesday to Saturday only)", () => {
+    const k = parseDetailers(JSON.stringify([{ ...KRIS, noFeeStarts: "Tue-Sat 18:00-19:00" }])).crew[0]!;
+    expect(waivesTimeFee(k, 18 * 60, 2), "Tuesday 6pm").toBe(true);
+    expect(waivesTimeFee(k, 18 * 60, 6), "Saturday 6pm").toBe(true);
+    expect(waivesTimeFee(k, 18 * 60, 0), "Sunday 6pm keeps its late fee").toBe(false);
+    expect(waivesTimeFee(k, 18 * 60, 1), "Monday 6pm too").toBe(false);
+    const two = parseDetailers(JSON.stringify([{ ...KRIS, noFeeStarts: "Sun,Mon 08:00-09:30; Tue-Sat 18:00-19:00" }])).crew[0]!;
+    expect(waivesTimeFee(two, 8 * 60, 0)).toBe(true);
+    expect(waivesTimeFee(two, 8 * 60, 3)).toBe(false);
+    expect(waivesTimeFee(two, 19 * 60, 4)).toBe(true);
+    const wrap = parseDetailers(JSON.stringify([{ ...KRIS, noFeeStarts: "Sat-Mon 18:00-19:00" }])).crew[0]!;
+    expect([0, 1, 2, 3, 4, 5, 6].filter((d) => waivesTimeFee(wrap, 18 * 60, d))).toEqual([0, 1, 6]);
+    const bad = parseDetailers(JSON.stringify([{ ...KRIS, noFeeStarts: "Tues-Funday 18:00-19:00" }]));
+    expect(bad.crew[0]!.noFeeStarts).toBeNull();
+    expect(bad.problems[0]).toMatch(/noFeeStarts/);
+  });
 });
 
 describe("does: any skills, as a word or a list", () => {

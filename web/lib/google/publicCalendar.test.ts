@@ -62,6 +62,13 @@ describe("best start times and priority, set in Google Calendar (November 10)", 
     expect(w.busy, "only the job blocks").toEqual([{ start: at(0, 10, 2)[0], end: at(0, 10, 2)[1] }]);
   });
 
+  it("an OPEN block set to Free still counts as open hours", () => {
+    const w = resolveWindow([ev("OPEN", at(0, 18, 6), { transparent: true }), ev("Job", at(0, 19, 2))], from, to);
+    expect(w.mode).toBe("whitelist");
+    expect(w.open).toEqual([{ start: at(0, 18, 6)[0], end: at(0, 18, 6)[1] }]);
+    expect(w.busy).toEqual([{ start: at(0, 19, 2)[0], end: at(0, 19, 2)[1] }]);
+  });
+
   it("works when there are no OPEN blocks too", () => {
     const w = resolveWindow([ev("BEST", at(0, 10, 0.25)), ev("Dentist", at(0, 14, 1))], from, to);
     expect(w.mode).toBe("blacklist");

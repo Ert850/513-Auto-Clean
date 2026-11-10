@@ -29,14 +29,21 @@ Google Calendar, then Other calendars, then **+**, then Create new calendar:
 On **513 Kris Bookings**, under "Share with specific people", add Kris (See all event details) and, if Netlify has `GOOGLE_SERVICE_ACCOUNT_JSON`, the service account's `client_email` (Make changes to events).
 
 ### 2. His working hours: OPEN events
-On **513 Kris Availability**, make an event titled `OPEN` for each stretch he can work, repeating weekly. Example: Wednesday to Saturday, 6:00pm to 11:59pm.
+On **513 Kris Availability**, make an event titled `OPEN` for each stretch he can work, repeating weekly. His hours (owner, November 10):
+- **Sunday and Monday:** 8:00am to 12:00am.
+- **Tuesday to Saturday:** 6:00pm to 12:00am.
 
-### 3. His best time: a BEST event
-On **513 Kris Availability**:
-- **Title:** `BEST`
-- **Start:** 6:00pm. End: 6:15pm (only the start time matters).
-- **Repeat:** weekly, on the days he works (Wednesday to Saturday in the example).
-- **Show as:** **Free**. In the event's details, change "Busy" to "Free".
+Jobs always finish by midnight; the site already plans for that.
+
+### 3. His best times: BEST events
+On **513 Kris Availability**, each titled `BEST`, 15 minutes long (only the start time matters), repeating weekly, set to **Show as: Free**:
+- **Sunday and Monday:** 10:00am.
+- **Tuesday to Saturday:** 6:00pm.
+
+Not 6pm on Sunday or Monday: his ideal hours there are 10am to 6pm, so a 6pm start carries the late fee. To offer 10:30am too, add a second BEST event at 10:30.
+
+### 3b. His fee-free hours (in Netlify, not the calendar)
+On Tuesday to Saturday, a start from 6 to 7pm has no late fee, because Kris works those hours anyway. A 7:30pm start still pays it. Everything else follows the site's clock rule (early before 10am, late from 6pm). That's set in his `DETAILERS` entry as `"noFeeStarts": "Tue-Sat 18:00-19:00"`, not in the calendar, because the payment step prices from that setting.
 
 ### 4. Put him first
 **513 Kris Availability**, then Settings and sharing, then **Description**: type `Priority: 1`
@@ -70,6 +77,8 @@ Make these, each titled `BEST`, 15 minutes long, set to **Show as: Free**:
 - **No BEST events on someone's calendar:** the site falls back to today's suggestions for them (straight after another job, else 10am and 4pm).
 
 ## Rules worth knowing
+
+- **OPEN events can be Busy or Free;** they count either way.
 
 - **Titles:** they only have to start with the word, so `BEST`, `Best` or `BEST evening` all work. The same goes for `OPEN`.
 - **BEST events must be Free.** A BEST event left on Busy blocks that time, like any other event.
