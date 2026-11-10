@@ -468,7 +468,11 @@ section { padding-block: clamp(40px, 5vw, 72px); position: relative; }
 /* ============================================================
    GALLERY
    ============================================================ */
-.gallery { background: var(--paper-2); }
+/* Tighter than the shared section padding (40 to 72 px): with only an
+   eyebrow and a heading above the photos, and the near-white Services band
+   below, the full padding left about 150 px of blank page under the
+   photos at 1440 (this section's bottom padding plus the next one's top). */
+.gallery { background: var(--paper-2); padding-block: clamp(32px, 4vw, 56px); }
 .gal-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: .8rem; }
 .gal-item {
   position: relative; overflow: hidden; border-radius: var(--r-md); aspect-ratio: 1/1;
@@ -487,7 +491,7 @@ section { padding-block: clamp(40px, 5vw, 72px); position: relative; }
   font-size: .68rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; padding: .3rem .6rem; border-radius: 6px;
 }
 .gal-item .gal-badge.after { background: var(--red-deep); color: #ffffff; }
-.gallery .gal-foot { margin-top: 2.5rem; text-align: center; }
+.gallery .gal-foot { margin-top: 1rem; text-align: center; }
 
 /* before / after sliders */
 /* The carousel: a track of cards moved with a transform, never scrolled, so
@@ -499,8 +503,24 @@ section { padding-block: clamp(40px, 5vw, 72px); position: relative; }
 .ba-track { --ba-per: 1; --ba-gap: 1.5rem; position: relative; display: flex; gap: var(--ba-gap); transition: transform .6s var(--ease); }
 .ba-track > .ba-slider { flex: 0 0 calc((100% - (var(--ba-per) - 1) * var(--ba-gap)) / var(--ba-per)); min-width: 0; }
 .ba-slider { margin: 0; }
-.ba-controls { display: flex; align-items: center; justify-content: center; gap: .25rem; margin-top: 1.1rem; }
+/* The control row: carousel controls in the middle, the Instagram link
+   under them on a phone and at the right end of the row from 820px. */
+.ba-controls { display: grid; justify-items: center; align-items: center; gap: .2rem; margin-top: 1rem; }
+.ba-nav { display: flex; align-items: center; justify-content: center; gap: .25rem; }
 .ba-controls.single [data-step], .ba-controls.single .ba-dots { display: none; }
+.ba-insta {
+  display: inline-flex; align-items: center; gap: .45rem; min-height: 40px; padding-inline: .2rem;
+  font-weight: 600; font-size: .92rem; color: var(--text);
+  text-decoration: underline; text-decoration-color: var(--line); text-underline-offset: .25em; text-decoration-thickness: 1.5px;
+  transition: color .25s var(--ease), text-decoration-color .25s var(--ease);
+}
+.ba-insta:hover { color: var(--red-deep); text-decoration-color: currentColor; }
+.ba-insta svg { width: 18px; height: 18px; flex: none; }
+@media (min-width: 820px) {
+  .ba-controls { grid-template-columns: 1fr auto 1fr; }
+  .ba-nav { grid-column: 2; }
+  .ba-insta { justify-self: end; }
+}
 .ba-ctl {
   width: 40px; height: 40px; flex: none; padding: 0; border: 0; border-radius: 50%; cursor: pointer;
   display: grid; place-items: center; background: transparent; color: var(--text);
@@ -526,7 +546,12 @@ section { padding-block: clamp(40px, 5vw, 72px); position: relative; }
    against the stage anyway, but only if the wrapper does not lay out first. */
 .ba-stage picture { position: absolute; inset: 0; display: block; }
 .ba-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; pointer-events: none; }
-.ba-before-layer { position: absolute; inset: 0; clip-path: inset(0 calc(100% - var(--pos)) 0 0); will-change: clip-path; }
+/* The before photo is cut off at --pos by sliding a clipping box left and
+   the photo inside it right by the same amount, and the divider rides on
+   the same transform. Transforms move on the compositor: no layout and no
+   repaint of the photo on every frame, which clip-path and left needed. */
+.ba-before-layer { position: absolute; inset: 0; overflow: hidden; transform: translateX(calc(var(--pos) - 100%)); will-change: transform; }
+.ba-before-layer > picture { transform: translateX(calc(100% - var(--pos))); will-change: transform; }
 .ba-tag {
   position: absolute; top: .8rem; z-index: 3; font-size: .7rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase;
   padding: .32rem .7rem; border-radius: 6px; backdrop-filter: blur(4px); pointer-events: none;
@@ -534,11 +559,16 @@ section { padding-block: clamp(40px, 5vw, 72px); position: relative; }
 .ba-tag.b { left: .8rem; background: rgba(8,10,14,.72); color: #fff; }
 .ba-tag.a { right: .8rem; background: var(--red-deep); color: #ffffff; }
 .ba-divider {
-  position: absolute; top: 0; bottom: 0; left: var(--pos); width: 3px; transform: translateX(-50%);
-  background: #fff; box-shadow: 0 0 12px rgba(0,0,0,.4); z-index: 4; pointer-events: none;
+  position: absolute; inset: 0; transform: translateX(calc(var(--pos) - 100%)); will-change: transform;
+  z-index: 4; pointer-events: none;
+}
+/* The line, on the divider box's right edge, which is where --pos is. */
+.ba-divider::before {
+  content: ""; position: absolute; top: 0; bottom: 0; right: 0; width: 3px; transform: translateX(50%);
+  background: #fff; box-shadow: 0 0 12px rgba(0,0,0,.4);
 }
 .ba-knob {
-  position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
+  position: absolute; top: 50%; left: 100%; transform: translate(-50%,-50%);
   width: 44px; height: 44px; border-radius: 50%; background: #fff; color: var(--ink);
   display: grid; place-items: center; box-shadow: var(--shadow-md);
 }
@@ -549,8 +579,14 @@ section { padding-block: clamp(40px, 5vw, 72px); position: relative; }
 }
 .ba-range::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 48px; height: 100vh; cursor: ew-resize; }
 .ba-range::-moz-range-thumb { width: 48px; height: 600px; border: none; background: transparent; cursor: ew-resize; }
-.ba-range:focus-visible + .ba-divider,
-.ba-slider:focus-within .ba-divider { box-shadow: 0 0 0 2px var(--red), 0 0 12px rgba(0,0,0,.4); }
+.ba-slider:focus-within .ba-divider::before { box-shadow: 0 0 0 2px var(--red), 0 0 12px rgba(0,0,0,.4); }
+/* While the carousel moves a handle (class .auto, set by js/gallery.js),
+   the label of a side that is not showing fades out, and so does the handle
+   at either edge: at 0 the whole photo is the after, and a "Before" tag or
+   half a knob there only confuses. --p is --pos without the % sign. */
+.ba-slider.auto .ba-tag.b { opacity: clamp(0, calc((var(--p) - 6) / 10), 1); }
+.ba-slider.auto .ba-tag.a { opacity: clamp(0, calc((94 - var(--p)) / 10), 1); }
+.ba-slider.auto .ba-divider { opacity: clamp(0, calc(min(var(--p), 100 - var(--p)) / 8), 1); }
 .ba-slider figcaption { margin-top: .9rem; font-weight: 600; font-size: .96rem; color: var(--text); text-align: center; }
 
 /* ============================================================

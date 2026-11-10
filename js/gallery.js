@@ -84,34 +84,55 @@
   /*
    * THE CAROUSEL.
    *
-   * One comparison per view on a phone, two from 820px up (where the cards
-   * used to sit two to a row), three from 1100px, where a third of the
-   * container is still about as wide as a phone's card. styles.css owns
-   * those breakpoints (--ba-per); this reads them. On its own it shows each newly visible card's
-   * whole before, then wipes across to the whole after, then moves along one
-   * card. The conventions are the WAI-ARIA carousel pattern and Bootstrap's:
-   * a pause button (WCAG 2.2.2), previous and next, one indicator per stop,
-   * stop while the pointer is over the photos or keyboard focus is in them,
-   * stop while the tab is hidden, never start under reduced motion.
+   * One comparison per view on a phone, two from 820px up, three from
+   * 1100px, where a third of the container is still about as wide as a
+   * phone's card. styles.css owns those breakpoints (--ba-per); this reads
+   * them.
    *
-   * Taking over: touching anything in it (dragging a handle, a chevron, an
-   * indicator) holds it. It picks up again after IDLE_MS without any touch,
-   * or when it has been scrolled out of view and back. Pause is different:
-   * that is the visitor saying no, so only their Play starts it again.
+   * On its own, every card in view sweeps together: the handle goes to the
+   * right edge (the whole before), wipes across to the left edge (the whole
+   * after) and comes back to the middle. Then the next cards slide in.
    *
-   * Timings, per comparison: about 1.2s to slide the handle across to the
-   * right edge (the whole before), 1.6s to look at it, 2.8s to wipe across
-   * to the whole after, 2.4s to look at that, 1s back to the middle. About
-   * 9 seconds a card, roughly double Bootstrap's 5 second slide, because
-   * each card is two pictures and a movement between them.
+   * It loops without an end, like Swiper's loop mode or Embla's: past the
+   * last comparison it carries on forward into the first, instead of racing
+   * back across them all. That is done by moving the cards that have slid
+   * out at one end of the track to the other end, then resetting the track
+   * without a transition, so the same cards stay exactly where they were.
+   * No copies of the cards, so no duplicate photos or handles.
+   *
+   * Conventions (WAI-ARIA carousel pattern, Bootstrap, WCAG 2.2.2): a pause
+   * button, previous and next, one dot per comparison, arrow keys on the
+   * controls, region and slide roles, aria-live off only while it moves, no
+   * motion under reduced motion, nothing while the tab is hidden.
+   *
+   * The play button is the state. Clicking or dragging a photo, a chevron,
+   * a dot, or keyboard focus on a handle pauses it and the button shows
+   * Play. Paused that way, it plays again by itself after IDLE_MS without a
+   * touch, or once it has been scrolled out of view and back, and the
+   * button flips back to Pause. Pressing Pause is the visitor saying no:
+   * only their Play starts it again. Hovering does nothing.
+   *
+   * The motion is one requestAnimationFrame loop reading a fixed timeline,
+   * with no timers between phases and no waiting for photos mid-sweep (the
+   * next cards' photos are fetched a whole sweep ahead). Each frame writes
+   * one CSS variable per card, and the stylesheet turns it into transforms
+   * and opacity, which the compositor moves without layout or repaint.
    */
-  var LEAD_MS = 2400;      // per full width, middle -> right edge = 1.2s
-  var BEFORE_HOLD = 1600;
-  var REVEAL_MS = 2800;    // the full wipe from before to after
-  var AFTER_HOLD = 2400;
-  var BACK_MS = 2000;      // per full width, left edge -> middle = 1s
-  var SLIDE_MS = 700;      // the track's own transition is .6s
+  var SWEEP = [            // [ms, where the handle goes]; no target = hold
+    [1200, 100],           // to the right edge: the whole before
+    [1600],
+    [2800, 0],             // wipe across: the whole after
+    [2400],
+    [1000, 50],            // back to the middle, where a visitor expects it
+    [300]
+  ];                       // 9.3 s a page, then 0.6 s to slide
+  var SLIDE_MS = 600;      // .ba-track's transition
+  var SETTLE_MS = 450;     // a paused card's handle gliding home
+  var PHOTO_WAIT_MS = 1500;
   var IDLE_MS = 12000;
+
+  // Ease in and out (cubic): starts and ends at rest, no visible kink.
+  function ease(t) { return t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2; }
 
   function carousel(slides) {
     var n = slides.length;
@@ -119,19 +140,42 @@
     var viewport = root.querySelector('.ba-viewport') || grid;
 
     var per = readPer();
-    var start = 0;            // the first card in view
-    var playing = !reduce.matches;   // the visitor's own Pause / Play
-    var onScreen = false, hover = false, keyFocus = false, held = false;
-    var idleTimer = null, running = false, run = 0;
+    var playing = !reduce.matches;   // what the button shows, and the truth
+    var byTouch = false;             // paused by a touch, so it may resume itself
+    var onScreen = false, keyFocus = false, dragging = false;
+    var idleTimer = null;
+    var player = null;               // the sweep in progress
+    var settles = [];                // handles gliding back to the middle
+    var raf = 0;
+    var pendingMove = null, moveTimer = null;
+
+    slides.forEach(function (s, i) {
+      s._i = i;
+      s._stage = s.querySelector('.ba-stage');
+      s._range = s.querySelector('.ba-range');
+      paint(s, 50, true);
+    });
 
     function readPer() { return parseInt(getComputedStyle(grid).getPropertyValue('--ba-per'), 10) || 1; }
     function perView() { return Math.min(n, per); }
-    function stops() { return n - perView() + 1; }
-    function visible() {
-      var out = [];
-      for (var i = start; i < start + perView(); i++) out.push(i);
-      return out;
+    function loops() { return n > perView(); }
+    function order() { return [].slice.call(grid.children); }
+    function shown() { return order().slice(0, perView()); }
+    function first() { return grid.firstElementChild._i; }
+
+    /* ---------- the handle ---------- */
+    // Per frame: CSS variables only. No layout reads, no input value.
+    function paint(s, v, force) {
+      if (v === s._pos && !force) return;
+      s._pos = v;
+      s._stage.style.setProperty('--pos', v + '%');
+      s._stage.style.setProperty('--p', v);
     }
+    // When it comes to rest: the range input catches up, for the keyboard
+    // and for script.js's drag code, which starts from its value.
+    function commit(s) { s._range.value = s._pos; }
+    // A card the visitor moved by hand is where script.js put it.
+    function posOf(s) { return s._user ? parseFloat(s._range.value) : s._pos; }
 
     /* ---------- controls ---------- */
     var ICON_PAUSE = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>';
@@ -143,221 +187,276 @@
     bar.className = 'ba-controls';
     // The rotation control comes first in the tab order (APG).
     bar.innerHTML =
-      '<button type="button" class="ba-ctl ba-play"></button>' +
-      '<button type="button" class="ba-ctl" data-step="-1" aria-controls="baGrid" aria-label="Previous photos">' + ICON_PREV + '</button>' +
-      '<div class="ba-dots" role="group" aria-label="Choose photos"></div>' +
-      '<button type="button" class="ba-ctl" data-step="1" aria-controls="baGrid" aria-label="Next photos">' + ICON_NEXT + '</button>';
+      '<div class="ba-nav">' +
+        '<button type="button" class="ba-ctl ba-play"></button>' +
+        '<button type="button" class="ba-ctl" data-step="-1" aria-controls="baGrid" aria-label="Previous photo">' + ICON_PREV + '</button>' +
+        '<div class="ba-dots" role="group" aria-label="Choose a photo"></div>' +
+        '<button type="button" class="ba-ctl" data-step="1" aria-controls="baGrid" aria-label="Next photo">' + ICON_NEXT + '</button>' +
+      '</div>';
     root.appendChild(bar);
+    // The Instagram link joins the control row, so it is not left on its own
+    // under the controls. It stays in the page's markup for when there are
+    // no photos to show.
+    var foot = document.querySelector('#gallery .gal-foot');
+    var insta = foot && foot.querySelector('a');
+    if (insta) { bar.appendChild(insta); foot.remove(); }
     var playBtn = bar.querySelector('.ba-play');
     var dotsBox = bar.querySelector('.ba-dots');
+    var painted = null;
 
-    function dots() {
-      var html = '';
-      for (var i = 0; i < stops(); i++) {
-        var p = perView();
-        var label = p === 1 ? String(i + 1) : p === 2 ? (i + 1) + ' and ' + (i + 2) : (i + 1) + ' to ' + (i + p);
-        html += '<button type="button" class="ba-dot" data-to="' + i + '" aria-controls="baGrid" aria-label="Show photos ' + label + ' of ' + n + '"></button>';
-      }
-      dotsBox.innerHTML = html;
-      // Nothing to move between: only the pause button stays (the handles
-      // still sweep, and moving content always needs a way to stop it).
-      bar.classList.toggle('single', stops() < 2);
+    var html = '';
+    for (var i = 0; i < n; i++) {
+      html += '<button type="button" class="ba-dot" data-to="' + i + '" aria-controls="baGrid" aria-label="Show photo ' + (i + 1) + ' of ' + n + '"></button>';
     }
+    dotsBox.innerHTML = html;
 
     function paintPlay() {
+      if (painted === playing) return;
+      painted = playing;
       // Same button, new label and icon, so focus stays on it (WAI tutorial).
       playBtn.innerHTML = playing ? ICON_PAUSE : ICON_PLAY;
       playBtn.setAttribute('aria-label', playing ? 'Pause the before and after slideshow' : 'Play the before and after slideshow');
     }
 
-    /* ---------- moving the track ---------- */
-    function place(snap) {
-      if (snap) grid.style.transition = 'none';
-      grid.style.transform = 'translateX(' + (-slides[start].offsetLeft) + 'px)';
-      if (snap) { void grid.offsetWidth; grid.style.transition = ''; }
-      var shown = visible();
-      slides.forEach(function (s, i) {
-        var on = shown.indexOf(i) >= 0;
-        // Cards off to the side are out of the tab order and the reading order.
+    function mark(list) {
+      slides.forEach(function (s) {
+        var on = list.indexOf(s) >= 0;
+        // Cards out of view are out of the tab order and the reading order.
         s.toggleAttribute('inert', !on);
         if (on) s.removeAttribute('aria-hidden'); else s.setAttribute('aria-hidden', 'true');
       });
-      [].forEach.call(dotsBox.children, function (d, i) {
-        if (i === start) d.setAttribute('aria-current', 'true'); else d.removeAttribute('aria-current');
+    }
+    function markDots(i) {
+      [].forEach.call(dotsBox.children, function (d, k) {
+        if (k === i) d.setAttribute('aria-current', 'true'); else d.removeAttribute('aria-current');
       });
     }
-
-    function go(to) {
-      var k = stops();
-      start = ((to % k) + k) % k;
-      place(false);
-      // The card after the ones in view starts loading now, so it is not a
-      // grey box when it slides in. Only ever one card ahead: the rest stay
-      // lazy until they are about to be shown.
-      for (var i = start; i <= Math.min(n - 1, start + perView()); i++) wake(slides[i]);
-    }
-
-    function wake(slide) {
-      slide.querySelectorAll('img[loading="lazy"]').forEach(function (img) { img.loading = 'eager'; });
-    }
-
-    function ready(slide) {
-      wake(slide);
-      return Promise.all([].map.call(slide.querySelectorAll('img'), function (img) {
-        if (img.complete) return null;
-        return new Promise(function (done) {
-          img.addEventListener('load', done, { once: true });
-          img.addEventListener('error', done, { once: true });
-          setTimeout(done, 4000);
-        });
-      }));
-    }
-
-    /* ---------- the handle ---------- */
-    function getPos(slide) { return parseFloat(slide.querySelector('.ba-range').value); }
-    function setPos(slide, v) {
-      slide.querySelector('.ba-range').value = v;
-      slide.querySelector('.ba-stage').style.setProperty('--pos', v + '%');
-    }
-    function ease(t) { return t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2; }
-
-    // Each segment is a move ({to, perFull}) or a pause ({ms}). Stops the
-    // moment `run` changes, leaving the handle wherever it got to.
-    function animate(gen, slide, segs) {
-      return new Promise(function (done) {
-        var k = 0;
-        (function next() {
-          if (gen !== run || k >= segs.length) return done();
-          var seg = segs[k++];
-          if (seg.ms) return setTimeout(next, seg.ms);
-          var from = getPos(slide);
-          var ms = Math.max(200, seg.perFull * Math.abs(seg.to - from) / 100);
-          var t0 = null;
-          requestAnimationFrame(function frame(t) {
-            if (gen !== run) return done();
-            if (t0 === null) t0 = t;
-            var p = Math.min(1, (t - t0) / ms);
-            setPos(slide, from + (seg.to - from) * ease(p));
-            if (p < 1) requestAnimationFrame(frame); else next();
-          });
-        })();
+    function wake(list) {
+      list.forEach(function (s) {
+        s.querySelectorAll('img[loading="lazy"]').forEach(function (img) { img.loading = 'eager'; });
       });
     }
-
-    function sweep(gen, slide) {
-      return ready(slide).then(function () {
-        return animate(gen, slide, [
-          { to: 100, perFull: LEAD_MS },   // the whole before
-          { ms: BEFORE_HOLD },
-          { to: 0, perFull: REVEAL_MS },   // wipe across to the whole after
-          { ms: AFTER_HOLD },
-          { to: 50, perFull: BACK_MS }     // back where a visitor expects it
-        ]);
+    function loaded(list) {
+      return list.every(function (s) {
+        return [].every.call(s.querySelectorAll('img'), function (img) { return img.complete; });
       });
     }
+    // The cards in view, the page after them, and the one before (for Previous).
+    function wakeAround() {
+      var o = order(), p = perView();
+      wake(o.slice(0, 2 * p).concat(o.slice(-1)));
+    }
 
-    // Sweep the queued cards one after another, then move along one card and
-    // sweep whichever card that brought into view.
-    function loop(gen, queue) {
-      if (gen !== run) return;
-      if (queue.length) {
-        sweep(gen, slides[queue[0]]).then(function () {
-          setTimeout(function () { loop(gen, queue.slice(1)); }, 400);
-        });
+    /* ---------- moving the track ---------- */
+    function snap(x) {
+      grid.style.transition = 'none';
+      grid.style.transform = x ? 'translateX(' + x + 'px)' : '';
+      void grid.offsetWidth;
+      grid.style.transition = '';
+    }
+    function finishMove() {
+      clearTimeout(moveTimer);
+      if (pendingMove) { var f = pendingMove; pendingMove = null; f(); }
+    }
+    grid.addEventListener('transitionend', function (e) {
+      if (e.target === grid && e.propertyName === 'transform') finishMove();
+    });
+
+    // Move d cards forward (d > 0) or back. Forward slides the track along,
+    // then puts the cards that left at the far end. Back first brings cards
+    // from the far end to the front, offset so nothing moves, then slides.
+    function move(d) {
+      finishMove();
+      if (!d || !loops()) return;
+      var p = perView(), o = order(), k = Math.abs(d);
+      if (k + p > n) {
+        // Too far to slide without running out of cards: jump instead.
+        for (var j = 0; j < (d > 0 ? k : n - k); j++) grid.appendChild(grid.firstElementChild);
+        snap(0);
+      } else if (d > 0) {
+        mark(o.slice(k, k + p));
+        grid.style.transform = 'translateX(' + (-o[k].offsetLeft) + 'px)';
+        pendingMove = function () {
+          for (var j = 0; j < k; j++) grid.appendChild(grid.firstElementChild);
+          snap(0);
+        };
+        moveTimer = setTimeout(finishMove, SLIDE_MS + 150);
+      } else {
+        for (var m = 0; m < k; m++) grid.insertBefore(grid.lastElementChild, grid.firstElementChild);
+        snap(-order()[k].offsetLeft);
+        grid.style.transform = '';
+        pendingMove = function () {};
+        moveTimer = setTimeout(finishMove, SLIDE_MS + 150);
+      }
+      mark(shownAfter(d));
+      markDots((first() + (k + p > n || d < 0 ? 0 : k)) % n);
+      wakeAround();
+    }
+    // What will be in view once a move lands (the DOM has not rotated yet
+    // for a forward slide).
+    function shownAfter(d) {
+      var o = order(), p = perView();
+      return d > 0 && pendingMove ? o.slice(d, d + p) : o.slice(0, p);
+    }
+    // Shortest way round to put comparison i first in view.
+    function goTo(i) {
+      var f = ((i - first()) % n + n) % n;
+      move(f <= n - f ? f : f - n);
+    }
+
+    /* ---------- the sweep ---------- */
+    function kick() { if (!raf) raf = requestAnimationFrame(tick); }
+    function tick(now) {
+      raf = 0;
+      if (player) sweep(now);
+      settles = settles.filter(function (st) { return settle(st, now); });
+      if (player || settles.length) kick();
+    }
+
+    function sweep(now) {
+      var pl = player;
+      if (now < pl.notBefore) return;
+      if (pl.t0 === null) {
+        // The track has not finished sliding (transitionend can land a frame
+        // after SLIDE_MS): the cards in view are not settled yet.
+        if (pendingMove) return;
+        // Start of a page, handles at rest: the one place it may wait for
+        // photos, and only briefly (they were asked for a sweep earlier).
+        pl.cards = shown();
+        if (!loaded(pl.cards) && now < pl.notBefore + PHOTO_WAIT_MS) return;
+        pl.t0 = now;
+        pl.from = pl.cards.map(posOf);
+        settles = settles.filter(function (st) { return pl.cards.indexOf(st.s) < 0; });
+        pl.cards.forEach(function (s) { s._user = false; s.classList.add('auto'); });
+        wakeAround();
+      }
+      var e = now - pl.t0, k = 0, from = null;
+      while (k < SWEEP.length && e >= SWEEP[k][0]) {
+        if (SWEEP[k][1] !== undefined) from = SWEEP[k][1];
+        e -= SWEEP[k][0];
+        k++;
+      }
+      if (k === SWEEP.length) {
+        pl.cards.forEach(function (s) { paint(s, 50); commit(s); s.classList.remove('auto'); });
+        var step = loops() ? Math.min(perView(), n - perView()) : 0;
+        move(step);
+        player = { notBefore: now + (step ? SLIDE_MS : 0), t0: null };
         return;
       }
-      var was = visible();
-      if (stops() > 1) go(start + 1);
-      var fresh = visible().filter(function (i) { return was.indexOf(i) < 0; });
-      setTimeout(function () { loop(gen, fresh.length ? fresh : visible()); }, SLIDE_MS);
+      var to = SWEEP[k][1], t = ease(e / SWEEP[k][0]);
+      pl.cards.forEach(function (s, j) {
+        var a = from === null ? pl.from[j] : from;
+        paint(s, to === undefined ? a : a + (to - a) * t);
+      });
+    }
+
+    // Stopped mid-sweep: the handles the carousel moved glide back to the
+    // middle, so no card is left showing a half-hidden handle at an edge.
+    // A handle the visitor moved stays where they put it.
+    function settle(st, now) {
+      var s = st.s;
+      if (s._user) { s.classList.remove('auto'); return false; }
+      if (st.t0 === null) { st.t0 = now; st.from = s._pos; }
+      var t = Math.min(1, (now - st.t0) / SETTLE_MS);
+      paint(s, st.from + (50 - st.from) * ease(t));
+      if (t < 1) return true;
+      commit(s);
+      s.classList.remove('auto');
+      return false;
+    }
+
+    function halt() {
+      var pl = player;
+      player = null;
+      (pl && pl.cards || []).forEach(function (s) {
+        if (s._user) { s.classList.remove('auto'); return; }
+        if (s._pos !== 50) settles.push({ s: s, t0: null });
+        else { commit(s); s.classList.remove('auto'); }
+      });
+      kick();
     }
 
     /* ---------- when it runs ---------- */
     function update() {
-      var should = playing && onScreen && !document.hidden && !hover && !keyFocus && !held;
-      if (should && !running) {
-        running = true;
-        loop(++run, visible());
-      } else if (!should && running) {
-        running = false;
-        run++;
-      }
+      var run = playing && onScreen && !document.hidden;
+      if (run && !player) { player = { notBefore: performance.now(), t0: null }; kick(); }
+      else if (!run && player) halt();
       // Announce changes only when the visitor is the one making them (APG).
-      grid.setAttribute('aria-live', running ? 'off' : 'polite');
+      grid.setAttribute('aria-live', run ? 'off' : 'polite');
+      paintPlay();
     }
 
-    // Any touch of the carousel: hold it, and pick up again after a quiet spell.
-    function interact() {
-      held = true;
+    function resumeLater() {
       clearTimeout(idleTimer);
-      idleTimer = setTimeout(function () { held = false; update(); }, IDLE_MS);
+      if (!byTouch) return;
+      idleTimer = setTimeout(function () {
+        if (keyFocus || dragging) return resumeLater();
+        byTouch = false;
+        playing = true;
+        update();
+      }, IDLE_MS);
+    }
+
+    // A touch: pause, and say so on the button. If the visitor had already
+    // pressed Pause, it stays their pause: no automatic restart.
+    function touch(card) {
+      if (card) { card._user = true; card.classList.remove('auto'); }
+      if (playing) { playing = false; byTouch = true; }
+      resumeLater();
       update();
     }
 
-    viewport.addEventListener('pointerdown', interact);
-    viewport.addEventListener('input', interact);
-    viewport.addEventListener('keydown', interact);
-    // Hover: only a pointer that really moves over the photos. Chrome also
-    // fires pointer events when the page scrolls under a resting cursor,
-    // which would stop the carousel for anyone who scrolls with the mouse
-    // parked mid-screen. Those carry no movement.
-    viewport.addEventListener('pointermove', function (e) {
-      if (e.pointerType !== 'mouse' || hover || !(e.movementX || e.movementY)) return;
-      hover = true;
-      update();
-    });
-    viewport.addEventListener('pointerleave', function () {
-      if (!hover) return;
-      hover = false;
-      interact();
-    });
-    // Keyboard focus on a handle holds it while it is there. A mouse click
-    // does not count: the pointerdown already held it, and :focus-visible
-    // is false for a click.
+    function cardOf(e) { return e.target.closest && e.target.closest('.ba-slider'); }
+    viewport.addEventListener('pointerdown', function (e) { dragging = true; touch(cardOf(e)); });
+    window.addEventListener('pointerup', function () { if (dragging) { dragging = false; resumeLater(); } });
+    window.addEventListener('pointercancel', function () { if (dragging) { dragging = false; resumeLater(); } });
+    viewport.addEventListener('keydown', function (e) { if (e.key !== 'Tab') touch(cardOf(e)); });
+    // Keyboard focus on a handle pauses it while it is there. A click does
+    // not count: the pointerdown already paused it, and :focus-visible is
+    // false for a click.
     viewport.addEventListener('focusin', function (e) {
       var kb = false;
       try { kb = e.target.matches(':focus-visible'); } catch (_) { kb = true; }
-      if (kb) { keyFocus = true; update(); }
+      if (kb) { keyFocus = true; touch(null); }
     });
     viewport.addEventListener('focusout', function (e) {
       if (!keyFocus || viewport.contains(e.relatedTarget)) return;
       keyFocus = false;
-      interact();
+      resumeLater();
     });
 
     bar.addEventListener('click', function (e) {
       var b = e.target.closest && e.target.closest('button');
       if (!b) return;
       if (b === playBtn) {
+        // Play means play now, whatever paused it.
         playing = !playing;
-        held = false;
+        byTouch = false;
         clearTimeout(idleTimer);
-        paintPlay();
         update();
         return;
       }
-      var to = b.hasAttribute('data-to') ? +b.getAttribute('data-to') : start + (+b.getAttribute('data-step'));
-      interact();
-      go(to);
+      touch(null);
+      if (b.hasAttribute('data-to')) goTo(+b.getAttribute('data-to'));
+      else move(+b.getAttribute('data-step'));
     });
     // Arrow keys on the controls step through, as on Bootstrap's carousel.
     // On a handle they already move the handle, which is what that means there.
     bar.addEventListener('keydown', function (e) {
-      var to = { ArrowLeft: start - 1, ArrowRight: start + 1, Home: 0, End: stops() - 1 }[e.key];
-      if (to === undefined) return;
-      e.preventDefault();
-      interact();
-      go(to);
+      var to = { ArrowLeft: -1, ArrowRight: 1 }[e.key];
+      if (to !== undefined) { e.preventDefault(); touch(null); move(to); return; }
+      if (e.key === 'Home' || e.key === 'End') { e.preventDefault(); touch(null); goTo(e.key === 'Home' ? 0 : n - 1); }
     });
 
-    // Out of sight: stop, and forget any hold, so coming back starts it again.
+    // Out of sight: stop. If a touch paused it, coming back plays it again,
+    // and the button says so straight away.
     if ('IntersectionObserver' in window) {
       new IntersectionObserver(function (entries) {
-        var e = entries[entries.length - 1];
-        var now = e.isIntersecting && e.intersectionRatio >= 0.35;
+        var en = entries[entries.length - 1];
+        var now = en.isIntersecting && en.intersectionRatio >= 0.35;
         if (now === onScreen) return;
         onScreen = now;
-        if (!now) { held = false; hover = false; clearTimeout(idleTimer); }
+        if (!now && byTouch && !keyFocus) { byTouch = false; playing = true; clearTimeout(idleTimer); }
         update();
       }, { threshold: [0, 0.35, 0.6] }).observe(viewport);
     } else {
@@ -365,20 +464,22 @@
     }
     document.addEventListener('visibilitychange', update);
     var onReduce = function () {
-      if (reduce.matches) { playing = false; paintPlay(); update(); }
+      if (reduce.matches) { playing = false; byTouch = false; update(); }
     };
     if (reduce.addEventListener) reduce.addEventListener('change', onReduce);
-    // Resizing past a breakpoint changes how many cards fit, so the stops and
-    // the indicators change with it.
+    // Resizing past a breakpoint changes how many cards fit.
     window.addEventListener('resize', function () {
       var p = readPer();
-      if (p !== per) { per = p; dots(); start = Math.min(start, stops() - 1); }
-      place(true);
+      if (p === per) return;
+      finishMove();
+      per = p;
+      bar.classList.toggle('single', !loops());
+      mark(shown());
     });
 
-    dots();
-    paintPlay();
-    place(true);
+    bar.classList.toggle('single', !loops());
+    mark(shown());
+    markDots(0);
     update();
   }
 

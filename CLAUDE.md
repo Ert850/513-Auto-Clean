@@ -126,11 +126,15 @@ Read this before changing anything. Every rule below came from a real bug or an 
 
 ## Results carousel (built November 10)
 - **No `.reveal` on anything inside a sideways track.** A card parked off to the side never intersects the viewport, so it stays invisible and fades up late when it slides in. Put `.reveal` on the carousel.
-- **Hover means a pointer that moved.** Chrome fires pointer events when the page scrolls under a resting cursor; a plain `mouseenter` pause stopped the carousel for anyone scrolling with the mouse mid-screen. Check `movementX`/`movementY`.
+- **No hover pause on the carousel** (the owner found it non-intuitive: the sweep kept freezing as the mouse crossed the photos). Clicks, drags, the chevrons, the dots and keyboard focus on a handle take over.
+- **The play button is the state.** Anything that pauses the carousel shows Play on it; anything that restarts it (idle timer, scrolling back into view) shows Pause again. Never keep a hidden "held" flag that the button doesn't show.
+- **Animate the handle with `transform` and `opacity` only, from one `requestAnimationFrame` loop over a fixed timeline.** `left` and `clip-path` per frame meant layout and a repaint of the photo every frame. Timers between phases, and waiting for photos mid-run, showed up as stutters and pauses. Fetch the next view's photos a whole sweep ahead.
+- **A stopped sweep puts its handles back in the middle**, and while it runs the handle and the label of the hidden side fade out near the edges. A half-clipped knob with a "Before" label over the after photo looked broken in a screenshot.
+- **The endless loop rearranges the real cards; it never clones them** (as Swiper 9+ and Embla do). Clones would duplicate every photo and every focusable handle. It needs at least twice as many comparisons as are in view to slide smoothly.
 - **Focus pauses only when it is keyboard focus** (`:focus-visible`). A clicked button keeps focus, so a focus pause would stop the carousel for good after one click.
 - **Lazy images in a sideways track never load early enough.** Switch the next card's images to `loading = 'eager'` just before it is shown, and wait for them before animating.
 - **How many cards are in view lives in CSS** (`--ba-per` on `.ba-track`, read by `js/gallery.js`), alongside the `sizes` attribute in `js/gallery.js`. Change all three together.
-- **Pause from the visitor is final**: only their Play restarts it. Every other hold (drag, chevron, hover, idle, off screen, hidden tab) clears on its own.
+- **Pause from the visitor is final**: only their Play restarts it. A pause from a touch (click, drag, chevron, dot, keyboard focus) ends on its own after 12 s idle or when the carousel is scrolled away and back. Off screen and a hidden tab only suspend it.
 
 ## Colors (fixed November 10)
 - **Red means the brand and "that did not work", nothing else.** A price or any good answer is ink (`--text`). The travel fee in `--red` looked exactly like the error message under it.
