@@ -102,6 +102,11 @@ export function buildWeek(req: {
   needsPriority: (ms: number) => boolean;
   /** The last row to draw, from lastRowForSlots(). Defaults to the last start hour. */
   lastRowMin?: number;
+  /**
+   * The starts to star, when the calendars set best times (BEST events,
+   * round 15). Without it, each day's packing suggestions are starred.
+   */
+  suggested?: number[];
   timeZone?: string;
 }): Week {
   const tz = req.timeZone ?? TZ;
@@ -117,15 +122,17 @@ export function buildWeek(req: {
 
     // The day's suggestions: straight after an existing job first, then
     // 10am and 4pm (and 1pm at weekends). Never an early or late start.
-    const suggestedSet = new Set(
-      recommendStarts({
-        starts,
-        busy: req.busy ?? [],
-        travelGapMin: req.travelGapMin,
-        limit: weekday === 0 || weekday === 6 ? 3 : 2,
-        timeZone: tz,
-      }).map((r) => r.ms),
-    );
+    const suggestedSet = req.suggested
+      ? new Set(req.suggested.filter((ms) => ms >= dayStart && ms < next))
+      : new Set(
+          recommendStarts({
+            starts,
+            busy: req.busy ?? [],
+            travelGapMin: req.travelGapMin,
+            limit: weekday === 0 || weekday === 6 ? 3 : 2,
+            timeZone: tz,
+          }).map((r) => r.ms),
+        );
 
     const byHour = new Map<number, number[]>();
     for (const ms of starts) {

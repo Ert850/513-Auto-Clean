@@ -1570,3 +1570,137 @@ button.bk-wk-c:hover { box-shadow: 0 0 0 2px var(--red-ghost); }
 /* The contact form is a layout-neutral wrapper: it exists so browsers and
    password managers see a form and offer to fill the whole card at once. */
 .bk-form { display: contents; }
+
+
+/* =========================================================================
+   Round 15 (owner, November 10): two pages, picture cards, a checkout.
+   ========================================================================= */
+
+/* The first page: answered questions fold to one line, the next slides up. */
+.bk-donerow {
+  width: 100%; display: flex; align-items: center; gap: .7rem; margin: 0 0 .4rem;
+  font: inherit; text-align: left; cursor: pointer; color: var(--text);
+  background: var(--paper-2); border: 1.5px solid var(--line); border-radius: var(--r-sm); padding: .5rem .8rem;
+}
+.bk-donerow:hover { border-color: var(--red); }
+.bk-donerow span { flex: none; width: 5.2rem; font-size: .7rem; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; color: var(--text-soft); }
+.bk-donerow b { flex: 1; min-width: 0; font-size: .9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bk-donerow em { flex: none; font-style: normal; font-size: .78rem; font-weight: 700; color: var(--red); text-decoration: underline; text-underline-offset: 2px; }
+.bk-sec { margin: .9rem 0 0; }
+.bk-sec:first-child { margin-top: 0; }
+.bk-sec-h { margin: 0 0 .65rem; font-family: var(--font-display); font-size: 1.12rem; }
+.bk-sec-in { animation: bkSecIn .38s var(--ease) both; }
+@keyframes bkSecIn { from { opacity: 0; transform: translateY(22px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .bk-sec-in { animation: none; } }
+
+/* Picture cards in a row of three: vehicle size, and what it needs. */
+.bk-pics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .55rem; }
+.bk-pic {
+  display: flex; flex-direction: column; align-items: center; text-align: center; gap: .2rem;
+  font: inherit; cursor: pointer; color: var(--text); padding: .85rem .5rem .8rem;
+  background: var(--paper-2); border: 2px solid var(--line); border-radius: var(--r-md);
+  transition: border-color .16s, box-shadow .16s, transform .16s;
+}
+.bk-pic:hover { border-color: var(--red); transform: translateY(-1px); }
+.bk-pic.on { border-color: var(--red); box-shadow: 0 0 0 3px var(--red-ghost); }
+.bk-pic-ic { width: 46px; height: 46px; color: var(--ink); margin-bottom: .15rem; }
+.bk-pic b { font-family: var(--font-display); font-size: 1.02rem; }
+.bk-pic span { font-size: .76rem; line-height: 1.35; color: var(--text-soft); }
+.bk-pic-price {
+  margin-top: .35rem; font-style: normal; font-size: .8rem; font-weight: 800; color: var(--text);
+  background: var(--paper); border: 1px solid var(--line); border-radius: 999px; padding: .12rem .55rem;
+}
+.bk-pic-price.none { font-weight: 600; color: var(--text-soft); }
+.bk-askrow {
+  width: 100%; display: flex; align-items: center; gap: .7rem; margin-top: .55rem;
+  font: inherit; text-align: left; cursor: pointer; color: var(--text);
+  background: var(--paper); border: 1.5px dashed var(--line); border-radius: var(--r-md); padding: .6rem .9rem;
+}
+.bk-askrow:hover, .bk-askrow.on { border-color: var(--red); border-style: solid; }
+.bk-askrow .bk-pic-ic { width: 26px; height: 26px; margin: 0; color: var(--red); flex: none; }
+.bk-askrow span { flex: 1; }
+.bk-askrow b { display: block; font-size: .92rem; }
+.bk-askrow i { display: block; font-style: normal; font-size: .78rem; color: var(--text-soft); }
+.bk-askrow + .bk-browsebar { margin-top: .5rem; }
+@media (max-width: 380px) {
+  .bk-pic { padding: .7rem .3rem; }
+  .bk-pic-ic { width: 38px; height: 38px; }
+  .bk-pic span { font-size: .7rem; }
+}
+
+/* Package cards: one line each; "How it works" inside, above the card's tap. */
+.bk-pkgcard {
+  background: var(--paper-2); border: 2px solid var(--line); border-radius: var(--r-md);
+  transition: border-color .16s, box-shadow .16s;
+}
+.bk-pkgcard:hover { border-color: var(--red); }
+.bk-pkgcard.on { border-color: var(--red); box-shadow: 0 0 0 3px var(--red-ghost); }
+.bk-pkgcard .bk-pkg { border: 0; background: none; border-radius: var(--r-md); padding: .75rem 1rem .2rem; align-items: center; }
+.bk-pkgcard .bk-pkg:hover { border: 0; }
+.bk-pkgcard .bk-pkg-tag { margin-top: .1rem; }
+.bk-pkgcard .bk-how-pkg { margin: 0; padding: 0 1rem .6rem; }
+.bk-pkgcard .bk-how-pkg p { margin-top: .4rem; }
+.bk-pkgcard .bk-pkg-feat b { color: var(--text); }
+.bk-promo-fold { margin: 0 0 .7rem; }
+.bk-promo-fold > summary { cursor: pointer; list-style: none; font-size: .82rem; font-weight: 700; color: var(--red); display: inline-flex; gap: .3rem; }
+.bk-promo-fold > summary::-webkit-details-marker { display: none; }
+.bk-promo-fold > summary::after { content: "+"; }
+.bk-promo-fold[open] > summary::after { content: "\2212"; }
+.bk-promo-fold .bk-promo { margin: .5rem 0 0; }
+
+/* Extras: behind one button; smaller cards, "How it works" to the side. */
+.bk-extras-open {
+  width: 100%; display: flex; align-items: center; gap: .7rem; margin-top: .4rem;
+  font: inherit; text-align: left; cursor: pointer; color: var(--text);
+  background: var(--paper-2); border: 1.5px solid var(--line); border-radius: var(--r-md); padding: .8rem .95rem;
+}
+.bk-extras-open:hover { border-color: var(--red); }
+.bk-extras-open span { flex: 1; }
+.bk-extras-open b { display: block; font-size: .95rem; }
+.bk-extras-open i { display: block; font-style: normal; font-size: .8rem; color: var(--text-soft); margin-top: .1rem; }
+.bk-addon { padding: .7rem .85rem; margin-bottom: .5rem; }
+.bk-addon-row { display: flex; align-items: flex-start; gap: .8rem; margin: .2rem 0 .5rem; }
+.bk-addon-row .bk-addon-d { flex: 1; margin: 0; }
+.bk-how-side { flex: none; margin: 0; max-width: 45%; }
+.bk-how-side summary { white-space: nowrap; font-size: .78rem; }
+.bk-how-side[open] { flex-basis: 100%; max-width: none; }
+.bk-addon-row:has(.bk-how-side[open]) { flex-wrap: wrap; }
+
+/* The checkout: one page, section by section. */
+.bk-ck { padding: 0 0 1rem; margin: 0 0 1rem; border-bottom: 1px solid var(--line); }
+.bk-ck:last-child { border-bottom: 0; margin-bottom: 0; }
+.bk-ck .bk-sub { margin-bottom: .7rem; }
+.bk-ck[data-sec="details"] .bk-form { margin: 0; }
+.bk-heard select {
+  width: 100%; font: inherit; font-size: .92rem; padding: .6rem .7rem; color: var(--text);
+  border: 1.5px solid var(--line); border-radius: var(--r-sm); background: var(--paper-2);
+}
+.bk-readmore.inline { display: inline; margin: 0; }
+
+/* Recommended times: the fee as one quiet line, not a badge. */
+.bk-pick-note { display: block; flex-basis: 100%; font-size: .78rem; color: var(--text-soft); }
+.bk-pick-note.fee { color: #7a5209; font-weight: 700; }
+.bk-more-other { grid-column: 1 / -1; display: flex; align-items: center; gap: .6rem; margin-top: .15rem; font-size: .8rem; color: var(--text-soft); }
+.bk-more-other select {
+  font: inherit; font-size: .82rem; padding: .35rem .5rem; color: var(--text);
+  border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--paper-2);
+}
+
+/* The calendar grid in its own frame, opening on the regular hours (owner,
+   November 10). The day names stay pinned inside it; the markers say which
+   way the early and late hours are. */
+.bk-wk-frame { position: relative; }
+.bk-wk-scroll { overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable; }
+.bk-wk-scroll::-webkit-scrollbar { width: 8px; }
+.bk-wk-scroll::-webkit-scrollbar-thumb { background: var(--line); border-radius: 8px; }
+.bk-wk-edge {
+  position: absolute; left: 50%; transform: translateX(-50%); z-index: 6;
+  display: inline-flex; align-items: center; gap: .3rem;
+  font: inherit; font-size: .74rem; font-weight: 700; color: var(--text-soft); cursor: pointer;
+  background: var(--paper-2); border: 1px solid var(--line); border-radius: 999px; padding: .22rem .7rem;
+  box-shadow: var(--shadow-sm);
+}
+.bk-wk-edge:hover { color: var(--text); border-color: var(--text-soft); }
+.bk-wk-edge svg { width: 12px; height: 12px; }
+.bk-wk-edge.up { top: 58px; }
+.bk-wk-edge.down { bottom: 6px; }

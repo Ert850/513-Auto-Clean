@@ -219,7 +219,8 @@ function fillWhere(env) {
   type(env, { dataset: { addr: "line1" } }, "1 Main St");
   type(env, { dataset: { addr: "city" } }, "Cincinnati");
   type(env, { dataset: { addr: "zip" } }, "45220");
-  click(env, { id: "bkNext" });
+  // Round 15: Where and When are on the one checkout page, so there is no
+  // Continue between them.
 }
 
 /** Ticking or unticking a box, through the funnel's own change handler. */
@@ -278,7 +279,8 @@ describe("the booking funnel opens", () => {
     expect(body).toContain("data-size");
     expect(nav.length, "the step nav rendered nothing").toBeGreaterThan(50);
     expect(nav).toContain("Vehicle");
-    expect(nav).toContain("Accept");
+    // Where, Time, Accept and Confirm are one Checkout tab (round 15).
+    expect(nav).toContain("Checkout");
   });
 
   it("renders the last step, which is the one with the most on it", () => {
@@ -351,7 +353,7 @@ describe("the booking funnel opens", () => {
     click(fresh, { dataset: { size: "small" } });
     const intent = fresh.lookup("bkBody").innerHTML;
     expect(intent, "the intent step should offer it").toContain('data-intent="advice"');
-    expect(intent, "and point at the services list").toContain("See all services and prices");
+    expect(intent, "and a way to read every option").toContain("bkBrowse");
 
     click(fresh, { dataset: { intent: "advice" } });
 
@@ -364,9 +366,9 @@ describe("the booking funnel opens", () => {
 
     // The address comes before the time: the times offered depend on the
     // drive there and the weather at that address.
-    expect(fresh.lookup("bkTitle").textContent).toBe("Where are we detailing?");
+    // Round 15: the address and the times are on the one checkout page.
+    expect(fresh.lookup("bkTitle").textContent).toBe("Checkout");
     fillWhere(fresh);
-    expect(fresh.lookup("bkTitle").textContent).toBe("Pick your time");
     const body = fresh.lookup("bkBody").innerHTML;
     expect(body, "the real picker, not the when-suits form").toContain("bkSlots");
     expect(body, "and it says how much time is being held").toMatch(/holding <b>\d+ hours<\/b>/);
@@ -382,28 +384,27 @@ describe("the booking funnel opens", () => {
     const ms = /data-slot="(\d+)"/.exec(slots)[1];
     click(fresh, { dataset: { slot: ms } });
 
-    // Continue on the time step re-checks the calendar before it moves, so
-    // the step change lands a microtask later.
-    click(fresh, { id: "bkNext" });
-    await new Promise((r) => setTimeout(r, 0));
-    await new Promise((r) => setTimeout(r, 0));
-    expect(fresh.lookup("bkTitle").textContent).toBe("Your details, and what you agree to");
+    // Round 15: picking a time on the checkout selects it and moves down the
+    // same page; nothing is sent until Confirm.
+    expect(fresh.lookup("bkTitle").textContent).toBe("Checkout");
 
     type(fresh, { dataset: { c: "name" } }, "Ada");
     type(fresh, { dataset: { c: "phone" } }, "5135551212");
-    // Terms is one required tick box, texts an optional one, and filming a
+    // Terms is one required tick box, texts an optional one, and recording a
     // required Yes or No (owner, November 10).
     const contact = fresh.lookup("bkBody").innerHTML;
     expect(contact, "the terms are a tick box").toContain('data-consentbox="terms"');
     expect(contact, "texts are an optional tick box").toContain('data-consentbox="sms"');
-    expect(contact, "filming is asked here").toContain('data-media="yes"');
+    expect(contact, "recording is asked here").toContain('data-media="yes"');
+    expect(contact, "and where they heard about us, optional").toContain("bkHeard");
     change(fresh, { dataset: { consentbox: "terms" }, checked: true });
     click(fresh, { id: "bkNext" });
-    expect(fresh.lookup("bkTitle").textContent, "filming unanswered must hold the step")
-      .toBe("Your details, and what you agree to");
+    await new Promise((r) => setTimeout(r, 0));
+    await new Promise((r) => setTimeout(r, 0));
+    expect(fresh.lookup("bkTitle").textContent, "recording unanswered must hold the booking")
+      .toBe("Checkout");
     click(fresh, { dataset: { media: "no" } });
 
-    click(fresh, { id: "bkNext" });
     const last = fresh.lookup("bkBody").innerHTML;
 
     expect(last.length, "the last screen rendered nothing").toBeGreaterThan(200);
@@ -512,6 +513,11 @@ describe("the booking funnel opens", () => {
     click(fresh, { dataset: { pkg: "basic-interior", cat: "interior" } });
     // Extras: our recommendations first, the rest folded, an easy way past,
     // and a second vehicle as one line rather than a screen of its own.
+    // Round 15: the extras wait behind one button (owner: do not flood).
+    const folded = fresh.lookup("bkBody").innerHTML;
+    expect(folded, "the extras are behind one button").toContain("bkShowExtras");
+    expect(folded, "and not shown yet").not.toContain("Recommended for your");
+    click(fresh, { id: "bkShowExtras" });
     const extras = fresh.lookup("bkBody").innerHTML;
     expect(extras).toContain("Recommended for your Basic Interior");
     // Every add-on is listed, under the same kind of heading: nothing folded.
@@ -522,12 +528,12 @@ describe("the booking funnel opens", () => {
     expect(fresh.lookup("bkNav").innerHTML, "no Vehicles step any more").not.toContain("Vehicles");
     // The way past is one tap, and says so (the stub DOM keeps no button text).
     expect(fs.readFileSync(path.join(ROOT, "js/funnel.js"), "utf8"))
-      .toContain("s.id === 'addons' && !veh().addons.length ? 'No extras, continue'");
+      .toContain("s.id === 'addons' ? 'Continue to checkout'");
 
-    click(fresh, { id: "bkNext" });   // past extras, to the address
+    click(fresh, { id: "bkNext" });   // past extras, to the checkout
     fillWhere(fresh);
 
-    expect(fresh.lookup("bkTitle").textContent).toBe("Pick your time");
+    expect(fresh.lookup("bkTitle").textContent).toBe("Checkout");
 
     // loadSlots resolves on a microtask; let the promises settle.
     await new Promise((r) => setTimeout(r, 0));
@@ -929,8 +935,8 @@ describe("what the screen says about money and time", () => {
   });
 
   it("asks about filming before booking, and needs an answer", () => {
-    expect(fn("rContact", 4000)).toContain("mediaQuestion()");
-    expect(fn("vContact", 1600)).toContain("state.consent.media === null");
+    expect(fn("rAgree", 4000)).toContain("mediaQuestion()");
+    expect(fn("vAgree", 1600)).toContain("state.consent.media === null");
   });
 });
 
@@ -1096,7 +1102,7 @@ describe("help me choose a time", () => {
     click(env, { dataset: { pkg: "basic-interior", cat: "interior" } });
     click(env, { id: "bkNext" });
     fillWhere(env);
-    expect(env.lookup("bkTitle").textContent).toBe("Pick your time");
+    expect(env.lookup("bkTitle").textContent).toBe("Checkout");
     return env;
   };
   const settle = async () => {
