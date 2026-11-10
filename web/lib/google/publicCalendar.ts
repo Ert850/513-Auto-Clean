@@ -25,6 +25,24 @@ const API = "https://www.googleapis.com/calendar/v3/calendars";
 
 export const AVAILABILITY_PREFIX = "OPEN";
 
+/**
+ * Best start times, set in Google Calendar rather than in code (owner,
+ * November 10): an event titled "BEST..." on an availability calendar marks
+ * an ideal start (Kris at 6pm; Elijah at 10am, 4pm and 6pm, no 6pm at
+ * weekends). Only its START matters. It never blocks time, whatever its
+ * Busy/Free setting. docs/CALENDAR-SETUP.md is the owner's guide.
+ */
+export const BEST_PREFIX = "BEST";
+
+/**
+ * Who is offered first, also set in Google Calendar: a line "Priority: 1" in
+ * the calendar's own Description (Settings and sharing). Lower goes first.
+ */
+export function parsePriority(description: string | null | undefined): number | null {
+  const m = /priority\s*[:=]?\s*(\d{1,3})/i.exec(String(description ?? ""));
+  return m ? Number(m[1]) : null;
+}
+
 export interface PublicCalendarConfig {
   /** The calendar carrying OPEN blocks, and usually the jobs too. */
   calendarId: string;
@@ -118,6 +136,10 @@ export interface CalendarWindow {
   /** Everything treated as unavailable, in either mode. */
   busy: Interval[];
   events: RawEvent[];
+  /** Starts of BEST events in the window, sorted. Empty when none are set. */
+  best?: number[];
+  /** "Priority: N" from a calendar's description; null when none says. */
+  priority?: number | null;
 }
 
 export function isConfigured(cfg: Partial<PublicCalendarConfig> | null | undefined): boolean {
@@ -129,6 +151,20 @@ export async function fetchEvents(
   fromMs: number,
   toMs: number,
 ): Promise<RawEvent[]> {
+  return (await readCalendars(cfg, fromMs, toMs)).events;
+}
+
+/** A detailer's calendars read together: the events, and the best Priority line. */
+export interface CalendarRead {
+  events: RawEvent[];
+  priority: number | null;
+}
+
+export async function readCalendars(
+  cfg: PublicCalendarConfig,
+  fromMs: number,
+  toMs: number,
+): Promise<CalendarRead> {
   const ids = calendarIds(cfg);
   if (ids.length <= 1) return fetchOne(cfg.apiKey, ids[0] ?? "", fromMs, toMs);
 
@@ -143,14 +179,15 @@ export async function fetchEvents(
    */
   const settled = await Promise.all(
     ids.map((id) =>
-      fetchOne(cfg.apiKey, id, fromMs, toMs).catch((err: unknown) => {
+      fetchOne(cfg.apiKey, id, fromMs, toMs).catch((err: unknown): CalendarRead => {
         // eslint-disable-next-line no-console
         console.warn(`[513] calendar ${id} unreadable:`, err);
-        return [] as RawEvent[];
+        return { events: [], priority: null };
       }),
     ),
   );
-  return settled.flat();
+  const ranks = settled.map((r) => r.priority).filter((n): n is number => n !== null);
+  return { events: settled.flatMap((r) => r.events), priority: ranks.length ? Math.min(...ranks) : null };
 }
 
 async function fetchOne(
@@ -158,7 +195,7 @@ async function fetchOne(
   calendarId: string,
   fromMs: number,
   toMs: number,
-): Promise<RawEvent[]> {
+): Promise<CalendarRead> {
   const cfg = { calendarId, apiKey };
   const url =
     `${API}/${encodeURIComponent(cfg.calendarId)}/events` +
@@ -175,9 +212,10 @@ async function fetchOne(
   if (!res.ok) {
     throw new Error(`Google Calendar ${res.status}: ${await res.text()}`);
   }
-  const json = (await res.json()) as { items?: GoogleEvent[] };
+  // The calendar's own Description rides along on every events list.
+  const json = (await res.json()) as { items?: GoogleEvent[]; description?: string };
 
-  return (json.items ?? [])
+  const events = (json.items ?? [])
     .map((e): RawEvent | null => {
       const s = e.start?.dateTime ?? e.start?.date;
       const t = e.end?.dateTime ?? e.end?.date;
@@ -192,6 +230,7 @@ async function fetchOne(
       };
     })
     .filter((e): e is RawEvent => e !== null);
+  return { events, priority: parsePriority(json.description) };
 }
 
 interface GoogleEvent {
@@ -273,7 +312,11 @@ export function resolveWindow(
   toMs: number,
   hours: BusinessHours = DEFAULT_HOURS,
 ): CalendarWindow {
-  const usable = events.filter((e) => !e.transparent);
+  const isBest = (e: RawEvent) => e.summary.toUpperCase().startsWith(BEST_PREFIX);
+  // Best start times mark a time; they never take it away, Busy or Free.
+  const best = [...new Set(events.filter((e) => isBest(e) && !e.allDay && e.start >= fromMs && e.start < toMs).map((e) => e.start))]
+    .sort((a, b) => a - b);
+  const usable = events.filter((e) => !e.transparent && !isBest(e));
   const openEvents = usable.filter((e) =>
     e.summary.toUpperCase().startsWith(AVAILABILITY_PREFIX),
   );
@@ -301,6 +344,7 @@ export function resolveWindow(
       open: openEvents.map((e) => ({ start: e.start, end: e.end })),
       busy: jobs.map((e) => ({ start: e.start, end: e.end })),
       events,
+      best,
     };
   }
 
@@ -309,6 +353,7 @@ export function resolveWindow(
     open: businessHoursWindows(fromMs, toMs, hours),
     busy: usable.map((e) => ({ start: e.start, end: e.end })),
     events,
+    best,
   };
 }
 
@@ -318,11 +363,11 @@ export async function loadWindow(
   toMs: number,
   hours: BusinessHours = DEFAULT_HOURS,
 ): Promise<CalendarWindow> {
-  const [events, busy] = await Promise.all([
-    calendarIds(cfg).length ? fetchEvents(cfg, fromMs, toMs) : Promise.resolve([] as RawEvent[]),
+  const [read, busy] = await Promise.all([
+    calendarIds(cfg).length ? readCalendars(cfg, fromMs, toMs) : Promise.resolve({ events: [] as RawEvent[], priority: null }),
     fetchBusyOnly(cfg.apiKey, busyOnlyIds(cfg), fromMs, toMs),
   ]);
-  return resolveWindow(events.concat(busy), fromMs, toMs, hours);
+  return { ...resolveWindow(read.events.concat(busy), fromMs, toMs, hours), priority: read.priority };
 }
 
 /**

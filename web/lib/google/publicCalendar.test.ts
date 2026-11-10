@@ -12,7 +12,7 @@
  * because nothing in the suite had ever looked at this function.
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { busyOnlyIds, businessHoursWindows, calendarIds, loadWindow, resolveWindow, type RawEvent } from "./publicCalendar.js";
+import { busyOnlyIds, businessHoursWindows, calendarIds, loadWindow, parsePriority, resolveWindow, type RawEvent } from "./publicCalendar.js";
 import { localMinutesOfDay } from "../availability/slots.js";
 import { zonedToUtc } from "../time/zone.js";
 
@@ -49,6 +49,32 @@ describe("which calendars get read", () => {
   it("survives a config with nothing in it", () => {
     expect(calendarIds({})).toEqual([]);
     expect(calendarIds({ calendarId: "", extraCalendarIds: [] })).toEqual([]);
+  });
+});
+
+describe("best start times and priority, set in Google Calendar (November 10)", () => {
+  it("collects BEST starts, and a BEST event never blocks, Busy or Free", () => {
+    const w = resolveWindow(
+      [ev("OPEN", at(0, 6, 16)), ev("BEST", at(0, 18, 0.25)), ev("Best evening", at(1, 18, 0.25), { transparent: true }), ev("Full Interior", at(0, 10, 2))],
+      from, to,
+    );
+    expect(w.best).toEqual([at(0, 18, 0)[0], at(1, 18, 0)[0]]);
+    expect(w.busy, "only the job blocks").toEqual([{ start: at(0, 10, 2)[0], end: at(0, 10, 2)[1] }]);
+  });
+
+  it("works when there are no OPEN blocks too", () => {
+    const w = resolveWindow([ev("BEST", at(0, 10, 0.25)), ev("Dentist", at(0, 14, 1))], from, to);
+    expect(w.mode).toBe("blacklist");
+    expect(w.best).toEqual([at(0, 10, 0)[0]]);
+    expect(w.busy).toHaveLength(1);
+  });
+
+  it("reads 'Priority: 1' from a calendar description, however it is written", () => {
+    expect(parsePriority("Priority: 1")).toBe(1);
+    expect(parsePriority("Kris's hours.\npriority 2")).toBe(2);
+    expect(parsePriority("PRIORITY=3")).toBe(3);
+    expect(parsePriority("")).toBeNull();
+    expect(parsePriority(undefined)).toBeNull();
   });
 });
 

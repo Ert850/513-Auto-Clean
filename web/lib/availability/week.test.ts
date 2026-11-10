@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { zonedToUtc } from "../time/zone.js";
-import { addWeeks, buildWeek, daySuggestions, lastRowForSlots, recommendPicks, TIME_RECOMMENDATION_RULES, weekStartOf } from "./week.js";
+import { addWeeks, buildWeek, daySuggestions, lastRowForSlots, recommendBestDays, TIME_RECOMMENDATION_RULES, weekStartOf } from "./week.js";
 
 const TZ = "America/New_York";
 const at = (mo: number, d: number, h: number, mi = 0) => zonedToUtc(2026, mo, d, h, mi, 0, TZ);
@@ -94,60 +94,56 @@ describe("buildWeek", () => {
   });
 });
 
-describe("recommendPicks", () => {
-  // Tue 17 to Sat 21 November, then Monday 23 (the next week).
-  const slots = [
-    at(11, 17, 8), at(11, 17, 10), at(11, 17, 11), at(11, 17, 16),
-    at(11, 18, 10), at(11, 18, 16),
-    at(11, 19, 10), at(11, 19, 16),
-    at(11, 20, 10),
-    at(11, 21, 10), at(11, 21, 13), at(11, 21, 16),
-    at(11, 23, 10), at(11, 23, 16),
-  ];
+describe("recommendBestDays (best times from the calendars, round 15)", () => {
+  // Tuesday 17 November to Monday 23. Rush is within 3 days: Tue to Thu.
   const nowMs = at(11, 17, 7);
-  const rushThrough = (day: number) => (ms: number) => ms < at(11, day + 1, 0);
-  const brief = (p: { ms: number; reason: string }[]) => p.map((x) => [x.reason, x.ms]);
+  const isRush = (ms: number) => ms < at(11, 20, 0);
+  const days = [17, 18, 19, 20, 21, 22, 23];
+  const every = (hours: number[]) => days.flatMap((d) => hours.map((h) => at(11, d, h)));
+  // Kris works evenings, best at 6pm; Elijah days, best at 10am, 4pm and 6pm (not 6pm at weekends).
+  const kris = { id: "kris", starts: every([17, 18, 19]), best: days.map((d) => at(11, d, 18)) };
+  const weekend = (d: number) => d === 21 || d === 22;
+  const elijahBest = days.flatMap((d) => (weekend(d) ? [10, 16] : [10, 16, 18]).map((h) => at(11, d, h)));
+  const elijah = { id: "elijah", starts: every([9, 10, 11, 12, 13, 14, 15, 16, 18]), best: elijahBest };
 
-  it("explains a jump: the soonest (with its fee), then the first day at the standard price", () => {
-    const picks = recommendPicks({ slots, travelGapMin: 60, isFee: rushThrough(19), nowMs });
-    expect(brief(picks)).toEqual([
-      ["soonest", at(11, 17, 10)],
-      ["standard", at(11, 20, 10)],
-      ["weekend", at(11, 21, 10)],
-      // every pick so far is a morning, so an afternoon on a standard day
-      ["afternoon", at(11, 23, 16)],
+  it("Soonest, then the first day past rush, then the weekend, each led by the first detailer's best time", () => {
+    const picks = recommendBestDays({ members: [kris, elijah], travelGapMin: 60, isRush, nowMs, isPremium: () => false });
+    expect(picks.slice(0, 3).map((p) => [p.reason, p.dayStart, p.ms, p.who])).toEqual([
+      ["soonest", at(11, 17, 0), at(11, 17, 18), "kris"],
+      ["afterRush", at(11, 20, 0), at(11, 20, 18), "kris"],
+      ["weekend", at(11, 21, 0), at(11, 21, 18), "kris"],
     ]);
-    expect(picks.filter((p) => p.fee)).toHaveLength(1);
+    expect(picks[1]!.daysAway).toBe(3);
   });
 
-  it("skips 'first at the standard price' when the soonest already is, and fills with the next days", () => {
-    const picks = recommendPicks({ slots, travelGapMin: 60, nowMs });
-    expect(picks.map((p) => p.reason)).toEqual(["soonest", "weekend", "afternoon", "nextWeek", "also"]);
-    expect(picks.map((p) => p.dayStart)).toEqual([at(11, 17, 0), at(11, 21, 0), at(11, 18, 0), at(11, 23, 0), at(11, 19, 0)]);
+  it("More times are the other detailers' best times that day, never every half hour", () => {
+    const fri = recommendBestDays({ members: [kris, elijah], travelGapMin: 60, isRush, nowMs, isPremium: () => false })[1]!;
+    // 6pm is Kris's, so Elijah's 6pm is not offered twice.
+    expect(fri.more).toEqual([at(11, 20, 10), at(11, 20, 16)]);
+  });
+
+  it("a detailer not free at their best time hands the lead to the next one", () => {
+    const busyKris = { ...kris, starts: kris.starts.filter((ms) => ms !== at(11, 17, 18)) };
+    const tue = recommendBestDays({ members: [busyKris, elijah], travelGapMin: 60, isRush, nowMs, isPremium: () => false })[0]!;
+    expect([tue.ms, tue.who]).toEqual([at(11, 17, 10), "elijah"]);
+    expect(tue.more).toEqual([at(11, 17, 16), at(11, 17, 18)]);
+  });
+
+  it("prefers a best time with no early or late fee as the headline", () => {
+    const onlyElijah = recommendBestDays({ members: [elijah], travelGapMin: 60, isRush, nowMs, isPremium: (ms) => ms === at(11, 17, 10) })[0]!;
+    expect(onlyElijah.ms).toBe(at(11, 17, 16));
+  });
+
+  it("falls back to the day-packing suggestions for someone with no BEST events", () => {
+    const plain = { id: "elijah", starts: [at(11, 20, 8), at(11, 20, 10), at(11, 20, 11), at(11, 20, 16)], best: null };
+    const pick = recommendBestDays({ members: [plain], travelGapMin: 60, isRush, nowMs })[0]!;
+    expect([pick.ms, ...pick.more]).toEqual([at(11, 20, 10), at(11, 20, 16)]);
+  });
+
+  it("shows three, and up to two more days when there is room", () => {
+    const picks = recommendBestDays({ members: [kris, elijah], travelGapMin: 60, isRush, nowMs, isPremium: () => false });
     expect(picks).toHaveLength(TIME_RECOMMENDATION_RULES.shown + TIME_RECOMMENDATION_RULES.extraWhenRoom);
-  });
-
-  it("never offers more than one fee, and fee days only when nothing else is open", () => {
-    const allFee = recommendPicks({ slots, travelGapMin: 60, isFee: () => true, nowMs });
-    expect(allFee).toHaveLength(TIME_RECOMMENDATION_RULES.shown);
-    expect(allFee.map((p) => p.reason)).toEqual(["soonest", "also", "also"]);
-    const rules = { ...TIME_RECOMMENDATION_RULES, maxFeePicks: 0 };
-    expect(recommendPicks({ slots, travelGapMin: 60, isFee: rushThrough(19), nowMs, rules })[0]!.reason).toBe("standard");
-  });
-
-  it("never suggests an early or late start, unless that detailer charges no fee for it", () => {
-    const evening = [at(11, 17, 18), at(11, 17, 20)];
-    expect(recommendPicks({ slots: evening, travelGapMin: 60, nowMs })).toEqual([]);
-    const isPremium = (ms: number) => ms !== at(11, 17, 18);
-    expect(recommendPicks({ slots: evening, travelGapMin: 60, isPremium, nowMs })[0]!.ms).toBe(at(11, 17, 18));
-  });
-
-  it("prefers the first-choice detailer within a day, and lets a score reorder a day", () => {
-    expect(recommendPicks({ slots, travelGapMin: 60, preferred: new Set([at(11, 17, 11)]), nowMs })[0]!.ms).toBe(at(11, 17, 11));
-    // scoreFor reorders the day's suggestions; "soonest" still takes the earliest of them.
-    const scoreFor = (ms: number) => (ms === at(11, 21, 16) ? 1 : 0);
-    const weekend = recommendPicks({ slots, travelGapMin: 60, scoreFor, nowMs }).find((p) => p.reason === "weekend");
-    expect(weekend!.ms).toBe(at(11, 21, 16));
+    expect(picks.slice(3).every((p) => p.reason === "also")).toBe(true);
   });
 });
 
