@@ -22,7 +22,7 @@
 <link rel="manifest" href="manifest.webmanifest" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link rel="stylesheet" href="styles.css?v=8a19245370" />
+<link rel="stylesheet" href="styles.css?v=744e026960" />
 <!-- Same public config and consent-gated analytics as the home page, so a
      visitor landing here is asked once and the arrival source is kept. -->
 <script src="js/config.js?v=56c28f557b"></script>
@@ -119,11 +119,13 @@
       <p>Driving to you costs real money in fuel, maintenance, and hours. Instead of increasing every price and having our closest customers pay for our longest drives, we keep the prices lower for everyone and charge the actual drive. The first 10 minutes are free.</p>
     </div>
 
-    <!-- Three blocks, placed by grid areas: the search, the map, then the
-         extras. On a phone they stack in that order, so the map comes right
-         after the answer instead of after the fine print and two buttons.
-         From 820px the map takes the right column beside both. The legend
-         sits under the map because it explains the map's dots. -->
+    <!-- Four blocks, placed by grid areas: the search, the map, the three
+         states, then the extras. On a phone they stack in that order, so the
+         map comes right after the answer. From 820px the map takes the right
+         column and the search, the states and the extras stack on the left,
+         so "do you come to me?" (the states) and "what does it cost?" (the
+         search) share the first screen. The legend sits under the map
+         because it explains the map's dots. -->
     <div class="areas-tool reveal">
       <div class="at-side">
         <label class="at-label" for="zipEst">Find your travel fee</label>
@@ -141,6 +143,46 @@
         <div class="tmap-legend" id="zipLegend"></div>
         <p class="at-zoomhint" id="mapZoomHint"></p>
       </div>
+      <!-- Where we go, at a glance: the three states with their area codes and
+           counties, then every town behind "All N towns". Grouped by county; a
+           town that crosses a county line sits under the county holding most of
+           it: Loveland and Sharonville under Hamilton, Milford under Clermont,
+           Fairfield and Middletown under Butler, Springboro under Warren. Same
+           74 towns as before and as the robots.txt comment. They stay in the
+           HTML (closed, not removed): this is the text that ranks for "mobile
+           detailing in <town>". The ids are the footer's area links. -->
+      <div class="at-states">
+        <div class="area-col area-oh" id="area-oh">
+          <div class="area-top"><h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2C8 2 5 5 5 9c0 5 7 13 7 13s7-8 7-13c0-4-3-7-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg> Ohio</h3><span class="codes">Area codes 513 &amp; 937</span></div>
+          <p class="area-sum">Hamilton, Butler, Warren and Clermont counties</p>
+          <details class="area-more"><summary>All 51 towns</summary>
+          <h4 class="area-grp">Hamilton County</h4>
+          <p>Cincinnati, Clifton, Corryville, Northside, Norwood, Hyde Park, Oakley, Mount Lookout, Pleasant Ridge, Kenwood, Deer Park, Madeira, Mariemont, Indian Hill, Newtown, Anderson, Cherry Grove, Blue Ash, Montgomery, Symmes, Loveland, Sharonville, Springdale, Forest Park, Wyoming, Reading, Evendale, College Hill, Mount Healthy, Colerain, Groesbeck, Monfort Heights, Westwood, Bridgetown, Dent, Delhi, Price Hill, Sayler Park, Harrison</p>
+          <h4 class="area-grp">Butler County</h4>
+          <p>West Chester, Liberty Township, Fairfield, Hamilton, Middletown, Oxford</p>
+          <h4 class="area-grp">Warren County</h4>
+          <p>Mason, Lebanon, Springboro, Franklin</p>
+          <h4 class="area-grp">Clermont County</h4>
+          <p>Milford, Batavia</p>
+          </details>
+        </div>
+        <div class="area-col" id="area-ky">
+          <div class="area-top"><h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2C8 2 5 5 5 9c0 5 7 13 7 13s7-8 7-13c0-4-3-7-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg> Northern Kentucky</h3><span class="codes">Area code 859</span></div>
+          <p class="area-sum">Kenton, Campbell and Boone counties</p>
+          <details class="area-more"><summary>All 17 towns</summary>
+          <h4 class="area-grp">Kenton County</h4>
+          <p>Covington, Fort Mitchell, Edgewood, Crestview Hills, Erlanger, Independence</p>
+          <h4 class="area-grp">Campbell County</h4>
+          <p>Newport, Bellevue, Fort Thomas, Cold Spring, Highland Heights, Alexandria</p>
+          <h4 class="area-grp">Boone County</h4>
+          <p>Florence, Union, Burlington, Hebron, Walton</p>
+          </details>
+        </div>
+        <div class="area-col" id="area-in">
+          <div class="area-top"><h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2C8 2 5 5 5 9c0 5 7 13 7 13s7-8 7-13c0-4-3-7-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg> Southeast Indiana</h3><span class="codes">Area codes 812 &amp; 765</span></div>
+          <p class="area-sum">Lawrenceburg, Aurora, Greendale, West Harrison, Brookville, Batesville</p>
+        </div>
+      </div>
       <div class="at-extra">
         <p class="travel-fine">Rough figures from typical drive times, so a large ZIP shows a range. Your exact fee is measured from your real address when you book, and you see it before you pay anything.</p>
         <button type="button" class="btn btn-ghost btn-block at-pin" id="pinDrop" hidden>
@@ -152,40 +194,6 @@
       </div>
     </div>
 
-    <!-- Grouped by county so a long list can be scanned. A town that crosses
-         a county line sits under the county holding most of it: Loveland and
-         Sharonville under Hamilton, Milford under Clermont, Fairfield and
-         Middletown under Butler, Springboro under Warren. Same towns as
-         before and as the robots.txt comment, only regrouped. -->
-    <div class="area-lists reveal">
-      <div class="area-col area-oh" id="area-oh">
-        <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2C8 2 5 5 5 9c0 5 7 13 7 13s7-8 7-13c0-4-3-7-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg> Ohio</h3>
-        <div class="codes">Area codes 513 &amp; 937</div>
-        <h4 class="area-grp">Hamilton County</h4>
-        <p>Cincinnati, Clifton, Corryville, Northside, Norwood, Hyde Park, Oakley, Mount Lookout, Pleasant Ridge, Kenwood, Deer Park, Madeira, Mariemont, Indian Hill, Newtown, Anderson, Cherry Grove, Blue Ash, Montgomery, Symmes, Loveland, Sharonville, Springdale, Forest Park, Wyoming, Reading, Evendale, College Hill, Mount Healthy, Colerain, Groesbeck, Monfort Heights, Westwood, Bridgetown, Dent, Delhi, Price Hill, Sayler Park, Harrison</p>
-        <h4 class="area-grp">Butler County</h4>
-        <p>West Chester, Liberty Township, Fairfield, Hamilton, Middletown, Oxford</p>
-        <h4 class="area-grp">Warren County</h4>
-        <p>Mason, Lebanon, Springboro, Franklin</p>
-        <h4 class="area-grp">Clermont County</h4>
-        <p>Milford, Batavia</p>
-      </div>
-      <div class="area-col" id="area-ky">
-        <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2C8 2 5 5 5 9c0 5 7 13 7 13s7-8 7-13c0-4-3-7-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg> Northern Kentucky</h3>
-        <div class="codes">Area code 859</div>
-        <h4 class="area-grp">Kenton County</h4>
-        <p>Covington, Fort Mitchell, Edgewood, Crestview Hills, Erlanger, Independence</p>
-        <h4 class="area-grp">Campbell County</h4>
-        <p>Newport, Bellevue, Fort Thomas, Cold Spring, Highland Heights, Alexandria</p>
-        <h4 class="area-grp">Boone County</h4>
-        <p>Florence, Union, Burlington, Hebron, Walton</p>
-      </div>
-      <div class="area-col" id="area-in">
-        <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2C8 2 5 5 5 9c0 5 7 13 7 13s7-8 7-13c0-4-3-7-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg> Southeast Indiana</h3>
-        <div class="codes">Area codes 812 &amp; 765</div>
-        <p>Lawrenceburg, Aurora, Greendale, West Harrison, Brookville, Batesville</p>
-      </div>
-    </div>
     <p class="area-note reveal">Don't see your town? <b>Just ask</b>. Within about an hour of Cincinnati is our standard radius, and we will travel up to <b>12 hours each way</b> for the right detail.</p>
   </div>
 </section>
@@ -251,7 +259,7 @@
 
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&family=Hanken+Grotesk:wght@400;500;600;700&display=swap" />
 <script src="js/pricing.bundle.js?v=5018f5a403" defer></script>
-<script src="js/travel.js?v=39c6f70eee" defer></script>
+<script src="js/travel.js?v=1046b0b9ec" defer></script>
 <script src="script.js?v=3a75b08501" defer></script>
 </body>
 </html>

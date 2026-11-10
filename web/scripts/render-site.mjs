@@ -116,9 +116,12 @@ function correctionBlock() {
 
 // On services.html each package card lists its first FOLD_AT inclusions and
 // folds the rest behind a toggle, so all three cards (name, price, hours,
-// the key inclusions and the Book button) fit on a laptop screen. The home
-// page keeps the full lists: the owner reverted a compact teaser there.
-const FOLD_AT = 4;
+// the key inclusions and the Book button) and the offers banner under them,
+// with its link down to the add-ons, fit on a 1440x790 laptop screen. 3, the
+// owner's pick of three rendered options (4 left the banner below the
+// screen). The home page keeps the full lists: the owner reverted a compact
+// teaser there.
+const FOLD_AT = 3;
 
 function packageCard(p, { fold = false } = {}) {
   const comps = componentsOf(p, SEED_CATALOG);
@@ -208,9 +211,16 @@ ${panel("exterior")}
     <div class="svc-note reveal">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
       <div class="svc-offers">
-        <p>Booking interior <em>and</em> exterior together? Take <strong>${money(DEFAULT_RULES.comboDiscountCents)} off automatically when you book together.</strong></p>
+        <p>Booking interior <em>and</em> exterior together? Take <strong>${money(DEFAULT_RULES.comboDiscountCents)} off automatically${fold ? "." : " when you book together."}</strong></p>
         <p>Have multiple vehicles? <strong>Get ${DEFAULT_RULES.additionalVehicleDiscountBp / 100}% off everything</strong> when you book them together!</p>
-      </div>
+      </div>${
+        // services.html: the banner ends the first screen, so it says where
+        // the page goes next. The add-ons section follows straight after it.
+        fold
+          ? `
+      <a class="svc-next" href="#addons">Add-ons for any package <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="M12 5v14M6 13l6 6 6-6"/></svg></a>`
+          : ""
+      }
     </div>`;
 }
 

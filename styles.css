@@ -618,11 +618,12 @@ section { padding-block: clamp(40px, 5vw, 72px); position: relative; }
    footer is a clear end. */
 .areas { background: var(--paper); padding-block: clamp(32px, 4vw, 56px) clamp(48px, 6vw, 80px); }
 .areas .section-head { max-width: 760px; }
+main > .areas:first-child .section-head { margin-bottom: 18px; }
 /* ---------- combined service area + travel ---------- */
 /* Offset so the #travel anchor does not land under the sticky header. */
 .anchor-alias { position: absolute; margin-top: -80px; }
 
-.areas-tool { display: grid; gap: 1.1rem; grid-template-areas: "side" "map" "extra"; }
+.areas-tool { display: grid; gap: 1.1rem; grid-template-areas: "side" "map" "states" "extra"; }
 .at-side { grid-area: side; }
 .at-map { grid-area: map; }
 .at-extra { grid-area: extra; }
@@ -703,15 +704,23 @@ section { padding-block: clamp(40px, 5vw, 72px); position: relative; }
 .leaflet-popup-content .lp-min { color: var(--text-soft); font-size: .78rem; }
 
 /* The town lists stay in the HTML: this is the text that actually ranks for
-   "mobile detailing in <town>". Set as prose rather than ninety pills. */
-.area-lists { display: grid; gap: 1rem; margin-top: clamp(1.8rem, 3vw, 2.2rem); }
+   "mobile detailing in <town>". Set as prose rather than ninety pills.
+   Round 2: the three states are compact cards in the estimator's left column
+   (.at-states), each with its area codes and counties on show and every town
+   behind "All N towns". As a block of their own under the map, Indiana and
+   most of the towns were below a laptop screen. */
+.at-states { grid-area: states; display: grid; gap: .45rem; }
 .area-col {
   background: var(--paper-2); border: 1px solid var(--line);
-  border-radius: var(--r-md); padding: 1.1rem 1.2rem 1.2rem;
+  border-radius: var(--r-md); padding: .7rem 1rem .72rem;
 }
-.area-col h3 { color: var(--ink); font-size: 1.1rem; display: flex; align-items: center; gap: .5rem; margin-bottom: .35rem; }
-.area-col h3 svg { width: 17px; height: 17px; color: var(--red); }
-.area-col .codes { font-size: .74rem; color: var(--red-deep); font-weight: 700; letter-spacing: .05em; margin-bottom: .6rem; }
+.area-top { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: .1rem .8rem; }
+.area-col h3 { color: var(--ink); font-size: 1.05rem; display: flex; align-items: center; gap: .5rem; margin: 0; }
+.area-col h3 svg { width: 17px; height: 17px; color: var(--red); align-self: center; }
+.area-col .codes { font-size: .72rem; color: var(--red-deep); font-weight: 700; letter-spacing: .05em; }
+.area-col .area-sum { margin-top: .2rem; color: var(--text-soft); }
+.area-more { margin-top: 0; }
+.area-more summary + .area-grp { margin-top: .5rem; }
 .area-col p { font-size: .88rem; color: var(--text); line-height: 1.6; margin: 0; }
 /* A small titled divider between groups of towns: the group's name, then a
    dotted rule to the edge of the card. Same type as the add-on group labels. */
@@ -721,7 +730,6 @@ section { padding-block: clamp(40px, 5vw, 72px); position: relative; }
   text-transform: uppercase; color: var(--text-soft); line-height: 1.2;
 }
 .area-grp::after { content: ""; flex: 1; border-top: 1.5px dotted #c5c9c2; }
-.area-col .codes + .area-grp { margin-top: .4rem; }
 
 .areas .area-note { margin-top: 1.6rem; text-align: center; color: var(--text-soft); font-size: .95rem; }
 .areas .area-note b { color: var(--red-deep); }
@@ -945,21 +953,16 @@ html.scrolling-fast .reveal { transition: none; transition-delay: 0s; }
    and three-word checklist items left one word alone on a line. */
 @media (min-width: 1000px) { .svc-grid { grid-template-columns: repeat(3, 1fr); } }
 @media (min-width: 820px) {
-  /* Search on top of the extras on the left, the map down the right. */
+  /* The search, the three states and the extras stack on the left, the map
+     down the right. 24rem, not 22: at 22 the Ohio counties line wrapped. */
   .areas-tool {
-    grid-template-columns: 22rem 1fr; grid-template-rows: auto 1fr;
-    grid-template-areas: "side map" "extra map"; gap: 1.1rem 1.6rem; align-items: start;
+    grid-template-columns: 24rem 1fr; grid-template-rows: auto auto 1fr;
+    grid-template-areas: "side map" "states map" "extra map"; gap: .7rem 1.6rem; align-items: start;
   }
   /* Up to 380px, less on a short laptop screen so the legend under the map
-     stays on the first screen (it ended 21px below at 1280x720). */
-  .at-canvas { height: clamp(320px, calc(100vh - 365px), 380px); }
-  /* Ohio has three times the towns, so it gets the wide column and the other
-     two stack beside it, instead of three cards of very different heights. */
-  .area-lists { grid-template-columns: 1.4fr 1fr; align-items: start; }
-  /* Stretched, so its bottom edge meets Indiana's whichever column is
-     taller. Grouped by county, Ohio is shorter than the two cards beside it
-     at desktop widths and ended 28px above them. */
-  .area-oh { grid-row: span 2; align-self: stretch; }
+     stays on the first screen (it ended 21px below at 1280x720, and again
+     once the states column narrowed the map and the legend took two rows). */
+  .at-canvas { height: clamp(320px, calc(100vh - 385px), 380px); }
   /* The correction package spans the row underneath, laid out sideways so a
      full width card does not become a tall empty box. */
   /* The correction package spans the row underneath: the package on the
@@ -1063,24 +1066,50 @@ main > section:first-child .about-copy h2 { font-size: clamp(1.7rem, 2.6vw, 2.3r
    can still take the margin away. */
 main > section:first-child :where(.section-head) { margin-bottom: clamp(18px, 2vw, 26px); }
 
-/* Services page: the title on the left, the tabs and the add-ons link stacked
-   on the right, from 1000px. Stacked above the cards, title and tabs cost
-   360px, and the Book buttons ended 230px below a 1440x790 laptop screen.
-   The add-ons link sits under the tabs, not beside them: beside them it took
-   160px from the title, which then ran to three lines. */
-.svc-intro .svc-tabs-row { margin-bottom: 1.5rem; }
-@media (min-width: 1000px) {
-  .svc-intro { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 0 2rem; margin-bottom: clamp(16px, 1.4vw, 18px); }
-  .svc-intro .section-head { margin-bottom: 0; max-width: 46rem; }
-  .svc-intro .svc-tabs-row { margin-bottom: 0; flex-direction: column; align-items: flex-end; gap: .55rem; }
+/* Services page: the tabs and "See all add-ons" on their own row under the
+   title, as before (round 2: beside the title, stacked at the top right, the
+   owner found the corner "unnecessarily dense"). The title block may run to
+   46rem so the intro stays two lines; the gaps above and below the tabs are
+   tighter than a home-page section's so the Book buttons stay on a 1440x790
+   screen. */
+.svc-intro .section-head { max-width: 46rem; margin-bottom: 12px; }
+main > section:first-child .svc-intro .section-head h2 { margin: 0 0 .4rem; }
+.svc-intro .svc-tabs-row { margin-bottom: 14px; }
+@media (min-width: 1000px) { main > #services { padding-top: 12px; } }
+/* Two sections on the same paper with no rule between them stacked both
+   paddings, 72 + 72px, under the offers banner: a blank band that read as
+   the end of the page (a "false floor"), so the Additionals heading sat a
+   long scroll away. One gap instead. */
+main > #services { padding-bottom: clamp(28px, 3vw, 40px); }
+main > #services + #addons { padding-top: 0; }
+/* The offers banner follows the cards closely (1.8rem was a home-page gap)
+   and is compact (no rule between the two offers), so the whole banner is on
+   a 1440x790 screen under the Book buttons: the offers are read, and its
+   "Add-ons for any package" link says the page goes on. */
+main .svc-note { margin-top: .6rem; padding: .75rem 1.2rem; align-items: center; }
+main .svc-offers p + p { margin-top: .3rem; padding-top: 0; border-top: 0; }
+/* "Add-ons for any package" with the same down arrow as "See all add-ons":
+   the banner is the last thing on the first screen, so it says what follows. */
+.svc-next { margin-left: auto; align-self: flex-start; white-space: nowrap; font-weight: 800; color: var(--red-deep); display: inline-flex; align-items: center; gap: .35rem; text-decoration: underline; text-underline-offset: 3px; }
+.svc-next svg { width: 1.05em; height: 1.05em; }
+/* Narrow: the offers keep the full width (basis) and the link takes its own
+   line under them, lined up with the text. Without the basis the link stayed
+   beside the offers and squeezed them to one word a line. */
+@media (max-width: 699.98px) {
+  main .svc-note { flex-wrap: wrap; align-items: flex-start; }
+  main .svc-note .svc-offers { flex: 1 1 calc(100% - 20px - .75rem); }
+  .svc-next { margin-left: calc(20px + .75rem); white-space: normal; }
 }
 /* The package lists past the fourth item fold behind "N more included"
    (services.html only; render-site.mjs). It shares a row with "How it
    works", in that toggle's look (see .svc-how); whichever is opened takes
    the full width, so an opened list continues the checklist above it. */
 .svc-card ul.feat:has(+ .svc-toggles) { margin-bottom: 0; }
-.svc-toggles { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 0 1.2rem; margin: .4rem 0 .8rem; }
-.svc-toggles > details { margin: 0; }
+.svc-toggles { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 0 1.2rem; margin: .3rem 0 .6rem; }
+/* main .svc-card prefix: "main .svc-card .svc-how { margin-bottom: 1rem }"
+   outranked a plain ".svc-toggles > details" and stacked 16px on top of the
+   row's own margin, making every folded card (the tallest) 16px taller. */
+main .svc-card .svc-toggles > details, .svc-toggles > details { margin: 0; }
 .svc-toggles > details[open] { flex-basis: 100%; }
 .svc-more ul.feat { margin: .38rem 0 .3rem; }
 /* Sub-page card density. The price line was set at the body's 1.6 line
@@ -1088,27 +1117,26 @@ main > section:first-child :where(.section-head) { margin-bottom: clamp(18px, 2v
    five lines on Full Exterior. */
 /* 1.2rem sides, not 1.4rem: at 1280px the Full Exterior tagline needed 3px
    more to fit four lines instead of five. */
-main .svc-card { padding: 1.1rem 1.2rem; }
+main .svc-card { padding: 1rem 1.2rem; }
 main .svc-card .svc-meta { line-height: 1.2; margin-bottom: .55rem; }
 main .svc-card .svc-desc { line-height: 1.5; margin-bottom: .6rem; }
 main .svc-card ul.feat { gap: .32rem; }
 main .svc-card .svc-how { margin-bottom: 1rem; }
-/* About: the team and the reviews on one laptop screen (owner's acceptance
-   test: the 5.0 Google score and the tops of the first review cards visible
-   without scrolling). From 1000px the portrait is a narrow column as tall as
-   the copy beside it, instead of a 4:5 frame 555px tall, and the reviews
-   title shares a row with the score. Below 1000px the page is unchanged. */
+/* About, from 1000px (round 2, toned back): the portrait keeps its 4:5 frame
+   at 22rem wide, between the original 445px and round 1's 15rem strip; the
+   story is held to about 70 characters a line at 1.7 line height. The reviews
+   title shares a row with the Google score (#rvScore, js/reviews.js) so the
+   score stays on a 1440x790 screen; the cards may start below it. */
 .rv-intro .section-head h2 { font-size: clamp(1.7rem, 2.6vw, 2.3rem); margin: .35rem 0 .5rem; }
 @media (min-width: 1000px) {
   .about { padding-bottom: 0; }
-  .about-grid { grid-template-columns: 15rem minmax(0, 1fr); align-items: stretch; gap: 2.5rem; }
-  .about-photo .frame { aspect-ratio: auto; height: 100%; }
-  .about-photo .sig { right: -1.1rem; bottom: 1rem; }
-  .about-copy > p { margin-bottom: .75rem; }
-  .about-copy .promises { margin: .75rem 0 1rem; gap: .45rem; }
+  .about-grid { grid-template-columns: 20rem minmax(0, 1fr); gap: clamp(40px, 4.5vw, 64px); }
+  .about-copy h2 { margin-bottom: .7rem; }
+  .about-copy > p { max-width: 40rem; line-height: 1.65; margin-bottom: 0; }
+  .about-copy .promises { margin: 1rem 0 1.25rem; gap: .5rem; }
   /* Transparent (the body is the same paper): with no gap between the two
      sections, its own background cut the portrait's shadow off in a hard line. */
-  .reviews { padding-top: 20px; background: transparent; }
+  .reviews { padding-top: 24px; background: transparent; }
   .rv-intro { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 0 2rem; margin-bottom: 1rem; }
   .rv-intro .section-head { margin: 0; text-align: left; }
   .rv-intro .section-head .eyebrow { justify-content: flex-start; }
@@ -1471,10 +1499,10 @@ main .svc-card .svc-how { margin-bottom: 1rem; }
    the button. */
 .svc-card ul.feat:has(+ .svc-how) { margin-bottom: 0; }
 .svc-how { margin: .65rem 0 1.1rem; }
-.svc-how summary, .svc-more summary { display: inline-block; padding: .2rem 0; cursor: pointer; font-size: .8rem; font-weight: 700; color: var(--red); list-style: none; }
-.svc-how summary::-webkit-details-marker, .svc-more summary::-webkit-details-marker { display: none; }
-.svc-how summary::after, .svc-more summary::after { content: " +"; font-weight: 800; }
-.svc-how[open] summary::after, .svc-more[open] summary::after { content: " -"; }
+.svc-how summary, .svc-more summary, .area-more summary { display: inline-block; padding: .2rem 0; cursor: pointer; font-size: .8rem; font-weight: 700; color: var(--red); list-style: none; }
+.svc-how summary::-webkit-details-marker, .svc-more summary::-webkit-details-marker, .area-more summary::-webkit-details-marker { display: none; }
+.svc-how summary::after, .svc-more summary::after, .area-more summary::after { content: " +"; font-weight: 800; }
+.svc-how[open] summary::after, .svc-more[open] summary::after, .area-more[open] summary::after { content: " -"; }
 .svc-how p { margin: .45rem 0 0; font-size: .82rem; line-height: 1.65; color: var(--text-soft); background: var(--paper); border-left: 2px solid var(--line); padding: .8rem .95rem; border-radius: 0 var(--r-sm) var(--r-sm) 0; }
 /* ONE "How it works" look on every card. The package cards' style above is
    the agreed standard; the add-on cards and the coating explainer used to have
