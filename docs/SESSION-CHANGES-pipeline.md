@@ -13,6 +13,47 @@ Built overnight, November 10 to 11, for you to evaluate. It combines your 8 answ
   - `web/lib/browser-entry.ts`, `js/pricing.bundle.js` (built), `web/lib/funnel.smoke.test.mjs`.
   - The build also re-stamps `?v=` on every page. Those page changes were left out of the commit; a rebuild after merging restamps them.
 
+## Round 5 (November 10, night): Extras layout, block text, late rows
+
+### Extras
+- **The second-vehicle offer is now on the first screen.** A slim light card at the top: "Another vehicle at this address? Take 10% off both, $43 on one like this", with "Add a vehicle".
+  - **Before:** it was at the very bottom, under every add-on.
+  - **Why light:** a light card rather than the dark panel, so it doesn't compete with the add-ons or Continue (cross-sell guidance: visible, saving stated, never in the main path).
+  - With two vehicles it lists them, with the saving.
+- **Every add-on is listed.** No "See all extras" fold: "Recommended for your [package]", then "More extras" (or "More interior extras" and "More exterior extras"), under the same grey caps subheader. The "More below" cue shows there's more.
+- **Recommendations are their own module** (`web/lib/catalog/recommend.ts`, 5 tests).
+  - Today: the hand-picked order per side, then popularity; anything the package covers or blocks drops out.
+  - It takes `signals.score`, such as how often an add-on is booked with that package. Once analytics can say that, scores outrank the hand-picked order with no change to the booking form.
+
+### The chosen block's note was cut off ("Rush + early 3…")
+- **Cause:** the note was one line with an ellipsis, in a column about 80 px wide. "Rush + early 30%" needs about 88 px.
+- **First fix:** the note may wrap to two centred lines, and a fixed height decided when to drop it.
+- **Second cause, found while validating:** fixed heights were guesses. Worse, the block's lines are a flex column and flex children shrink by default, so a crowded 2-hour block squeezed "6am" and "to 8am" instead of overflowing. The overflow check never fired.
+- **Fix:**
+  - lines never shrink (`flex-shrink: 0`);
+  - after drawing, and on resize, `fitSpan()` measures each block and drops the note, then the fee, only if they don't fit;
+  - the text is a step smaller in windows under 760 px.
+- **Lesson:** fit text by measuring, never by a guessed height; and a flex column that must overflow needs `flex-shrink: 0` on its children.
+
+### The 8pm block ran off the bottom of the grid
+- **Cause:** rows ended at the last START hour (10pm), but a chosen time is drawn as the whole job, and a 4-hour job from 8pm ends at midnight. The rows were defined by starts, not by when a job can end.
+- **Fix (owner's direction: driven by job length, not a fixed cutoff):** `lastRowFor(duration, hasExterior)` works out the latest start the booking rules allow for this job (10pm, but no later than midnight minus its length, and 8pm for exterior), adds its length, and the grid keeps 10pm as its base, adding rows only down to that finish.
+  - A 2-hour or 4-hour interior job adds an 11pm row.
+  - A 1- or 2-hour exterior job adds none.
+  - Added rows are never start times, so they're grey.
+- **Also:** a line above the grid says "Each box is a start time. Pick one and the block shows the whole detail, start to finish."
+
+### Verified
+- **Tests:** 454 of 454, including `lastRowFor` and `recommendAddons`.
+- **Headless Chrome with real data, 8 cases:**
+  - widths 1440, 1280 and 760;
+  - jobs of 1¼, 2 and 4 hours, interior and exterior;
+  - 6am rush, 10am rush, 7pm rush and 8pm;
+  - each block, and a hover preview, checked for any cut-off line and for staying inside the grid. All pass;
+  - the grid ends at 11pm for interior jobs and 10pm for short exterior ones.
+- **Extras** at 1440×790 and 375: the vehicle offer is on the first screen, everything is listed, and the cue shows.
+- One test case was wrong, not the page: Maintenance Interior isn't offered on the package step.
+
 ## Round 4 (November 10, night): small fixes
 
 - **"More below" cue on every step.**

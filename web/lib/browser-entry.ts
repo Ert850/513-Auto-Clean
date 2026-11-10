@@ -56,7 +56,7 @@ import {
   mergeIntervals,
   subtractIntervals,
 } from "./availability/slots.js";
-import { addWeeks, buildWeek, FIRST_ROW_MIN, recommendTimes, weekStartOf } from "./availability/week.js";
+import { addWeeks, buildWeek, FIRST_ROW_MIN, lastRowFor, recommendTimes, weekStartOf } from "./availability/week.js";
 import { parseGridpoint, WEATHER_RULES, weatherVerdict } from "./availability/weather.js";
 import { assignStarts, canDo, parseDetailers } from "./availability/crew.js";
 import {
@@ -101,6 +101,7 @@ import {
 import { PROMOS, findPromo, normalisePromo, promoDiscountCents, promoMessage } from "./pricing/promos.js";
 import { ADDON_ICONS, addonIcon } from "./catalog/icons.js";
 import { popularityOf } from "./catalog/popularity.js";
+import { recommendAddons } from "./catalog/recommend.js";
 import { ZIP_GEO, zipGeo } from "./travel/zipGeo.js";
 // How long a "help me decide" visit holds. The funnel fits slots to it and
 // the confirmation function ends the calendar event with it. One definition.
@@ -179,12 +180,14 @@ const api = {
   buildWeek,
   recommendTimes,
   FIRST_ROW_MIN,
+  lastRowFor,
   parseGridpoint,
   WEATHER_RULES,
   weatherVerdict,
   parseDetailers,
   canDo,
   assignStarts,
+  recommendAddons,
   quote,
   QUOTE_TTL_HOURS,
   decodeQuote,

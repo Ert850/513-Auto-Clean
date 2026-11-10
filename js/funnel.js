@@ -1381,35 +1381,22 @@
   /* ================= step 4: add-ons ================= */
 
   /**
-   * The add-ons we put first for a package (owner, November 10: "recommended
-   * for your detail package"). Chosen from what customers pick most
-   * (popularity.ts) and what earns most for the time it takes: tire and rim
-   * shine and an engine bay are about $90 to $100 an hour of work, pet hair
-   * and stains are the two most asked-for interior extras. Anything already
-   * included in, or blocked by, the package drops out on its own, which is
-   * why each list runs longer than it shows: Full Exterior already has the
-   * first two exterior ones.
+   * "Recommended for your package": the ranking lives in
+   * web/lib/catalog/recommend.ts, so it can learn from analytics later
+   * without this file changing. This only works out what the vehicle can
+   * actually take, side by side, and turns ids back into add-ons.
    */
-  var RECOMMENDED_ADDONS = {
-    interior: ['pet-hair', 'stain', 'ozone', 'steam'],
-    exterior: ['tire-rim-shine', 'engine-bay', 'headlight', 'paint-decon']
-  };
-
   function recommendedFor(v) {
     var ctx = { packageIds: v.packageIds, addonTiers: v.addons.map(function (a) { return { addonId: a.addonId, tierId: a.tierId }; }) };
-    var scopes = v.intent === 'both' ? ['interior', 'exterior'] : [v.intent];
-    // Three for one half of the car, two each for both.
-    var each = scopes.length > 1 ? 2 : 3;
-    var out = [];
-    scopes.forEach(function (scope) {
-      var n = 0;
-      (RECOMMENDED_ADDONS[scope] || []).forEach(function (id) {
-        var a = P.findAddon(id);
-        if (!a || !P.isSelectable(a) || P.addonBlockedReason(a, ctx)) return;
-        if (n < each) { out.push(a); n++; }
-      });
+    var sides = v.intent === 'both' ? ['interior', 'exterior'] : [v.intent];
+    var candidates = {};
+    sides.forEach(function (side) {
+      candidates[side] = P.addonsFor(side).filter(function (a) {
+        return P.isSelectable(a) && !P.addonBlockedReason(a, ctx);
+      }).map(function (a) { return a.id; });
     });
-    return out;
+    // `signals` stays empty until analytics can say what gets booked with what.
+    return P.recommendAddons({ candidates: candidates, sides: sides }).map(P.findAddon).filter(Boolean);
   }
 
   /** One add-on card, as the Extras step has always drawn it. */
@@ -1475,54 +1462,45 @@
 
   function rAddons() {
     var v = veh();
-    var scopes = v.intent === 'both' ? ['interior', 'exterior'] : [v.intent];
+    var sides = v.intent === 'both' ? ['interior', 'exterior'] : [v.intent];
     var ctx = { packageIds: v.packageIds, addonTiers: v.addons.map(function (a) { return { addonId: a.addonId, tierId: a.tierId }; }) };
     var recs = recommendedFor(v);
     var recIds = recs.map(function (a) { return a.id; });
     var pkg = v.packageIds.map(function (id) { return (P.findPackage(id) || {}).name; }).filter(Boolean).join(' and ');
 
-    var html = '<p class="bk-sub">Optional. Add anything that would help, or carry straight on.</p>';
+    // The second vehicle first, as one slim line: worth seeing before anyone
+    // scrolls, and quiet enough not to compete with the extras or Continue.
+    var html = '<p class="bk-sub">Optional. Add anything that would help, or carry straight on.</p>' + moreVehicles();
 
     if (recs.length) {
       html += '<h3 class="bk-grp">Recommended for your ' + esc(pkg || 'detail') + '</h3>';
       recs.forEach(function (a) { html += addonCard(v, a, ctx); });
     }
 
-    // Everything else, folded. Open when something in it is already chosen,
-    // so a choice is never hidden from the person who made it.
-    var rest = 0, restHtml = '', restChosen = false;
-    scopes.forEach(function (scope) {
-      var list = P.addonsFor(scope).filter(function (a) { return recIds.indexOf(a.id) < 0; });
+    // Everything else, listed in full under the same kind of heading: keep
+    // scrolling and it is all there, nothing folded away.
+    sides.forEach(function (side) {
+      var list = P.addonsFor(side).filter(function (a) { return recIds.indexOf(a.id) < 0; });
       if (!list.length) return;
-      if (scopes.length > 1) restHtml += '<h3 class="bk-grp">' + (scope === 'interior' ? 'Interior' : 'Exterior') + '</h3>';
-      list.forEach(function (a) {
-        rest++;
-        if (v.addons.some(function (x) { return x.addonId === a.id; })) restChosen = true;
-        restHtml += addonCard(v, a, ctx);
-      });
+      var label = sides.length > 1 ? 'More ' + side + ' extras' : recs.length ? 'More extras' : 'Extras';
+      html += '<h3 class="bk-grp">' + label + '</h3>';
+      list.forEach(function (a) { html += addonCard(v, a, ctx); });
     });
-    if (rest) {
-      html += recs.length
-        ? '<details class="bk-allextras"' + (restChosen ? ' open' : '') + '><summary>See all extras <span>' + rest + '</span></summary>' + restHtml + '</details>'
-        : restHtml;
-    }
-
-    return html + moreVehicles();
+    return html;
   }
 
   /**
-   * A second vehicle, as one line under the extras (it used to be a whole
-   * screen of its own). Shows the real saving, and lists the vehicles once
-   * there is more than one.
+   * A second vehicle, as one slim line at the top of Extras (it used to be a
+   * whole screen, then a line at the very bottom). Shows the real saving, and
+   * lists the vehicles once there is more than one.
    */
   function moreVehicles() {
     var pct = RULES.additionalVehicleDiscountBp / 100;
     var now = q();
-    var html = '<div class="bk-morevehs">';
     if (state.vehicles.length > 1) {
-      html += '<div class="bk-upsell saving"><b>' + pct + '% off everything, saving ' +
-        $(now.grossBeforeMultiCents - now.totalCents) + '</b>' +
-        '<span>The discount came off your first vehicle too, not just the second.</span></div>' +
+      return '<div class="bk-morevehs many">' +
+        '<p class="bk-morevehs-l"><b>' + pct + '% off everything, saving ' + $(now.grossBeforeMultiCents - now.totalCents) +
+        '.</b> The discount came off your first vehicle too.</p>' +
         '<div class="bk-vehs">' + state.vehicles.map(function (v, i) {
           var names = v.packageIds.map(function (id) { return (P.findPackage(id) || {}).name; }).filter(Boolean);
           var size = v.size ? P.vehicleSize(v.size) : null;
@@ -1531,16 +1509,17 @@
             '<span>' + esc(names.join(' + ') || 'nothing selected') + '</span></div>' +
             '<button type="button" class="bk-clear" data-delveh="' + i + '">Remove</button>' +
             '</div>';
-        }).join('') + '</div>';
-    } else {
-      var withTwo = P.quote(
-        Object.assign({}, cart(), { vehicles: cart().vehicles.concat(cart().vehicles) }),
-        RULES
-      );
-      html += '<p class="bk-morevehs-l"><b>Another vehicle at the same address?</b> Add it and take ' + pct +
-        '% off both, ' + $(withTwo.grossBeforeMultiCents - withTwo.totalCents) + ' on one like this. We only drive out once.</p>';
+        }).join('') + '</div>' +
+        '<button type="button" class="bk-addveh" id="bkAddVeh">Add another vehicle</button></div>';
     }
-    return html + '<button type="button" class="bk-addveh" id="bkAddVeh">Add another vehicle</button></div>';
+    var withTwo = P.quote(
+      Object.assign({}, cart(), { vehicles: cart().vehicles.concat(cart().vehicles) }),
+      RULES
+    );
+    return '<div class="bk-morevehs">' +
+      '<p class="bk-morevehs-l"><b>Another vehicle at this address?</b> Take ' + pct + '% off both, ' +
+      $(withTwo.grossBeforeMultiCents - withTwo.totalCents) + ' on one like this. We only drive out once.</p>' +
+      '<button type="button" class="bk-addveh" id="bkAddVeh">Add a vehicle</button></div>';
   }
   function vAddons() { return null; }
 
@@ -2726,7 +2705,9 @@
     var canPrev = ws > P.weekStartOf(now);
     var week = P.buildWeek({
       slots: calc.slots, weekStart: ws, busy: calc.busy, travelGapMin: calc.buffer,
-      nowMs: now, needsPriority: needsPriority, timeZone: TZ
+      nowMs: now, needsPriority: needsPriority, timeZone: TZ,
+      // Down to the last hour this job could still be running in, no further.
+      lastRowMin: P.lastRowFor(dur, hasExterior())
     });
 
     // Landing on an empty week shows the next one with something in it,
@@ -2777,6 +2758,11 @@
         '</b>. <button type="button" class="bk-wk-more" id="bkWkBack">Show that week</button></p>';
     }
 
+    // The grid's boxes are start times; the block drawn on choosing one is the
+    // job. Said once, plainly, above the grid (the phone list shows ranges).
+    if (!narrow) {
+      html += '<p class="bk-wk-how">Each box is a start time. Pick one and the block shows the whole detail, start to finish.</p>';
+    }
     html += narrow ? weekList(week, dur) : weekGrid(week, dur);
 
     html += '<p class="bk-wk-fine">Early is before 10am and late is 6pm or later; rush is within ' +
@@ -2790,6 +2776,7 @@
       '<button type="button" class="bk-askwhen-link" id="bkAskMode2">None of these work? Tell us when does</button></div>';
 
     box.innerHTML = html + '</div>';
+    box.querySelectorAll('.bk-wk-span:not(.preview)').forEach(fitSpan);
     renderNav();
     renderTotal();
   }
@@ -2832,8 +2819,6 @@
       fee: feeText(ms) || 'Standard',
       paid: Boolean(surchargeBp(ms)),
       why: feeNote(ms),
-      // Too short a block for three lines drops the middle one.
-      short: dur / 60 * hourPx - GAP_PX < 56
     };
   }
 
@@ -2927,12 +2912,25 @@
     week.days.forEach(function (day, i) {
       if (!state.slot || state.slot < day.dayStart || state.slot >= day.dayStart + DAY) return;
       var g = spanGeom(state.slot, i, dur, rows);
-      html += '<div class="bk-wk-span' + (g.short ? ' short' : '') + '" aria-hidden="true" style="grid-area:' + g.area + '">' +
+      html += '<div class="bk-wk-span" aria-hidden="true" style="grid-area:' + g.area + '">' +
         '<i style="top:' + g.top + 'px;height:' + g.height + 'px">' + spanInner(g) + '</i></div>';
     });
     // And one for previewing on hover, placed by the mouseover handler.
     html += '<div class="bk-wk-span preview" id="bkWkPreview" aria-hidden="true" hidden><i></i></div>';
     return html + '</div>';
+  }
+
+  /**
+   * Fit a job block's text to the block, by measuring rather than guessing a
+   * height: the note goes first, then the fee, so nothing is ever cut off
+   * mid-word whatever the job length, column width or font.
+   */
+  function fitSpan(span) {
+    var box = span && span.querySelector(':scope > i');
+    if (!box) return;
+    span.classList.remove('mid', 'short');
+    if (box.scrollHeight > box.clientHeight + 1) span.classList.add('mid');
+    if (box.scrollHeight > box.clientHeight + 1) span.classList.add('short');
   }
 
   /** Hovering a start shows the block that time would book. */
@@ -2946,8 +2944,8 @@
     inner.style.top = g.top + 'px';
     inner.style.height = g.height + 'px';
     inner.innerHTML = spanInner(g);
-    pv.classList.toggle('short', g.short);
     pv.hidden = false;
+    fitSpan(pv);
   }
 
   /** Phones: a strip of seven days, then the open hours of the chosen one. */
@@ -5569,6 +5567,7 @@
     // phones. Turning a tablet or resizing a window across that line redraws
     // it from what is already loaded.
     window.addEventListener('resize', function () {
+      if (!host.hidden) root.querySelectorAll('.bk-wk-span').forEach(fitSpan);
       if (host.hidden || state.done || step().id !== 'time' || !lastPaint || paintedNarrow === null) return;
       if ((el('bkBody').clientWidth < 520) !== paintedNarrow) repaintSlots();
     });
