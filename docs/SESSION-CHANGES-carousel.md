@@ -3,7 +3,72 @@
 Branch: `claude/results-carousel-347a0d`. Not pushed.
 Files: `index.html` (`#gallery` only), `js/gallery.js`, `styles.css` (gallery block, plus one gallery-only line in the 820px block and a 1100px rule after it). `script.js` is unchanged: the carousel drives the existing slider markup.
 
-**Round 2 (the owner's review of c2fa121, and the user's request for an endless loop) is first. Round 1 follows; where round 2 changed something, round 1 says "superseded".**
+**Newest round first. Round 3 changes the timings and the step size; everything else from round 2 stands (the button as the state, no hover pause, the endless loop, rAF easing, the edge fades, reduced motion).**
+
+# Round 3
+
+Merged `eNov6` first (6690e5c and the sub-page fold work). Header and footer markup untouched.
+
+## Changes
+
+| # | Owner's request | Change | Where | How to test |
+|---|---|---|---|---|
+| 3.1 | Slow it down | Wipes are about 60% slower (the reveal is 4 s instead of 2.8 s, a quarter of the photo per second). The track's glide is 0.9 s instead of 0.6 s, on an ease-in-out curve (`cubic-bezier(.65, 0, .35, 1)`) instead of the site's ease-out, so it starts and stops gently. | `js/gallery.js` `WIPE`, `SLIDE_MS`; `styles.css` `.ba-track` | Watch it at 1440: slower handles, a softer glide. |
+| 3.2 | Advance 1 or 2 cards at a time | One card when one or two are in view (phones, 820 px), two when three are (from 1100 px). With three in view, a one-card step changes a third of the view and reads as nothing happening; two refreshes most of it but keeps a card for continuity. | `js/gallery.js` `stepSize()` | 1440: 1-2-3 becomes 3-4-5. 820 and phones: one card. |
+| 3.3 | Wipers on their own timing | Two clocks. Each card in view runs its own wipe, starting when it comes into view; cards in view start 2.5 s apart. The track moves every 16.3 s on its own clock, whatever the wipes are doing. A card that slides in always gets one whole wipe before it can slide out. Cards that slide out stop and wait in the middle, out of sight. | `js/gallery.js` `run()`, `wipe()`, `restHidden()` | At 1440 the three handles are never in the same place; the track still moves on time. |
+| 3.4 | Leave the slider in the middle longer | Every wipe starts with 3 s at rest in the middle (round 2 went straight to the edge). | `WIPE[0]` | When a card arrives, its handle sits still for 3 s. |
+| 3.5 | Keep the edge fades | Unchanged. | `styles.css` `.ba-slider.auto ...` | |
+
+## Timings now, and why
+
+| Step | Round 2 | Round 3 |
+|---|---|---|
+| Rest in the middle | 0 | **3.0 s** |
+| To the right edge (whole before) | 1.2 s | 1.8 s |
+| Look at the before | 1.6 s | 2.0 s |
+| Wipe to the left edge (whole after) | 2.8 s | **4.0 s** |
+| Look at the after | 2.4 s | 2.5 s |
+| Back to the middle | 1.0 s + 0.3 s | 1.5 s (then the next rest) |
+| **One wipe** | 9.3 s | **14.8 s** |
+| Cards in view start apart | together | 2.5 s |
+| Track moves every | 9.9 s | **16.3 s** (the first move after starting waits for every card in view to finish one wipe) |
+| Track glide | 0.6 s ease-out | 0.9 s ease-in-out |
+| Each card in view for | one wipe | at least one whole wipe |
+| Full cycle of the 6 photos | 20 s at 1440, 59 s on a phone | about 49 s at 1440 (3 moves of 2), 98 s at 820 and on phones (6 moves of 1) |
+
+Why these numbers:
+- **The 5 to 10 s per slide guidance** (Bootstrap's 5 s default, the design rules of thumb) is for one message per slide. A comparison is two photos and a movement between them, and the owner asked for calmer, so each one gets about 15 s. Nielsen Norman Group's finding is that people complain carousels move too fast, never too slow, and the pause button covers anyone who wants to stop it (WCAG 2.2.2).
+- **3 s at rest in the middle** is about one reading glance plus the time to move a thumb or mouse to the handle. The fixed middle position is also where the handle is between wipes, so a visitor who reaches for it finds it there.
+- **The 4 s reveal** moves a quarter of the photo per second (about 84 px a second on a phone card), slow enough to compare each part of the car as the line passes it.
+- **A 16.3 s step** is one whole wipe (14.8 s) plus the glide (0.9 s) plus a short rest (0.6 s). That guarantees the card that just came in is shown in full, which matters most on a phone, where it is the only card.
+- **A 2.5 s stagger** is long enough that the three handles never line up, and short enough that all three have moved within 8 s of arriving.
+
+## Root causes (round 3)
+
+- **Too fast:** round 2 sized the timings from the 5 to 10 s per slide guidance, which is for single-message slides. A before/after needs about twice that, and a start at rest.
+- **Moving a whole view:** round 2 advanced by a whole view so no card was wiped twice. At 1440 that replaced three photos every 10 s, which reads as busy. One or two cards at a time, with each card on its own clock, keeps the motion local.
+- **Lockstep:** one shared timeline made every handle move together, so the whole row pulsed at once. Separate clocks with a stagger spread the motion out.
+
+## Verified (round 3)
+
+- `npm run build` OK; `cd web && TZ=America/New_York npx vitest run`: 409 of 409.
+- Headless Chrome over CDP, cache disabled, real mouse and key events, at 1920, 1440, 820, 375 and 320:
+  - `scrollWidth === innerWidth` at every width, and a nav click on Results lands `#gallery` at 73 px;
+  - after moving the mouse over a photo, it keeps going;
+  - each card rests about 3 s in the middle, then wipes on its own clock; the three cards at 1440 start 2.5 s apart (1 s samples: 94/50/50, then 100/64/50, then 99/100/50);
+  - the track moves by 2 at 1920 and 1440 (1→3→5), and by 1 at 820, 375 and 320; the first move comes at about 22 s at 1440 and 18.5 s on a phone (waiting for every card's first wipe), then every 16 to 17 s;
+  - at 1440 and 375:
+    - a click shows Play, and Pause again 12 s later;
+    - Pause holds through 13 s and through scrolling away and back, and Play plays at once;
+    - dot 6 then Next wraps forward to 1;
+    - under reduced motion it shows Play and nothing moves.
+- Frame times, 4× CPU throttling, run alone, 12 s windows, at 1920, 1440 and 375, including a window spanning a track move: p50 16.7 ms, longest 16.8 ms, none over 20 ms. The largest handle step between two frames is 1.37% of the photo's width (round 2: 2.43%). An earlier run showed 150 ms frames at 1440, but a second headless Chrome was running at the same time; run alone, they did not recur.
+
+## For the owner (round 3)
+
+- **Step size:** 2 cards when 3 are in view, otherwise 1. If you would rather it always moved by 1, it is one number (`stepSize()`).
+- **The full set takes about 98 s to come round on a phone.** That's the cost of showing each comparison in full. A visitor who wants to go faster has the arrows and dots.
+- **Cards can leave mid-wipe** at 1440 (the one that has been in view longest), because the wipes no longer wait for the track. Every card is guaranteed one whole wipe first.
 
 # Round 2
 

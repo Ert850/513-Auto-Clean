@@ -89,9 +89,15 @@
    * phone's card. styles.css owns those breakpoints (--ba-per); this reads
    * them.
    *
-   * On its own, every card in view sweeps together: the handle goes to the
-   * right edge (the whole before), wipes across to the left edge (the whole
-   * after) and comes back to the middle. Then the next cards slide in.
+   * Two clocks, on purpose not in step (the owner's round 3):
+   *   - Each card in view has its own wipe: it rests in the middle for 3 s
+   *     (time to reach for the handle), slides to the right edge (the whole
+   *     before), wipes slowly across to the left edge (the whole after) and
+   *     comes back, about 15 s, then starts over. Cards in view start 2.5 s
+   *     apart, so they never move in lockstep.
+   *   - The track moves on every 16.3 s, by one card (two when three are in
+   *     view), gliding for 0.9 s. A card that slides in always gets one
+   *     whole wipe before it can slide out.
    *
    * It loops without an end, like Swiper's loop mode or Embla's: past the
    * last comparison it carries on forward into the first, instead of racing
@@ -112,21 +118,25 @@
    * button flips back to Pause. Pressing Pause is the visitor saying no:
    * only their Play starts it again. Hovering does nothing.
    *
-   * The motion is one requestAnimationFrame loop reading a fixed timeline,
-   * with no timers between phases and no waiting for photos mid-sweep (the
-   * next cards' photos are fetched a whole sweep ahead). Each frame writes
+   * The motion is one requestAnimationFrame loop reading fixed timelines,
+   * with no timers between phases and no waiting for photos mid-wipe (the
+   * next cards' photos are fetched a whole step ahead). Each frame writes
    * one CSS variable per card, and the stylesheet turns it into transforms
    * and opacity, which the compositor moves without layout or repaint.
    */
-  var SWEEP = [            // [ms, where the handle goes]; no target = hold
-    [1200, 100],           // to the right edge: the whole before
-    [1600],
-    [2800, 0],             // wipe across: the whole after
-    [2400],
-    [1000, 50],            // back to the middle, where a visitor expects it
-    [300]
-  ];                       // 9.3 s a page, then 0.6 s to slide
-  var SLIDE_MS = 600;      // .ba-track's transition
+  var WIPE = [             // one card: [ms, where the handle goes]; no target = hold
+    [3000],                // rest in the middle: time to grab the handle
+    [1800, 100],           // to the right edge: the whole before
+    [2000],
+    [4000, 0],             // wipe across, a quarter of the photo a second: the whole after
+    [2500],
+    [1500, 50]             // back to the middle, then it starts over
+  ];
+  var CYCLE_MS = WIPE.reduce(function (t, w) { return t + w[0]; }, 0);   // 14.8 s
+  var STAGGER_MS = 2500;   // cards in view start this far apart
+  var SLIDE_MS = 900;      // .ba-track's transition
+  // A card that slides in gets one whole wipe, and a short rest, first.
+  var ADVANCE_MS = CYCLE_MS + SLIDE_MS + 600;                            // 16.3 s
   var SETTLE_MS = 450;     // a paused card's handle gliding home
   var PHOTO_WAIT_MS = 1500;
   var IDLE_MS = 12000;
@@ -144,7 +154,7 @@
     var byTouch = false;             // paused by a touch, so it may resume itself
     var onScreen = false, keyFocus = false, dragging = false;
     var idleTimer = null;
-    var player = null;               // the sweep in progress
+    var running = false, nextAdvance = null;
     var settles = [];                // handles gliding back to the middle
     var raf = 0;
     var pendingMove = null, moveTimer = null;
@@ -256,7 +266,19 @@
     }
     function finishMove() {
       clearTimeout(moveTimer);
-      if (pendingMove) { var f = pendingMove; pendingMove = null; f(); }
+      if (pendingMove) { var f = pendingMove; pendingMove = null; f(); restHidden(); }
+    }
+    // Cards that have slid out of view stop their wipe and wait in the
+    // middle, out of sight, for their next turn.
+    function restHidden() {
+      var on = shown();
+      slides.forEach(function (s) {
+        if (on.indexOf(s) >= 0) return;
+        s._t0 = null; s._wait = null; s._user = false;
+        settles = settles.filter(function (st) { return st.s !== s; });
+        s.classList.remove('auto');
+        if (s._pos !== 50) { paint(s, 50); commit(s); }
+      });
     }
     grid.addEventListener('transitionend', function (e) {
       if (e.target === grid && e.propertyName === 'transform') finishMove();
@@ -273,6 +295,7 @@
         // Too far to slide without running out of cards: jump instead.
         for (var j = 0; j < (d > 0 ? k : n - k); j++) grid.appendChild(grid.firstElementChild);
         snap(0);
+        restHidden();
       } else if (d > 0) {
         mark(o.slice(k, k + p));
         grid.style.transform = 'translateX(' + (-o[k].offsetLeft) + 'px)';
@@ -304,53 +327,66 @@
       move(f <= n - f ? f : f - n);
     }
 
-    /* ---------- the sweep ---------- */
+    /* ---------- the wipes and the advance ---------- */
     function kick() { if (!raf) raf = requestAnimationFrame(tick); }
     function tick(now) {
       raf = 0;
-      if (player) sweep(now);
+      if (running) run(now);
       settles = settles.filter(function (st) { return settle(st, now); });
-      if (player || settles.length) kick();
+      if (running || settles.length) kick();
     }
 
-    function sweep(now) {
-      var pl = player;
-      if (now < pl.notBefore) return;
-      if (pl.t0 === null) {
-        // The track has not finished sliding (transitionend can land a frame
-        // after SLIDE_MS): the cards in view are not settled yet.
-        if (pendingMove) return;
-        // Start of a page, handles at rest: the one place it may wait for
-        // photos, and only briefly (they were asked for a sweep earlier).
-        pl.cards = shown();
-        if (!loaded(pl.cards) && now < pl.notBefore + PHOTO_WAIT_MS) return;
-        pl.t0 = now;
-        pl.from = pl.cards.map(posOf);
-        settles = settles.filter(function (st) { return pl.cards.indexOf(st.s) < 0; });
-        pl.cards.forEach(function (s) { s._user = false; s.classList.add('auto'); });
-        wakeAround();
+    function stepSize() { return Math.min(perView() > 2 ? 2 : 1, n - perView()); }
+
+    function run(now) {
+      // While the track glides, the cards keep wiping; nothing new starts.
+      if (!pendingMove) {
+        if (nextAdvance === null) {
+          // (Re)started: the cards in view all get a whole wipe first.
+          nextAdvance = now + ADVANCE_MS + STAGGER_MS * (perView() - 1);
+        } else if (now >= nextAdvance && loops()) {
+          move(stepSize());
+          nextAdvance = now + ADVANCE_MS;
+        }
       }
-      var e = now - pl.t0, k = 0, from = null;
-      while (k < SWEEP.length && e >= SWEEP[k][0]) {
-        if (SWEEP[k][1] !== undefined) from = SWEEP[k][1];
-        e -= SWEEP[k][0];
+      if (!pendingMove) {
+        // Start the clock of each card that has come into view, a stagger
+        // apart. The only wait for photos is here, with the handle at rest.
+        var lag = 0;
+        shown().forEach(function (s) {
+          if (s._t0 != null) return;
+          if (!loaded([s])) {
+            if (s._wait == null) s._wait = now;
+            if (now - s._wait < PHOTO_WAIT_MS) return;
+          }
+          s._wait = null;
+          s._t0 = now + lag;
+          lag += STAGGER_MS;
+          s._from = posOf(s);
+          s._user = false;
+          s.classList.add('auto');
+          settles = settles.filter(function (st) { return st.s !== s; });
+        });
+      }
+      slides.forEach(function (s) { if (s._t0 != null) wipe(s, now); });
+    }
+
+    function wipe(s, now) {
+      var e = now - s._t0;
+      if (e < 0) return;              // waiting its turn
+      var round = Math.floor(e / CYCLE_MS);
+      e -= round * CYCLE_MS;
+      var from = round ? 50 : s._from, k = 0;
+      while (e >= WIPE[k][0]) {
+        if (WIPE[k][1] !== undefined) from = WIPE[k][1];
+        e -= WIPE[k][0];
         k++;
       }
-      if (k === SWEEP.length) {
-        pl.cards.forEach(function (s) { paint(s, 50); commit(s); s.classList.remove('auto'); });
-        var step = loops() ? Math.min(perView(), n - perView()) : 0;
-        move(step);
-        player = { notBefore: now + (step ? SLIDE_MS : 0), t0: null };
-        return;
-      }
-      var to = SWEEP[k][1], t = ease(e / SWEEP[k][0]);
-      pl.cards.forEach(function (s, j) {
-        var a = from === null ? pl.from[j] : from;
-        paint(s, to === undefined ? a : a + (to - a) * t);
-      });
+      var to = WIPE[k][1];
+      paint(s, to === undefined ? from : from + (to - from) * ease(e / WIPE[k][0]));
     }
 
-    // Stopped mid-sweep: the handles the carousel moved glide back to the
+    // Stopped mid-wipe: the handles the carousel moved glide back to the
     // middle, so no card is left showing a half-hidden handle at an edge.
     // A handle the visitor moved stays where they put it.
     function settle(st, now) {
@@ -366,9 +402,12 @@
     }
 
     function halt() {
-      var pl = player;
-      player = null;
-      (pl && pl.cards || []).forEach(function (s) {
+      running = false;
+      nextAdvance = null;
+      slides.forEach(function (s) {
+        if (s._t0 == null) return;
+        s._t0 = null;
+        s._wait = null;
         if (s._user) { s.classList.remove('auto'); return; }
         if (s._pos !== 50) settles.push({ s: s, t0: null });
         else { commit(s); s.classList.remove('auto'); }
@@ -379,8 +418,8 @@
     /* ---------- when it runs ---------- */
     function update() {
       var run = playing && onScreen && !document.hidden;
-      if (run && !player) { player = { notBefore: performance.now(), t0: null }; kick(); }
-      else if (!run && player) halt();
+      if (run && !running) { running = true; nextAdvance = null; kick(); }
+      else if (!run && running) halt();
       // Announce changes only when the visitor is the one making them (APG).
       grid.setAttribute('aria-live', run ? 'off' : 'polite');
       paintPlay();
