@@ -177,6 +177,10 @@ Read this before changing anything. Every rule below came from a real bug or an 
 - **How many cards are in view lives in CSS** (`--ba-per` on `.ba-track`, read by `js/gallery.js`), alongside the `sizes` attribute in `js/gallery.js`. Change all three together.
 - **Pause from the visitor is final**: only their Play restarts it. A pause from a touch (click, drag, chevron, dot, keyboard focus) ends on its own after 12 s idle or when the carousel is scrolled away and back. Off screen and a hidden tab only suspend it.
 
+## Live calendars (November 11)
+- **Never edit an event on a calendar the live site reads (513 Auto Clean, 513 Availability) without first running the live site's own code (`main`) against the change.** Splitting the OPEN block into touching blocks looked safe because `mergeIntervals` joins them, but two other places did not: `computeSlots` read each block start as the start of a day (a 10am start straight after a job ending at 10am), and `multiDay.ts` `covered()` needed one block to cover a whole day (no two-day jobs). Fixed in the pipeline; `main` still has both.
+- **Fee blocks sit over a plain OPEN day, set to Free,** on any calendar `main` reads: one Busy `OPEN` for the hours, `OPEN +20%` blocks over it marked Free. `main` drops Free events; the pipeline counts OPEN whether Busy or Free and takes the higher fee where blocks overlap.
+
 ## Colors (fixed November 10)
 - **Red means the brand and "that did not work", nothing else.** A price or any good answer is ink (`--text`). The travel fee in `--red` looked exactly like the error message under it. One exception, the owner's call: the dearest band on the travel map is red (next rule).
 - **Changing a section's background means re-checking every color in it.** Colors picked on a dark band (red accents, white rings, a red top band on a traffic-light scale) changed meaning on paper.
