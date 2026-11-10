@@ -88,6 +88,21 @@ body.bk-open { overflow: hidden; }
 .bk-back:hover, .bk-close:hover { border-color: var(--red); color: var(--red); }
 
 .bk-scroll { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+/* "More below": sits over the bottom of the scrolling area, above the footer. */
+.bk-cue { position: relative; height: 0; z-index: 6; flex: none; }
+.bk-cue::before {
+  content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 44px; pointer-events: none;
+  background: linear-gradient(rgba(245,246,243,0), var(--paper));
+}
+.bk-cue button {
+  position: absolute; left: 50%; bottom: .5rem; transform: translateX(-50%);
+  display: inline-flex; align-items: center; gap: .25rem; cursor: pointer;
+  font: inherit; font-size: .78rem; font-weight: 700; color: var(--text-soft);
+  background: var(--paper-2); border: 1px solid var(--line); border-radius: 999px;
+  padding: .3rem .75rem; box-shadow: var(--shadow-sm);
+}
+.bk-cue button:hover { color: var(--red); border-color: var(--red); }
+.bk-cue svg { width: 14px; height: 14px; }
 .bk-body { padding: 1.2rem 1.1rem 1.6rem; }
 
 .bk-foot {
@@ -344,6 +359,7 @@ body.bk-open { overflow: hidden; }
    height lives in funnel.js too (ROW_PX, GAP_PX): change both together. */
 .bk-wk-grid { display: grid; grid-template-columns: 1.3rem 2.9rem repeat(7, minmax(0, 1fr)); gap: 3px; }
 .bk-wk-corner, .bk-wk-dh { position: sticky; top: 0; z-index: 4; background: var(--paper); }
+.bk-wk-headbg { position: sticky; top: 0; z-index: 3; background: var(--paper); box-shadow: 0 -14px 0 var(--paper), 0 3px 0 var(--paper); }
 .bk-wk-t { font-size: .72rem; font-weight: 700; color: var(--text-soft); text-align: right; padding-right: .3rem; align-self: center; }
 .bk-wk-dh { text-align: center; padding: .15rem 0 .3rem; line-height: 1.15; }
 .bk-wk-dh b { display: block; font-size: .72rem; font-weight: 700; color: var(--text-soft); text-transform: uppercase; letter-spacing: .04em; }
@@ -352,7 +368,7 @@ body.bk-open { overflow: hidden; }
   display: inline-block; font-style: normal; font-size: .58rem; font-weight: 800; letter-spacing: .05em;
   text-transform: uppercase; color: #7a5209; background: rgba(240,169,63,.16); padding: .05rem .3rem; border-radius: 4px;
 }
-.bk-wk-dh.past { opacity: .45; }
+.bk-wk-dh.past > * { opacity: .45; }  /* the text, not the bar's background */
 /* Early and Late run up the side, read bottom to top like a spine. */
 .bk-wk-zone { display: flex; align-items: center; justify-content: center; }
 .bk-wk-zone em { writing-mode: vertical-rl; transform: rotate(180deg); padding: .35rem .05rem; }
@@ -373,23 +389,31 @@ button.bk-wk-c:hover { box-shadow: 0 0 0 2px var(--red-ghost); }
 .bk-wk-c.on { border: 2px solid var(--red); background: var(--red-ghost); }
 /* The chosen job, start to estimated end, drawn over the cells it covers. */
 .bk-wk-span { position: relative; z-index: 3; pointer-events: none; overflow: hidden; border-radius: 6px; }
-.bk-wk-span i {
+.bk-wk-span > i {
   position: absolute; left: 0; right: 0; overflow: hidden; font-style: normal;
   display: flex; flex-direction: column; justify-content: space-between;
   /* Solid, so the hourly cells (and their per-hour fees) do not show through. */
   border: 2px solid var(--red); border-radius: 6px;
   background: linear-gradient(rgba(196,20,20,.10), rgba(196,20,20,.10)), var(--paper-2);
 }
-.bk-wk-span em {
-  font-style: normal; text-align: center; font-size: .72rem; font-weight: 800; color: var(--text);
-  padding: 0 .2rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+.bk-wk-span-fee { display: flex; flex-direction: column; align-items: center; gap: .1rem; padding: 0 .2rem; min-width: 0; }
+.bk-wk-span-fee em {
+  font-style: normal; font-size: .72rem; font-weight: 800; color: #1a8a3f;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;
 }
-.bk-wk-span.short em { display: none; }
+/* A fee in the Rush tag's gold, with a quiet note of what it is. */
+.bk-wk-span-fee.paid em { color: #7a5209; background: rgba(240,169,63,.18); padding: .05rem .35rem; border-radius: 4px; }
+.bk-wk-span-fee i {
+  font-style: normal; font-size: .58rem; font-weight: 600; color: var(--text-soft);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;
+}
+.bk-wk-span.short .bk-wk-span-fee { display: none; }
 /* Where a fee starts or stops: under the early hours, above the late ones,
    after the last rush day. The Rush and Early/Late tags' gold, dashed. */
 .bk-wk-line { pointer-events: none; z-index: 2; }
-.bk-wk-line.h { align-self: start; height: 0; margin-top: -2.5px; border-top: 2px dashed var(--amber); }
-.bk-wk-line.v { justify-self: end; width: 0; margin-right: -2.5px; border-right: 2px dashed var(--amber); }
+.bk-wk-line { opacity: .75; }
+.bk-wk-line.h { align-self: start; height: 1.5px; margin-top: -2.25px; background: repeating-linear-gradient(90deg, var(--amber) 0 4px, transparent 4px 8px); }
+.bk-wk-line.v { justify-self: end; width: 1.5px; margin-right: -2.25px; background: repeating-linear-gradient(180deg, var(--amber) 0 4px, transparent 4px 8px); }
 .bk-wk-span b {
   display: block; background: var(--red); color: #fff; font-size: .62rem; font-weight: 800;
   padding: .12rem .3rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
@@ -398,7 +422,7 @@ button.bk-wk-c:hover { box-shadow: 0 0 0 2px var(--red-ghost); }
   display: block; padding: 0 .3rem .1rem; font-size: .62rem; font-weight: 800; color: var(--red-deep);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.bk-wk-span.preview i { border-style: dashed; background: linear-gradient(rgba(196,20,20,.05), rgba(196,20,20,.05)), var(--paper-2); }
+.bk-wk-span.preview > i { border-style: dashed; background: linear-gradient(rgba(196,20,20,.05), rgba(196,20,20,.05)), var(--paper-2); }
 .bk-wk-span.preview b { background: rgba(196,20,20,.8); }
 
 /* Phones: a strip of days and the open hours of one of them. */
@@ -411,7 +435,7 @@ button.bk-wk-c:hover { box-shadow: 0 0 0 2px var(--red-ghost); }
 .bk-wk-day b { font-size: .66rem; font-weight: 700; color: var(--text-soft); text-transform: uppercase; }
 .bk-wk-day span { font-family: var(--font-display); font-size: 1rem; line-height: 1; }
 .bk-wk-day.on { border-color: var(--red); box-shadow: 0 0 0 3px var(--red-ghost); }
-.bk-wk-day.past { opacity: .45; }
+.bk-wk-day.past > * { opacity: .45; }
 .bk-wk-day em { font-size: .5rem; padding: .02rem .2rem; }
 .bk-wk-bar { display: block; width: 70%; height: 4px; border-radius: 2px; }
 .bk-wk-bar.ok { background: #1a8a3f; }

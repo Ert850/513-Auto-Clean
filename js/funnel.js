@@ -457,6 +457,13 @@
   var lastRenderedStep = null;
   var keptScroll = 0;
 
+  /** The "More below" cue: shown while more than a little is below the fold. */
+  function updateCue() {
+    var sc = el('bkScroll'), cue = el('bkCue');
+    if (!sc || !cue) return;
+    cue.hidden = !(sc.scrollHeight - sc.clientHeight - sc.scrollTop > 48);
+  }
+
   function render() {
     if (state.done) return;
     clearPromoRate();
@@ -514,6 +521,7 @@
        el('bkBody').scrollTop = 0;
        el('bkScroll').scrollTop = 0;
      }
+    updateCue();
   }
 
   function renderTotal() {
@@ -2822,13 +2830,30 @@
       // The fee ONCE, for the whole job. The cells under the block are
       // hidden: a "+$25" in every hour it covered read as $25 an hour.
       fee: feeText(ms) || 'Standard',
+      paid: Boolean(surchargeBp(ms)),
+      why: feeNote(ms),
       // Too short a block for three lines drops the middle one.
       short: dur / 60 * hourPx - GAP_PX < 56
     };
   }
 
   function spanInner(g) {
-    return '<b>' + esc(g.start) + '</b><em>' + esc(g.fee) + '</em><small>' + esc(g.end) + '</small>';
+    return '<b>' + esc(g.start) + '</b>' +
+      '<span class="bk-wk-span-fee' + (g.paid ? ' paid' : '') + '"><em>' + esc(g.fee) + '</em>' +
+        (g.why ? '<i>' + esc(g.why) + '</i>' : '') + '</span>' +
+      '<small>' + esc(g.end) + '</small>';
+  }
+
+  /** "Rush 20%", "Early 20%", "Rush + late 30%": what the fee is, in a few words. */
+  function feeNote(ms) {
+    var bp = surchargeBp(ms);
+    if (!bp) return '';
+    var parts = [];
+    if (needsPriority(ms)) parts.push('Rush');
+    var m = localMin(ms), band = P.bandOf(m);
+    if (band && band.premium) parts.push(m < 12 * 60 ? 'early' : 'late');
+    var text = parts.join(' + ');
+    return text.charAt(0).toUpperCase() + text.slice(1) + ' ' + bp / 100 + '%';
   }
 
   /**
@@ -2844,6 +2869,9 @@
     var rows = week.rows.length;
     var html = '<div class="bk-wk-grid" role="grid" aria-labelledby="bkWkTitle" data-dur="' + dur +
       '" data-rows="' + rows + '" style="grid-template-rows:auto repeat(' + rows + ', ' + ROW_PX + 'px)">' +
+      // One solid strip behind the whole day bar, gaps included, so nothing
+      // scrolling underneath shows between the day names.
+      '<span class="bk-wk-headbg" aria-hidden="true" style="grid-area:1 / 1 / 2 / 10"></span>' +
       '<span class="bk-wk-corner" style="grid-area:1 / 1 / 2 / 3"></span>';
     week.days.forEach(function (day, i) {
       html += '<span class="bk-wk-dh' + (day.past ? ' past' : '') + (day.rush ? ' rush' : '') +
@@ -5150,6 +5178,11 @@
         '<div class="bk-quotenote" id="bkQuoteNote" hidden></div>' +
         '<div class="bk-body" id="bkBody"></div>' +
       '</div>' +
+      // Shown while there is more below the fold, so a screen that happens to
+      // end on a clean edge does not read as the end of the step.
+      '<div class="bk-cue" id="bkCue" hidden><button type="button" id="bkCueBtn">More below' +
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>' +
+      '</button></div>' +
       '<footer class="bk-foot">' +
         '<div class="bk-total" id="bkTotal" hidden>' +
           '<span class="bk-total-amt"></span><span class="bk-total-sub"></span>' +
@@ -5465,6 +5498,10 @@
         return;
       }
       if (e.target.closest('#bkDoneClose')) return close();
+      if (e.target.closest('#bkCueBtn')) {
+        var sc = el('bkScroll');
+        return sc.scrollBy({ top: Math.round(sc.clientHeight * 0.7), behavior: 'smooth' });
+      }
       var place = e.target.closest('[data-place]');
       if (place) {
         root.querySelector('#bkAc').hidden = true;
@@ -5491,6 +5528,12 @@
     });
 
     host.addEventListener('change', onChange);
+
+    // Keep the "More below" cue honest as the page scrolls, grows (a panel
+    // opening, times arriving) or the window changes size.
+    el('bkScroll').addEventListener('scroll', updateCue, { passive: true });
+    window.addEventListener('resize', updateCue);
+    if (window.ResizeObserver) new ResizeObserver(updateCue).observe(el('bkBody'));
 
     // Hovering a start in the week grid previews the whole job it would book.
     host.addEventListener('mouseover', function (e) {
