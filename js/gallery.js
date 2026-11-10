@@ -89,19 +89,19 @@
    * phone's card. styles.css owns those breakpoints (--ba-per); this reads
    * them.
    *
-   * Each card that comes into view wipes once, on its own clock (the
-   * owner's round 3): 3 s at rest in the middle (time to reach for the
-   * handle), to the right edge (the whole before), then slowly across to
-   * the left edge (the whole after), where it waits. New cards start 2.5 s
-   * apart, so they never move in lockstep.
+   * In every cycle, every card in view wipes, on its own clock (the
+   * owner's rounds 3 and 5): 3 s at rest in the middle (time to reach for
+   * the handle), to the right edge (the whole before), then slowly across
+   * to the left edge (the whole after), where it waits. The cards start
+   * 2.5 s apart, left to right, so they never move in lockstep. A card that
+   * stays in view after a shift wipes again; one that slides in joins the
+   * very next cycle. A card sitting still beside moving ones looked broken.
    *
    * The last move is shared (round 4): once every wiping card has shown its
    * whole after for at least 2.5 s, they all glide back to the middle
    * together, and the track starts moving on as they arrive, by one card
    * (two when three are in view). So the handles come home with the shift,
-   * and no card waits in the middle for the slowest one. A card still in
-   * view after the shift has had its wipe and rests in the middle until it
-   * leaves; only the new arrivals wipe.
+   * and no card waits in the middle for the slowest one.
    *
    * It loops without an end, like Swiper's loop mode or Embla's: past the
    * last comparison it carries on forward into the first, instead of racing
@@ -280,7 +280,7 @@
       var on = shown();
       slides.forEach(function (s) {
         if (on.indexOf(s) >= 0) return;
-        s._t0 = null; s._wait = null; s._user = false; s._done = false;
+        s._t0 = null; s._wait = null; s._user = false;
         settles = settles.filter(function (st) { return st.s !== s; });
         s.classList.remove('auto');
         if (s._pos !== 50) { paint(s, 50); commit(s); }
@@ -354,20 +354,19 @@
           if (loops()) move(stepSize());
         }
         if (t < 1) return;
-        h.cards.forEach(function (c) { commit(c); c.classList.remove('auto'); c._t0 = null; c._done = true; });
+        // Every card in view starts a new wipe once the track has landed.
+        h.cards.forEach(function (c) { commit(c); c.classList.remove('auto'); c._t0 = null; });
         homing = null;
-        // Nowhere to move on to: the same cards go round again.
-        if (!loops()) shown().forEach(function (c) { c._done = false; });
         return;
       }
       // Nothing new starts while the track glides.
       if (pendingMove) return;
-      // Start the clock of each card that has come into view and not yet
-      // had its wipe, a stagger apart. The only wait for photos is here,
-      // with the handle at rest.
+      // Start the clock of every card in view, left to right, a stagger
+      // apart: the ones that stayed and the ones that just slid in. The
+      // only wait for photos is here, with the handle at rest.
       var lag = 0;
       shown().forEach(function (c) {
-        if (c._t0 != null || c._done) return;
+        if (c._t0 != null) return;
         if (!loaded([c])) {
           if (c._wait == null) c._wait = now;
           if (now - c._wait < PHOTO_WAIT_MS) return;
@@ -382,8 +381,9 @@
       });
       var wiping = slides.filter(function (c) { return c._t0 != null; });
       wiping.forEach(function (c) { wipe(c, now); });
-      // Everyone has shown the after long enough: home together.
-      if (wiping.length && wiping.every(function (c) { return now - c._t0 >= WIPE_MS; })) {
+      // Every card in view has started (none still waiting for photos) and
+      // shown the after long enough: home together.
+      if (wiping.length && shown().every(function (c) { return c._t0 != null; }) && wiping.every(function (c) { return now - c._t0 >= WIPE_MS; })) {
         homing = { t0: now, cards: wiping, from: wiping.map(function (c) { return c._pos; }), moved: false };
       }
     }
@@ -423,7 +423,6 @@
       // view gets a fresh wipe.
       homing = null;
       slides.forEach(function (s) {
-        s._done = false;
         if (s._t0 == null) return;
         s._t0 = null;
         s._wait = null;
