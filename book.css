@@ -376,8 +376,20 @@ button.bk-wk-c:hover { box-shadow: 0 0 0 2px var(--red-ghost); }
 .bk-wk-span i {
   position: absolute; left: 0; right: 0; overflow: hidden; font-style: normal;
   display: flex; flex-direction: column; justify-content: space-between;
-  border: 2px solid var(--red); border-radius: 6px; background: rgba(196,20,20,.10);
+  /* Solid, so the hourly cells (and their per-hour fees) do not show through. */
+  border: 2px solid var(--red); border-radius: 6px;
+  background: linear-gradient(rgba(196,20,20,.10), rgba(196,20,20,.10)), var(--paper-2);
 }
+.bk-wk-span em {
+  font-style: normal; text-align: center; font-size: .72rem; font-weight: 800; color: var(--text);
+  padding: 0 .2rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.bk-wk-span.short em { display: none; }
+/* Where a fee starts or stops: under the early hours, above the late ones,
+   after the last rush day. The Rush and Early/Late tags' gold, dashed. */
+.bk-wk-line { pointer-events: none; z-index: 2; }
+.bk-wk-line.h { align-self: start; height: 0; margin-top: -2.5px; border-top: 2px dashed var(--amber); }
+.bk-wk-line.v { justify-self: end; width: 0; margin-right: -2.5px; border-right: 2px dashed var(--amber); }
 .bk-wk-span b {
   display: block; background: var(--red); color: #fff; font-size: .62rem; font-weight: 800;
   padding: .12rem .3rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
@@ -386,7 +398,7 @@ button.bk-wk-c:hover { box-shadow: 0 0 0 2px var(--red-ghost); }
   display: block; padding: 0 .3rem .1rem; font-size: .62rem; font-weight: 800; color: var(--red-deep);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.bk-wk-span.preview i { border-style: dashed; background: rgba(196,20,20,.05); }
+.bk-wk-span.preview i { border-style: dashed; background: linear-gradient(rgba(196,20,20,.05), rgba(196,20,20,.05)), var(--paper-2); }
 .bk-wk-span.preview b { background: rgba(196,20,20,.8); }
 
 /* Phones: a strip of days and the open hours of one of them. */
@@ -669,6 +681,7 @@ button.bk-wk-c:hover { box-shadow: 0 0 0 2px var(--red-ghost); }
 @media (min-width: 520px) {
   .bk-row2 { grid-template-columns: 1fr 1fr; }
   .bk-row3 { grid-template-columns: 2fr 1fr 1fr; }
+  .bk-row2.bk-contact-row { grid-template-columns: 1fr 1fr 1.3fr; align-items: end; }
 }
 
 .bk-ac {
@@ -1184,6 +1197,24 @@ button.bk-wk-c:hover { box-shadow: 0 0 0 2px var(--red-ghost); }
 }
 .bk-acc-b:hover { border-color: var(--red); }
 .bk-acc-b.on { border-color: var(--red); background: var(--red-ghost); color: var(--red-deep); }
+/* Filming, on the details step: the same white box as the Terms and texts
+   questions above it, with small Yes / No buttons beside the question so the
+   whole step fits a laptop screen. */
+.bk-acc.bk-media {
+  display: flex; align-items: center; gap: .9rem;
+  margin: .3rem 0 .9rem; padding: .8rem .9rem;
+  border: 1.5px solid var(--line); border-radius: var(--r-md); background: var(--paper-2);
+}
+.bk-acc.bk-media:hover { border-color: var(--red); }
+.bk-media-t { flex: 1; min-width: 0; }
+.bk-media .bk-acc-h { margin-bottom: 0; }
+.bk-media .bk-acc-h a { color: var(--red); }
+.bk-media .bk-acc-opts { flex: none; grid-template-columns: repeat(2, 4.2rem); }
+.bk-media .bk-acc-b { padding: .45rem .3rem; font-size: .85rem; }
+@media (max-width: 559.98px) {
+  .bk-acc.bk-media { flex-direction: column; align-items: stretch; gap: .6rem; }
+  .bk-media .bk-acc-opts { grid-template-columns: repeat(2, 1fr); }
+}
 
 /* ---------- The receipt on the confirmation screen ---------- */
 .bk-done-h {

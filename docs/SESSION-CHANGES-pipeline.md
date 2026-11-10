@@ -13,6 +13,23 @@ Built overnight, November 10 to 11, for you to evaluate. It combines your 8 answ
   - `web/lib/browser-entry.ts`, `js/pricing.bundle.js` (built), `web/lib/funnel.smoke.test.mjs`.
   - The build also re-stamps `?v=` on every page. Those page changes were left out of the commit; a rebuild after merging restamps them.
 
+## Round 3 (November 10, night): small fixes
+
+- **The chosen job reads as one price.**
+  - **Before:** the block was see-through, so the "+$25" in every hour under it showed, and it looked like $25 an hour.
+  - **Now:** the block is solid, with the start at the top, the job's fee once in the middle ("+$25", or "Standard"), and "to 1pm" at the bottom.
+  - The hover preview works the same way. Blocks too short for three lines drop the middle one.
+- **Gold dashed lines** (the site's `--amber`, as on the Rush and Early/Late tags) where a fee starts or stops: at 10am, at 6pm, and after the last rush day.
+- **Wording:** "Hours are in Cincinnati Time Zone (EST)". It reads EDT in summer weeks, taken from the date shown, so it's always true.
+- **Filming question:**
+  - the same white rounded box as the Terms and texts questions, with small Yes and No buttons beside the question (stacked under it on phones);
+  - the contact fields share one row on desktop, and filming comes before the Terms box;
+  - at 1440×790, filming's Yes/No and the Terms tick are both on the first screen. Nothing was cut: the Terms and texts wording stays as it was;
+  - the optional texts box is the only part below the fold.
+- **Your answer:** "within 24 hours is a request pending a detailer" stays as built.
+- **Verified:** 445 tests; in the browser, the solid block and preview values, 3 gold lines, the EST line, both required answers above the fold at 1440×790, and the phone at 375 with no sideways scroll.
+- **Test note:** the Stripe and PayPal function tests call those services' real test servers and can time out on a slow connection. Re-run before suspecting code. Both passed on a re-run.
+
 ## Round 2 (November 10, evening): your answers and fixes
 
 **New order:** Vehicle, Service, Package, Extras, **Where, Time**, Details, Confirm. The times offered depend on the drive there and on the weather at that address, so the address comes first. The fee is measured again for the time picked, because traffic matters.
