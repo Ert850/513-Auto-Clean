@@ -354,3 +354,24 @@ Mock renders, made by injecting changes in headless Chrome only, are in `fold-sh
 Setting it in two lines on desktop would save about 84 px and bring the whole trust strip onto a 1440×790 screen. But it is the hero's signature look, and the owner asked to preserve it.
 
 If only one is done, do **1**: it adds no height and puts the 5.0 rating on every first screen. **1 + 2** together keep phones tidy.
+
+## Round 4, follow-up: suggestions 1 and 2 implemented (owner: "Do 1 and 2")
+| File | Change |
+|---|---|
+| `index.html` (hero only) | <ul><li>The pill reads "★★★★★ Rated 5.0 from 32 reviews on Google & Yelp" (`.hb-stars`, `.hb-text`), replacing "Mobile detailing across Greater Cincinnati" and its pulsing dot.</li><li>View Services and Contact Us use `btn-ghost on-dark` instead of `btn-light`.</li><li>The hero `<picture>`/`<img>` is untouched.</li></ul> |
+| `js/reviews.js` `syncBadges()` | Updates `#google-badge .g-text` and `.hero-badge .hb-text` together, so the count stays live in both places. The build's existing stamp (`Rated … from N reviews on Google`) already covers both. |
+| `styles.css` | <ul><li>`.hero-badge .hb-stars` (amber).</li><li>`.hero-cta .btn-ghost.on-dark` gets a light tint behind it.</li><li>Below 560 px, Book Now is full width and the two outlined buttons share a row.</li><li>Removed, now unused: `.hero-badge .dot`, `@keyframes pulse`, `.btn-light`.</li></ul> |
+
+**After:**
+
+| | 1440×790 | 1280×720 | 1920×950 | 1470×830 | 1512×860 | 375×812 | 320×640 |
+|---|---|---|---|---|---|---|---|
+| Rating pill | 216 ✓ | 211 ✓ | 229 ✓ | 219 ✓ | 222 ✓ | 240 ✓ (2 lines) | 226 ✓ (2 lines) |
+| Buttons end | 679 ✓ | 673 ✓ | 691 ✓ | 682 ✓ | 684 ✓ | 747 ✓ (was 799) | 733 (Book Now cut at 659) |
+
+- **Desktop:** positions are unchanged (0 px). The rating is now on every first screen.
+- **375 px phone:** the three buttons take 74 px less.
+- **320×640:** the smallest phone shows the rating, headline and sub-copy, with Book Now just under the edge. The old two-line pill did the same.
+- **Checks:** no horizontal scroll at any size (at 320 the two outlined buttons are 157 + 136 px, with no overflow). 416/416 tests pass.
+
+Screenshots (2×): `fold-shots/r4done-home-first-*.png`.
