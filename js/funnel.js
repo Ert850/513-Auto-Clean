@@ -2331,7 +2331,7 @@
       });
       if (!plan.ok) {
         box.innerHTML = '<p class="bk-empty">' + esc(plan.reason) +
-          ' <a href="index.html#inquiry">Send us a message</a> and we will sort it out.</p>';
+          ' <a href="faq.html#inquiry">Send us a message</a> and we will sort it out.</p>';
         return;
       }
       return paintMultiDay(box, win, from, to, dur, plan);
@@ -4705,7 +4705,10 @@
     close();
 
     var form = document.getElementById('inquiryForm');
-    if (!form) { location.href = 'sms:+15132792915'; return; }
+    if (!form) {
+      return handOffQuestion({ 'q-name': state.contact.name, 'q-phone': state.contact.phone,
+        'q-email': state.contact.email, 'q-zip': state.address.zip }, msg);
+    }
 
     var set = function (id, val) { var f = document.getElementById(id); if (f && val) f.value = val; };
     set('q-name', state.contact.name);
@@ -4992,7 +4995,11 @@
     close();
 
     var form = document.getElementById('inquiryForm');
-    if (!form) { location.href = 'sms:+15132792915'; return; }
+    if (!form) {
+      var v0 = state.vehicles[0];
+      return handOffQuestion({ 'q-name': state.contact.name, 'q-phone': state.contact.phone,
+        'q-email': state.contact.email, 'q-zip': state.address.zip, 'q-vehicle': v0 && v0.label }, msg);
+    }
 
     var set = function (id, val) {
       var f = document.getElementById(id);
@@ -5015,6 +5022,17 @@
     var target = document.getElementById('inquiry') || form;
     target.scrollIntoView({ behavior: 'smooth', block: 'start' });
     setTimeout(function () { if (message) message.focus(); }, 420);
+  }
+
+  /**
+   * The question form lives on faq.html. From a page without it (the home
+   * page, services.html), carry what they entered across for ONE page load,
+   * read once and deleted by script.js, instead of the old fallback: an sms:
+   * link, which on a desktop does nothing at all. The privacy policy says so.
+   */
+  function handOffQuestion(fields, msg) {
+    try { sessionStorage.setItem('ac-question', JSON.stringify({ fields: fields, msg: msg })); } catch (e) { /* the form opens empty */ }
+    location.href = 'faq.html#inquiry';
   }
 
   function close() {

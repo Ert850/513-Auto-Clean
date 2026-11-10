@@ -179,6 +179,7 @@ function cookiesParas() {
       ? ["If you arrive through a link we tagged, such as the QR code in a magazine ad, your browser remembers which link it was until you close the tab, and it is sent with a booking or question so we know how you found us. That works whether or not you accept analytics, identifies nobody, and goes to no one else."]
       : []),
     (isLive("siteAnalytics") ? "Apart from those two, there is one more thing we can keep in your browser" : "There is one thing we can keep in your browser") + ", and only if you ask for it. If you start a booking and leave before finishing, we offer to keep your answers so they are still there next time. Say yes and they are stored in your own browser for 14 days, so that the next time you tap Book Now you carry on where you stopped. That information stays on your device, never reaches us until you actually book, and you can throw it away from the same screen that offered to keep it. Say no, or say nothing, and there is nothing to throw away.",
+    "If you are part way through booking and choose to ask us a question instead, what you had entered is carried to the question form in your browser for that one step, then deleted.",
   ];
   const setters = [];
   if (isLive("cardOnFile")) setters.push("Stripe's payment form");

@@ -218,6 +218,17 @@ reorganization only. Reference sites: *links not yet provided*.
 | "How it works" looked different on add-on cards and in the coating explainer | Three separate styles: `.svc-how` (the agreed one), `.ad-how` (plain text), `.svc-explain` (a white box with a display-font heading) | One shared style for all three: the same red toggle (+ / -) and the same grey panel with a 2 px left rule. The explainer's content is wrapped in `.how-body` (white panel, because it sits in the grey tier box) | 2× captures: add-on cards with panels open, the coating explainer open, package cards |
 | Ohio county headings; travel-price colors | Handed to a parallel session (`range-travel-colors`, port 8791) | Pending its report | |
 
+### 9. Fourth review round (November 10)
+
+| Item | Root cause, or what changed | Verified |
+|---|---|---|
+| "Work" renamed "Results" | Header nav and phone menu, on all 5 pages | Read back |
+| Contact Us moved below the FAQ on `faq.html` | The whole `#inquiry` section moved. Every Contact or Ask link on every page now points to `faq.html#inquiry`: header, menu, phone bar, hero, `#quote`'s "Ask us instead", footer, and the booking form's "Send us a message". **Side effect fixed:** the booking form's "ask a question" and "change my booking" used to fill a question form on the same page, and fell back to an `sms:` link (useless on a desktop) where there was none, which included `services.html`. Now they carry what the person entered to `faq.html#inquiry` through `sessionStorage` (read once, deleted). Privacy policy: one new sentence, version 2026-11-10, re-locked | Tests 409/409 |
+| "See all add-ons" beside the Interior/Exterior tabs | A new `.svc-tabs-row` (tabs plus button). The old button under the cards is removed | 2× capture at 1440 |
+| Footer Explore names | Now exactly the nav: Results, Services, Meet the Team, Reviews, **Range & Travel** (added), FAQ, Contact Us. Same on all 5 pages | 2× capture |
+| Contact layout cramped below 1000 px | From 820 px the grid split 0.8fr/1.2fr, and the phone-first `order: 1` put the **form** in the narrow track. Now two columns only from 1000 px. Below that, "Prefer to talk?", the phone and the email sit in one compact row above a full-width form | 2× captures at 1440, 820 and 375 |
+| Footer Service Areas links | **Pending:** needs anchors on `service-area.html`, which the parallel session is editing. Done after the merge | |
+
 ### Reference sites reviewed (design lessons only, nothing copied)
 - **dksdetailing.com:**
   - **What works:** one short line of social proof ("Trusted by 250+"), a one-line headline, and two buttons (a main one plus Call). Packages are grouped by Full, Exterior and Interior.
