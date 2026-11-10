@@ -261,6 +261,23 @@ reorganization only. Reference sites: *links not yet provided*.
   - **Fix:** `main > section:first-child { padding-top: clamp(20px, 2.6vw, 32px) }`. Every sub-page title now sits 40 px under the header.
 - **Contact page fits a laptop screen.** The form's bottom edge was at 1,030 px, below a 900 px screen. The heading (eyebrow, title, intro) now sits at the top of the side column on wide screens instead of in a full-width band, and the grid's duplicate top margin is gone. The form now spans 145 to 771 px at 1440 and 1280 wide. Below 1000 px the heading stacks above the call/email row.
 
+### 12. Carousel merged; orphaned words (November 10)
+- **Merged:** `claude/results-carousel-347a0d`, the Results before/after carousel. See `docs/SESSION-CHANGES-carousel.md` for the standards followed, the timings (about 9 s per comparison, restart after 12 s idle) and the root causes avoided. **One item for a hand check:** with a desktop cursor parked over the photos while scrolling, the carousel should keep playing.
+- **Orphaned words.**
+  - **Root cause:** greedy line wrapping, and nothing balanced the lines. Headings sit in a fixed 660 px `.section-head` while their font size grows with the viewport, so wide screens left the last word alone ("Good questions, straight / answers.").
+  - **Measured:** a scanner checked every heading, paragraph and list item on 6 pages at 1920, 1440, 1280, 1100, 820 and 375 px. It found 156 one-word last lines: 25 headings, 76 list items, 49 paragraphs and the rest.
+  - **Fix:** `text-wrap: balance` on headings, eyebrows and tags; `text-wrap: pretty` on paragraphs, list items, labels and summaries. These are site-wide base rules, so every page and every future block of text gets them.
+  - **After:** 13. Every heading is fixed. 10 left are three- and four-word checklist items on 230 px-wide package cards at 820 px; the cause there is the card column count, handed to the `subpages-fold` session. 3 are on one 18-line paragraph in the coating card.
+  - **Browser support:** Chrome, Edge and Safari. Firefox supports `balance`; for `pretty` it falls back to normal wrapping.
+- **Parallel:** the `subpages-fold` session (port 8793) is making each sub-page's core content fit a laptop screen.
+
+### 13. Footer dots; nav check across 6 pages (November 10)
+- **Footer "· ·".** The hidden "Analytics choices" button kept its separator dot visible. The link and its leading dot are now one hidden `<span data-analytics-choices>` on all 6 pages; `js/analytics.js` reveals the span when analytics ids exist. Checked both ways: "…Cancellation Policy · Built with care…" without ids, and "…Cancellation Policy · Analytics choices · Built…" with them.
+- **Nav click check.** It now runs 6 pages in parallel tabs and prints each result as it happens.
+  - **Result:** 192 checks; 188 OK in the parallel run. The 4 others were in-page smooth-scroll clicks (Results on the home page, Reviews on About) slowed by background-tab throttling; re-run in a foreground tab, both landed exactly at 73 px.
+  - **Effective result:** 192/192.
+- **Carousel round 2** sent back to the carousel session: hover no longer pauses; the button shows Play after an interaction pause; all visible cards sweep together; smoother easing; Instagram button; section whitespace RCA.
+
 ### Reference sites reviewed (design lessons only, nothing copied)
 - **dksdetailing.com:**
   - **What works:** one short line of social proof ("Trusted by 250+"), a one-line headline, and two buttons (a main one plus Call). Packages are grouped by Full, Exterior and Interior.
