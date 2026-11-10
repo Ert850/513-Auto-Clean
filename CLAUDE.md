@@ -98,6 +98,9 @@ Read this before changing anything. Every rule below came from a real bug or an 
 - **The home page keeps the full package cards** (the owner reverted a compact teaser: "it looked fine before"). `CATALOG:SERVICES` is rendered into both `index.html` and `services.html`. Ask before replacing an established section's look, even for a decided restructure.
 - **Never link to a hidden element** (such as an inactive tab panel) without something that reveals it first.
 - **One "How it works" style everywhere:** a small red toggle reading "How it works +" ("-" when open), and a grey panel with a 2 px left rule (`.svc-how`, `.ad-how`, `.svc-explain .how-body`). A new collapsible joins those selectors; it doesn't get its own look.
+- **The question form (Contact Us, `#inquiry`) lives on `faq.html`.** Every Contact link is `faq.html#inquiry`. The booking form's "ask a question" and "change my booking" carry what the person entered there via `sessionStorage` (`ac-question`, read once and deleted by `script.js`). The privacy policy says so; keep it true.
+- **Nav names, in one order everywhere** (header, phone menu, footer Explore): Results, Services, Meet the Team, Reviews, Range & Travel, FAQ, Contact Us.
+- **A two-column layout must give the wide column to the main content at every width it applies.** Reordering with `order` also changes which grid track an item lands in.
 - When a section moves to another page, re-point the links *inside* it (`book.html` becomes `index.html#book`, `#inquiry` becomes `index.html#inquiry`).
 
 ## Scrolling and layout (bugs fixed November 9–10)

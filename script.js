@@ -390,6 +390,28 @@
     });
   });
 
+  /* A question started in the booking form on another page (js/funnel.js
+     handOffQuestion). Filled in once, then deleted, and only where the form is. */
+  (function () {
+    var form = document.getElementById('inquiryForm');
+    if (!form) return;
+    var raw = null;
+    try { raw = sessionStorage.getItem('ac-question'); sessionStorage.removeItem('ac-question'); } catch (e) { return; }
+    if (!raw) return;
+    var d; try { d = JSON.parse(raw); } catch (e) { return; }
+    Object.keys(d.fields || {}).forEach(function (id) {
+      var f = document.getElementById(id);
+      if (f && d.fields[id] && !f.value) f.value = d.fields[id];
+    });
+    var m = document.getElementById('q-message');
+    if (m && d.msg) {
+      m.value = d.msg;
+      setTimeout(function () {
+        try { m.focus({ preventScroll: true }); m.setSelectionRange(d.msg.length, d.msg.length); } catch (e) { /* older browsers */ }
+      }, 300);
+    }
+  })();
+
   /* ---------- Copy phone number ---------- */
   document.querySelectorAll('.phone-copy').forEach(function (btn) {
     var label = btn.querySelector('.copy-label');

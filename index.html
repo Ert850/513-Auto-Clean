@@ -46,7 +46,7 @@
       href="images/hero-exterior-960.webp"
       imagesrcset="images/hero-exterior-640.webp 640w, images/hero-exterior-960.webp 960w, images/hero-exterior-1280.webp 1280w, images/hero-exterior-1600.webp 1600w"
       imagesizes="100vw" />
-<link rel="stylesheet" href="styles.css?v=77f343fe68" />
+<link rel="stylesheet" href="styles.css?v=b08b8e3c6c" />
 <!-- Public configuration and third party loaders live in js/, not inline,
      so the Content-Security-Policy can forbid inline scripts outright.
      js/config.js holds publishable keys only. Secret keys never go in a page. -->
@@ -585,7 +585,7 @@
       </span>
     </a>
     <nav class="nav-links" aria-label="Primary">
-      <a href="#gallery">Work</a>
+      <a href="#gallery">Results</a>
       <a href="services.html">Services</a>
       <a href="about.html">Meet the Team</a>
       <!-- <a href="#schedule">Schedule</a> -->
@@ -594,7 +594,7 @@
       <a href="faq.html">FAQ</a>
     </nav>
     <div class="nav-cta">
-      <a class="btn btn-ghost" href="#inquiry">
+      <a class="btn btn-ghost" href="faq.html#inquiry">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
         Contact Us
       </a>
@@ -613,17 +613,17 @@
     <span class="brand"><img class="mark-img" src="images/logo-mark.png" alt="" width="40" height="40" /><span class="b-name" style="color:#fff">513 Auto Clean</span></span>
     <button class="mm-close" id="mmClose" aria-label="Close menu">&times;</button>
   </div>
-  <a class="mm-link" href="#gallery">Our Work</a>
+  <a class="mm-link" href="#gallery">Results</a>
   <a class="mm-link" href="services.html">Services &amp; Pricing</a>
   <a class="mm-link" href="about.html">Meet the Team</a>
   <!-- <a class="mm-link" href="#schedule">Schedule</a> -->
   <a class="mm-link" href="about.html#reviews">Reviews</a>
   <a class="mm-link" href="service-area.html">Range &amp; Travel Costs</a>
   <a class="mm-link" href="faq.html">FAQ</a>
-  <a class="mm-link" href="#inquiry">Contact Us</a>
+  <a class="mm-link" href="faq.html#inquiry">Contact Us</a>
   <div class="mm-cta">
     <a class="btn btn-primary btn-block" href="book.html">Book Now</a>
-    <a class="btn btn-ghost on-dark btn-block" href="#inquiry">Contact Us</a>
+    <a class="btn btn-ghost on-dark btn-block" href="faq.html#inquiry">Contact Us</a>
   </div>
 </aside>
 
@@ -653,7 +653,7 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
           View Services
         </a>
-        <a class="btn btn-light btn-lg" href="#inquiry">
+        <a class="btn btn-light btn-lg" href="faq.html#inquiry">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
           Contact Us
         </a>
@@ -732,15 +732,19 @@
       <p>Clear, honest pricing. Pick a package below. Every detail is done by hand at your home or office. Prices are starting points for most cars; larger or heavily soiled vehicles may vary.</p>
     </div>
 
-    <div class="svc-tabs reveal" role="tablist">
-      <button class="svc-tab active" data-panel="interior" role="tab" aria-selected="true">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l1-5a2 2 0 0 1 2-1.5h12A2 2 0 0 1 20 6l1 5"/><path d="M5 16h14M7 16v3M17 16v3"/><rect x="3" y="11" width="18" height="5" rx="2"/></svg>
-        Interior
-      </button>
-      <button class="svc-tab" data-panel="exterior" role="tab" aria-selected="false">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 13l1.5-4.5A2 2 0 0 1 8.4 7h7.2a2 2 0 0 1 1.9 1.5L19 13"/><path d="M3 13h18v4a1 1 0 0 1-1 1h-1a1 1 0 0 1-1-1v-1H6v1a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z"/></svg>
-        Exterior
-      </button>
+    <!-- The tabs and the way to the add-ons on one line. -->
+    <div class="svc-tabs-row">
+      <div class="svc-tabs reveal" role="tablist">
+        <button class="svc-tab active" data-panel="interior" role="tab" aria-selected="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l1-5a2 2 0 0 1 2-1.5h12A2 2 0 0 1 20 6l1 5"/><path d="M5 16h14M7 16v3M17 16v3"/><rect x="3" y="11" width="18" height="5" rx="2"/></svg>
+          Interior
+        </button>
+        <button class="svc-tab" data-panel="exterior" role="tab" aria-selected="false">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 13l1.5-4.5A2 2 0 0 1 8.4 7h7.2a2 2 0 0 1 1.9 1.5L19 13"/><path d="M3 13h18v4a1 1 0 0 1-1 1h-1a1 1 0 0 1-1-1v-1H6v1a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z"/></svg>
+          Exterior
+        </button>
+      </div>
+      <a class="btn btn-ghost svc-addons-link reveal" href="services.html#addons">See all add-ons</a>
     </div>
 
     <!-- CATALOG:SERVICES:START -->
@@ -925,10 +929,6 @@
     </div>
     <!-- CATALOG:SERVICES:END -->
 
-    <!-- Add-ons moved to services.html, to keep this page short. -->
-    <div class="addons reveal">
-      <a class="btn btn-ghost" href="services.html#addons">See all add-ons</a>
-    </div>
 
   </div>
 </section>
@@ -1001,115 +1001,14 @@
           Start My Booking
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
         </a>
-        <p class="fineprint">Just have a question? <a href="#inquiry">Ask us instead</a>, no booking needed.</p>
+        <p class="fineprint">Just have a question? <a href="faq.html#inquiry">Ask us instead</a>, no booking needed.</p>
       </div>
     </div>
   </div>
 </section>
 
 
-<!-- ============ QUESTION / INQUIRY ============ -->
-<section class="inquiry" id="inquiry">
-  <div class="wrap">
-    <div class="section-head center reveal">
-      <span class="eyebrow">Contact Us</span>
-      <h2>Got a question first?</h2>
-      <p>Not ready to book, or not sure which package fits? Ask us anything about your vehicle&rsquo;s condition, what&rsquo;s realistic to fix, pricing, or timing. A real person answers, usually same day.</p>
-    </div>
-
-    <div class="inq-grid">
-      <aside class="inq-side reveal">
-        <h3>Prefer to talk?</h3>
-        <p class="inq-side-sub">Tap to call, or copy the number.</p>
-        <div class="phone-chip">
-          <a class="phone-num" href="tel:+15132792915">(513)&nbsp;279-2915</a>
-          <button type="button" class="phone-copy" data-copy="(513) 279-2915" aria-label="Copy phone number to clipboard">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-            <span class="copy-label">Copy</span>
-          </button>
-        </div>
-        <a class="inq-email" href="mailto:513autoclean@gmail.com" aria-label="Email us at 513autoclean@gmail.com">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 7l-10 6L2 7"/></svg>
-          513autoclean@gmail.com
-        </a>
-        <ul class="inq-points">
-          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 6L9 17l-5-5"/></svg> Straight answers, no sales pressure</li>
-          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 6L9 17l-5-5"/></svg> We&rsquo;ll tell you if a cheaper package is enough</li>
-          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 6L9 17l-5-5"/></svg> 7 days a week, 7 AM to 10 PM</li>
-        </ul>
-      </aside>
-
-      <div class="form-card reveal" data-d="1" id="inquiryCard">
-        <h3>Ask us a question</h3>
-        <p class="fc-sub">Tell us what you&rsquo;re dealing with and we&rsquo;ll point you the right way.</p>
-        <form id="inquiryForm" class="js-w3form" action="https://api.web3forms.com/submit" method="POST" novalidate>
-          <input type="hidden" name="access_key" value="8a502fe3-2a53-4904-98e9-b18dabb1f579" />
-          <input type="hidden" name="subject" value="QUESTION from 513autoclean.com" />
-          <input type="hidden" name="from_name" value="513 Auto Clean Website" />
-          <input type="checkbox" name="botcheck" style="display:none" tabindex="-1" autocomplete="off" />
-
-          <!-- Wide screens: the two free-text boxes side by side, then two rows of
-               three. Same fields and order of importance, about half the height. -->
-          <div class="field-row pair-wide">
-            <div class="field">
-              <label for="q-message">What&rsquo;s your question? <span class="req">*</span></label>
-              <textarea id="q-message" name="message" rows="4" required
-                placeholder="e.g. My back seats have old coffee stains and my dog sheds badly. Is a Full Interior enough, or do I need add-ons?"></textarea>
-            </div>
-            <div class="field">
-              <label for="q-condition">Your vehicle&rsquo;s condition</label>
-              <textarea id="q-condition" name="condition" rows="2"
-                placeholder="Pet hair, spills, smoke, kids, work truck, sat outside all winter&hellip;"></textarea>
-            </div>
-          </div>
-
-          <div class="field-row three">
-            <div class="field">
-              <label for="q-name">Name <span class="req">*</span></label>
-              <input type="text" id="q-name" name="name" placeholder="Your name" required autocomplete="name" />
-            </div>
-            <div class="field">
-              <label for="q-phone">Phone <span class="req">*</span></label>
-              <input type="tel" id="q-phone" name="phone" placeholder="(513) 555-0123" required autocomplete="tel" inputmode="tel" />
-            </div>
-            <div class="field">
-              <label for="q-email">Email</label>
-              <input type="email" id="q-email" name="email" placeholder="you@email.com" autocomplete="email" inputmode="email" />
-            </div>
-          </div>
-
-          <div class="field-row three">
-            <div class="field">
-              <label for="q-vehicle">Vehicle</label>
-              <input type="text" id="q-vehicle" name="vehicle" placeholder="e.g. 2018 Honda CR-V" />
-            </div>
-            <div class="field">
-              <label for="q-zip">Your city / ZIP</label>
-              <input type="text" id="q-zip" name="zip" placeholder="e.g. Clifton / 45220" autocomplete="postal-code" />
-            </div>
-            <fieldset class="field contact-pref">
-              <legend>Best way to reach you</legend>
-              <div class="pref-opts">
-                <label class="pref"><input type="radio" name="preferred_contact" value="Text" checked /> <span>Text</span></label>
-                <label class="pref"><input type="radio" name="preferred_contact" value="Call" /> <span>Call</span></label>
-                <label class="pref"><input type="radio" name="preferred_contact" value="Email" /> <span>Email</span></label>
-              </div>
-            </fieldset>
-          </div>
-
-          <div class="form-foot">
-            <button type="submit" class="btn btn-primary btn-lg btn-block">
-              Send My Question
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4z"/></svg>
-            </button>
-            <p class="fineprint">No spam, ever. We only use your info to answer your question. See our <a href="privacy.html">Privacy Policy</a>.</p>
-          </div>
-          <div class="form-msg" role="status" aria-live="polite"></div>
-        </form>
-      </div>
-    </div>
-  </div>
-</section>
+<!-- The question form (Contact Us) lives on faq.html, below the FAQ. -->
 
 
 <!-- Booking funnel mounts here, over the page rather than navigating away -->
@@ -1131,13 +1030,13 @@
       <div>
         <h4>Explore</h4>
         <div class="f-links">
-          <a href="#gallery">Our Work</a>
-          <a href="services.html">Services &amp; Pricing</a>
+          <a href="#gallery">Results</a>
+          <a href="services.html">Services</a>
           <a href="about.html">Meet the Team</a>
-          <!-- <a href="#schedule">Schedule</a> -->
           <a href="about.html#reviews">Reviews</a>
+          <a href="service-area.html">Range &amp; Travel</a>
           <a href="faq.html">FAQ</a>
-          <a href="#inquiry">Contact Us</a>
+          <a href="faq.html#inquiry">Contact Us</a>
         </div>
       </div>
       <div>
@@ -1169,7 +1068,7 @@
 
 <!-- ============ STICKY MOBILE BAR ============ -->
 <div class="mobile-bar" id="mobileBar">
-  <a class="mb-call" href="#inquiry"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> Contact Us</a>
+  <a class="mb-call" href="faq.html#inquiry"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> Contact Us</a>
   <a class="mb-quote" href="book.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> Book Now</a>
 </div>
 
@@ -1181,10 +1080,10 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&family=Hanken+Grotesk:wght@400;500;600;700&display=swap" />
 <link rel="stylesheet" href="book.css?v=ef821ee712" />
 <!-- Deferred, in order: the pricing bundle must run before the funnel. -->
-<script src="js/pricing.bundle.js?v=f387991749" defer></script>
+<script src="js/pricing.bundle.js?v=5018f5a403" defer></script>
 <script src="js/gallery.js?v=d9bac1fab2" defer></script>
 <script src="js/reviews.js?v=d59d6040a0" defer></script>
-<script src="js/funnel.js?v=8affea5b41" defer></script>
-<script src="script.js?v=57fb656cc4" defer></script>
+<script src="js/funnel.js?v=1f6d986f96" defer></script>
+<script src="script.js?v=3a75b08501" defer></script>
 </body>
 </html>
