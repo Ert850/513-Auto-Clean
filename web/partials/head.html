@@ -1,0 +1,10 @@
+<!-- Edit THIS file, not the pages. web/scripts/render-chrome.mjs copies it into
+     every page between CHROME:HEAD markers at build time. The {{...}} values
+     are filled per page; see web/scripts/chrome.mjs. -->
+<!-- Public configuration and third party loaders live in js/, not inline,
+     so the Content-Security-Policy can forbid inline scripts outright.
+     js/config.js holds publishable keys only. Secret keys never go in a page.
+     analytics.js loads nothing until the visitor accepts the banner. -->
+<script src="js/config.js"></script>
+<script src="js/vendors.js"></script>
+<script src="js/analytics.js" defer></script>

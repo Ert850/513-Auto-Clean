@@ -47,12 +47,15 @@
       imagesrcset="images/hero-exterior-640.webp 640w, images/hero-exterior-960.webp 960w, images/hero-exterior-1280.webp 1280w, images/hero-exterior-1600.webp 1600w"
       imagesizes="100vw" />
 <link rel="stylesheet" href="styles.css?v=436a393b7b" />
+<!-- CHROME:HEAD:START -->
 <!-- Public configuration and third party loaders live in js/, not inline,
      so the Content-Security-Policy can forbid inline scripts outright.
-     js/config.js holds publishable keys only. Secret keys never go in a page. -->
+     js/config.js holds publishable keys only. Secret keys never go in a page.
+     analytics.js loads nothing until the visitor accepts the banner. -->
 <script src="js/config.js?v=56c28f557b"></script>
 <script src="js/vendors.js?v=b1b3811463"></script>
 <script src="js/analytics.js?v=41f532d07e" defer></script>
+<!-- CHROME:HEAD:END -->
 <!-- book.css styles the booking modal, which is not open when the page first
      paints, so it is linked at the end of the body rather than blocking the
      paint from here. Scripts still wait for it: a parser-inserted script
@@ -1022,8 +1025,6 @@
 <!-- The question form (Contact Us) lives on faq.html, below the FAQ. -->
 
 
-<!-- Booking funnel mounts here, over the page rather than navigating away -->
-<div id="bookFunnel" hidden></div>
 
 <!-- CHROME:FOOTER:START -->
 <!-- ============ FOOTER ============ -->
@@ -1090,13 +1091,19 @@
      map scrolls within reach. On a phone the map is several screens down,
      and the library plus a dozen tiles were sharing the connection with the
      hero image on every visit. -->
+
+<!-- CHROME:SCRIPTS:START -->
+<!-- The booking form is on every page, so Book Now opens it where you are. -->
+<div id="bookFunnel" hidden></div>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&family=Hanken+Grotesk:wght@400;500;600;700&display=swap" />
 <link rel="stylesheet" href="book.css?v=ef821ee712" />
-<!-- Deferred, in order: the pricing bundle must run before the funnel. -->
+<!-- Deferred, so they run in this order: the pricing bundle before the
+     booking form and before any page script that prices (travel.js). -->
 <script src="js/pricing.bundle.js?v=5018f5a403" defer></script>
-<script src="js/gallery.js?v=d8ec2a17ef" defer></script>
-<script src="js/reviews.js?v=bdd1232676" defer></script>
 <script src="js/funnel.js?v=a202124dae" defer></script>
 <script src="script.js?v=62c84151cf" defer></script>
+<!-- CHROME:SCRIPTS:END -->
+<script src="js/gallery.js?v=d8ec2a17ef" defer></script>
+<script src="js/reviews.js?v=bdd1232676" defer></script>
 </body>
 </html>

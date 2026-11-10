@@ -23,10 +23,15 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link rel="stylesheet" href="styles.css?v=436a393b7b" />
-<!-- Same public config and consent-gated analytics as the home page, so a
-     visitor landing here is asked once and the arrival source is kept. -->
+<!-- CHROME:HEAD:START -->
+<!-- Public configuration and third party loaders live in js/, not inline,
+     so the Content-Security-Policy can forbid inline scripts outright.
+     js/config.js holds publishable keys only. Secret keys never go in a page.
+     analytics.js loads nothing until the visitor accepts the banner. -->
 <script src="js/config.js?v=56c28f557b"></script>
+<script src="js/vendors.js?v=b1b3811463"></script>
 <script src="js/analytics.js?v=41f532d07e" defer></script>
+<!-- CHROME:HEAD:END -->
 </head>
 <body>
 <a class="skip-link" href="#areas">Skip to content</a>
@@ -75,7 +80,7 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
         Contact Us
       </a>
-      <a class="btn btn-primary" href="index.html#book">Book Now</a>
+      <a class="btn btn-primary" href="book.html">Book Now</a>
     </div>
     <button class="nav-toggle" id="navToggle" aria-label="Open menu" aria-expanded="false">
       <span></span><span></span><span></span>
@@ -99,7 +104,7 @@
   <a class="mm-link" href="faq.html">FAQ</a>
   <a class="mm-link" href="contact.html">Contact Us</a>
   <div class="mm-cta">
-    <a class="btn btn-primary btn-block" href="index.html#book">Book Now</a>
+    <a class="btn btn-primary btn-block" href="book.html">Book Now</a>
     <a class="btn btn-ghost on-dark btn-block" href="contact.html">Contact Us</a>
   </div>
 </aside>
@@ -192,7 +197,7 @@
           Drop a pin on the map
         </button>
         <p class="at-pinhint" id="pinHint"></p>
-        <a class="btn btn-ghost btn-block" href="index.html#book">Get an exact quote</a>
+        <a class="btn btn-ghost btn-block" href="book.html">Get an exact quote</a>
       </div>
     </div>
 
@@ -200,6 +205,7 @@
   </div>
 </section>
 </main>
+
 
 <!-- CHROME:FOOTER:START -->
 <!-- ============ FOOTER ============ -->
@@ -244,7 +250,7 @@
           <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 7l-10 6L2 7"/></svg> <a href="mailto:513autoclean@gmail.com">513autoclean@gmail.com</a></li>
           <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v4l3 2"/></svg> 7 days/week · 7 AM to 10 PM</li>
         </ul>
-        <a class="btn btn-primary" href="index.html#book" style="margin-top:.4rem">Book Now</a>
+        <a class="btn btn-primary" href="book.html" style="margin-top:.4rem">Book Now</a>
       </div>
     </div>
     <div class="footer-bottom">
@@ -257,13 +263,21 @@
 <!-- ============ STICKY MOBILE BAR ============ -->
 <div class="mobile-bar" id="mobileBar">
   <a class="mb-call" href="contact.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> Contact Us</a>
-  <a class="mb-quote" href="index.html#book"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> Book Now</a>
+  <a class="mb-quote" href="book.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> Book Now</a>
 </div>
 <!-- CHROME:FOOTER:END -->
 
+<!-- CHROME:SCRIPTS:START -->
+<!-- The booking form is on every page, so Book Now opens it where you are. -->
+<div id="bookFunnel" hidden></div>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&family=Hanken+Grotesk:wght@400;500;600;700&display=swap" />
+<link rel="stylesheet" href="book.css?v=ef821ee712" />
+<!-- Deferred, so they run in this order: the pricing bundle before the
+     booking form and before any page script that prices (travel.js). -->
 <script src="js/pricing.bundle.js?v=5018f5a403" defer></script>
-<script src="js/travel.js?v=1046b0b9ec" defer></script>
+<script src="js/funnel.js?v=a202124dae" defer></script>
 <script src="script.js?v=62c84151cf" defer></script>
+<!-- CHROME:SCRIPTS:END -->
+<script src="js/travel.js?v=1046b0b9ec" defer></script>
 </body>
 </html>

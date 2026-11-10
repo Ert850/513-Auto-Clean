@@ -1,0 +1,12 @@
+<!-- Edit THIS file, not the pages. web/scripts/render-chrome.mjs copies it into
+     every page between CHROME:SCRIPTS markers at build time. The {{...}} values
+     are filled per page; see web/scripts/chrome.mjs. -->
+<!-- The booking form is on every page, so Book Now opens it where you are. -->
+<div id="bookFunnel" hidden></div>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&family=Hanken+Grotesk:wght@400;500;600;700&display=swap" />
+<link rel="stylesheet" href="book.css" />
+<!-- Deferred, so they run in this order: the pricing bundle before the
+     booking form and before any page script that prices (travel.js). -->
+<script src="js/pricing.bundle.js" defer></script>
+<script src="js/funnel.js" defer></script>
+<script src="script.js" defer></script>

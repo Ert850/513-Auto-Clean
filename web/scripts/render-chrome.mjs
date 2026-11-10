@@ -13,4 +13,4 @@ for (const page of CHROME_PAGES) {
   const after = applyChrome(page, before);
   if (after !== before) { fs.writeFileSync(file, after); changed++; }
 }
-console.log(`chrome: header and footer written into ${CHROME_PAGES.length} pages (${changed} changed)`);
+console.log(`chrome: shared head, header, footer and scripts written into ${CHROME_PAGES.length} pages (${changed} changed)`);

@@ -7,17 +7,17 @@ import { describe, it, expect } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
 // @ts-expect-error: plain ESM build script, no types
-import { root, CHROME_PAGES, expectedChrome, currentChrome } from "../../scripts/chrome.mjs";
+import { root, CHROME_PAGES, expectedChrome, currentChrome, unstamp } from "../../scripts/chrome.mjs";
 
 describe("shared header and footer", () => {
   for (const page of CHROME_PAGES as string[]) {
     it(`${page} carries the partials exactly`, () => {
       const html = fs.readFileSync(path.join(root, page), "utf8");
       const want = expectedChrome(page, html);
-      for (const part of ["HEADER", "FOOTER"]) {
+      for (const part of ["HEAD", "HEADER", "FOOTER", "SCRIPTS"]) {
         const got = currentChrome(html, part);
         expect(got, `${page} is missing CHROME:${part} markers`).not.toBeNull();
-        expect(got, `${page} ${part} differs from web/partials/: edit the partial, then npm run build`).toBe(want[part]);
+        expect(unstamp(got ?? ""), `${page} ${part} differs from web/partials/: edit the partial, then npm run build`).toBe(want[part]);
       }
     });
   }
