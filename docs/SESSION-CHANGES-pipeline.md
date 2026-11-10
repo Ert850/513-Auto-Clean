@@ -13,6 +13,21 @@ Built overnight, November 10 to 11, for you to evaluate. It combines your 8 answ
   - `web/lib/browser-entry.ts`, `js/pricing.bundle.js` (built), `web/lib/funnel.smoke.test.mjs`.
   - The build also re-stamps `?v=` on every page. Those page changes were left out of the commit; a rebuild after merging restamps them.
 
+## Round 10 (November 10): half-hour starts back
+
+The owner asked for half-hour starts again, so every start the original pipeline offered can be booked again, in each place a time is picked:
+- **Week calendar, with a mouse or trackpad:** a box is an hour. Its top half books the start on the hour, its bottom half the start at half past, and the hover block shows which (for example "6:30am +$37.50 to 8:30am"). The note above the calendar says so. A tap, or the keyboard, books the box's usual start. The halves are too small to tap reliably, so touch screens keep one start per box (`halfStart`, `data-starts`, `data-pick`).
+- **Phone day list:** each hour has its other start beside it as its own button, "or 2:30pm".
+- **"More times on Friday":** every start that day, half hours included, 4 across (3 on phones), under the part-of-day headings the phone list uses.
+- **Analytics:** `time_pick` adds `start_min`.
+- **Gap that's left:** a touch screen wide enough to show the calendar rather than the phone list (a tablet) so it can't reach a half-hour start on the calendar. It still can through "More times" on a recommended day.
+
+### Verified (headless Chrome, live calendar, test Kris)
+- **1440×900, with real mouse movement:** the top half previews 6am and the bottom half 6:30am. A click books 6:30am (`start_min: 30`). Back shows the 6:30am block and the bottom bar.
+- **375×812, touch:** 8 "or" buttons for the day. "or 2:30pm" books 2:30pm.
+- **"More times":** 33 starts under 4 headings.
+- **Tests:** 467/467.
+
 ## Round 9 (November 10): recommended times as top picks (option C), the bottom bar, the 11pm row
 
 ### Research behind it (short)
@@ -73,13 +88,7 @@ Built overnight, November 10 to 11, for you to evaluate. It combines your 8 answ
   - a detailer who can't do the work;
   - Kris's calendar;
   - the 3 month cap.
-- **Half-hour starts:**
-  - **the original:** every start, :00 and :30, through "Expand to select other times";
-  - **the new calendar and "More times":** one start per hour (a starred start wins, otherwise :00), per the owner's "show every hour but steer";
-  - **round 8:** the :30 starts were reachable through the bar's "Or start at";
-  - **this round:** that space went to the clearer suggestion. A :30 start is now bookable only when it's the hour's suggested start.
-
-  An owner question, not changed.
+- **Half-hour starts:** the original offered every start, :00 and :30, through "Expand to select other times". Round 9 briefly offered one per hour. Restored the same day (owner: "Add half-hours back"; details under Round 10).
 
 ### Verified (headless Chrome, live calendar, test Kris)
 - **1440×900 and 375×812:**
