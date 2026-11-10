@@ -95,7 +95,7 @@ export async function handler(event) {
       return json(400, { error: "too_far", message: "That address is further than we can drive for a mobile detail." });
     }
 
-    const timeOfDayWaived = timeFeeWaived(detailerFor(payload?.detailer), cart.slot);
+    const timeOfDayWaived = timeFeeWaived(detailerFor(payload?.detailer, cart), cart.slot);
     const priced = priceFromWire(cart, { measuredOneWayMinutes: measured, nowMs: Date.now(), payInFull: true, timeOfDayWaived });
     if (priced.rejected.length) return json(400, { error: "unknown_items", rejected: priced.rejected });
     if (priced.totalCents <= 0 || priced.totalCents > MAX_BOOKING_CENTS) {

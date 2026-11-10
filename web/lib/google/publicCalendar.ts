@@ -1,5 +1,5 @@
 import type { Interval } from "../availability/slots.js";
-import { localDayStart, localTimeOnDay, localWeekday } from "../time/zone.js";
+import { localDayStart, localTimeOnDay, localWeekday, zonedToUtc } from "../time/zone.js";
 
 /**
  * Reads a PUBLIC Google Calendar straight from the browser.
@@ -35,11 +35,32 @@ export const AVAILABILITY_PREFIX = "OPEN";
 export const BEST_PREFIX = "BEST";
 
 /**
+ * An event's start or end. An all-day event gives a bare date, which
+ * new Date() reads as midnight UTC: 7pm the evening before in Cincinnati,
+ * so an all-day "Vacation" left its own evening bookable and blocked the
+ * evening before (engine check, November 10). It means local midnight.
+ */
+export function eventTime(s: string): number {
+  const d = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s);
+  return d ? zonedToUtc(Number(d[1]), Number(d[2]), Number(d[3]), 0, 0, 0, "America/New_York") : new Date(s).getTime();
+}
+
+/**
+ * Is this title the keyword? "OPEN", "Open hours" and "BEST evening" are;
+ * "Opening night" and "Bestie's wedding" are not. Whole word only: a plain
+ * startsWith read them as working hours and best times (engine check,
+ * November 10).
+ */
+export function titleIs(summary: string, word: string): boolean {
+  return new RegExp("^" + word + "\\b", "i").test(summary.trim());
+}
+
+/**
  * Who is offered first, also set in Google Calendar: a line "Priority: 1" in
  * the calendar's own Description (Settings and sharing). Lower goes first.
  */
 export function parsePriority(description: string | null | undefined): number | null {
-  const m = /priority\s*[:=]?\s*(\d{1,3})/i.exec(String(description ?? ""));
+  const m = /priority\s*[:=]?\s*(\d+)/i.exec(String(description ?? ""));
   return m ? Number(m[1]) : null;
 }
 
@@ -222,8 +243,8 @@ async function fetchOne(
       if (!s || !t) return null;
       return {
         summary: (e.summary ?? "").trim(),
-        start: new Date(s).getTime(),
-        end: new Date(t).getTime(),
+        start: eventTime(s),
+        end: eventTime(t),
         allDay: Boolean(e.start?.date && !e.start?.dateTime),
         // "Free" events are things like reminders that should not block work.
         transparent: e.transparency === "transparent",
@@ -312,7 +333,7 @@ export function resolveWindow(
   toMs: number,
   hours: BusinessHours = DEFAULT_HOURS,
 ): CalendarWindow {
-  const isBest = (e: RawEvent) => e.summary.toUpperCase().startsWith(BEST_PREFIX);
+  const isBest = (e: RawEvent) => titleIs(e.summary, BEST_PREFIX);
   // Best start times mark a time; they never take it away, Busy or Free.
   const best = [...new Set(events.filter((e) => isBest(e) && !e.allDay && e.start >= fromMs && e.start < toMs).map((e) => e.start))]
     .sort((a, b) => a - b);
@@ -321,7 +342,7 @@ export function resolveWindow(
   // Free used to be dropped with the other Free events, silently taking
   // those hours away (found by the calendar setup walkthrough, November 10).
   const openEvents = events.filter((e) =>
-    !isBest(e) && e.summary.toUpperCase().startsWith(AVAILABILITY_PREFIX),
+    !isBest(e) && titleIs(e.summary, AVAILABILITY_PREFIX),
   );
 
   if (openEvents.length > 0) {

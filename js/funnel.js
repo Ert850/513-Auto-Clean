@@ -118,6 +118,10 @@
       // The slot we last confirmed with the calendar. Cleared whenever the
       // chosen time changes, so a new choice is checked afresh.
       checkedSlot: null,
+      // How long the job was when the time was picked, and why a time had to
+      // be dropped (slotStillFits). Shown at the top of Time.
+      slotDur: 0,
+      whenNote: '',
       sending: false,
       done: false,
       browse: false,
@@ -494,7 +498,8 @@
       var canOpen = reach >= LOC_I && ckCanOpen(target);
       var done = Boolean(state.ckDone[first]);
       var c0 = CK[ckIndex(first)];
-      var sum = t.tab === 'Review' ? sPay() : done ? (c0.tabSum ? c0.tabSum() : c0.sum()) : '';
+      // Nothing priced (Help me decide) shows no "$0".
+      var sum = t.tab === 'Review' ? (q().totalCents > 0 ? sPay() : '') : done ? (c0.tabSum ? c0.tabSum() : c0.sum()) : '';
       return seg('data-cksec="' + target + '"', t.tab, sum, t.secs.indexOf(openId) > -1, done, canOpen);
     }).join('');
     el('bkNav').innerHTML =
@@ -536,22 +541,23 @@
    * it again. Nothing to scroll for.
    */
   var CK = [
-    { id: 'details', title: 'Your details', render: function () { return rDetails(); }, valid: function () { return vDetails(); },
+    { id: 'details', title: 'Your details', render: function () { return rDetails(); }, valid: function () { return vDetails(); }, all: lDetails,
       sum: function () { var c = state.contact; return [c.name, prettyPhone(c.phone), c.email].filter(Boolean).join(' · '); },
       tabSum: function () { return state.contact.name.split(' ')[0]; } },
-    { id: 'where', title: 'Where are we detailing?', render: function () { return rLoc(); }, valid: function () { return vLoc(); },
+    { id: 'where', title: 'Where are we detailing?', render: function () { return rLoc(); }, valid: function () { return vLoc(); }, all: lLoc,
       sum: function () { var a = state.address; return [a.line1, a.city].filter(Boolean).join(', ') + (state.covered ? ' · covered spot' : ''); },
       tabSum: function () { return state.address.city || state.address.zip; } },
     { id: 'when', title: 'Pick your time', render: function () { return rTime(); }, valid: function () { return vTime(); },
       sum: function () {
         // With the hour we arrive in (owner, November 10: a 1 hour arrival
         // window, aimed at its start).
-        if (state.slot) return tzDay(state.slot, { weekday: 'short', month: 'short', day: 'numeric' }) + ', ' + spanLabel(state.slot, holdMinutes()) +
-          ' · arrive ' + arrivalWindow(state.slot);
+        // One format everywhere (checkout review, November 10): "10am to
+        // 12pm" beside "arrive 10 to 11am" read as two different promises.
+        if (state.slot) return whenLine(state.slot);
         return isInquiry() ? preferenceSummary() : '';
       },
       tabSum: function () { return state.slot ? tzDay(state.slot, { month: 'short', day: 'numeric' }) + ', ' + tzTime(state.slot) : isInquiry() ? 'Requested' : ''; } },
-    { id: 'agree', title: 'Almost done', render: function () { return rAgree(); }, valid: function () { return vAgree(); },
+    { id: 'agree', title: 'Almost done', render: function () { return rAgree(); }, valid: function () { return vAgree(); }, all: lAgree,
       sum: function () {
         return 'Terms accepted · Recording: ' + (state.consent.media ? 'yes' : 'no') + (state.consent.sms ? ' · Texts on' : '');
       } },
@@ -600,6 +606,15 @@
   }
   function ckOpenSection(id) {
     if (!ckCanOpen(id)) return;
+    // Leaving a section that was done but has since been changed into
+    // something that does not work: say so here, rather than folding it to
+    // a line like "Test Person · 555" and finding out at Confirm.
+    var here = onCheckout() && state.ckOpen;
+    if (here && here !== id && state.ckDone[here]) {
+      var c0 = CK[ckIndex(here)];
+      var bad = c0 && c0.all ? c0.all() : [];
+      if (bad.length) { state.ckDone[here] = false; return showProblems(bad, here); }
+    }
     state.step = LAST;
     state.ckOpen = id;
     ckGrew = true;
@@ -609,8 +624,13 @@
   /** Continue in a section: check it, fold it, and open the next one. */
   function ckAdvance(id) {
     var c = CK[ckIndex(id)];
-    var prob = asProblem(c.valid(), LAST);
-    if (prob) { prob.sec = id; return showProblem(prob); }
+    if (c.all) {
+      var list = c.all();
+      if (list.length) return showProblems(list, id);
+    } else {
+      var prob = asProblem(c.valid(), LAST);
+      if (prob) { prob.sec = id; return showProblem(prob); }
+    }
     state.ckDone[id] = true;
     track('checkout_section', { section: id });
     state.ckOpen = ckNextOpen();
@@ -626,8 +646,9 @@
         var cont = c.id === 'review' ? ''
           : c.id === 'when' && !state.slot && !isInquiry() ? ''
           : '<button type="button" class="bk-ckcont" data-ckcont="' + c.id + '">Continue' + CHEV_R + '</button>';
+        var note = c.id === 'when' && state.whenNote ? '<p class="bk-err bk-secnote" role="alert">' + esc(state.whenNote) + '</p>' : '';
         html += '<section class="bk-sec bk-ck' + (grew ? ' bk-sec-in' : '') + '" data-sec="' + c.id + '">' +
-          '<h3 class="bk-sec-h">' + esc(c.title) + '</h3>' + c.render() + cont + '</section>';
+          '<h3 class="bk-sec-h" tabindex="-1">' + esc(c.title) + '</h3>' + note + c.render() + cont + '</section>';
       } else if (state.ckDone[c.id]) {
         html += '<button type="button" class="bk-donerow" data-cksec="' + c.id + '">' +
           '<span>' + esc(ckTabOf(c.id)) + '</span><b>' + esc(c.sum()) + '</b><em>Change</em></button>';
@@ -635,6 +656,46 @@
     });
     return html;
   }
+  /**
+   * A chosen time that no longer fits: one already past (an old draft), or
+   * one picked for a shorter job (an extra or a second vehicle added since).
+   * Both used to stay folded as done until Confirm said, wrongly, that
+   * someone else had booked it (checkout review, November 10).
+   */
+  var slotCheckFor = null;
+  function dropSlot(note) {
+    state.slot = null;
+    state.checkedSlot = null;
+    state.slotDur = 0;
+    state.ckDone.when = false;
+    state.ckOpen = 'when';
+    state.whenNote = note;
+    ckGrew = true;
+  }
+  function slotStillFits() {
+    if (!state.slot) return;
+    if (state.slot < Date.now()) return dropSlot('The time you picked has passed. Pick a new one below.');
+    var dur = holdMinutes();
+    if (!state.slotDur) { state.slotDur = dur; return; }
+    var key = state.slot + ':' + dur;
+    if (state.slotDur === dur || slotCheckFor === key) return;
+    slotCheckFor = key;
+    verifySlot().then(function (free) {
+      if (slotCheckFor !== key) return;
+      slotCheckFor = null;
+      if (!state.slot || state.slot + ':' + holdMinutes() !== key) return;
+      if (free) { state.slotDur = dur; state.checkedSlot = state.slot; return; }
+      dropSlot('Your detail now takes about ' + fmtDur(dur) + ', so the time you picked no longer fits. These times do.');
+      render();
+    });
+  }
+
+  /** "Fri, Nov 13 · arrive 10 to 11am · about 2 hrs" */
+  function whenLine(ms) {
+    return tzDay(ms, { weekday: 'short', month: 'short', day: 'numeric' }) + ' · arrive ' + arrivalWindow(ms) +
+      (holdMinutes() ? ' · about ' + fmtDur(holdMinutes()) : '');
+  }
+
   /** "10 to 11am": the hour we arrive in, from the start time. */
   function arrivalWindow(ms) {
     var m = localMin(ms);
@@ -661,6 +722,12 @@
     var sc = el('bkScroll'), cue = el('bkCue');
     if (!sc || !cue) return;
     cue.hidden = !(sc.scrollHeight - sc.clientHeight - sc.scrollTop > 48);
+    // Never over the Continue it would point at (checkout review, November 10).
+    var cont = el('bkBody') && el('bkBody').querySelector('.bk-ckcont');
+    if (!cue.hidden && cont && cont.getBoundingClientRect) {
+      var cr = cont.getBoundingClientRect(), sr = sc.getBoundingClientRect();
+      if (cr.top >= sr.top && cr.bottom <= sr.bottom) cue.hidden = true;
+    }
     // Above a bar pinned to the bottom of the window, but only while it is
     // actually stuck there: lifted over a bar sitting mid-page, its fade
     // washed the bar out (round 15).
@@ -675,7 +742,10 @@
     // A checkout step is always drawn as the checkout page (a resumed draft
     // or an old quote link can land on Where or Time).
     if (onCheckout() && state.step !== LAST) state.step = LAST;
+    // Fold what is done first, so a time that no longer fits reopens Time
+    // with Contact and Address still folded above it.
     if (onCheckout() && !state.ckOpen) ckPrefill();
+    if (onCheckout()) slotStillFits();
     var s = step();
     var scroller = el('bkScroll');
     keptScroll = scroller ? scroller.scrollTop : 0;
@@ -726,8 +796,16 @@
 
     renderTotal();
     updatePick();
+    syncPressed();
     var focusable = el('bkBody').querySelector('[data-focus]');
     if (focusable) focusable.focus();
+    else if (grew && onCheckout()) {
+      // A section opened with no first field to put the cursor in (Time,
+      // Almost done, Review): its heading, so focus never drops out of the
+      // form to <body> (checkout review, November 10).
+      var head = el('bkBody').querySelector('.bk-ck > .bk-sec-h');
+      if (head) { try { head.focus({ preventScroll: true }); } catch (e) { head.focus(); } }
+    }
     // Only jump to the top when the STEP changed. Re-rendering in place,
      // which is what expanding a time band or picking a slot does, used to
      // throw the reader back to the top of a long list of days every time
@@ -738,7 +816,8 @@
        // The next question slid in under the answered ones: bring it up.
        el('bkScroll').scrollTop = keptScroll;
        var fresh = el('bkBody').querySelector('.bk-sec-in');
-       if (fresh) scrollToEl(fresh, 12);
+       if (fresh && onCheckout()) ckScroll(fresh);
+       else if (fresh) scrollToEl(fresh, 12);
      } else if (sameStep) {
        el('bkScroll').scrollTop = keptScroll;
      } else {
@@ -1032,9 +1111,7 @@
     // The whole question, never one of its buttons: a message inserted next to
     // the filming Yes button became a squeezed column inside the button row
     // (owner's screenshot, November 10). .bk-acc is the yes or no question.
-    var box = near && (near.closest('.bk-field,.bk-check,.bk-cards,.bk-acc') || near);
-    if (box && box.parentNode) box.parentNode.insertBefore(p, box.nextSibling);
-    else body.appendChild(p);
+    var box = placeMsg(p, near, body);
 
     // 'nearest', not 'center'. Centring drags a field that was already on
     // screen into the middle of it, which reads as the page lurching.
@@ -1100,6 +1177,12 @@
 
   /** Take them to it, point at it, and put the cursor in it. */
   function showProblem(prob) {
+    // On the checkout, every problem in that section at once.
+    var sc0 = prob.sec && CK[ckIndex(prob.sec)];
+    if (sc0 && sc0.all && onCheckout()) {
+      var list0 = sc0.all();
+      if (list0.length) return showProblems(list0, prob.sec);
+    }
     // On the checkout, open the section the problem is in.
     if (prob.sec && onCheckout() && state.ckOpen !== prob.sec) {
       state.ckOpen = prob.sec;
@@ -1113,13 +1196,97 @@
     var node = prob.focus ? el('bkBody').querySelector(prob.focus) : null;
     flash(prob.msg, node);
     if (node) {
-      var box = node.closest('.bk-field,.bk-check,.bk-acc') || node;
-      box.classList.add('bk-invalid');
-      setTimeout(function () { box.classList.remove('bk-invalid'); }, 3000);
+      markInvalid(node, prob.focus, el('bkBody').querySelector('.bk-err'));
       // preventScroll, because flash has already scrolled to the right place
       // and a second scroll from the focus call fights it.
       try { node.focus({ preventScroll: true }); } catch (e) { node.focus(); }
     }
+  }
+
+  /**
+   * The outline and the message stay until that field is put right
+   * (clearFixedErrors), not for three seconds: the outline used to vanish
+   * while the message stayed.
+   */
+  function markInvalid(node, sel, msgEl) {
+    var box = node.closest('.bk-field,.bk-check,.bk-acc') || node;
+    box.classList.add('bk-invalid');
+    if (node.setAttribute) node.setAttribute('aria-invalid', 'true');
+    if (msgEl) {
+      msgEl.setAttribute('data-for', sel);
+      if (!msgEl.id) msgEl.id = 'bkErr' + (++errSeq);
+      if (node.setAttribute) node.setAttribute('aria-describedby', msgEl.id);
+    }
+  }
+  var errSeq = 0;
+
+  /** Every problem in a checkout section, each under its own field. */
+  function showProblems(list, sec) {
+    if (state.ckOpen !== sec || state.step !== LAST) {
+      state.step = LAST;
+      state.ckOpen = sec;
+      ckGrew = true;
+      render();
+    }
+    var body = el('bkBody');
+    Array.prototype.forEach.call(body.querySelectorAll('.bk-err[data-for]'), function (e) { e.remove(); });
+    var first = null;
+    list.forEach(function (prob) {
+      var node = prob.focus ? body.querySelector(prob.focus) : null;
+      var p = document.createElement('p');
+      p.className = 'bk-err';
+      p.textContent = prob.msg;
+      placeMsg(p, node, body);
+      if (node) markInvalid(node, prob.focus, p);
+      if (!first) first = { node: node, p: p };
+    });
+    if (!first) return;
+    // One announcement for the lot, not one per message.
+    first.p.setAttribute('role', 'alert');
+    (first.node ? (first.node.closest('.bk-field,.bk-check,.bk-acc') || first.node) : first.p)
+      .scrollIntoView({ block: 'nearest', behavior: reducedMotion() ? 'auto' : 'smooth' });
+    if (first.node) { try { first.node.focus({ preventScroll: true }); } catch (e) { first.node.focus(); } }
+  }
+
+  /** A message under its field: inside a text field's box (so a grid row keeps its shape), else after the question. */
+  function placeMsg(p, near, body) {
+    var box = near && (near.closest('.bk-field,.bk-check,.bk-cards,.bk-acc') || near);
+    if (box && box.classList && box.classList.contains('bk-field')) box.appendChild(p);
+    else if (box && box.parentNode) box.parentNode.insertBefore(p, box.nextSibling);
+    else body.appendChild(p);
+    return box;
+  }
+
+  /** On/off buttons say which they are, not just by colour (checkout review, November 10). */
+  var PRESSABLE = '.bk-acc-b,.bk-pref-day,.bk-pref-part,.bk-flex-day';
+  function syncPressed() {
+    var body = el('bkBody');
+    if (!body || !body.querySelectorAll) return;
+    Array.prototype.forEach.call(body.querySelectorAll(PRESSABLE), function (b) {
+      b.setAttribute('aria-pressed', b.classList.contains('on') ? 'true' : 'false');
+    });
+  }
+
+  /** Take away each message whose field is now right. */
+  function clearFixedErrors() {
+    var body = el('bkBody');
+    if (!body || !onCheckout()) return;
+    var msgs = body.querySelectorAll('.bk-err[data-for]');
+    if (!msgs.length) return;
+    var sec = CK[ckIndex(state.ckOpen)];
+    var still = (sec && sec.all ? sec.all() : []).map(function (x) { return x.msg + '|' + x.focus; });
+    Array.prototype.forEach.call(msgs, function (m) {
+      var sel = m.getAttribute('data-for');
+      if (still.indexOf(m.textContent + '|' + sel) > -1) return;
+      var node = body.querySelector(sel);
+      if (node) {
+        var box = node.closest('.bk-field,.bk-check,.bk-acc') || node;
+        box.classList.remove('bk-invalid');
+        node.removeAttribute('aria-invalid');
+        node.removeAttribute('aria-describedby');
+      }
+      m.remove();
+    });
   }
 
   function go(n) {
@@ -1214,9 +1381,14 @@
       }
       // Gone. Reload the step so they are choosing from what is actually
       // there, and say so plainly rather than letting them find out later.
+      if (onCheckout()) {
+        // In the Time section itself: at the foot of the form, under the
+        // week grid, nobody saw it (checkout review, November 10).
+        dropSlot('Someone booked that time while you were deciding. These are the times still open.');
+        return render();
+      }
       state.slot = null;
       state.checkedSlot = null;
-      if (onCheckout()) { state.ckDone.when = false; state.ckOpen = 'when'; ckGrew = true; }
       render();
       flash('Someone booked that time while you were deciding. These are the times still open.');
     });
@@ -1999,8 +2171,7 @@
      * fallback for before the measurement lands, never a gate in front of it.
      */
     if (!measured && !t.pending && !t.tooFar && !hit) {
-      return '<p class="bk-hint bk-travel-slot">Add your ZIP and the travel fee appears here. ' +
-        'The first 10 minutes of drive time are free.</p>';
+      return '<p class="bk-hint bk-travel-slot">Add your ZIP and the travel fee appears here.</p>';
     }
 
     if (t.pending) {
@@ -2052,13 +2223,14 @@
       'anything.</span></div>';
   }
 
-  function vLoc() {
-    var a = state.address;
-    if (!a.line1.trim()) return needs('We need a street address.', '#bkL1');
-    if (!a.city.trim()) return needs('We need a city.', '#bkCity');
-    if (!/^\d{5}$/.test(a.zip.trim())) return needs('We need a 5 digit ZIP so we can work out tax and travel.', '#bkZip');
-    return null;
+  function lLoc() {
+    var a = state.address, out = [];
+    if (!a.line1.trim()) out.push(needs('We need a street address.', '#bkL1'));
+    if (!a.city.trim()) out.push(needs('We need a city.', '#bkCity'));
+    if (!/^\d{5}$/.test(a.zip.trim())) out.push(needs('We need a 5 digit ZIP so we can work out tax and travel.', '#bkZip'));
+    return out;
   }
+  function vLoc() { return lLoc()[0] || null; }
 
   /* ================= step 7: time ================= */
 
@@ -3039,6 +3211,8 @@
   function selectSlot(ms, via, extra) {
     if (state.slot !== ms) state.checkedSlot = null;
     state.slot = ms;
+    state.slotDur = holdMinutes();
+    state.whenNote = '';
     // A real time replaces a flexible-day request.
     if (state.prefer.flex) state.prefer = { parts: [], days: [] };
     state.detailer = (lastCalc && lastCalc.who && lastCalc.who.get(ms)) || 'owner';
@@ -3142,10 +3316,21 @@
     var members = (calc && calc.members) || [];
     if (!members.some(function (m) { return m.best; })) return null;
     var out = [];
+    var add = function (ms) { if (out.indexOf(ms) < 0) out.push(ms); };
     members.forEach(function (m) {
-      if (!m.best) return;
+      if (!m.best) {
+        // No BEST events: their day suggestions, as recommendBestDays uses
+        // for them. Dropping them made the steer and the stars disagree with
+        // the recommended times (engine check, November 10).
+        var byDay = {};
+        m.starts.forEach(function (ms) { (byDay[cinciKey(ms)] = byDay[cinciKey(ms)] || []).push(ms); });
+        Object.keys(byDay).forEach(function (k) {
+          P.daySuggestions({ starts: byDay[k], busy: m.busy || [], travelGapMin: calc.buffer, isPremium: timeFeeApplies, timeZone: TZ }).forEach(add);
+        });
+        return;
+      }
       var free = new Set(m.starts);
-      m.best.forEach(function (ms) { if (free.has(ms) && out.indexOf(ms) < 0) out.push(ms); });
+      m.best.forEach(function (ms) { if (free.has(ms)) add(ms); });
     });
     return out.sort(function (a, b) { return a - b; });
   }
@@ -3188,7 +3373,8 @@
       html += '<p class="bk-wk-none">Nothing open in the next two weeks for this detail. ' +
         'See additional times for later dates, or tell us when suits.</p>';
     } else {
-      html += '<p class="bk-recs-sub">Tap a time to pick it. Each shows when we start and finish.</p>';
+      html += '<p class="bk-recs-sub">Tap a time to pick it. We arrive within its first hour' +
+        (dur ? ', and the detail takes about ' + esc(fmtDur(dur)) : '') + '.</p>';
     }
     picks.forEach(function (pk, i) {
       var ms = pk.ms;
@@ -3357,15 +3543,20 @@
     });
     days = days.slice(0, 7);
     if (!days.length) return '';
-    return '<div class="bk-pickday bk-flex" data-flexwrap>' +
+    // The day already chosen shows as chosen, with the panel open, when Time
+    // is opened again (checkout review, November 10).
+    var chosen = state.prefer.flex && state.prefer.days[0];
+    var isOpen = Boolean(chosen) && days.some(function (ms) { return cinciKey(ms) === chosen; });
+    return '<div class="bk-pickday bk-flex' + (isOpen ? ' open' : '') + '" data-flexwrap>' +
       '<div class="bk-flex-card">' +
         '<div class="bk-flex-t"><b>Flexible on the time?</b>' +
         '<span>Pick a day and we text you the start time by the evening before. Nothing is charged until you agree to it.</span></div>' +
-        '<button type="button" class="bk-flex-b" id="bkFlexOpen" aria-expanded="false">Choose a day</button>' +
+        '<button type="button" class="bk-flex-b" id="bkFlexOpen" aria-expanded="' + isOpen + '">Choose a day</button>' +
       '</div>' +
       '<div class="bk-recday-opts"><div class="bk-recday-in bk-flex-in">' +
         days.map(function (ms) {
-          return '<button type="button" class="bk-flex-day" data-flexday="' + ms + '" tabindex="-1">' +
+          var on = isOpen && cinciKey(ms) === chosen;
+          return '<button type="button" class="bk-flex-day' + (on ? ' on' : '') + '" data-flexday="' + ms + '" tabindex="' + (isOpen ? 0 : -1) + '">' +
             '<b>' + esc(tzDay(ms, { weekday: 'short' })) + '</b><span>' + esc(tzDay(ms, { month: 'short', day: 'numeric' })) + '</span></button>';
         }).join('') +
       '</div></div></div>';
@@ -3411,6 +3602,10 @@
     var ms = state.slot;
     var ti = timeStepIndex();
     if (state.done || !ms || isInquiry() || state.timeMode === 'ask' || state.step < ti) return setPick('');
+    // On the checkout the folded Time row already shows the time with its
+    // Change, so the bottom bar only carries a suggestion, if there is one
+    // (checkout review, November 10: the time was on screen four times).
+    if (onCheckout() && state.ckDone.when && !steerFor(ms)) return setPick('');
     var fee = feeText(ms);
     var later = state.step > ti;
     // Compact, so the line fits beside a suggestion: "+$37.50 rush + early".
@@ -3473,7 +3668,7 @@
     paintedNarrow = narrow;
 
     var html = '<div class="bk-wk">' + unconfiguredNote(calc) +
-      '<button type="button" class="bk-wk-more bk-wk-recs" id="bkShowRecs">' + CHEV_L + 'Our recommended times</button>';
+      '<button type="button" class="bk-wk-more bk-wk-recs" id="bkShowRecs">' + CHEV_L + 'Back to recommended times</button>';
 
     // The time zone under the dates it applies to (was a paragraph under the
     // grid, November 10).
@@ -3516,9 +3711,8 @@
     // job. Said once, plainly, above the grid (the phone list shows ranges).
     if (!narrow) {
       html += '<p class="bk-wk-how">' + (FINE_POINTER
-        ? 'Each box is an hour: the top half starts on the hour, the bottom half at half past. ' +
-          'Point at one and the block shows the whole detail, start to finish.'
-        : 'Each box is a start time. Pick one and the block shows the whole detail, start to finish.') + '</p>';
+        ? 'Click a time to pick it. The top half of a box starts on the hour, the bottom half at half past.'
+        : 'Tap a time to pick it.') + '</p>';
     }
     // The grid scrolls inside its own frame, opening on the regular hours
     // (owner, November 10): early hours above, late below, with a marker on
@@ -3681,7 +3875,7 @@
    */
   function weekGrid(week, dur) {
     var rows = week.rows.length;
-    var html = '<div class="bk-wk-grid" role="grid" aria-labelledby="bkWkTitle" data-dur="' + dur +
+    var html = '<div class="bk-wk-grid" role="group" aria-labelledby="bkWkTitle" data-dur="' + dur +
       '" data-rows="' + rows + '" style="grid-template-rows:auto repeat(' + rows + ', ' + ROW_PX + 'px)">' +
       // One solid strip behind the whole day bar, gaps included, so nothing
       // scrolling underneath shows between the day names.
@@ -3721,8 +3915,7 @@
         var under = sel && sel.col === i && r >= sel.g.r0 && r < sel.g.rEnd ? ' under' : '';
         var where = '" data-col="' + i + '" data-row="' + r;
         if (cell.pick === null) {
-          html += '<span class="bk-wk-c no' + under + '" role="gridcell" aria-disabled="true" style="' + at + where + '" aria-label="' +
-            esc(cellLabel(day, cell, dur)) + '"></span>';
+          html += '<span class="bk-wk-c no' + under + '" aria-hidden="true" style="' + at + where + '"></span>';
           return;
         }
         var fee = feeText(cell.pick);
@@ -3732,7 +3925,7 @@
         // the box's red outline showed above it as an empty red band
         // (owner's screenshot after Back, November 10).
         html += '<button type="button" class="bk-wk-c ' + (fee ? 'fee' : 'ok') + under +
-          '" role="gridcell" aria-selected="' + on + '" style="' + at + where +
+          '" aria-pressed="' + on + '" style="' + at + where +
           (cell.suggested ? '" data-sug="' + cell.pick : '') +
           // Every start in this hour: with a mouse, the bottom half of the box
           // books the half past (halfStart). data-pick is what a tap or the
@@ -3889,9 +4082,29 @@
     // Time is done: it folds to its line and the next section opens. The
     // times are redrawn from memory, not re-read, when Time opens again.
     state.ckDone.when = true;
+    state.whenNote = '';
     state.ckOpen = ckNextOpen();
     ckGrew = true;
     render();
+  }
+
+  /**
+   * After Continue on the checkout (checkout review, November 10: rows were
+   * left half under the header). The whole page from the top when it fits;
+   * otherwise the folded row just above the open section, in full.
+   */
+  function ckScroll(sec) {
+    var sc = el('bkScroll');
+    if (!sc || !sec.getBoundingClientRect) return;
+    var shift = 0;
+    try { var tf = getComputedStyle(sec).transform; if (tf && tf !== 'none' && window.DOMMatrix) shift = new DOMMatrix(tf).m42; } catch (e) { shift = 0; }
+    var bottom = sc.scrollTop + sec.getBoundingClientRect().bottom - shift - sc.getBoundingClientRect().top;
+    if (bottom <= sc.clientHeight - 8) {
+      try { sc.scrollTo({ top: 0, behavior: reducedMotion() ? 'auto' : 'smooth' }); } catch (e) { sc.scrollTop = 0; }
+      return;
+    }
+    var prev = sec.previousElementSibling;
+    scrollToEl(prev && prev.classList && prev.classList.contains('bk-donerow') ? prev : sec, 8);
   }
 
   function scrollToSection(id) {
@@ -4097,7 +4310,7 @@
     return consentBox('terms', 'bkTerms',
         '<b>I agree to the terms and privacy policy</b> <span class="bk-req" aria-hidden="true">*</span>',
         pctOf(RULES.cancelMidWindowBp) + ' cancellation fee inside ' + RULES.refundFullWindowHours + ' hours, ' +
-        pctOf(RULES.cancelLateWindowBp) + ' inside ' + RULES.refundMidWindowHours + ' hours. Nothing is charged today. ' +
+        pctOf(RULES.cancelLateWindowBp) + ' inside ' + RULES.refundMidWindowHours + ' hours. ' +
         '<a class="bk-readmore inline" href="terms.html#cancellation" target="_blank" rel="noopener">Terms</a> &middot; ' +
         '<a class="bk-readmore inline" href="privacy.html" target="_blank" rel="noopener">Privacy</a>') +
       mediaQuestion() +
@@ -4108,31 +4321,40 @@
   }
 
   /** Name, phone and email: the top of the checkout. */
-  function vDetails() {
-    if (!state.contact.name.trim()) return needs('We need your name.', '#bkName');
-    if (!state.contact.phone.trim()) return needs('We need a phone number to confirm your booking.', '#bkPhone');
+  /*
+   * Each checkout section lists EVERY problem it has, so Continue can show
+   * them all at once, each under its own field (checkout review, November
+   * 10: one at a time meant a second Continue just to learn the next one).
+   * The v* functions keep returning the first, for everything else.
+   */
+  function lDetails() {
+    var out = [];
+    var name = state.contact.name.trim();
+    if (!name) out.push(needs('We need your name.', '#bkName'));
+    else if (name.length > 80) out.push(needs('That name is too long for our form.', '#bkName'));
     // The same shape the server insists on, checked here so the message
     // arrives while the field still has focus rather than after a round trip.
     var digits = state.contact.phone.replace(/\D/g, '');
     if (digits.length === 11 && digits.charAt(0) === '1') digits = digits.slice(1);
-    if (digits.length !== 10 || /^[01]/.test(digits)) {
-      return needs('That does not look like a US phone number. Ten digits, area code first.', '#bkPhone');
+    if (!state.contact.phone.trim()) out.push(needs('We need a phone number to confirm your booking.', '#bkPhone'));
+    else if (digits.length !== 10 || /^[01]/.test(digits)) {
+      out.push(needs('That does not look like a US phone number. Ten digits, area code first.', '#bkPhone'));
     }
-    if (state.contact.name.trim().length > 80) return needs('That name is too long for our form.', '#bkName');
     if (state.contact.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(state.contact.email.trim())) {
-      return needs('That email address does not look right.', '#bkEmail');
+      out.push(needs('That email address does not look right.', '#bkEmail'));
     }
-    return null;
+    return out;
   }
+  function vDetails() { return lDetails()[0] || null; }
 
   /** The terms and the recording question, lower on the checkout. */
-  function vAgree() {
-    if (state.consent.terms !== true) {
-      return needs('Please tick the box to accept the terms. You can still send us a question instead.', '#bkTerms');
-    }
-    if (state.consent.media === null) return needs('Please answer yes or no on recording.', '[data-media]');
-    return null;
+  function lAgree() {
+    var out = [];
+    if (state.consent.terms !== true) out.push(needs('Please tick the box to accept the terms.', '#bkTerms'));
+    if (state.consent.media === null) out.push(needs('Please answer yes or no on recording.', '[data-media]'));
+    return out;
   }
+  function vAgree() { return lAgree()[0] || null; }
 
   /* ================= step 9: confirm ================= */
 
@@ -4151,10 +4373,10 @@
       return '<button type="button" class="bk-acc-b' + (v === val ? ' on' : '') +
         '" data-access="' + name + '" data-accval="' + val + '">' + text + '</button>';
     };
-    return '<div class="bk-acc' + (v === null ? '' : ' answered') + '">' +
+    return '<div class="bk-acc' + (v === null ? '' : ' answered') + '" data-optional>' +
       '<p class="bk-acc-q">' + label + '</p>' +
       '<p class="bk-acc-h">' + help + '</p>' +
-      '<div class="bk-acc-opts">' + opt('yes', 'Yes') + opt('no', 'No') + opt('unsure', 'Not sure') + '</div>' +
+      '<div class="bk-acc-opts" role="group" aria-label="' + esc(label) + '">' + opt('yes', 'Yes') + opt('no', 'No') + opt('unsure', 'Not sure') + '</div>' +
       '</div>';
   }
 
@@ -4425,8 +4647,9 @@
     if (applied) {
       return '<div class="bk-promo on' + (early ? ' early' : '') + '">' +
         '<span class="bk-promo-tag">' + esc(quote.promoCode) + '</span>' +
-        '<span class="bk-promo-msg">' + esc(promoBlurb(quote.promoCode)) +
-          ' You saved ' + $(quote.promoDiscountCents) + '.</span>' +
+        // The saving is said once, under the total, tax included (checkout
+        // review, November 10: two different figures on one screen).
+        '<span class="bk-promo-msg">' + esc(promoBlurb(quote.promoCode)) + '</span>' +
         '<button type="button" class="bk-promo-clear" id="bkPromoClear">Remove</button>' +
         '</div>';
     }
@@ -5150,8 +5373,8 @@
     var tax = quote.taxIsEstimate ? '<tr class="pending"><td>Sales tax</td><td>added at confirmation</td></tr>' : '';
     var when = state.slot
       ? '<tr class="when"><td>Your time</td><td>' +
-        esc(tzDay(state.slot, { weekday: 'short', month: 'short', day: 'numeric' }) + ', ' + spanLabel(state.slot, holdMinutes())) +
-        '<i class="bk-arrive">We arrive between ' + esc(arrivalWindow(state.slot).replace(' to ', ' and ')) + '</i></td></tr>'
+        esc(tzDay(state.slot, { weekday: 'short', month: 'short', day: 'numeric' })) +
+        '<i class="bk-arrive">Arrive ' + esc(arrivalWindow(state.slot)) + ' · about ' + esc(fmtDur(holdMinutes())) + '</i></td></tr>'
       : '';
 
     // Every discount, against what the same booking would cost with none of
@@ -5347,8 +5570,11 @@
         state.checkedSlot = state.slot;
         render();
         flash(free
-          ? 'Moved to ' + tzDay(state.slot, { weekday: 'long' }) + ', ' + spanLabel(state.slot, holdMinutes()) + '.'
-          : 'That time was just taken, so you keep ' + spanLabel(state.slot, holdMinutes()) + '.');
+          ? 'Moved to ' + tzDay(state.slot, { weekday: 'long' }) + ', arriving ' + arrivalWindow(state.slot) + '.'
+          : 'That time was just taken, so you keep ' + tzTime(state.slot) + '.');
+        // Good news is not an error: ink on grey, not red (checkout review, November 10).
+        var said = free && el('bkBody').querySelector('.bk-err');
+        if (said) said.classList.add('bk-okmsg');
       });
     }
     if (t.id === 'bkPickChange') {
@@ -6386,7 +6612,7 @@
           '<button type="button" class="bk-leave-drop" id="bkLeaveDrop">Cancel my booking</button>' +
         '</div>' +
         '<p class="bk-leave-note">Keeping it stores your answers in this browser only, for ' +
-          DRAFT_DAYS + ' days.' + (P.isLive('checkoutFollowUp') && onCheckout() && state.contact.name
+          DRAFT_DAYS + ' days.' + (P.isLive('checkoutFollowUp') && onCheckout() && canFollowUp()
             ? ' The contact details you gave at checkout reach us, so we can follow up once about this booking.'
             : ' They never reach us until you book.') + '</p>' +
       '</div>';
@@ -6463,13 +6689,21 @@
    * the privacy policy says so (checkoutFollowUp), and once per contact and
    * cart, however they leave.
    */
+  /** A name, and a phone or email we could actually reach. */
+  function canFollowUp() {
+    var c = state.contact;
+    var digits = String(c.phone || '').replace(/\D/g, '').replace(/^1(?=\d{10}$)/, '');
+    var email = String(c.email || '').trim();
+    return Boolean(String(c.name || '').trim()) && (digits.length === 10 || /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email));
+  }
+
   function captureUnfinished(reason) {
     try {
       if (!P.isLive('checkoutFollowUp') || state.done || state.noFollowUp || !onCheckout()) return;
       var c = state.contact;
       var digits = String(c.phone || '').replace(/\D/g, '').replace(/^1(?=\d{10}$)/, '');
       var email = String(c.email || '').trim();
-      if (!String(c.name || '').trim() || (digits.length !== 10 && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email))) return;
+      if (!canFollowUp()) return;
       var lines = draftSummary();
       var key = [c.name, digits, email, lines.join('|')].join('#');
       try { if (sessionStorage.getItem('ac-captured') === key) return; sessionStorage.setItem('ac-captured', key); } catch (e) { /* private mode: send anyway */ }
@@ -6569,6 +6803,10 @@
     });
 
     host.addEventListener('change', onChange);
+    // After the handlers have updated the state.
+    ['input', 'change', 'click'].forEach(function (type) {
+      host.addEventListener(type, function () { setTimeout(function () { clearFixedErrors(); syncPressed(); }, 0); });
+    });
 
     // Keep the "More below" cue honest as the page scrolls, grows (a panel
     // opening, times arriving) or the window changes size.

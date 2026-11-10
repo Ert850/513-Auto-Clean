@@ -145,7 +145,10 @@ export function weatherVerdict(req: {
       // one, is workable.
       const hot = f.tempF.filter((s) => during(s) && s.value > rule.maxSunTempF!);
       const clear = (t: ForecastSpan) =>
-        f.skyCover.some((c) => c.end > t.start && c.start < t.end && c.value < CLEAR_SKY_MAX_COVER);
+        // ...and during the job: the forecast merges equal hours into long
+        // spans, so a 101°F span to 6pm met a clear 4 to 6pm and failed a
+        // 10am job under cloud (engine check, November 10).
+        f.skyCover.some((c) => Math.max(c.start, t.start, req.startMs) < Math.min(c.end, t.end, end) && c.value < CLEAR_SKY_MAX_COVER);
       if (hot.some(clear)) return { ok: false, reason: "heat" };
     }
   }

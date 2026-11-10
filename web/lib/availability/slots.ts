@@ -212,6 +212,10 @@ export function computeSlots(req: SlotRequest): number[] {
   // Where the working day actually opens, as opposed to where a gap happens
   // to open after a job. Only the former lets the drive out sit outside it.
   const dayOpens = new Set(req.openBlocks.map((b) => b.start));
+  // And where it closes. The drive home can run past the end of the day, but
+  // not into the next job: with a job booked at 9pm, a 7pm start ending at
+  // 9pm left no time to drive there (engine check, November 10).
+  const dayCloses = new Set(req.openBlocks.map((b) => b.end));
   const step = Math.max(1, req.granularityMin) * MIN;
   const out: number[] = [];
   const wanted = req.preferredStartsMin;
@@ -252,11 +256,17 @@ export function computeSlots(req: SlotRequest): number[] {
       // not need to fit inside the availability block.
       const returnMin =
         req.ignoreReturnAfterMin !== undefined &&
+        dayCloses.has(f.end) &&
         localMinutesOfDay(t, req.timeZone) >= req.ignoreReturnAfterMin
           ? 0
           : req.travelAfterMin;
       const commitmentEnd = t + (req.serviceDurationMin + returnMin) * MIN;
-      if (commitmentEnd > f.end) break;
+      // The job itself no longer fits: nothing later will.
+      if (t + req.serviceDurationMin * MIN > f.end) break;
+      // The drive home does not fit, but from 6pm it is not needed, so a
+      // later start can still fit where this one does not. Breaking here
+      // lost every 6pm start in a block ending 8pm (engine check, November 10).
+      if (commitmentEnd > f.end) { t += step; continue; }
       if (t > req.notAfter) break;
       if (
         commitmentStart >= f.start &&

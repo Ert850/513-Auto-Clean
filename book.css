@@ -1740,3 +1740,21 @@ button.bk-wk-c:hover { box-shadow: 0 0 0 2px var(--red-ghost); }
 .bk-ckcont svg { width: 15px; height: 15px; }
 #bookFunnel .bk-ck { border-bottom: 0; padding-bottom: .4rem; }
 .bk-arrive { display: block; font-style: normal; font-size: .76rem; font-weight: 600; color: var(--text-soft); }
+
+/* ---------- Checkout errors under their own fields (checkout review, November 10) ---------- */
+#bookFunnel .bk-field > .bk-err { margin-top: .4rem; padding: .45rem .7rem; font-size: .84rem; }
+#bookFunnel .bk-secnote { margin: 0 0 .85rem; }
+/* The heading takes focus when its section opens; the outline is for keyboards. */
+#bookFunnel .bk-sec-h:focus { outline: none; }
+/* The chosen time is a good answer, so it is ink, not red (CLAUDE.md, Colors). */
+#bookFunnel .bk-lines .when td { color: var(--text); }
+/* The label takes the room, so "Sales tax (7.8%)" and "Travel" do not wrap on a phone. */
+#bookFunnel .bk-lines td:first-child { width: 100%; padding-right: .75rem; }
+/* 24px touch targets at least (WCAG 2.2, target size). */
+#bookFunnel .bk-pick-change { min-height: 24px; padding: .2rem .35rem; margin: -.2rem -.35rem; }
+#bookFunnel .bk-recs-foot .bk-askwhen-link, #bookFunnel .bk-wk-gobar .bk-askwhen-link { min-height: 28px; display: inline-flex; align-items: center; }
+#bookFunnel .bk-err.bk-okmsg { background: var(--paper); color: var(--text); border-left-color: var(--text-soft); }
+/* A summary that does not fit wraps to a second line rather than cutting off the phone number or the time. */
+@media (max-width: 819.98px) {
+  #bookFunnel .bk-donerow b { white-space: normal; overflow: visible; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+}

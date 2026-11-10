@@ -852,8 +852,8 @@ function applySurchargeCents(baseCents, appliedBp) {
 }
 function slotNeedsPriority(slotMs, nowMs, r, timeZone = "America/New_York") {
   if (!Number.isFinite(slotMs) || !Number.isFinite(nowMs)) return false;
-  const dayIndex = (ms) => Math.round(localDayStart(ms, timeZone) / 864e5);
-  return dayIndex(slotMs) < dayIndex(nowMs) + r.minLeadDays;
+  const dayIndex2 = (ms) => Math.round(localDayStart(ms, timeZone) / 864e5);
+  return dayIndex2(slotMs) < dayIndex2(nowMs) + r.minLeadDays;
 }
 
 // lib/availability/slots.ts
@@ -1908,11 +1908,17 @@ var OWNER = {
   owner: true,
   noFeeStarts: null
 };
-var DAY_NAMES = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
+var FULL_DAYS = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
+function dayIndex(word) {
+  if (!/^[a-z]{3,}$/.test(word)) return -1;
+  return FULL_DAYS.findIndex((d) => d.startsWith(word));
+}
 function parseDays(text) {
   const out = /* @__PURE__ */ new Set();
   for (const part of text.toLowerCase().split(",").map((x) => x.trim()).filter(Boolean)) {
-    const [a, b] = part.split("-").map((x) => DAY_NAMES.indexOf(x.slice(0, 3)));
+    const names = part.split("-").map((x) => x.trim());
+    if (names.length > 2) return null;
+    const [a, b] = names.map(dayIndex);
     if (a === void 0 || a < 0 || b !== void 0 && b < 0) return null;
     for (let i = a, n = 0; n < 7; i = (i + 1) % 7, n++) {
       out.add(i);
@@ -1930,6 +1936,7 @@ function parseRanges(text) {
     if (!m) return null;
     const days = m[1] ? parseDays(m[1]) : null;
     if (m[1] && !days) return null;
+    if (Number(m[3]) > 59 || Number(m[5]) > 59) return null;
     const fromMin = Number(m[2]) * 60 + Number(m[3]);
     const toMin = Number(m[4]) * 60 + Number(m[5]);
     if (!(fromMin <= toMin && toMin < 24 * 60)) return null;
@@ -1999,6 +2006,9 @@ function parseDetailers(raw) {
 function parseDoes(raw) {
   const list = (Array.isArray(raw) ? raw : [raw ?? "all"]).map((w) => String(w ?? "").trim().toLowerCase()).filter(Boolean);
   return !list.length || list.includes("all") ? ["*"] : [...new Set(list)];
+}
+function canDo(d, needs) {
+  return d.does.includes("*") || needs.every((n) => d.does.includes(n));
 }
 
 // lib/pricing/cancellation.ts
@@ -2565,6 +2575,19 @@ function priceFromWire(wire, opts = {}) {
     rejected
   };
 }
+function wireNeeds(wire) {
+  if (wire.kind === "advice") return ["interior", "exterior", "correction", "coating"];
+  const vs = wire.vehicles ?? [];
+  const pkgIn = (cat) => vs.some((v) => (v.packageIds ?? []).some((id) => findPackage(id)?.category === cat));
+  const addIn = (scope) => vs.some((v) => (v.addons ?? []).some((a) => findAddon(a.addonId)?.scope === scope));
+  const addId = (ids) => vs.some((v) => (v.addons ?? []).some((a) => ids.includes(a.addonId)));
+  const needs = [];
+  if (pkgIn("interior") || addIn("interior")) needs.push("interior");
+  if (pkgIn("exterior") || addIn("exterior")) needs.push("exterior");
+  if (vs.some((v) => Boolean(v.correction)) || addId(["paint-correction", "paint-polish"])) needs.push("correction");
+  if (addId(["ceramic-coating"])) needs.push("coating");
+  return needs;
+}
 export {
   ADDONS,
   ADVICE_HOLD_MIN,
@@ -2588,6 +2611,7 @@ export {
   addonIcon,
   addonsFor,
   averageOneWayMinutes,
+  canDo,
   cancellationLadder,
   componentsOf,
   computeCancellation,
@@ -2621,5 +2645,6 @@ export {
   unavailableReason,
   validateWire,
   vehicleSize,
-  waivesFeeAt
+  waivesFeeAt,
+  wireNeeds
 };
