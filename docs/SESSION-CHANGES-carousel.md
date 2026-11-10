@@ -3,7 +3,67 @@
 Branch: `claude/results-carousel-347a0d`. Not pushed.
 Files: `index.html` (`#gallery` only), `js/gallery.js`, `styles.css` (gallery block, plus one gallery-only line in the 820px block and a 1100px rule after it). `script.js` is unchanged: the carousel drives the existing slider markup.
 
-**Newest round first. Round 3 changes the timings and the step size; everything else from round 2 stands (the button as the state, no hover pause, the endless loop, rAF easing, the edge fades, reduced motion).**
+**Newest round first. Round 4 ties the return to the middle to the shift. Round 3 changed the timings and the step size; everything else from round 2 stands (the button as the state, no hover pause, the endless loop, rAF easing, the edge fades, reduced motion).**
+
+# Round 4
+
+Merged `eNov6` first (header/footer partials, sub-pages round 2). No header, footer or `CHROME:*` markup touched.
+
+The owner, verbatim: "Sync the return to neutral from disappeared left side after state anim for the wipers in the carousel. Leave the desync for all other anims but sync the last one before carousel shift. Intuitively matches the shifting and speeds up the animation."
+
+## Changes
+
+| # | Change | Where | How to test |
+|---|---|---|---|
+| 4.1 | **The return to the middle is shared and tied to the shift.** Each card still rests, goes to the whole before and wipes to the whole after on its own clock, 2.5 s apart (round 3). It then waits on the whole after (at least 2.5 s). Once every wiping card is there, they all glide back to the middle together (1.5 s), and the track starts moving 1.1 s in, so the handles land in the middle as the glide gets going. | `js/gallery.js` `WIPE` (no return step any more), `run()` (`homing`), `RETURN_MS`, `OVERLAP_MS` | At 1440: three handles move at different times, but all three come back to the middle at the same moment, and the row slides on as they arrive. |
+| 4.2 | **The track's own 16.3 s clock is gone.** The shift now comes right after the shared return, so nothing waits on a fixed timer, and no card restarts a wipe that the shift would cut off. | `js/gallery.js` `run()` | Steps come about every 15 s on phones and at 820, about every 17.9 s at 1440 (two new cards, the second 2.5 s behind the first). |
+| 4.3 | **A card wipes once per visit.** A card still in view after a shift has already had its wipe; it rests in the middle (easy to grab) while only the new arrivals wipe. In round 3 it started a second wipe, which the next shift could cut off mid-way. After a pause, or once a touch pause ends, every card in view gets a fresh wipe. With no more photos than fit in view (no shift possible), the same cards go round again. | `js/gallery.js` `_done`, `halt()`, `restHidden()` | At 820: the left card sits in the middle while the newly arrived right card wipes. |
+
+Kept from rounds 2 and 3: the edge fades, the button as the state, no hover pause, the endless loop, 1 or 2 cards a step, reduced motion, and the slower pace (3 s rest, 4 s wipe).
+
+## Timings now
+
+| Step | Time |
+|---|---|
+| Rest in the middle | 3 s |
+| To the right edge (whole before) | 1.8 s |
+| Look at the before | 2 s |
+| Wipe to the whole after | 4 s |
+| Look at the after | 2.5 s at least, until the last card in view gets there |
+| **Return to the middle, all together** | 1.5 s; the track starts moving 1.1 s in |
+| Track glide | 0.9 s |
+| **Step** | about 15.3 s with one new card (phones, 820); about 17.9 s with two (1440: the second starts 2.5 s later); the first step at 1440 waits for all three cards, about 20 s |
+| Full cycle of 6 | about 92 s on phones and at 820, about 54 s at 1440 |
+
+Faster than round 3 per step on phones and at 820 (15.3 s against 16.3 s), and no card is left waiting in the middle for its neighbours.
+
+## Root cause
+
+In round 3 the wipes and the track had separate clocks, so the return to the middle happened whenever each card's own wipe ended. The shift came later, on its own timer. The handles came home at three different moments, none of them tied to the movement of the row, and a card that had finished could start a second wipe that the shift then cut off. Tying the last step to the shift fixes both.
+
+## Verified (round 4)
+
+- `npm run build` OK; `cd web && TZ=America/New_York npx vitest run`: 416 of 416.
+- Headless Chrome, every frame recorded for 40 s (handle of every card, the track's computed position), at 1440, 820 and 375:
+  - **The returns start on the same frame:**
+    - 1440: cards 1, 2, 3 at 18 400 ms; cards 4, 5 at 36 249 ms;
+    - 820: cards 1, 2 at 15 910 ms;
+    - 375: one card at 13 400 ms.
+  - **The shift starts 1083 to 1117 ms after each return starts** (1440: 19 483 and 37 332 ms; 820: 17 027 and 32 393; 375: 14 500 and 29 849), and the handles reach 50 as it begins.
+  - **No jumps:** the largest handle step between two frames is 1.63% of the photo, and the largest on-screen card move per frame is 39 px at 1440 (19 px at 375), which is the glide itself, including the frame where the cards are rearranged. Longest frame 17 ms.
+  - The card that stays in view after a shift stays at 50 while the new ones wipe.
+- Behaviour re-checked at 1440, 820 and 375 (375 and 1440 for interactions):
+  - no sideways scroll, and nav jumps land at 73 px;
+  - moving the mouse over a photo does nothing;
+  - a click shows Play, and Pause again after 12 s;
+  - Pause holds through 13 s and through scrolling away and back;
+  - dot 6 then Next wraps forward;
+  - reduced motion stays still.
+
+## For the owner (round 4)
+
+- **A card wipes once per visit.** The card that stays in view after a step rests in the middle instead of wiping again. If you would rather it wiped again, that's a small change.
+- **0.4 s overlap:** the row starts sliding 0.4 s before the handles reach the middle, so the two read as one motion. Set `OVERLAP_MS` to 0 to make the slide wait for the handles.
 
 # Round 3
 
