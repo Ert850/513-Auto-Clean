@@ -116,6 +116,16 @@ describe("premium surcharges", () => {
   });
 });
 
+describe("a detailer who works the late hours anyway", () => {
+  it("waives the early or late fee for that start, and keeps the rush fee", () => {
+    const late = { startMinutesLocal: minutesOfDay(18, 30), priorityBooking: false };
+    expect(computeSurcharge(late, R.surcharge).appliedBp).toBe(2000);
+    expect(computeSurcharge({ ...late, timeOfDayWaived: true }, R.surcharge).appliedBp).toBe(0);
+    const lateRush = { startMinutesLocal: minutesOfDay(18, 30), priorityBooking: true, timeOfDayWaived: true };
+    expect(computeSurcharge(lateRush, R.surcharge)).toMatchObject({ timeOfDayBp: 0, priorityBp: 2000, appliedBp: 2000 });
+  });
+});
+
 describe("booking window", () => {
   const mondayMidnight = new Date(2026, 8, 7); // Mon 7 Sep 2026, local midnight
 

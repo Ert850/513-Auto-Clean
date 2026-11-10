@@ -188,7 +188,7 @@ describe("every function survives hostile input with its key present", () => {
     const KRIS_JOBS = "kris-jobs@group.calendar.google.com";
     const env = {
       GOOGLE_OAUTH_CLIENT_ID: "id", GOOGLE_OAUTH_CLIENT_SECRET: "secret", GOOGLE_OAUTH_REFRESH_TOKEN: "refresh",
-      DETAILERS: JSON.stringify([{ name: "Kris", does: "interior",
+      DETAILERS: JSON.stringify([{ name: "Kris", does: "interior", noFeeStarts: "18:00-19:00",
         availability: "kris-open@group.calendar.google.com", bookings: KRIS_JOBS }]),
     };
     const before = Object.fromEntries(Object.keys(env).map((k) => [k, process.env[k]]));

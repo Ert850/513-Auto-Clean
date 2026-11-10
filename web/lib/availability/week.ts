@@ -196,6 +196,13 @@ export function recommendTimes(req: {
   travelGapMin: number;
   /** Starts the first-choice detailer is free for (Kris before Elijah). */
   preferred?: Set<number>;
+  /**
+   * Does this start carry an early or late fee? Defaults to the clock (before
+   * 10am, from 6pm). The funnel passes its own answer, because a detailer who
+   * works those hours anyway charges none (Kris at 6 to 7pm), and those starts
+   * must be recommendable.
+   */
+  isPremium?: (ms: number) => boolean;
   limit?: number;
   perDay?: number;
   timeZone?: string;
@@ -204,8 +211,9 @@ export function recommendTimes(req: {
   const limit = req.limit ?? 3;
   const perDay = req.perDay ?? 2;
   const byDay = new Map<number, number[]>();
+  const premium = req.isPremium ?? ((ms: number) => Boolean(bandOf(localMinutesOfDay(ms, tz))?.premium));
   for (const ms of [...new Set(req.slots)].sort((a, b) => a - b)) {
-    if (bandOf(localMinutesOfDay(ms, tz))?.premium) continue;
+    if (premium(ms)) continue;
     const day = localDayStart(ms, tz);
     const list = byDay.get(day);
     if (list) list.push(ms);

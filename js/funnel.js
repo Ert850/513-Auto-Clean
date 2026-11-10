@@ -41,6 +41,9 @@
       active: 0,
       address: { line1: '', city: '', region: 'OH', zip: '' },
       noGoodLocation: false,
+      // A garage or covered spot to work in (optional tick box on Where):
+      // lifts the rain and sun weather limits, never the cold.
+      covered: false,
       locationNote: '',
       priority: false,
       preferredWindows: [],
@@ -259,7 +262,8 @@
       // fact about the calendar, and the server works it out the same way.
       return {
         startMinutesLocal: P.localMinutesOfDay(state.slot),
-        priorityBooking: P.slotNeedsPriority(state.slot, Date.now(), RULES.window)
+        priorityBooking: P.slotNeedsPriority(state.slot, Date.now(), RULES.window),
+        timeOfDayWaived: timeFeeWaived(state.slot, state.detailer)
       };
     }
     if (state.priority) {
@@ -1544,6 +1548,9 @@
         '<div class="bk-field"><label for="bkZip">ZIP</label>' +
         '<input type="text" id="bkZip" data-addr="zip" value="' + esc(a.zip) + '" inputmode="numeric" maxlength="5" autocomplete="postal-code" /></div>' +
       '</div>' +
+      '<label class="bk-check"><input type="checkbox" id="bkCovered"' + (state.covered ? ' checked' : '') + ' />' +
+      '<span><b>There is a garage or covered spot we can work in</b> <em class="bk-opt">Optional</em>' +
+      '<i>It means we can work in the rain and on very hot, sunny days.</i></span></label>' +
       '<label class="bk-check"><input type="checkbox" id="bkNoLoc"' + (state.noGoodLocation ? ' checked' : '') + ' />' +
       '<span>I do not have a good location for a detail near me</span></label>' +
       (state.noGoodLocation
@@ -2129,14 +2136,45 @@
 
   /* ---- the weather where the detail is ---- */
 
-  /** Paint correction, polishing and ceramic coatings need the warm, dry rule. */
-  var COATING_ADDONS = ['ceramic-coating', 'paint-correction', 'paint-polish'];
+  /*
+   * Which weather rules a job is under (web/lib/availability/weather.ts has
+   * the numbers). Polishing and paint correction are "correction"; ceramic
+   * coating is checked on its own and never blocks a booking (owner,
+   * November 10: correction books anyway, the coating moves to a warmer day).
+   */
+  var CORRECTION_ADDONS = ['paint-correction', 'paint-polish'];
+  var COATING_ADDONS = ['ceramic-coating'];
 
-  function weatherKind() {
-    var coating = hasCorrection() || state.vehicles.some(function (v) {
-      return v.addons.some(function (a) { return COATING_ADDONS.indexOf(a.addonId) > -1; });
+  function hasAddonIn(ids) {
+    return state.vehicles.some(function (v) {
+      return v.addons.some(function (a) { return ids.indexOf(a.addonId) > -1; });
     });
-    return coating ? 'coating' : hasExterior() ? 'exterior' : 'none';
+  }
+
+  /** Every rule the job must meet to be offered. Help me decide counts as interior. */
+  function weatherKinds() {
+    var kinds = [];
+    if (state.advice || jobNeeds().interior) kinds.push('interior');
+    if (!state.advice && hasExterior()) kinds.push('exterior');
+    if (hasCorrection() || hasAddonIn(CORRECTION_ADDONS)) kinds.push('correction');
+    return kinds;
+  }
+
+  /** The first rule this start breaks, or null when the job can go ahead. */
+  function weatherProblem(startMs, minutes, forecast) {
+    var kinds = weatherKinds();
+    for (var i = 0; i < kinds.length; i++) {
+      var v = P.weatherVerdict({ startMs: startMs, durationMin: minutes, kind: kinds[i], forecast: forecast, covered: state.covered });
+      if (!v.ok) return { kind: kinds[i], reason: v.reason };
+    }
+    return null;
+  }
+
+  /** True when the job has a coating that this start's weather does not allow. */
+  function coatingMoves(startMs, minutes) {
+    if (!hasAddonIn(COATING_ADDONS)) return false;
+    var forecast = lastCalc && lastCalc.forecast;
+    return !P.weatherVerdict({ startMs: startMs, durationMin: minutes, kind: 'coating', forecast: forecast || null, covered: state.covered }).ok;
   }
 
   /** The detail's location: the address pick, else the ZIP's centre, else Cincinnati. */
@@ -2211,7 +2249,9 @@
 
     var hit = ws && weekCache[ws] && weekCache[ws].to >= paintTo ? weekCache[ws] : null;
     var people = hit ? Promise.resolve(hit.crew) : loadCrew(from, to);
-    var weather = weatherKind() === 'none' ? Promise.resolve(null) : loadWeather();
+    // Interior work only cares about a downpour, and only without cover.
+    var needWeather = !(state.covered && weatherKinds().join() === 'interior');
+    var weather = needWeather ? loadWeather() : Promise.resolve(null);
 
     // Still ours to paint? Not if they have moved to another week since.
     var current = function () { return !ws || state.weekStart === ws; };
@@ -2460,11 +2500,8 @@
   function paintSlotsInner(box, team, from, to, dur, errMsg, forecast) {
     var drive = travelAllowanceMin();
     var corr = hasCorrection();
-    var kind = weatherKind();
     var owner = team.members.filter(function (m) { return m.d.owner; })[0] || team.members[0];
-    var weatherOk = function (startMs, minutes) {
-      return P.weatherVerdict({ startMs: startMs, durationMin: minutes, kind: kind, forecast: forecast }).ok;
-    };
+    var weatherOk = function (startMs, minutes) { return !weatherProblem(startMs, minutes, forecast); };
 
     // Past a day's work this stops being a slot search and becomes a plan.
     if (!P.fitsOneDay(dur, P.LONGEST_DAY, drive, drive)) {
@@ -2479,7 +2516,7 @@
           ' <a href="contact.html">Send us a message</a> and we will sort it out.</p>';
         return;
       }
-      lastCalc = { who: new Map(), kind: kind, forecast: forecast };
+      lastCalc = { who: new Map(), forecast: forecast, weatherReasons: {} };
       return paintMultiDay(box, owner.win, from, to, dur, plan, weatherOk);
     }
 
@@ -2520,12 +2557,13 @@
     // then every start goes to the first one free for it.
     var able = team.members.filter(function (m) { return P.canDo(m.d, needs); });
     if (!able.length) able = [owner];
-    var dropped = 0, season = false;
+    // Why times were dropped, as 'kind:reason', for the note under the legend.
+    var reasons = {};
     var free = able.map(function (m) {
       var starts = startsFor(m.win).filter(function (ms) {
-        var v = P.weatherVerdict({ startMs: ms, durationMin: dur, kind: kind, forecast: forecast });
-        if (!v.ok) { dropped++; if (v.reason === 'season') season = true; }
-        return v.ok;
+        var p = weatherProblem(ms, dur, forecast);
+        if (p) reasons[p.kind + ':' + p.reason] = true;
+        return !p;
       });
       return { id: m.d.id, starts: starts };
     });
@@ -2539,10 +2577,8 @@
       busy: able.reduce(function (all, m) { return all.concat(m.win.busy || []); }, []),
       preferred: able.length > 1 ? new Set(free[0].starts) : null,
       mode: team.mode,
-      kind: kind,
       forecast: forecast,
-      weatherDropped: dropped > 0,
-      season: season
+      weatherReasons: reasons
     };
 
     // A quoted time was never reserved, so it has to earn its place in the
@@ -2596,12 +2632,30 @@
     return tzTime(ms) + ' to ' + endLabel(localMin(ms) + dur);
   }
 
+  /**
+   * Does whoever would take this start work early or late hours anyway, so
+   * no time-of-day fee (DETAILERS `noFeeStarts`, Kris at 6 to 7pm)? The
+   * server makes the same call from its own copy of the setting.
+   */
+  function timeFeeWaived(ms, detailerId) {
+    var id = detailerId || (lastCalc && lastCalc.who && lastCalc.who.get(ms));
+    if (!id || id === 'owner') return false;
+    var d = crew().filter(function (x) { return x.id === id; })[0];
+    return Boolean(d && P.waivesFeeAt(d, ms));
+  }
+
   /** Both surcharges for a start, as basis points, judged on the start itself. */
   function surchargeBp(ms) {
     return P.computeSurcharge(
-      { startMinutesLocal: P.localMinutesOfDay(ms), priorityBooking: needsPriority(ms) },
+      { startMinutesLocal: P.localMinutesOfDay(ms), priorityBooking: needsPriority(ms), timeOfDayWaived: timeFeeWaived(ms) },
       RULES.surcharge
     ).appliedBp;
+  }
+
+  /** An early or late fee applies to this start, for whoever would take it. */
+  function timeFeeApplies(ms) {
+    var band = P.bandOf(localMin(ms));
+    return Boolean(band && band.premium && !timeFeeWaived(ms));
   }
 
   /** "+$36", or "+20%" on the Help me decide path, where nothing is priced yet. */
@@ -2617,8 +2671,7 @@
     var parts = [];
     if (needsPriority(ms)) parts.push('rush');
     var m = localMin(ms);
-    var band = P.bandOf(m);
-    if (band && band.premium) parts.push(m < 12 * 60 ? 'early start' : 'late start');
+    if (timeFeeApplies(ms)) parts.push(m < 12 * 60 ? 'early start' : 'late start');
     return parts.join(' and ') + ' fee';
   }
 
@@ -2636,18 +2689,40 @@
 
   function sameMinute(a, b) { return Math.abs(a - b) < 60000; }
 
-  /** Why some times are missing, when the weather is the reason. */
+  /**
+   * Why some times are missing, when the forecast for their address is the
+   * reason: one short sentence per reason, in the order they matter.
+   */
+  var WORK_NAMES = { interior: 'interior work', exterior: 'exterior work', correction: 'paint correction and polishing' };
+
   function weatherNote(calc) {
-    if (!calc.weatherDropped) return '';
-    var r = P.WEATHER_RULES[calc.kind];
-    var what = calc.kind === 'coating' ? 'Paint correction and coatings need' : 'Exterior work needs';
-    return '<p class="bk-wk-weather">' + what + ' at least ' + r.minTempF + '&deg;F and ' +
-      (calc.kind === 'coating' ? 'no rain' : 'no heavy rain') +
-      ', so times the forecast rules out are not offered.' +
-      (calc.season
-        ? ' <b>' + (calc.kind === 'coating' ? 'These are back in late spring' : 'Exterior details are back in spring') +
-          '.</b> Until then we book them only as far ahead as the forecast reaches, about a week.'
-        : '') + '</p>';
+    var keys = Object.keys(calc.weatherReasons || {});
+    if (!keys.length) return '';
+    var parts = [];
+    keys.forEach(function (k) {
+      var kind = k.split(':')[0], reason = k.split(':')[1], r = P.WEATHER_RULES[kind];
+      if (reason === 'cold') parts.push('below ' + r.minTempF + '&deg;F, too cold for ' + WORK_NAMES[kind]);
+      if (reason === 'rain') parts.push(kind === 'interior' ? 'a downpour is forecast' : 'rain is forecast');
+      if (reason === 'heat') parts.push('over ' + r.maxSunTempF + '&deg;F in direct sun');
+    });
+    var season = keys.filter(function (k) { return /:season$/.test(k); }).map(function (k) { return k.split(':')[0]; });
+    var html = parts.length ? 'Some times are not offered because of the forecast for your address: ' + parts.join('; ') + '.' : '';
+    if (season.length) {
+      html += (html ? ' ' : '') + '<b>' + (season.indexOf('exterior') > -1 ? 'Exterior details are back in spring' : 'Paint correction is back in spring') +
+        '.</b> Until then we book them as far ahead as the forecast reaches, about a week, whenever it is warm and dry enough.';
+    }
+    if (!state.covered && keys.some(function (k) { return /:(rain|heat)$/.test(k); })) {
+      html += ' A garage or covered spot lifts the rain and sun limits: tick it on the address step.';
+    }
+    return '<p class="bk-wk-weather">' + html + '</p>';
+  }
+
+  /** "Coating moves to a warmer day", when this start suits all but the coating. */
+  function coatingNote(ms, dur) {
+    return coatingMoves(ms, dur)
+      ? '<span class="bk-wk-short">The ceramic coating needs ' + P.WEATHER_RULES.coating.minTempF + '&deg;F and dry weather. ' +
+        'On this date we do the rest and book the coating for a warmer day.</span>'
+      : '';
   }
 
   function unconfiguredNote(calc) {
@@ -2668,7 +2743,8 @@
   function paintRecs(box, calc, dur) {
     var recs = P.recommendTimes({
       slots: calc.slots, busy: calc.busy, travelGapMin: calc.buffer,
-      preferred: calc.preferred || undefined, timeZone: TZ
+      preferred: calc.preferred || undefined, timeZone: TZ,
+      isPremium: timeFeeApplies
     });
 
     var html = unconfiguredNote(calc) + '<div class="bk-recs">' +
@@ -2685,6 +2761,7 @@
         '<b>' + esc(spanLabel(ms, dur)) + '</b>' +
         (fee ? '<i>' + esc(fee + ' ' + feeWhy(ms)) + '</i>' : '') +
         (shortNotice(ms) ? '<em>Short notice: confirmed once a detailer accepts</em>' : '') +
+        (coatingMoves(ms, dur) ? '<em>The coating moves to a warmer day</em>' : '') +
         '</span><span class="bk-rec-go">' + CHEV_R + '</span></button>';
     });
     html += weatherNote(calc) +
@@ -2835,8 +2912,8 @@
     if (!bp) return '';
     var parts = [];
     if (needsPriority(ms)) parts.push('Rush');
-    var m = localMin(ms), band = P.bandOf(m);
-    if (band && band.premium) parts.push(m < 12 * 60 ? 'early' : 'late');
+    var m = localMin(ms);
+    if (timeFeeApplies(ms)) parts.push(m < 12 * 60 ? 'early' : 'late');
     var text = parts.join(' + ');
     return text.charAt(0).toUpperCase() + text.slice(1) + ' ' + bp / 100 + '%';
   }
@@ -3033,6 +3110,7 @@
         esc(fmtDur(dur)) + ', so it runs to about ' + endLabel(start + dur) + '. ' +
         (fee ? esc(fee + ' ' + feeWhy(ms)) + '.' : 'Standard price.') + '</span>' +
       (shortNotice(ms) ? '<span class="bk-wk-short">Short notice, so this is a request until a detailer accepts it. We reply as fast as we can.</span>' : '') +
+      coatingNote(ms, dur) +
       chips +
       '</div>';
   }
@@ -4602,6 +4680,8 @@
   function onChange(e) {
     var t = e.target;
     if (t.id === 'bkNoLoc') { state.noGoodLocation = t.checked; return render(); }
+    // In place: nothing on this screen changes, only the times offered next.
+    if (t.id === 'bkCovered') { state.covered = t.checked; state.checkedSlot = null; return; }
     if (t.id === 'bkSplit') {
       state.separateTimes = t.checked;
       state.slot = null;
@@ -4953,9 +5033,11 @@
       (detailerName() ? 'DETAILER\n  ' + detailerName() + '\n\n' : '') +
       'WHEN\n  ' + (state.slot ? new Date(state.slot).toLocaleString('en-US', { timeZone: TZ }) : 'not selected') +
       (state.slot && shortNotice(state.slot) ? '\n  SHORT NOTICE: not confirmed until a detailer accepts. Reply to them.' : '') +
+      (state.slot && coatingMoves(state.slot, holdMinutes()) ? '\n  COATING: too cold or wet on this date. Do the rest, book the coating for a warmer day.' : '') +
       (state.priority ? '\n  RUSH, within ' + RULES.window.minLeadDays + ' days' : '') +
       (state.preferredWindows.length ? '\n  Prefers: ' + state.preferredWindows.join(', ') : '') + '\n\n' +
       'WHERE\n  ' + [a.line1, a.city, a.region, a.zip].filter(Boolean).join(', ') +
+      (state.covered ? '\n  Garage or covered spot: YES' : '') +
       (state.noGoodLocation ? '\n  ** NEEDS A LOCATION SORTED **\n  ' + (state.locationNote || '(no note)') : '') + '\n\n' +
       'VEHICLES\n' + state.vehicles.map(function (v, i) {
         var size = v.size ? P.vehicleSize(v.size) : null;
@@ -5214,7 +5296,7 @@
 
   /** Answers only. Never the payment state, the card, or the bot token. */
   var DRAFT_FIELDS = [
-    'step', 'vehicles', 'active', 'address', 'noGoodLocation', 'locationNote',
+    'step', 'vehicles', 'active', 'address', 'noGoodLocation', 'covered', 'locationNote',
     'priority', 'slot', 'detailer', 'contact', 'consent', 'interest',
     'prefer', 'promoCode', 'notes', 'separateTimes', 'payInFull', 'access',
     'advice', 'timeMode'

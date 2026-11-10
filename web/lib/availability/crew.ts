@@ -19,11 +19,16 @@
  *   ONLY, and read through Google's free/busy endpoint, so customer names
  *   and addresses on it are never public.
  * - `does`: "interior", "exterior" or "all" (the default).
+ * - `noFeeStarts` (optional): "18:00-19:00", the first and last start, in
+ *   Cincinnati time, that carry no early or late fee when this detailer takes
+ *   the job, because they work those hours anyway (owner, November 10: Kris
+ *   at 6 to 7pm). The rush fee still applies.
  * - The owner's own entry is optional and only sets his place in the order;
  *   his calendars stay the site's existing ones. Without it he books last.
  *
  * Detailers may overlap: each one's calendars are checked on their own.
  */
+import { localMinutesOfDay } from "./slots.js";
 
 export type Work = "interior" | "exterior";
 
@@ -36,6 +41,8 @@ export interface Detailer {
   /** Where this detailer's jobs are written. Empty for the owner (default calendar). */
   bookingsCalendarId: string;
   owner: boolean;
+  /** Starts (minutes past midnight, inclusive) with no early or late fee. */
+  noFeeStarts: { fromMin: number; toMin: number } | null;
 }
 
 export const OWNER: Detailer = {
@@ -45,7 +52,28 @@ export const OWNER: Detailer = {
   availabilityCalendarId: "",
   bookingsCalendarId: "",
   owner: true,
+  noFeeStarts: null,
 };
+
+/** "18:00-19:00" as minutes, or null if it does not read as a range. */
+function parseRange(text: unknown): { fromMin: number; toMin: number } | null {
+  const m = /^\s*(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})\s*$/.exec(String(text ?? ""));
+  if (!m) return null;
+  const fromMin = Number(m[1]) * 60 + Number(m[2]);
+  const toMin = Number(m[3]) * 60 + Number(m[4]);
+  return fromMin <= toMin && toMin < 24 * 60 ? { fromMin, toMin } : null;
+}
+
+/** The same, for a start as a timestamp (Cincinnati time). */
+export function waivesFeeAt(d: Detailer | null | undefined, startMs: number): boolean {
+  return waivesTimeFee(d, localMinutesOfDay(startMs));
+}
+
+/** Does this detailer waive the early or late fee for a start at this time of day? */
+export function waivesTimeFee(d: Detailer | null | undefined, startMinutesLocal: number): boolean {
+  const r = d?.noFeeStarts;
+  return Boolean(r && startMinutesLocal >= r.fromMin && startMinutesLocal <= r.toMin);
+}
 
 const CAL_ID = /^[\w.+-]+@[\w.-]+$/;
 
@@ -94,6 +122,8 @@ export function parseDetailers(raw: string | null | undefined): { crew: Detailer
       return problems.push(`${name} needs both an availability and a bookings calendar id`);
     }
     const does = String(e["does"] ?? "all").toLowerCase();
+    const noFeeStarts = e["noFeeStarts"] === undefined ? null : parseRange(e["noFeeStarts"]);
+    if (e["noFeeStarts"] !== undefined && !noFeeStarts) problems.push(`${name}: noFeeStarts should look like "18:00-19:00"`);
     seen.add(id);
     crew.push({
       id,
@@ -102,6 +132,7 @@ export function parseDetailers(raw: string | null | undefined): { crew: Detailer
       availabilityCalendarId: availability,
       bookingsCalendarId: bookings,
       owner: false,
+      noFeeStarts,
     });
   });
 

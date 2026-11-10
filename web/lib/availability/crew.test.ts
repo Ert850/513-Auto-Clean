@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { assignStarts, canDo, OWNER, parseDetailers } from "./crew.js";
+import { assignStarts, canDo, OWNER, parseDetailers, waivesTimeFee } from "./crew.js";
 
 const KRIS = {
   name: "Kris",
@@ -47,5 +47,23 @@ describe("assignStarts", () => {
     expect(starts).toEqual([10, 20, 30]);
     expect(who.get(10)).toBe("kris");
     expect(who.get(20)).toBe("owner");
+  });
+});
+
+describe("noFeeStarts (Kris at 6 to 7pm)", () => {
+  const kris = parseDetailers(JSON.stringify([{ ...KRIS, noFeeStarts: "18:00-19:00" }])).crew[0]!;
+
+  it("waives the early or late fee for starts inside the range, inclusive", () => {
+    expect(waivesTimeFee(kris, 18 * 60)).toBe(true);
+    expect(waivesTimeFee(kris, 18 * 60 + 30)).toBe(true);
+    expect(waivesTimeFee(kris, 19 * 60)).toBe(true);
+    expect(waivesTimeFee(kris, 19 * 60 + 30)).toBe(false);
+    expect(waivesTimeFee(OWNER, 18 * 60)).toBe(false);
+  });
+
+  it("flags a range it cannot read, and keeps the detailer", () => {
+    const { crew, problems } = parseDetailers(JSON.stringify([{ ...KRIS, noFeeStarts: "6pm-7pm" }]));
+    expect(crew[0]!.noFeeStarts).toBeNull();
+    expect(problems[0]).toMatch(/noFeeStarts/);
   });
 });

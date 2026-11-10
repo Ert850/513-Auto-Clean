@@ -64,7 +64,7 @@ Site configuration, then Environment variables, then Add a variable:
 
 ```json
 [
-  { "name": "Kris", "does": "interior",
+  { "name": "Kris", "does": "interior", "noFeeStarts": "18:00-19:00",
     "availability": "PASTE-KRIS-AVAILABILITY-ID@group.calendar.google.com",
     "bookings": "PASTE-KRIS-BOOKINGS-ID@group.calendar.google.com" },
   { "name": "Elijah", "owner": true }
@@ -75,6 +75,8 @@ Site configuration, then Environment variables, then Add a variable:
 - **`does`:** `"interior"`, `"exterior"`, or `"all"`. A job with any exterior work only goes to someone who does exterior.
 - **Your own entry** (`"owner": true`) only sets your place in the order; your calendars stay as they are. Leave it out and you book last.
 - **Several people can be booked at the same time.** Each is checked against their own calendars.
+- **`noFeeStarts`** (optional): the first and last start time, 24-hour clock, with **no early or late fee** when this person takes the job, because they work those hours anyway. `"18:00-19:00"` covers starts at 6pm, 6:30pm and 7pm; a 7:30pm start pays the late fee. The rush fee still applies. Leave it out for no waiver.
+- **No daily cap.** The hours you set on each availability calendar decide how many jobs fit. For example, OPEN 6pm to midnight Wednesday to Saturday, plus all day Sunday and Monday, gives roughly your 3 / 3 / 1 pattern on its own.
 
 Save, then Trigger deploy.
 

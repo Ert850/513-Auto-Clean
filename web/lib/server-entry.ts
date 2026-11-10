@@ -58,6 +58,12 @@ export interface PriceOptions {
    * get the discount without the payment.
    */
   payInFull?: boolean;
+  /**
+   * No early or late fee: the detailer taking this start works those hours
+   * anyway. Decided by the server from its own DETAILERS setting, never from
+   * a request body.
+   */
+  timeOfDayWaived?: boolean;
 }
 
 export interface PricedCart {
@@ -161,7 +167,7 @@ export function priceFromWire(wire: WireCart, opts: PriceOptions = {}): PricedCa
     // and this trusted it, which was a 20% discount for anyone who edited one
     // word of the request. Without a slot there is no window to be inside.
     surchargeContext: wire.slot
-      ? { startMinutesLocal: localMinutesOfDay(wire.slot), priorityBooking: priority }
+      ? { startMinutesLocal: localMinutesOfDay(wire.slot), priorityBooking: priority, ...(opts.timeOfDayWaived ? { timeOfDayWaived: true } : {}) }
       : null,
     zip: wire.zip ?? null,
     ...(payInFull ? { payInFull: true } : {}),
@@ -201,7 +207,7 @@ export { LEGAL, longDate } from "./site/legal.js";
 export { legalFingerprint } from "./site/legalFingerprint.js";
 export { PROMOS, findPromo, normalisePromo, promoDiscountCents, promoMessage } from "./pricing/promos.js";
 export { parseIcsBusy, mergeBusy } from "./booking/ics.js";
-export { parseDetailers } from "./availability/crew.js";
+export { parseDetailers, waivesFeeAt } from "./availability/crew.js";
 export { averageOneWayMinutes, mileageFeeCents } from "./pricing/mileage.js";
 export {
   computeCancellation,
