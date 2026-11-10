@@ -1080,14 +1080,14 @@ main > section:first-child .svc-intro .section-head h2 { margin: 0 0 .4rem; }
    paddings, 72 + 72px, under the offers banner: a blank band that read as
    the end of the page (a "false floor"), so the Additionals heading sat a
    long scroll away. One gap instead. */
-main > #services { padding-bottom: clamp(28px, 3vw, 40px); }
+main > #services { padding-bottom: clamp(16px, 1.6vw, 24px); }
 main > #services + #addons { padding-top: 0; }
 /* The offers banner follows the cards closely (1.8rem was a home-page gap)
    and is compact (no rule between the two offers), so the whole banner is on
    a 1440x790 screen under the Book buttons: the offers are read, and its
    "Add-ons for any package" link says the page goes on. */
-main .svc-note { margin-top: .6rem; padding: .75rem 1.2rem; align-items: center; }
-main .svc-offers p + p { margin-top: .3rem; padding-top: 0; border-top: 0; }
+main .svc-note, body > #services .svc-note { margin-top: .6rem; padding: .75rem 1.2rem; align-items: center; }
+main .svc-offers p + p, body > #services .svc-offers p + p { margin-top: .3rem; padding-top: 0; border-top: 0; }
 /* "Add-ons for any package" with the same down arrow as "See all add-ons":
    the banner is the last thing on the first screen, so it says what follows. */
 .svc-next { margin-left: auto; align-self: flex-start; white-space: nowrap; font-weight: 800; color: var(--red-deep); display: inline-flex; align-items: center; gap: .35rem; text-decoration: underline; text-underline-offset: 3px; }
@@ -1112,16 +1112,40 @@ main .svc-offers p + p { margin-top: .3rem; padding-top: 0; border-top: 0; }
 main .svc-card .svc-toggles > details, .svc-toggles > details { margin: 0; }
 .svc-toggles > details[open] { flex-basis: 100%; }
 .svc-more ul.feat { margin: .38rem 0 .3rem; }
+/* A screen tall enough for the full lists (script.js sets .svc-full): no
+   toggle, and the folded items carry straight on from the list above at the
+   list's own spacing. */
+.svc-full .svc-more > summary { display: none; }
+.svc-full .svc-toggles { margin-top: 0; }
+.svc-full .svc-more ul.feat { margin-top: .32rem; }
 /* Sub-page card density. The price line was set at the body's 1.6 line
    height, so a 1.85rem price made a 47px row; the tagline, at 1.6 too, ran
    five lines on Full Exterior. */
 /* 1.2rem sides, not 1.4rem: at 1280px the Full Exterior tagline needed 3px
    more to fit four lines instead of five. */
-main .svc-card { padding: 1rem 1.2rem; }
-main .svc-card .svc-meta { line-height: 1.2; margin-bottom: .55rem; }
-main .svc-card .svc-desc { line-height: 1.5; margin-bottom: .6rem; }
-main .svc-card ul.feat { gap: .32rem; }
-main .svc-card .svc-how { margin-bottom: 1rem; }
+/* Round 3: the home page's cards (body > #services) get the same density.
+   Only space changes there: every checklist item stays on show. */
+main .svc-card, body > #services .svc-card { padding: 1rem 1.2rem; }
+main .svc-card .svc-meta, body > #services .svc-card .svc-meta { line-height: 1.2; margin-bottom: .55rem; }
+main .svc-card .svc-desc, body > #services .svc-card .svc-desc { line-height: 1.5; margin-bottom: .6rem; }
+main .svc-card ul.feat, body > #services .svc-card ul.feat { gap: .32rem; }
+main .svc-card .svc-how, body > #services .svc-card .svc-how { margin: .4rem 0 .85rem; }
+
+/* Home page, below the hero (round 3). The hero is untouched. Section
+   padding was the home-page default, 72px a side at 1440: under the Results
+   band and over the booking band that stacked into 128 and 144px of blank
+   paper, and a jump to Services opened on 72px of nothing. The Services
+   title block runs to 46rem so the title and intro take two lines each, not
+   three, and the gaps around the tabs are a sub-page's. The cards keep every
+   checklist item (owner: the growing lists are how the packages show their
+   price steps); only space is trimmed, and the offers banner is the compact
+   one, so on a desktop screen a jump to Services shows the title, the tabs,
+   all three cards with their Book buttons and the offers together. */
+body > #services { padding-block: clamp(20px, 1.8vw, 28px) clamp(28px, 2.8vw, 40px); }
+body > #services .section-head { max-width: 46rem; margin-bottom: 14px; }
+body > #services .section-head h2 { margin: .3rem 0 .45rem; }
+body > #services .svc-tabs-row { margin-bottom: 16px; }
+body > #quote { padding-block: clamp(40px, 4.4vw, 64px); }
 /* About, from 1000px (round 2, toned back): the portrait keeps its 4:5 frame
    at 22rem wide, between the original 445px and round 1's 15rem strip; the
    story is held to about 70 characters a line at 1.7 line height. The reviews
