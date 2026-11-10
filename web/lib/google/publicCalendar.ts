@@ -161,6 +161,27 @@ export interface CalendarWindow {
   best?: number[];
   /** "Priority: N" from a calendar's description; null when none says. */
   priority?: number | null;
+  /**
+   * Each OPEN block and the fee its title sets ("OPEN" 0, "OPEN +20%" 2000
+   * basis points). Only when OPEN blocks exist; otherwise the clock rule.
+   */
+  fees?: { start: number; end: number; bp: number }[];
+}
+
+/** "OPEN" is standard price; "OPEN +20%" adds 20% (2000 basis points). */
+export function openFeeBp(summary: string): number {
+  const m = /^OPEN\b\s*\+\s*(\d{1,3}(?:\.\d{1,2})?)\s*%/i.exec(summary.trim());
+  return m ? Math.round(Number(m[1]) * 100) : 0;
+}
+
+/**
+ * The fee the calendar sets for a start: the OPEN block it starts in. Null
+ * when the calendar has no OPEN blocks, or none holds this start: then the
+ * clock rule applies. Where blocks overlap, the lower fee.
+ */
+export function blockFeeAt(win: Pick<CalendarWindow, "fees"> | null | undefined, startMs: number): number | null {
+  const hits = (win?.fees ?? []).filter((f) => startMs >= f.start && startMs < f.end);
+  return hits.length ? Math.min(...hits.map((f) => f.bp)) : null;
 }
 
 export function isConfigured(cfg: Partial<PublicCalendarConfig> | null | undefined): boolean {
@@ -369,6 +390,7 @@ export function resolveWindow(
       busy: jobs.map((e) => ({ start: e.start, end: e.end })),
       events,
       best,
+      fees: openEvents.map((e) => ({ start: e.start, end: e.end, bp: openFeeBp(e.summary) })),
     };
   }
 

@@ -782,6 +782,7 @@ function computeTax(taxableBaseCents, zip, table, currentYear) {
 }
 
 // lib/time/zone.ts
+var DAY_MS = 864e5;
 function zoneOffsetMs(utcMs, timeZone) {
   const dtf = new Intl.DateTimeFormat("en-US", {
     timeZone,
@@ -833,6 +834,10 @@ function localDayStart(ms, timeZone) {
   const { y, mo, d } = localParts(ms, timeZone);
   return zonedToUtc(y, mo, d, 0, 0, 0, timeZone);
 }
+function localTimeOnDay(dayStartMs, daysAhead, minutesOfDay2, timeZone) {
+  const { y, mo, d } = localParts(dayStartMs + daysAhead * DAY_MS + DAY_MS / 2, timeZone);
+  return zonedToUtc(y, mo, d, 0, minutesOfDay2, 0, timeZone);
+}
 function localWeekday(ms, timeZone) {
   const name = new Intl.DateTimeFormat("en-US", { timeZone, weekday: "short" }).format(new Date(ms));
   return ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].indexOf(name);
@@ -841,11 +846,13 @@ function localWeekday(ms, timeZone) {
 // lib/pricing/surcharge.ts
 function computeSurcharge(ctx, r) {
   const isEarlyOrLate = !ctx.timeOfDayWaived && (ctx.startMinutesLocal < r.earlyBeforeMinutes || ctx.startMinutesLocal >= r.lateFromMinutes);
-  const timeOfDayBp = isEarlyOrLate ? r.timeOfDayBp : 0;
+  const fromCalendar = typeof ctx.blockFeeBp === "number" && ctx.blockFeeBp >= 0;
+  const timeOfDayBp = fromCalendar ? ctx.blockFeeBp : isEarlyOrLate ? r.timeOfDayBp : 0;
   const priorityBp = ctx.priorityBooking ? r.priorityBp : 0;
   const uncapped = timeOfDayBp + priorityBp;
-  const appliedBp = Math.min(uncapped, r.maxTotalBp);
-  return { timeOfDayBp, priorityBp, appliedBp, capped: uncapped > r.maxTotalBp };
+  const cap = Math.max(r.maxTotalBp, timeOfDayBp, priorityBp);
+  const appliedBp = Math.min(uncapped, cap);
+  return { timeOfDayBp, priorityBp, appliedBp, capped: uncapped > cap };
 }
 function applySurchargeCents(baseCents, appliedBp) {
   return Math.round(baseCents * appliedBp / 1e4);
@@ -871,6 +878,7 @@ var DEFAULT_BOOKING_WINDOW = {
 };
 var IGNORE_RETURN_AFTER_MIN = 18 * 60;
 var IGNORE_OUTBOUND_BEFORE_MIN = 10 * 60;
+var ARRIVAL_WINDOW_MIN = 60;
 var TIME_BANDS = [
   {
     id: "early",
@@ -1619,7 +1627,7 @@ function legalFingerprint(html) {
 }
 
 // lib/booking/ics.ts
-var DAY_MS = 864e5;
+var DAY_MS2 = 864e5;
 function parseTime(value, params, fallbackZone) {
   const v = value.trim();
   const dateOnly = /^(\d{4})(\d{2})(\d{2})$/.exec(v);
@@ -1804,7 +1812,7 @@ function expand(startMs, rule, from, to, cap) {
     return true;
   };
   if (rule.freq === "DAILY") {
-    const step = rule.interval * DAY_MS;
+    const step = rule.interval * DAY_MS2;
     let ms = startMs;
     if (rule.count === null && from > startMs) {
       ms = startMs + Math.floor((from - startMs) / step) * step;
@@ -1815,7 +1823,7 @@ function expand(startMs, rule, from, to, cap) {
     return out;
   }
   if (rule.freq === "WEEKLY") {
-    const week = rule.interval * 7 * DAY_MS;
+    const week = rule.interval * 7 * DAY_MS2;
     const days = rule.byDay.length ? rule.byDay : [new Date(startMs).getUTCDay()];
     let anchor = startMs;
     if (rule.count === null && from - week > startMs) {
@@ -1825,7 +1833,7 @@ function expand(startMs, rule, from, to, cap) {
       const base = new Date(anchor);
       for (const d of days) {
         const shift = (d - base.getUTCDay() + 7) % 7;
-        const ms = anchor + shift * DAY_MS;
+        const ms = anchor + shift * DAY_MS2;
         if (ms < startMs) continue;
         if (ms > hardEnd) continue;
         if (!push(ms)) return out;
@@ -1867,8 +1875,8 @@ function parseIcsBusy(text, opts) {
     let lengthMs;
     if (e.end) lengthMs = e.end.ms - e.start.ms;
     else if (e.durationMs !== null) lengthMs = e.durationMs;
-    else lengthMs = e.start.allDay ? DAY_MS : 0;
-    if (lengthMs <= 0) lengthMs = e.start.allDay ? DAY_MS : 30 * 60 * 1e3;
+    else lengthMs = e.start.allDay ? DAY_MS2 : 0;
+    if (lengthMs <= 0) lengthMs = e.start.allDay ? DAY_MS2 : 30 * 60 * 1e3;
     const starts = [];
     if (e.rrule && !e.recurrenceId) {
       const rule = parseRule(e.rrule, zone);
@@ -1907,7 +1915,8 @@ var OWNER = {
   availabilityCalendarId: "",
   bookingsCalendarId: "",
   owner: true,
-  noFeeStarts: null
+  noFeeStarts: null,
+  arrivalWindowMin: ARRIVAL_WINDOW_MIN
 };
 var FULL_DAYS = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
 function dayIndex(word) {
@@ -1974,7 +1983,7 @@ function parseDetailers(raw) {
   list.forEach((entry, i) => {
     const e = entry ?? {};
     if (e["owner"] === true) {
-      if (!ownerPlaced) crew.push({ ...OWNER, name: String(e["name"] || OWNER.name).slice(0, 40) });
+      if (!ownerPlaced) crew.push({ ...OWNER, name: String(e["name"] || OWNER.name).slice(0, 40), arrivalWindowMin: windowOf(e, OWNER.name, problems) });
       ownerPlaced = true;
       return;
     }
@@ -1998,11 +2007,19 @@ function parseDetailers(raw) {
       availabilityCalendarId: availability,
       bookingsCalendarId: bookings,
       owner: false,
-      noFeeStarts
+      noFeeStarts,
+      arrivalWindowMin: windowOf(e, name, problems)
     });
   });
   if (!ownerPlaced) crew.push(OWNER);
   return { crew, problems };
+}
+function windowOf(e, name, problems) {
+  if (e["arrivalWindow"] === void 0) return ARRIVAL_WINDOW_MIN;
+  const n = Number(e["arrivalWindow"]);
+  if (Number.isInteger(n) && n >= 0 && n <= 120) return n;
+  problems.push(`${name}: arrivalWindow should be minutes, 0 to 120`);
+  return ARRIVAL_WINDOW_MIN;
 }
 function parseDoes(raw) {
   const list = (Array.isArray(raw) ? raw : [raw ?? "all"]).map((w) => String(w ?? "").trim().toLowerCase()).filter(Boolean);
@@ -2010,6 +2027,169 @@ function parseDoes(raw) {
 }
 function canDo(d, needs) {
   return d.does.includes("*") || needs.every((n) => d.does.includes(n));
+}
+
+// lib/google/publicCalendar.ts
+var API = "https://www.googleapis.com/calendar/v3/calendars";
+var AVAILABILITY_PREFIX = "OPEN";
+var BEST_PREFIX = "BEST";
+function eventTime(s) {
+  const d = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s);
+  return d ? zonedToUtc(Number(d[1]), Number(d[2]), Number(d[3]), 0, 0, 0, "America/New_York") : new Date(s).getTime();
+}
+function titleIs(summary, word) {
+  return new RegExp("^" + word + "\\b", "i").test(summary.trim());
+}
+function parsePriority(description) {
+  const m = /priority\s*[:=]?\s*(\d+)/i.exec(String(description ?? ""));
+  return m ? Number(m[1]) : null;
+}
+function calendarIds(cfg) {
+  const busyOnly = new Set(busyOnlyIds(cfg));
+  const all = [cfg.calendarId ?? "", ...cfg.extraCalendarIds ?? []].map((s) => String(s ?? "").trim()).filter((id) => id && !busyOnly.has(id));
+  return all.filter((id, i) => all.indexOf(id) === i);
+}
+function busyOnlyIds(cfg) {
+  const all = (cfg.busyOnlyIds ?? []).map((s) => String(s ?? "").trim()).filter(Boolean);
+  return all.filter((id, i) => all.indexOf(id) === i);
+}
+async function fetchBusyOnly(apiKey, ids, fromMs, toMs) {
+  if (!ids.length) return [];
+  const res = await fetch(`https://www.googleapis.com/calendar/v3/freeBusy?key=${encodeURIComponent(apiKey)}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    cache: "no-store",
+    body: JSON.stringify({
+      timeMin: new Date(fromMs).toISOString(),
+      timeMax: new Date(toMs).toISOString(),
+      items: ids.map((id) => ({ id }))
+    })
+  });
+  if (!res.ok) throw new Error(`Google free/busy ${res.status}: ${await res.text()}`);
+  const json = await res.json();
+  const out = [];
+  for (const id of ids) {
+    const c2 = json.calendars?.[id];
+    if (!c2 || c2.errors && c2.errors.length) throw new Error(`Google free/busy: ${id} unreadable`);
+    for (const b of c2.busy ?? []) {
+      out.push({ summary: "Busy", start: Date.parse(b.start), end: Date.parse(b.end), allDay: false, transparent: false });
+    }
+  }
+  return out;
+}
+function openFeeBp(summary) {
+  const m = /^OPEN\b\s*\+\s*(\d{1,3}(?:\.\d{1,2})?)\s*%/i.exec(summary.trim());
+  return m ? Math.round(Number(m[1]) * 100) : 0;
+}
+function blockFeeAt(win, startMs) {
+  const hits = (win?.fees ?? []).filter((f) => startMs >= f.start && startMs < f.end);
+  return hits.length ? Math.min(...hits.map((f) => f.bp)) : null;
+}
+async function readCalendars(cfg, fromMs, toMs) {
+  const ids = calendarIds(cfg);
+  if (ids.length <= 1) return fetchOne(cfg.apiKey, ids[0] ?? "", fromMs, toMs);
+  const settled = await Promise.all(
+    ids.map(
+      (id) => fetchOne(cfg.apiKey, id, fromMs, toMs).catch((err) => {
+        console.warn(`[513] calendar ${id} unreadable:`, err);
+        return { events: [], priority: null };
+      })
+    )
+  );
+  const ranks = settled.map((r) => r.priority).filter((n) => n !== null);
+  return { events: settled.flatMap((r) => r.events), priority: ranks.length ? Math.min(...ranks) : null };
+}
+async function fetchOne(apiKey, calendarId, fromMs, toMs) {
+  const cfg = { calendarId, apiKey };
+  const url = `${API}/${encodeURIComponent(cfg.calendarId)}/events?key=${encodeURIComponent(cfg.apiKey)}&timeMin=${new Date(fromMs).toISOString()}&timeMax=${new Date(toMs).toISOString()}&singleEvents=true&orderBy=startTime&maxResults=2500`;
+  const res = await fetch(url, { cache: "no-store" });
+  if (!res.ok) {
+    throw new Error(`Google Calendar ${res.status}: ${await res.text()}`);
+  }
+  const json = await res.json();
+  const events = (json.items ?? []).map((e) => {
+    const s = e.start?.dateTime ?? e.start?.date;
+    const t = e.end?.dateTime ?? e.end?.date;
+    if (!s || !t) return null;
+    return {
+      summary: (e.summary ?? "").trim(),
+      start: eventTime(s),
+      end: eventTime(t),
+      allDay: Boolean(e.start?.date && !e.start?.dateTime),
+      // "Free" events are things like reminders that should not block work.
+      transparent: e.transparency === "transparent"
+    };
+  }).filter((e) => e !== null);
+  return { events, priority: parsePriority(json.description) };
+}
+var DEFAULT_HOURS = {
+  /**
+   * Wider than the bookable window on purpose, at BOTH ends.
+   *
+   * Customers may start as early as 6am, which means leaving before 6am, so
+   * the block has to open earlier than the earliest start. It closes at 1am
+   * because a service finishing at midnight still needs the drive home, and
+   * the whole commitment has to fit inside one availability block. An hour
+   * covers any return leg the fee ladder would realistically produce.
+   *
+   * What a customer can actually pick is bounded separately by
+   * DEFAULT_BOOKING_WINDOW in ../availability/slots.ts, which is the thing to
+   * change if the bookable hours move.
+   */
+  openMin: 5 * 60,
+  closeMin: 25 * 60,
+  days: [0, 1, 2, 3, 4, 5, 6],
+  timeZone: "America/New_York"
+};
+function businessHoursWindows(fromMs, toMs, hours = DEFAULT_HOURS) {
+  const tz = hours.timeZone ?? "America/New_York";
+  const out = [];
+  const day0 = localDayStart(fromMs, tz);
+  for (let i = 0; i < 400; i++) {
+    const dayStart = localTimeOnDay(day0, i, 0, tz);
+    if (dayStart >= toMs) break;
+    if (hours.days.includes(localWeekday(dayStart + 12 * 36e5, tz))) {
+      const start = localTimeOnDay(day0, i, hours.openMin, tz);
+      const end = localTimeOnDay(day0, i, hours.closeMin, tz);
+      if (end > fromMs && start < toMs) {
+        out.push({ start: Math.max(start, fromMs), end: Math.min(end, toMs) });
+      }
+    }
+  }
+  return out;
+}
+function resolveWindow(events, fromMs, toMs, hours = DEFAULT_HOURS) {
+  const isBest = (e) => titleIs(e.summary, BEST_PREFIX);
+  const best = [...new Set(events.filter((e) => isBest(e) && !e.allDay && e.start >= fromMs && e.start < toMs).map((e) => e.start))].sort((a, b) => a - b);
+  const usable = events.filter((e) => !e.transparent && !isBest(e));
+  const openEvents = events.filter(
+    (e) => !isBest(e) && titleIs(e.summary, AVAILABILITY_PREFIX)
+  );
+  if (openEvents.length > 0) {
+    const jobs = usable.filter((e) => !openEvents.includes(e));
+    return {
+      mode: "whitelist",
+      open: openEvents.map((e) => ({ start: e.start, end: e.end })),
+      busy: jobs.map((e) => ({ start: e.start, end: e.end })),
+      events,
+      best,
+      fees: openEvents.map((e) => ({ start: e.start, end: e.end, bp: openFeeBp(e.summary) }))
+    };
+  }
+  return {
+    mode: "blacklist",
+    open: businessHoursWindows(fromMs, toMs, hours),
+    busy: usable.map((e) => ({ start: e.start, end: e.end })),
+    events,
+    best
+  };
+}
+async function loadWindow(cfg, fromMs, toMs, hours = DEFAULT_HOURS) {
+  const [read, busy] = await Promise.all([
+    calendarIds(cfg).length ? readCalendars(cfg, fromMs, toMs) : Promise.resolve({ events: [], priority: null }),
+    fetchBusyOnly(cfg.apiKey, busyOnlyIds(cfg), fromMs, toMs)
+  ]);
+  return { ...resolveWindow(read.events.concat(busy), fromMs, toMs, hours), priority: read.priority };
 }
 
 // lib/pricing/cancellation.ts
@@ -2555,7 +2735,12 @@ function priceFromWire(wire, opts = {}) {
     // Priority is DERIVED from the slot. The browser used to send a boolean
     // and this trusted it, which was a 20% discount for anyone who edited one
     // word of the request. Without a slot there is no window to be inside.
-    surchargeContext: wire.slot ? { startMinutesLocal: localMinutesOfDay(wire.slot), priorityBooking: priority, ...opts.timeOfDayWaived ? { timeOfDayWaived: true } : {} } : null,
+    surchargeContext: wire.slot ? {
+      startMinutesLocal: localMinutesOfDay(wire.slot),
+      priorityBooking: priority,
+      ...opts.timeOfDayWaived ? { timeOfDayWaived: true } : {},
+      ...typeof opts.blockFeeBp === "number" ? { blockFeeBp: opts.blockFeeBp } : {}
+    } : null,
     zip: wire.zip ?? null,
     ...payInFull ? { payInFull: true } : {},
     ...wire.promoCode ? { promoCode: wire.promoCode } : {},
@@ -2612,6 +2797,7 @@ export {
   addonIcon,
   addonsFor,
   averageOneWayMinutes,
+  blockFeeAt,
   canDo,
   cancellationLadder,
   componentsOf,
@@ -2629,6 +2815,8 @@ export {
   isUnpriced,
   legalFingerprint,
   liveProcessors,
+  loadWindow,
+  localMinutesOfDay,
   longDate,
   mergeBusy,
   mileageFeeCents,

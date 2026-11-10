@@ -25,6 +25,7 @@
  */
 import { DEFAULT_RULES, MAX_ONE_WAY_MINUTES, estimateOneWayMinutes, mileageFeeCents } from "./_pricing.mjs";
 import { measureRoundTrip, routesConfigured } from "./_routes.mjs";
+import { detailerFor, homeFor } from "./_detailers.mjs";
 import { limited } from "./_ratelimit.mjs";
 
 const CACHE_SECONDS = 86400;
@@ -69,8 +70,10 @@ export async function handler(event) {
   const typical = zip ? estimateOneWayMinutes(zip) : null;
 
   try {
+    // From the named detailer's home when there is one (never sent back).
+    const origin = homeFor(detailerFor(String(q.detailer ?? "")));
     const drive = await measureRoundTrip({
-      dest: address ? { address } : { lat, lng },
+      dest: { ...(address ? { address } : { lat, lng }), ...(origin ? { origin } : {}) },
       slotMs: departureMs,
       serviceMin,
     });

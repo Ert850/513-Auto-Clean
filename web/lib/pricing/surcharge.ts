@@ -15,6 +15,13 @@ export interface SurchargeContext {
    * rush fee still applies: that one is about notice, not the hour.
    */
   timeOfDayWaived?: boolean;
+  /**
+   * The fee the detailer's own calendar sets for this start (owner, November
+   * 10, "fee standard B"): the OPEN block it starts in says it, "OPEN" for
+   * standard price, "OPEN +20%" or "OPEN +35%" for more. When set, it
+   * replaces the clock rule; null or absent, the clock rule stands.
+   */
+  blockFeeBp?: number | null;
 }
 
 /** Convenience for building a context from a wall clock. */
@@ -47,12 +54,16 @@ export function computeSurcharge(ctx: SurchargeContext, r: SurchargeRules): Surc
     !ctx.timeOfDayWaived &&
     (ctx.startMinutesLocal < r.earlyBeforeMinutes || ctx.startMinutesLocal >= r.lateFromMinutes);
 
-  const timeOfDayBp = isEarlyOrLate ? r.timeOfDayBp : 0;
+  const fromCalendar = typeof ctx.blockFeeBp === "number" && ctx.blockFeeBp >= 0;
+  const timeOfDayBp = fromCalendar ? ctx.blockFeeBp! : isEarlyOrLate ? r.timeOfDayBp : 0;
   const priorityBp = ctx.priorityBooking ? r.priorityBp : 0;
   const uncapped = timeOfDayBp + priorityBp;
-  const appliedBp = Math.min(uncapped, r.maxTotalBp);
+  // Both together are capped at 30% as before; a block that alone asks for
+  // more than that keeps its own figure, and the rush adds nothing to it.
+  const cap = Math.max(r.maxTotalBp, timeOfDayBp, priorityBp);
+  const appliedBp = Math.min(uncapped, cap);
 
-  return { timeOfDayBp, priorityBp, appliedBp, capped: uncapped > r.maxTotalBp };
+  return { timeOfDayBp, priorityBp, appliedBp, capped: uncapped > cap };
 }
 
 /**

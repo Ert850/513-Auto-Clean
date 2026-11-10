@@ -23,7 +23,7 @@ function keyFor(dest) {
   // 8am and at 5pm is not the same journey, and caching them together would
   // throw away the traffic awareness we are paying for.
   const when = dest.departureMs ? "@" + new Date(dest.departureMs).toISOString().slice(0, 13) : "";
-  return where + when + (dest.reverse ? "|back" : "");
+  return (dest.origin ? "o:" + dest.origin.trim().toUpperCase() + "|" : "") + where + when + (dest.reverse ? "|back" : "");
 }
 
 const memo = new Map();
@@ -62,7 +62,8 @@ export async function measureDrive(dest) {
     ? { address: dest.address }
     : { location: { latLng: { latitude: dest.lat, longitude: dest.lng } } };
 
-  const base = originPlaceId ? { placeId: originPlaceId } : { address: originAddress };
+  // A detailer's own home (DETAILER_HOMES, _detailers.mjs homeFor), or the shop.
+  const base = dest.origin ? { address: dest.origin } : originPlaceId ? { placeId: originPlaceId } : { address: originAddress };
 
   // The drive home is a different journey from the drive out, at a different
   // time of day and often on the other side of a rush hour.
@@ -187,12 +188,12 @@ export async function measureRoundTrip({ dest, slotMs, serviceMin }) {
  * result in. Failure returns null, which is the estimate, because refusing a
  * booking over a routing hiccup costs more than a few dollars of drive time.
  */
-export async function measuredOneWayMinutes(cart) {
+export async function measuredOneWayMinutes(cart, origin) {
   const line = addressLine(cart?.address);
   if (!line) return null;
   try {
     const drive = await measureRoundTrip({
-      dest: { address: line },
+      dest: origin ? { address: line, origin } : { address: line },
       slotMs: cart?.slot ?? null,
       serviceMin: cart?.serviceDurationMin ?? 0,
     });

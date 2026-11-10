@@ -296,7 +296,8 @@
       return {
         startMinutesLocal: P.localMinutesOfDay(state.slot),
         priorityBooking: P.slotNeedsPriority(state.slot, Date.now(), RULES.window),
-        timeOfDayWaived: timeFeeWaived(state.slot, state.detailer)
+        timeOfDayWaived: timeFeeWaived(state.slot, state.detailer),
+        blockFeeBp: blockFee(state.slot, state.detailer)
       };
     }
     if (state.priority) {
@@ -1340,7 +1341,8 @@
     dayStart.setHours(0, 0, 0, 0);
     var from = dayStart.getTime() - DAY;
     var to = dayStart.getTime() + 2 * DAY;
-    var buffer = P.travelBufferMin(travelAllowanceMin());
+    var myDrive = driveFor(who.id);
+    var buffer = P.travelBufferMin(myDrive);
 
     var personal = who.owner ? personalBusy() : Promise.resolve([]);
 
@@ -1359,7 +1361,8 @@
           hasExterior: hasExterior(),
           ignoreReturnAfterMin: P.IGNORE_RETURN_AFTER_MIN,
           ignoreOutboundBeforeMin:
-            travelAllowanceMin() <= 60 ? P.IGNORE_OUTBOUND_BEFORE_MIN : undefined
+            myDrive <= 60 ? P.IGNORE_OUTBOUND_BEFORE_MIN : undefined,
+          arrivalWindowMin: who.arrivalWindowMin
         });
         // To the minute, not the millisecond: the grid is rebuilt from a
         // different `now` and need not land on the same instant.
@@ -2078,6 +2081,41 @@
    */
   var travelTimer = null;
 
+  /*
+   * EACH DETAILER DRIVES FROM THEIR OWN HOME (owner, November 11). The
+   * server measures from the address in DETAILER_HOMES, a server-only
+   * setting, so no home address ever reaches the page. `travelBy` holds each
+   * detailer's drive to this address, measured once per address with no
+   * time, and sets how much drive time their offered times allow for.
+   * state.travel stays the drive of whoever has the chosen time: the fee is
+   * built on that one.
+   */
+  var travelBy = {};
+  var travelByKey = '';
+  function driveFor(id) {
+    var m = travelBy[id || 'owner'];
+    return typeof m === 'number' ? m : travelAllowanceMin();
+  }
+  function measureEachDetailer() {
+    var line = addressLine();
+    if (travelByKey === line.toUpperCase()) return;
+    travelByKey = line.toUpperCase();
+    travelBy = {};
+    crew().forEach(function (d) {
+      fetch('/api/travel?address=' + encodeURIComponent(line) + '&service=' + encodeURIComponent(holdMinutes()) +
+            '&zip=' + encodeURIComponent(state.address.zip || '') + (d.owner ? '' : '&detailer=' + encodeURIComponent(d.id)), { cache: 'default' })
+        .then(function (r) { return r.ok ? r.json() : Promise.reject(new Error(String(r.status))); })
+        .then(function (j) {
+          if (travelByKey !== line.toUpperCase()) return;
+          if (j && j.reachable !== false && !j.tooFar && typeof j.minutes === 'number') {
+            travelBy[d.id] = j.minutes;
+            scheduleSlotsRefresh();
+          }
+        })
+        .catch(function () { /* the shared estimate stands */ });
+    });
+  }
+
   function measureTravel() {
     clearTimeout(travelTimer);
     if (!addressComplete()) {
@@ -2086,10 +2124,13 @@
       }
       return;
     }
+    if (crew().length > 1) measureEachDetailer();
 
     // The slot is part of the key: the same address at 8am and at 5pm is a
-    // different drive, and that is the whole point of measuring it.
-    var key = addressLine().toUpperCase() + '@' + (state.slot || 0) + '+' + holdMinutes();
+    // different drive, and that is the whole point of measuring it. So is
+    // who drives it.
+    var who = state.detailer && state.detailer !== 'owner' ? state.detailer : '';
+    var key = addressLine().toUpperCase() + '@' + (state.slot || 0) + '+' + holdMinutes() + '#' + who;
     if (state.travel.forKey === key && !state.travel.pending) return;
 
     state.travel.pending = true;
@@ -2100,7 +2141,8 @@
       fetch('/api/travel?address=' + encodeURIComponent(addressLine()) +
             (state.slot ? '&at=' + encodeURIComponent(state.slot) : '') +
             '&service=' + encodeURIComponent(holdMinutes()) +
-            '&zip=' + encodeURIComponent(state.address.zip || ''), { cache: 'default' })
+            '&zip=' + encodeURIComponent(state.address.zip || '') +
+            (who ? '&detailer=' + encodeURIComponent(who) : ''), { cache: 'default' })
         .then(function (r) { return r.ok ? r.json() : Promise.reject(new Error(String(r.status))); })
         .then(function (d) {
           if (state.travel.forKey !== key) return; // they kept typing
@@ -2323,7 +2365,8 @@
   var repaintAfterRender = false;
   function slotsKey() {
     var a = state.address;
-    return [holdMinutes(), a.line1, a.city, a.zip, state.covered, jobNeeds().join(','), state.separateTimes, state.advice, state.timeMode].join('|');
+    return [holdMinutes(), a.line1, a.city, a.zip, state.covered, jobNeeds().join(','), state.separateTimes, state.advice, state.timeMode,
+      JSON.stringify(travelBy)].join('|');
   }
 
   /** An address finished on the checkout: refresh the times once it settles. */
@@ -2642,7 +2685,9 @@
         var extra = both[1].filter(function (b) { return b.end > from && b.start < to; });
         // `mode` has to survive the merge: the note about standard hours and
         // the quote-link check both read it.
-        return { mode: win.mode, open: win.open, busy: (win.busy || []).concat(extra), events: win.events, best: win.best, priority: win.priority };
+        // Everything else rides along unchanged (the OPEN blocks' fees too:
+        // listing the fields by hand dropped them).
+        return Object.assign({}, win, { busy: (win.busy || []).concat(extra) });
       });
     })).then(function (wins) {
       var members = people.map(function (d, i) { return { d: d, win: wins[i] }; })
@@ -3047,13 +3092,20 @@
     var buffer = P.travelBufferMin(drive);
     var needs = jobNeeds();
 
-    var startsFor = function (win) {
+    var startsFor = function (win, id) {
+      // Each detailer's own drive here, from their home.
+      var myDrive = id ? driveFor(id) : drive;
+      var myBuffer = P.travelBufferMin(myDrive);
+      var me = crew().filter(function (d) { return d.id === id; })[0];
       var req = {
+        // "6pm" means arriving 6 to 7pm, so the drive may use that hour
+        // (owner, November 11; DETAILERS arrivalWindow, 60 by default).
+        arrivalWindowMin: me ? me.arrivalWindowMin : P.ARRIVAL_WINDOW_MIN,
         openBlocks: win.open,
         busy: win.busy,
         serviceDurationMin: dur,
-        travelBeforeMin: buffer,
-        travelAfterMin: buffer,
+        travelBeforeMin: myBuffer,
+        travelAfterMin: myBuffer,
         granularityMin: 30,
         notBefore: from,
         notAfter: to,
@@ -3063,7 +3115,7 @@
         ignoreReturnAfterMin: P.IGNORE_RETURN_AFTER_MIN,
         // And the first job of the day is reached by leaving home earlier,
         // for a drive short enough to absorb before the day starts.
-        ignoreOutboundBeforeMin: drive <= 60 ? P.IGNORE_OUTBOUND_BEFORE_MIN : undefined
+        ignoreOutboundBeforeMin: myDrive <= 60 ? P.IGNORE_OUTBOUND_BEFORE_MIN : undefined
       };
       if (corr) {
         req.preferredStartsMin = { weekday: P.CORRECTION_RULES.allowedStartsMin, weekend: P.CORRECTION_RULES.allowedStartsMin };
@@ -3084,7 +3136,7 @@
     // Why times were dropped, as 'kind:reason', for the note under the legend.
     var reasons = {};
     var free = able.map(function (m) {
-      var starts = startsFor(m.win).filter(function (ms) {
+      var starts = startsFor(m.win, m.d.id).filter(function (ms) {
         var p = weatherProblem(ms, dur, forecast);
         if (p) reasons[p.kind + ':' + p.reason] = true;
         return !p;
@@ -3103,7 +3155,7 @@
       // Each detailer's free starts and BEST times, in priority order, for
       // "Our recommended times" (recommendBestDays).
       members: able.map(function (m, i) {
-        return { id: m.d.id, starts: free[i].starts, best: m.win.best && m.win.best.length ? m.win.best : null, busy: m.win.busy || [] };
+        return { id: m.d.id, starts: free[i].starts, best: m.win.best && m.win.best.length ? m.win.best : null, busy: m.win.busy || [], fees: m.win.fees || null };
       }),
       mode: team.mode,
       forecast: forecast,
@@ -3176,18 +3228,39 @@
     return Boolean(d && P.waivesFeeAt(d, ms));
   }
 
+  /**
+   * The fee the detailer's own calendar sets for this start: the OPEN block
+   * it starts in, "OPEN" standard, "OPEN +20%" twenty percent (owner,
+   * November 10, fee standard B). Null when their calendar has no OPEN
+   * blocks: then the clock rule.
+   */
+  function blockFee(ms, detailerId) {
+    if (!lastCalc || !lastCalc.members) return null;
+    var id = detailerId || (lastCalc.who && lastCalc.who.get(ms)) || 'owner';
+    var m = lastCalc.members.filter(function (x) { return x.id === id; })[0];
+    return m && m.fees ? P.blockFeeAt({ fees: m.fees }, ms) : null;
+  }
+
   /** Both surcharges for a start, as basis points, judged on the start itself. */
   function surchargeBp(ms) {
     return P.computeSurcharge(
-      { startMinutesLocal: P.localMinutesOfDay(ms), priorityBooking: needsPriority(ms), timeOfDayWaived: timeFeeWaived(ms) },
+      { startMinutesLocal: P.localMinutesOfDay(ms), priorityBooking: needsPriority(ms), timeOfDayWaived: timeFeeWaived(ms), blockFeeBp: blockFee(ms) },
       RULES.surcharge
     ).appliedBp;
   }
 
   /** An early or late fee applies to this start, for whoever would take it. */
   function timeFeeApplies(ms) {
+    var f = blockFee(ms);
+    if (f !== null) return f > 0;
     var band = P.bandOf(localMin(ms));
     return Boolean(band && band.premium && !timeFeeWaived(ms));
+  }
+
+  /** The early or late fee shown for the chosen time, for the server's fallback. */
+  function shownTimeFeeBp() {
+    var c = state.slot ? surchargeCtx() : null;
+    return c ? P.computeSurcharge(c, RULES.surcharge).timeOfDayBp : null;
   }
 
   /** "+$36", or "+20%" on the Help me decide path, where nothing is priced yet. */
@@ -5194,7 +5267,9 @@
         mode: state.payInFull ? 'pay_now' : 'card_only',
         idempotencyKey: bookingKey(),
         // So the charge carries the same fee-free hours as the booking.
-        detailer: detailerParam()
+        detailer: detailerParam(),
+        // The early or late fee shown, used by the server only if it cannot read the calendar.
+        timeFeeBp: shownTimeFeeBp()
       })
     })
       .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
@@ -5270,7 +5345,9 @@
               contact: state.contact,
               consent: consentPayload(),
               turnstileToken: state.turnstileToken,
-              detailer: detailerParam()
+              detailer: detailerParam(),
+              // The early or late fee shown, used by the server only if it cannot read the calendar.
+              timeFeeBp: shownTimeFeeBp()
             })
           }).then(function (r) { return r.json(); }).then(function (j) {
             if (!j.id) throw new Error(j.message || 'PayPal could not start');
@@ -6094,7 +6171,9 @@
           heard: state.heard,
           // Who the time was given to. The server only honours a name in its
           // own DETAILERS setting; anything else books the default calendar.
-          detailer: detailerParam()
+          detailer: detailerParam(),
+          // The early or late fee shown, used by the server only if it cannot read the calendar.
+          timeFeeBp: shownTimeFeeBp()
         })
       }).catch(function () {});
     } catch (e) { /* an email must never cost us a booking */ }

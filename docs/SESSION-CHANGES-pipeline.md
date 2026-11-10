@@ -13,6 +13,22 @@ Built overnight, November 10 to 11, for you to evaluate. It combines your 8 answ
   - `web/lib/browser-entry.ts`, `js/pricing.bundle.js` (built), `web/lib/funnel.smoke.test.mjs`.
   - The build also re-stamps `?v=` on every page. Those page changes were left out of the commit; a rebuild after merging restamps them.
 
+## Round 17 (November 11): fees from the calendar, homes per detailer, the arrival hour
+
+### What changed
+- **Fee standard B (owner).** Each OPEN block's title sets the early or late fee for starts inside it: `OPEN` standard, `OPEN +20%` twenty percent, any percentage. With a rush, the two are capped at 30% unless the block alone asks for more. A calendar with no OPEN blocks keeps the clock rule (+20% before 10am or from 6pm). The payment and booking functions read the same block from the detailer's calendar (`_detailers.mjs` `blockFeeFor`). If the calendar can't be read at that moment, they keep the fee the customer was shown, never more than the clock rule.
+- **Each detailer drives from their own home (owner).** `DETAILER_HOMES` in Netlify, server-only and secret, is JSON by name: `{"Kris": "address"}`. The travel function, the card and PayPal functions and the booking email measure the drive from that home. The booking form measures each detailer's drive once per address (`/api/travel?detailer=`), so each detailer's offered times allow for their own drive, and the fee follows whoever has the chosen time. Not listed: the shop address, as before. Home addresses never go into `DETAILERS`, because that setting is written into the public page.
+- **The arrival hour (owner).** A start is an arrival window, "6pm" meaning 6 to 7pm, so the drive may use it, after an OPEN block begins or after a previous job ends. The job is planned from the real arrival. Default 60 minutes; `"arrivalWindow"` in a `DETAILERS` entry changes it per detailer. Kris's 6pm is now offered.
+- *Root cause, fees not read for Elijah:* `loadCrew` rebuilt the owner's window field by field to add his personal calendar, which dropped the new fee list. It now copies the window whole.
+
+### Must happen before this goes live
+- **Retag the OPEN blocks** (the guide has the exact list). Until then every OPEN hour reads as standard price, because the blocks are untagged. The live site reads `OPEN +20%` as an ordinary OPEN block and merges touching blocks, so retagging now is safe for it.
+- **`DETAILER_HOMES`** with Kris's address, for his drive to be his own.
+
+### Checked
+- Tests 502 of 502 (Eastern time), 13 new.
+- Preview against the real calendars: Kris's 6pm leads Wednesday, Friday and Saturday; your times read your calendar.
+
 ## Round 16 (November 10, late): the checkout as folding sections, two reviews, an engine check
 
 ### What changed

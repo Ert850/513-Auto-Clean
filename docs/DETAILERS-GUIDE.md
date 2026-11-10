@@ -13,9 +13,11 @@ This guide covers changing working hours, best start times, fees and who is offe
 - **BEST events** mark the start times we recommend first, for example Kris at 6pm.
 - **A "Priority" line** in each calendar's description says who is offered first: 1 goes first, then 2.
 - **Anything else on an availability calendar blocks time,** like a dentist appointment, unless it is set to Free. So do booked jobs on a bookings calendar.
-- **Fees follow the clock:** an early start (before 10am) or a late start (6pm or later) adds 20%. A booking within 3 days (rush) adds 20%. Early or late plus rush adds 30% in total.
-- **A detailer's fee-free hours** remove the early or late fee for starts they work anyway (Kris, Tuesday to Saturday, 6 to 7pm). These are set in Netlify, not in the calendar.
-- **Customers see a 1-hour arrival window**, for example "We arrive between 10 and 11am". Aim to arrive near its start.
+- **Each OPEN block sets its own price.** A start costs what the block it starts in says: `OPEN` is the standard price, `OPEN +20%` adds 20%, `OPEN +35%` adds 35%, any number. A job may run on into the next block; only where it starts counts.
+- **Rush:** a booking within 3 days adds 20%. With a block's fee the two together are capped at 30%, unless the block alone asks for more.
+- **No OPEN blocks at all** (or the calendar can't be read): the old clock rule, +20% before 10am or from 6pm.
+- **Customers see a 1-hour arrival window**, for example "We arrive between 6 and 7pm", and the drive may use that hour. So a detailer whose OPEN starts at 6pm can be booked for 6pm, as long as the drive is under the hour.
+- **Each detailer drives from their own home** (Netlify `DETAILER_HOMES`, section E). Their drive sets their travel fee and how close together their jobs can be.
 
 ## The calendars
 
@@ -76,17 +78,21 @@ To move a best time, edit the BEST event's start time. To stop offering it, dele
 
 Today Kris is Priority 1 and you are Priority 2. When two people are free at the same time, the job goes to the lower number.
 
-## E. Change fee-free hours (Netlify)
+## E. Change prices by time, and where someone drives from
 
-1. In Netlify, open **Site configuration**, then **Environment variables**.
-2. Find **DETAILERS**, click the three dots, then **Edit**.
-3. Change that person's `"noFeeStarts"`. Examples:
-   - `"Tue-Sat 18:00-19:00"`: starts from 6 to 7pm, Tuesday to Saturday, have no early or late fee.
-   - `"18:00-19:00"`: the same, every day.
-   - `"Sun,Mon 08:00-09:30; Tue-Sat 18:00-19:00"`: two windows. Separate them with a semicolon.
-   - Times use the 24-hour clock, and both ends are included. The rush fee still applies.
-4. Click **Save**.
-5. Open **Deploys**, then **Trigger deploy**, then **Deploy site**. The change goes live when the deploy finishes (about a minute).
+**Prices, in Google Calendar:** split an OPEN event into blocks and put the fee in the title.
+1. Click the OPEN event, then the pencil. Change its end to where the price changes (for example 6:00pm). Save, **This and following events**.
+2. Click **+ Create**, **Event**, title `OPEN +20%` (or any percentage), from 6:00pm to 12:00am, repeating on the same days, on the same availability calendar, left **Busy**. Save.
+3. Blocks that touch count as one stretch, so a job can still run across the line.
+
+**Home addresses, in Netlify (server-only, never shown on the site):**
+1. **Site configuration**, **Environment variables**, **Add a variable**: key `DETAILER_HOMES`, and tick **Contains secret values**.
+2. Value, by name, any number of people: `{"Kris": "123 Example St, Cincinnati, OH 45202"}`
+3. Save, then **Trigger deploy**. Anyone not listed, and you, drive from the shop address (`SHOP_ORIGIN_ADDRESS`).
+
+**Arrival window (optional):** in someone's `DETAILERS` entry, `"arrivalWindow": 30` gives them 30 minutes instead of the usual 60.
+
+**Old setting:** `"noFeeStarts"` in `DETAILERS` still works for a calendar with no OPEN blocks, but tagged OPEN blocks replace it.
 
 ## F. Change what someone does (Netlify)
 
@@ -145,7 +151,7 @@ A job only goes to someone who does every part of it. Save, then **Trigger deplo
 
 - **Hours (OPEN):** Sunday and Monday 8am to midnight; Tuesday to Saturday 6pm to midnight. Jobs finish by midnight.
 - **Best times (BEST):** Sunday and Monday 10am; Tuesday to Saturday 6pm.
-- **Fee-free:** Tuesday to Saturday, 6 to 7pm (`"Tue-Sat 18:00-19:00"`).
+- **Prices (to set up, owner's fee standard B):** Sunday and Monday `OPEN +20%` 8 to 10am, `OPEN` 10am to 6pm, `OPEN +20%` 6pm to midnight. Tuesday to Saturday `OPEN` 6 to 7:30pm (so 6, 6:30 and 7pm starts are standard), `OPEN +20%` 7:30pm to midnight.
 - **Priority:** 1. **Does:** interior only.
 - **Calendars:**
   - 513 Kris Availability: `18f753f8e633da3dec644bca2d658fdccc42ee05a043adbf46dbc939ec88f2dd@group.calendar.google.com` (public, all event details).
@@ -161,6 +167,7 @@ A job only goes to someone who does every part of it. Save, then **Trigger deplo
 ## You (Elijah) today
 
 - **Best times:** 10am and 4pm every day, and 6pm Monday to Friday. Your 6pm carries the late fee.
+- **Prices (to set up, owner's fee standard B):** your OPEN 6am to midnight becomes `OPEN +20%` 6 to 10am, `OPEN` 10am to 6pm and `OPEN +20%` 6pm to midnight, the same prices as today's clock rule.
 - **Priority:** 2. **Does:** everything.
 - **Calendars:** 513 Availability `9f26a370ac8629b6df3f7f4e8181aa1086f3acb2b47866e01a1b868cd4ab8161@group.calendar.google.com` (your OPEN and BEST events), and 513 Auto Clean `75726fed82aa92a27201386beda7b3a15f550a3a5691e5e6cfc51382f0f0b9cf@group.calendar.google.com` (your jobs).
 - **Netlify `GOOGLE_BUSY_ONLY_CALENDAR_IDS`** is set to the 513 Auto Clean ID, so the new booking form reads your jobs as busy times only, never their details.
