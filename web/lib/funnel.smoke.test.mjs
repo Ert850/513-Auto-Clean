@@ -305,10 +305,11 @@ describe("the booking funnel opens", () => {
 
     expect(body.length, "the confirm step rendered nothing").toBeGreaterThan(200);
     expect(body, "the promo field should be on the confirm step").toContain("bkPromo");
-    // Water, power and parking are asked before sending, worded as ordinary
-    // questions (owner, November 10), though none of them blocks a booking.
+    // Water, power and parking are asked before sending. None of them blocks
+    // a booking, and (owner, November 10, round 14) the section says so again,
+    // as on the original pipeline.
     expect(body, "the setup questions should be on the confirm step").toContain("data-access");
-    expect(body, "and not labelled optional").not.toContain("Getting set up on the day <i");
+    expect(body, "and labelled optional").toContain('Getting set up on the day <i class="bk-opt">Optional</i>');
     expect(body, "the one free-text box stays").toContain("bkNotes");
 
     // NO STRIPE KEY, SO NO CARD STEP AT ALL. This screen used to ask for a
