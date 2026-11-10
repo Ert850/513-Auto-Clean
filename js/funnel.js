@@ -2586,6 +2586,15 @@
   var TICK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg>';
   var STAR = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2.8l2.8 5.8 6.3.9-4.6 4.4 1.1 6.3L12 17.2 6.4 20.2l1.1-6.3L2.9 9.5l6.3-.9z"/></svg>';
 
+  /** "EST" in winter, "EDT" in summer: the abbreviation for that date in Cincinnati. */
+  function zoneName(ms) {
+    try {
+      var part = new Intl.DateTimeFormat('en-US', { timeZone: TZ, timeZoneName: 'short' })
+        .formatToParts(new Date(ms)).filter(function (x) { return x.type === 'timeZoneName'; })[0];
+      return part ? part.value : 'ET';
+    } catch (e) { return 'ET'; }
+  }
+
   /** Times and days in Cincinnati time, whatever the visitor's clock says. */
   function tzTime(ms) {
     return new Date(ms).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: TZ })
@@ -2764,7 +2773,7 @@
 
     html += '<p class="bk-wk-fine">Early is before 10am and late is 6pm or later; rush is within ' +
       RULES.window.minLeadDays + ' days. Early or late plus rush is ' + (RULES.surcharge.maxTotalBp / 100) +
-      '% in total. Times are Cincinnati time' +
+      '% in total. Hours are in Cincinnati Time Zone (' + zoneName(first.dayStart + DAY / 2) + ')' +
       (canNext ? '.' : ', and we take bookings up to 3 months ahead.') + '</p>';
 
     // Go to a date, and the way out, in one bar.
@@ -2809,8 +2818,17 @@
       top: Math.round((start % 60) / 60 * hourPx),
       height: Math.round(dur / 60 * hourPx - GAP_PX),
       start: tzTime(ms),
-      end: 'to ' + endLabel(start + dur)
+      end: 'to ' + endLabel(start + dur),
+      // The fee ONCE, for the whole job. The cells under the block are
+      // hidden: a "+$25" in every hour it covered read as $25 an hour.
+      fee: feeText(ms) || 'Standard',
+      // Too short a block for three lines drops the middle one.
+      short: dur / 60 * hourPx - GAP_PX < 56
     };
+  }
+
+  function spanInner(g) {
+    return '<b>' + esc(g.start) + '</b><em>' + esc(g.fee) + '</em><small>' + esc(g.end) + '</small>';
   }
 
   /**
@@ -2865,15 +2883,27 @@
       });
     });
 
+    // Gold dashed lines where a fee starts or stops: where the early hours
+    // end (10am), where the late ones begin (6pm), and after the last rush day.
+    [10 * 60, 18 * 60].forEach(function (h) {
+      var r = week.rows.indexOf(h);
+      if (r > 0) html += '<span class="bk-wk-line h" aria-hidden="true" style="grid-area:' + (r + 2) + ' / 1 / ' + (r + 3) + ' / 10"></span>';
+    });
+    var lastRush = -1;
+    week.days.forEach(function (day, i) { if (day.rush) lastRush = i; });
+    if (lastRush > -1 && lastRush < 6) {
+      html += '<span class="bk-wk-line v" aria-hidden="true" style="grid-area:2 / ' + (lastRush + 3) + ' / ' + (rows + 2) + ' / ' + (lastRush + 4) + '"></span>';
+    }
+
     // The chosen job, start to finish.
     week.days.forEach(function (day, i) {
       if (!state.slot || state.slot < day.dayStart || state.slot >= day.dayStart + DAY) return;
       var g = spanGeom(state.slot, i, dur, rows);
-      html += '<div class="bk-wk-span" aria-hidden="true" style="grid-area:' + g.area + '">' +
-        '<i style="top:' + g.top + 'px;height:' + g.height + 'px"><b>' + esc(g.start) + '</b><small>' + esc(g.end) + '</small></i></div>';
+      html += '<div class="bk-wk-span' + (g.short ? ' short' : '') + '" aria-hidden="true" style="grid-area:' + g.area + '">' +
+        '<i style="top:' + g.top + 'px;height:' + g.height + 'px">' + spanInner(g) + '</i></div>';
     });
     // And one for previewing on hover, placed by the mouseover handler.
-    html += '<div class="bk-wk-span preview" id="bkWkPreview" aria-hidden="true" hidden><i><b></b><small></small></i></div>';
+    html += '<div class="bk-wk-span preview" id="bkWkPreview" aria-hidden="true" hidden><i></i></div>';
     return html + '</div>';
   }
 
@@ -2887,8 +2917,8 @@
     var inner = pv.querySelector('i');
     inner.style.top = g.top + 'px';
     inner.style.height = g.height + 'px';
-    inner.querySelector('b').textContent = g.start;
-    inner.querySelector('small').textContent = g.end;
+    inner.innerHTML = spanInner(g);
+    pv.classList.toggle('short', g.short);
     pv.hidden = false;
   }
 
@@ -3122,14 +3152,20 @@
     // is ever submitted: the keydown handler intercepts Enter and the submit
     // listener in mount() cancels the rest.
     return '<form class="bk-form" id="bkContactForm" autocomplete="on" novalidate>' +
-      '<div class="bk-row2">' +
+      // One row on wider screens: name, phone, email. It is what keeps the two
+      // required answers below (filming, terms) on a laptop's first screen.
+      '<div class="bk-row2 bk-contact-row">' +
       '<div class="bk-field"><label for="bkName">Name</label>' +
       '<input type="text" id="bkName" name="name" data-c="name" value="' + esc(c.name) + '" autocomplete="name" maxlength="80" data-focus /></div>' +
       '<div class="bk-field"><label for="bkPhone">Phone</label>' +
       '<input type="tel" id="bkPhone" name="tel" data-c="phone" value="' + esc(c.phone) + '" inputmode="tel" autocomplete="tel" maxlength="20" /></div>' +
-      '</div>' +
       '<div class="bk-field"><label for="bkEmail">Email <i>(optional)</i></label>' +
       '<input type="email" id="bkEmail" name="email" data-c="email" value="' + esc(c.email) + '" inputmode="email" autocomplete="email" maxlength="120" data-optional /></div>' +
+      '</div>' +
+
+      // Filming first among the questions: a required answer, and short, so
+      // its Yes and No sit on the first screen (owner, November 10).
+      mediaQuestion() +
 
       // The two clauses that actually affect someone are stated HERE, not
       // hidden behind a link. A card network deciding a chargeback wants to
@@ -3160,9 +3196,6 @@
         'Usually 2 to 5 messages per booking. Msg and data rates may apply. Reply STOP to opt out, HELP for help. ' +
         'Leave it unticked and we will email or call instead.') +
 
-      // Asked here, every time, and an answer is required (owner, November
-      // 10: "I hate asking in person"). Not pre-chosen either way.
-      mediaQuestion() +
 
       '</form>';
   }
@@ -3353,12 +3386,13 @@
       return '<button type="button" class="bk-acc-b' + (on ? ' on' : '') + '" data-media="' + val + '">' + text + '</button>';
     };
     return '<div class="bk-acc bk-media' + (m === null ? '' : ' answered') + '">' +
-      '<p class="bk-acc-q">Can we film and photograph the detail?</p>' +
+      '<div class="bk-media-t"><p class="bk-acc-q">Can we film and photograph the detail?</p>' +
       '<p class="bk-acc-h">We record the whole detail, edit it into short clips, and use it for social media and ' +
       'marketing. It is how we reach more customers like you and keep our prices competitive. We always blur ' +
       'children, license plates, and any private information. ' +
-      '<a href="https://www.instagram.com/513autoclean/" target="_blank" rel="noopener">See the kind of thing we post</a></p>' +
-      '<div class="bk-acc-opts">' + opt('yes', 'Yes') + opt('no', 'No') + '</div>' +
+      '<a href="https://www.instagram.com/513autoclean/" target="_blank" rel="noopener">See the kind of thing we post</a></p></div>' +
+      '<div class="bk-acc-opts" role="group" aria-label="Can we film and photograph the detail?">' +
+        opt('yes', 'Yes') + opt('no', 'No') + '</div>' +
       '</div>';
   }
 
