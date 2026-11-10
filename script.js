@@ -167,6 +167,27 @@
     });
   });
 
+  /* ---------- Services page: the full checklists when they fit ----------
+     services.html folds each package list after three items ("N more
+     included", web/scripts/render-site.mjs) so the cards, their Book buttons
+     and the offers banner fit a laptop screen. On a screen tall enough for
+     the full lists they open and the toggle goes (.svc-full in styles.css),
+     so every inclusion shows as one list: the owner wants the lists growing
+     package to package on show wherever there is room. The height is where
+     the full Interior cards and the banner still fit (measured, see
+     docs/SESSION-CHANGES-fold.md). */
+  var foldMq = window.matchMedia('(min-width: 1000px) and (min-height: 900px)');
+  function syncFold() {
+    var full = foldMq.matches;
+    document.documentElement.classList.toggle('svc-full', full);
+    document.querySelectorAll('.svc-more').forEach(function (d) { d.open = full; });
+  }
+  if (document.querySelector('.svc-more')) {
+    syncFold();
+    if (foldMq.addEventListener) foldMq.addEventListener('change', syncFold);
+    else if (foldMq.addListener) foldMq.addListener(syncFold);
+  }
+
   /* ---------- Before / after sliders ----------
      Exposed so js/gallery.js can bind the ones it injects from the manifest,
      which do not exist when this runs. */

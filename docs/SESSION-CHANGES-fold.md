@@ -221,3 +221,69 @@ The old layout answered these in the reverse order. Two cards of town names sat 
 - The **Exterior** tab's banner is a scroll away: the correction card sits between the packages and the banner.
 - At **1280×720** the Services banner ends 45 px below the screen, and the About cards' top edge is 1 px below it.
 - The Range & Travel intro is still three centred lines. Widening it to two would push lines past about 120 characters.
+
+---
+
+# Round 3: the home page below the hero, and Services' full lists on tall screens
+
+## What the owner said
+- **Main session, from the owner:** "Trim vertical whitespace on the home page … Services and pricing needs the most help, as you can show key conversion items paired on the same screen."
+- **The owner, directly:** "trim vert whitespace on the lower segments while preserving the main above the fold section." The hero is untouched: at 1440×790 it already ends with the dark trust bar showing at the bottom, which is the scroll cue.
+- **Home Services:** I rendered three options (`fold-shots/home-services-option-1/2/3.png`). The owner chose **whitespace only**: "it keeps the visible increase in services as price increase instead of hiding behind popup / extension buttons." So the home cards keep every checklist item.
+- **Services page (owner, with a sample screenshot):** "At sufficient screen sizes the subpage with services can … render without the show more included option," with less space between the offers and the Additionals heading.
+
+## Home page: before and after
+"Jump" is the view after clicking Services in the nav, which lands the section under the 73 px header. Values are the bottom edge, in viewport px, of each item.
+
+| Item | 1440×790 | 1280×720 | 1920×950 |
+|---|---|---|---|
+| Services section height | 1169 → **895** | 1153 → **888** | 1169 → **898** |
+| Gap from the Results band to Services content | 128 → **82** | 116 → **75** | 128 → **84** |
+| Gap from Services content to the booking band | 144 → **103** | 128 → **92** | 144 → **104** |
+| Jump: title block ends | 380 → **282** | 372 → **279** | 380 → **284** |
+| Jump: tabs | 476 → **352** | 467 → **348** | 476 → **354** |
+| Jump: prices | 616 → **448** | 607 → **445** | 616 → **450** |
+| Jump: Book buttons | 1019 ✗ → 826 ✗ (36 px short) | 1010 ✗ → 822 ✗ | 1018 ✗ → **828** ✓ |
+| Jump: offers banner | 1171 ✗ → 929 ✗ | 1162 ✗ → 925 ✗ | 1170 ✗ → **931** ✓ |
+
+On a 1440×900 or 1536×864 window, the jump shows the Book buttons (826 and 828) and most of the banner (929 and 930).
+
+The hero, the trust bar, the review ticker and the Results band are unchanged. Phones (375 and 320) have no horizontal scroll; the home Services section is 2225 → 1959 px tall at 375.
+
+Screenshots (2×), in `fold-shots/`: `r3before-home-services-jump-*` (before), `r3-home-services-jump-*` (after), and `home-services-option-1/2/3.png` (the options).
+
+**Rules applied** (from rounds 1 and 2):
+- One gap between bands, not two stacked paddings.
+- The title block runs wider, so the title and intro take two lines each, not three. That is a change of measure, not of type size: the home title keeps its 2.7rem.
+- Card spacing is set by line height and margins; no text was shrunk.
+- The compact offers banner: no rule between the two offers, and less padding.
+
+## Services page: full lists on tall screens
+- **On a window at least 1000 px wide and 900 px tall,** `script.js` opens every "N more included" and adds `.svc-full` to `<html>`, which hides the toggles. Every inclusion then reads as one list, as in the owner's sample.
+  - The threshold is measured: with full lists, the Interior banner ends at 898 px and the Additionals label at about 950 px.
+- **Below that height** (1440×790, 1280×720), the round-2 fold stays: 3 items, then "N more included +".
+- **The gap under the banner is one gap:** `main > #services` bottom padding is 16 to 24 px (it was 28 to 40). On a 1920×1000 window the "ADDITIONALS / Add-ons for any package." heading shows under the banner (`fold-shots/r3-services-full-1920x1000.png`).
+
+## Files
+| File | Change |
+|---|---|
+| `styles.css` | <ul><li>`body > #services` (home only) padding, title-block measure and margins, tabs gap.</li><li>The card density rules now cover the home cards too, adding `body > #services`, which matches only the home page; `.svc-how` margin is .4rem 0 .85rem.</li><li>The compact banner also applies to home.</li><li>`body > #quote` padding is 40 to 64 px.</li><li>`.svc-full` rules.</li><li>`main > #services` bottom padding.</li></ul> |
+| `script.js` | `syncFold()`: a media query (`min-width: 1000px` and `min-height: 900px`) opens the `.svc-more` lists and sets `.svc-full`. |
+| `CLAUDE.md` | Round 3 lessons. |
+
+Not touched:
+- the header and footer (`web/partials/`, `CHROME:*`);
+- the hero markup and the hero image CSS;
+- the Results carousel's JS, and all gallery CSS, including its outer spacing.
+
+## How to test
+1. `export PATH=/opt/homebrew/opt/node@22/bin:$PATH && npm run build`, then `cd web && TZ=America/New_York npx vitest run` (416 of 416 pass).
+2. **Home page:** click "Services" in the nav. On a desktop window (1920×950) you see the title, the tabs, three cards with every checklist item and their Book buttons, and the whole offers banner. Every gap between bands is one gap.
+3. **Services page:**
+   - In a tall window (1920×1000) there are no "N more included" toggles: all items show, and the Additionals heading is under the banner.
+   - Shrink the window below 900 px tall and the toggles come back. Make it taller again and they open.
+   - All Book buttons open the form with their package.
+4. **Phones:** at 375 and 320 px there is no horizontal scroll, and the home and Services cards stack.
+
+## Open
+- At **1440×790** and **1280×720**, the home Services jump shows the title, tabs, prices and full checklists, but the Book buttons sit 36 px (1440×790) or about 100 px (1280×720) below the screen. That is the cost of keeping every checklist item visible, which the owner chose.
