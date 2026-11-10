@@ -1111,11 +1111,12 @@ function averageOneWayMinutes(outboundMinutes, returnMinutes) {
 }
 
 // lib/pricing/quote.ts
-function surchargeLabel(bd) {
-  const pct = "+" + bd.appliedBp / 100 + "%";
-  if (bd.priorityBp > 0 && bd.timeOfDayBp > 0) return "Rush booking and premium time, " + pct;
-  if (bd.priorityBp > 0) return "Rush booking, " + pct;
-  return "Premium time, " + pct;
+function surchargeLabel(bd, startMinutesLocal) {
+  const pct = " (" + bd.appliedBp / 100 + "%)";
+  const hour = startMinutesLocal !== void 0 && startMinutesLocal < 12 * 60 ? "early start" : "late start";
+  if (bd.priorityBp > 0 && bd.timeOfDayBp > 0) return "Rush and " + hour + " fee" + pct;
+  if (bd.priorityBp > 0) return "Rush fee" + pct;
+  return hour.charAt(0).toUpperCase() + hour.slice(1) + " fee" + pct;
 }
 function quote(cart, r, taxTable = SEED_TAX_TABLE, year = (/* @__PURE__ */ new Date()).getFullYear()) {
   const lines = [];
@@ -1233,7 +1234,7 @@ function quote(cart, r, taxTable = SEED_TAX_TABLE, year = (/* @__PURE__ */ new D
   if (surchargeCents > 0) {
     lines.push({
       kind: "surcharge",
-      label: surchargeLabel(bd),
+      label: surchargeLabel(bd, cart.surchargeContext?.startMinutesLocal),
       vehicleIndex: null,
       amountCents: surchargeCents,
       durationMin: 0
