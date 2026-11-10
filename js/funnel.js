@@ -727,7 +727,8 @@
   /** "Fri, Nov 13 · arrive 10 to 11am · about 2 hrs" */
   function whenLine(ms) {
     return tzDay(ms, { weekday: 'short', month: 'short', day: 'numeric' }) + ' · arrive ' + arrivalWindow(ms) +
-      (holdMinutes() ? ' · about ' + fmtDur(holdMinutes()) : '');
+      // "about 4 hrs detailing": what the hours are (owner, November 11).
+      (holdMinutes() ? ' · about ' + fmtDur(holdMinutes()) + ' detailing' : '');
   }
 
   /** "10 to 11am": the hour we arrive in, from the start time. */
@@ -1243,7 +1244,7 @@
    * while the message stayed.
    */
   function markInvalid(node, sel, msgEl) {
-    var box = node.closest('.bk-field,.bk-check,.bk-acc') || node;
+    var box = outlineOf(node);
     box.classList.add('bk-invalid');
     if (node.setAttribute) node.setAttribute('aria-invalid', 'true');
     if (msgEl) {
@@ -1253,6 +1254,16 @@
     }
   }
   var errSeq = 0;
+
+  /**
+   * What gets the red outline: a text box itself, or the whole question for
+   * a tick box or yes/no. Outlining a field's whole column took in its label
+   * and, in an aligned row, the empty space beside a neighbour's message.
+   */
+  function outlineOf(node) {
+    if (/^(INPUT|SELECT|TEXTAREA)$/.test(node.tagName || '') && node.closest && node.closest('.bk-field')) return node;
+    return (node.closest && node.closest('.bk-check,.bk-acc')) || node;
+  }
 
   /** Every problem in a checkout section, each under its own field. */
   function showProblems(list, sec) {
@@ -1282,12 +1293,43 @@
     if (first.node) { try { first.node.focus({ preventScroll: true }); } catch (e) { first.node.focus(); } }
   }
 
-  /** A message under its field: inside a text field's box (so a grid row keeps its shape), else after the question. */
+  /*
+   * WHERE A MESSAGE GOES (owner's screenshot, November 11: the Phone error
+   * lifted Phone's label and box above Name and Email).
+   *
+   * Root cause, one for several bugs: a message was placed next to the
+   * control at fault, and that control often sits in a ROW of side-by-side
+   * items: the Name, Phone, Email fields (aligned on their bottoms), the
+   * three vehicle and service pictures, the request days, the week grid.
+   * Inside the row the message either became a squeezed column or made its
+   * item taller and threw the row out of line.
+   *
+   * So: a text field's message goes inside its field only where the row
+   * gives every field a label, box and message track (CSS subgrid, the
+   * .bk-row2 and .bk-row3 rules in book.css), or where the field stands
+   * alone. Anything else climbs out of every side-by-side row and goes
+   * under the whole row.
+   */
+  var SUBGRID = Boolean(window.CSS && CSS.supports && CSS.supports('grid-template-rows', 'subgrid'));
+  function isRow(el) {
+    if (!el || el.nodeType !== 1 || !window.getComputedStyle) return false;
+    var cs = getComputedStyle(el);
+    if (/flex/.test(cs.display)) return /^row/.test(cs.flexDirection) && el.children.length > 1;
+    if (/grid/.test(cs.display)) return String(cs.gridTemplateColumns || '').trim().split(/\s+/).length > 1;
+    return false;
+  }
   function placeMsg(p, near, body) {
     var box = near && (near.closest('.bk-field,.bk-check,.bk-cards,.bk-acc') || near);
-    if (box && box.classList && box.classList.contains('bk-field')) box.appendChild(p);
-    else if (box && box.parentNode) box.parentNode.insertBefore(p, box.nextSibling);
-    else body.appendChild(p);
+    if (!box || !box.parentNode) { body.appendChild(p); return null; }
+    var parent = box.parentNode;
+    if (box.classList && box.classList.contains('bk-field') &&
+        (!isRow(parent) || (SUBGRID && /\bbk-row[23]\b/.test(parent.className || '')))) {
+      box.appendChild(p);
+      return box;
+    }
+    var at = box;
+    while (at.parentNode && at.parentNode !== body && isRow(at.parentNode)) at = at.parentNode;
+    at.parentNode.insertBefore(p, at.nextSibling);
     return box;
   }
 
@@ -1314,7 +1356,7 @@
       if (still.indexOf(m.textContent + '|' + sel) > -1) return;
       var node = body.querySelector(sel);
       if (node) {
-        var box = node.closest('.bk-field,.bk-check,.bk-acc') || node;
+        var box = outlineOf(node);
         box.classList.remove('bk-invalid');
         node.removeAttribute('aria-invalid');
         node.removeAttribute('aria-describedby');
@@ -5499,7 +5541,7 @@
     var when = state.slot
       ? '<tr class="when"><td>Your time</td><td>' +
         esc(tzDay(state.slot, { weekday: 'short', month: 'short', day: 'numeric' })) +
-        '<i class="bk-arrive">Arrive ' + esc(arrivalWindow(state.slot)) + ' · about ' + esc(fmtDur(holdMinutes())) + '</i></td></tr>'
+        '<i class="bk-arrive">Arrive ' + esc(arrivalWindow(state.slot)) + ' · about ' + esc(fmtDur(holdMinutes())) + ' detailing</i></td></tr>'
       : '';
 
     // Every discount, against what the same booking would cost with none of
