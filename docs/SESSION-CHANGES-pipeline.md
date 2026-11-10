@@ -21,6 +21,10 @@ Built overnight, November 10 to 11, for you to evaluate. It combines your 8 answ
 - **The arrival hour (owner).** A start is an arrival window, "6pm" meaning 6 to 7pm, so the drive may use it, after an OPEN block begins or after a previous job ends. The job is planned from the real arrival. Default 60 minutes; `"arrivalWindow"` in a `DETAILERS` entry changes it per detailer. Kris's 6pm is now offered.
 - *Root cause, fees not read for Elijah:* `loadCrew` rebuilt the owner's window field by field to add his personal calendar, which dropped the new fee list. It now copies the window whole.
 
+- **Promo code on the package page (bug, owner).** "Have a promo code?" opened onto nothing until a package was picked; most noticeable on Both, which starts with nothing picked. *Root cause:* the box draws nothing before there is a price (a rule from when it sat open on the page); round 16 put it inside the fold. Inside the fold it now always shows, and a code typed first applies once a package is picked.
+- **Icons in the done rows (owner).** Vehicle, Service, Package and Extras show their picture between the step name and the answer (the size's car, the service's picture, a sparkle for extras).
+- **Both: on to the exterior list (owner).** Picking an interior package with no exterior yet scrolls the Exterior list up.
+
 ### Must happen before this goes live
 - **Retag the OPEN blocks** (the guide has the exact list). Until then every OPEN hour reads as standard price, because the blocks are untagged. The live site reads `OPEN +20%` as an ordinary OPEN block and merges touching blocks, so retagging now is safe for it.
 - **`DETAILER_HOMES`** with Kris's address, for his drive to be his own.

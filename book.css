@@ -1758,3 +1758,11 @@ button.bk-wk-c:hover { box-shadow: 0 0 0 2px var(--red-ghost); }
 @media (max-width: 819.98px) {
   #bookFunnel .bk-donerow b { white-space: normal; overflow: visible; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 }
+/* The answer's picture in a done row, between the step name and the answer (owner, November 11). */
+#bookFunnel .bk-donerow-ic { flex: none; display: grid; place-items: center; width: 26px; height: 26px; margin-right: -.2rem; color: var(--text); }
+#bookFunnel .bk-donerow-ic .bk-pic-ic { width: 24px; height: 24px; margin: 0; }
+@media (max-width: 559.98px) {
+  #bookFunnel .bk-donerow span { width: 4.6rem; }
+  #bookFunnel .bk-donerow-ic { width: 22px; height: 22px; }
+  #bookFunnel .bk-donerow-ic .bk-pic-ic { width: 20px; height: 20px; }
+}
