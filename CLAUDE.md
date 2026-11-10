@@ -121,6 +121,14 @@ Read this before changing anything. Every rule below came from a real bug or an 
 - **No `flex-wrap` on an icon + text row.** The text's flex-basis is its full one-line width, so it always wraps onto a row of its own under the icon. Use `nowrap` and give the text `flex: 1; min-width: 0`.
 - **A mobile-only rule written after a `min-width` media query overrides desktop too** (same specificity, later wins). Wrap it in `max-width: 819.98px`.
 
+## Results carousel (built November 10)
+- **No `.reveal` on anything inside a sideways track.** A card parked off to the side never intersects the viewport, so it stays invisible and fades up late when it slides in. Put `.reveal` on the carousel.
+- **Hover means a pointer that moved.** Chrome fires pointer events when the page scrolls under a resting cursor; a plain `mouseenter` pause stopped the carousel for anyone scrolling with the mouse mid-screen. Check `movementX`/`movementY`.
+- **Focus pauses only when it is keyboard focus** (`:focus-visible`). A clicked button keeps focus, so a focus pause would stop the carousel for good after one click.
+- **Lazy images in a sideways track never load early enough.** Switch the next card's images to `loading = 'eager'` just before it is shown, and wait for them before animating.
+- **How many cards are in view lives in CSS** (`--ba-per` on `.ba-track`, read by `js/gallery.js`), alongside the `sizes` attribute in `js/gallery.js`. Change all three together.
+- **Pause from the visitor is final**: only their Play restarts it. Every other hold (drag, chevron, hover, idle, off screen, hidden tab) clears on its own.
+
 ## Colors (fixed November 10)
 - **Red means the brand and "that did not work", nothing else.** A price or any good answer is ink (`--text`). The travel fee in `--red` looked exactly like the error message under it.
 - **Changing a section's background means re-checking every color in it.** Colors picked on a dark band (red accents, white rings, a red top band on a traffic-light scale) changed meaning on paper.
