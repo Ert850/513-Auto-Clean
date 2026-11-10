@@ -290,54 +290,89 @@ body.bk-open { overflow: hidden; }
    Rush, Early and Late tags, and red only for "your choice". A fee hour is as
    bookable as any other, so it looks like one; its fee is quiet grey text. */
 
-/* Our recommended times: three big one-tap choices. */
-.bk-recs-h { margin: 0 0 .6rem; font-family: var(--font-display); font-size: 1.12rem; }
-.bk-rec {
-  width: 100%; display: flex; align-items: center; gap: .8rem; margin: 0 0 .55rem;
-  font: inherit; text-align: left; cursor: pointer; color: var(--text);
+/* Our recommended times (option C): one-tap picks, each with its reason.
+   The whole card books (its button's ::after covers it); "More times on
+   Friday" sits above that cover and opens the day's other starts. */
+.bk-recs-h { margin: 0 0 .15rem; font-family: var(--font-display); font-size: 1.12rem; }
+.bk-recs-sub { margin: 0 0 .7rem; font-size: .84rem; color: var(--text-soft); }
+.bk-pickday { margin: 0 0 .5rem; }
+.bk-pick-card {
+  position: relative; display: flex; flex-direction: column; gap: .35rem;
   background: var(--paper-2); border: 1.5px solid var(--line); border-radius: var(--r-md);
-  padding: .85rem 1rem; transition: border-color .16s, box-shadow .16s;
+  padding: .7rem 3rem .7rem 1rem; transition: border-color .16s, box-shadow .16s;
 }
-.bk-rec:hover { border-color: var(--red); box-shadow: 0 0 0 3px var(--red-ghost); }
-.bk-rec.on { border: 2px solid var(--red); box-shadow: 0 0 0 3px var(--red-ghost); }
-.bk-rec-t { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: .1rem; }
-.bk-rec-day { font-size: .78rem; font-weight: 700; color: var(--text-soft); }
-.bk-rec b { font-family: var(--font-display); font-size: 1.15rem; }
-.bk-rec i { font-style: normal; font-size: .78rem; color: var(--text-soft); }
-.bk-rec em { font-style: normal; font-size: .76rem; font-weight: 700; color: #7a5209; }
+.bk-pick-card:hover { border-color: var(--red); box-shadow: 0 0 0 3px var(--red-ghost); }
+.bk-pick-card.on, .bk-pickday.open .bk-pick-card { border-color: var(--red); }
+.bk-pick-go {
+  display: flex; flex-direction: column; gap: .1rem; width: 100%; padding: 0; margin: 0;
+  font: inherit; text-align: left; color: var(--text); background: none; border: 0; cursor: pointer;
+}
+.bk-pick-go::after { content: ""; position: absolute; inset: 0; border-radius: inherit; }
+.bk-pick-go:focus-visible { outline: none; }
+.bk-pick-card:has(.bk-pick-go:focus-visible) { outline: 2px solid var(--red); outline-offset: 2px; }
+.bk-pick-why { font-size: .7rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--red); }
+.bk-pick-line { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 .6rem; }
+.bk-pick-line b { font-family: var(--font-display); font-size: 1.15rem; }
+.bk-pick-line span { font-weight: 700; }
+.bk-pick-go .bk-rec-go { position: absolute; right: 1rem; top: 50%; transform: translateY(-50%); }
+.bk-pick-foot { display: flex; flex-wrap: wrap; align-items: center; gap: .35rem .5rem; }
+.bk-tag {
+  display: inline-flex; align-items: center; font-size: .72rem; font-weight: 700;
+  border-radius: 999px; padding: .15rem .55rem;
+}
+.bk-tag.std { background: rgba(47, 158, 94, .12); color: #1a8a3f; }
+.bk-tag.fee { background: rgba(240, 169, 63, .18); color: #7a5209; }
+.bk-pick-more {
+  position: relative; z-index: 1; font: inherit; font-size: .8rem; font-weight: 700; cursor: pointer;
+  background: none; border: 0; padding: .2rem 0; color: var(--red);
+  text-decoration: underline; text-underline-offset: 3px;
+}
 .bk-rec-go { flex: none; width: 22px; height: 22px; color: var(--red); }
 .bk-rec-go svg { width: 22px; height: 22px; }
-/* A recommended DAY: one bar listing its two times; tapped, it opens into
-   two small bars, one per time. */
-.bk-recday { margin: 0 0 .55rem; }
-.bk-recday .bk-rec { margin: 0; }
-.bk-rec-pick { display: none; font-size: .86rem; font-weight: 700; color: var(--text-soft); }
-.bk-recday.open > .bk-rec { border-color: var(--red); }
-.bk-recday.open .bk-rec-times { display: none; }
-.bk-recday.open .bk-rec-pick { display: block; }
-.bk-rec-go svg { transition: transform .2s var(--ease); }
-.bk-recday.open > .bk-rec .bk-rec-go svg { transform: rotate(90deg); }
+
+/* The panel under a pick, or under the flexible card: opens in place. */
 .bk-recday-opts { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .25s var(--ease); }
-.bk-recday.open .bk-recday-opts { grid-template-rows: 1fr; }
+.bk-pickday.open .bk-recday-opts { grid-template-rows: 1fr; }
 .bk-recday-in {
   overflow: hidden; min-height: 0; visibility: hidden; transition: visibility 0s .25s;
-  display: grid; grid-template-columns: 1fr 1fr; gap: .5rem;
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: .45rem;
 }
-/* Room for the focus ring: the panel clips to animate, so the times sit 4px
+/* Room for the focus ring: the panel clips to animate, so the buttons sit 4px
    inside it (and the panel 4px wider) or the ring is cut off. */
-.bk-recday.open .bk-recday-in { visibility: visible; transition: none; padding: .5rem 4px 4px; margin: 0 -4px; }
-.bk-rec-opt {
-  display: flex; align-items: center; justify-content: space-between; gap: .5rem; flex-wrap: wrap;
-  font: inherit; text-align: left; cursor: pointer; color: var(--text);
-  background: var(--paper-2); border: 1.5px solid var(--line); border-radius: var(--r-md); padding: .7rem .9rem;
+.bk-pickday.open .bk-recday-in { visibility: visible; transition: none; padding: .5rem 4px 4px; margin: 0 -4px; }
+.bk-more-t, .bk-flex-day {
+  display: flex; flex-direction: column; gap: .1rem; font: inherit; text-align: left; cursor: pointer; color: var(--text);
+  background: var(--paper-2); border: 1.5px solid var(--line); border-radius: var(--r-sm); padding: .5rem .7rem;
 }
-.bk-rec-opt:hover { border-color: var(--red); box-shadow: 0 0 0 3px var(--red-ghost); }
-.bk-rec-opt.on { border: 2px solid var(--red); }
-.bk-rec-opt b { font-family: var(--font-display); font-size: 1rem; }
-.bk-rec-opt em { flex-basis: 100%; order: 3; font-style: normal; font-size: .74rem; font-weight: 700; color: #7a5209; }
-@media (max-width: 559.98px) { .bk-recday-in { grid-template-columns: 1fr; } }
+.bk-more-t:hover, .bk-flex-day:hover { border-color: var(--red); box-shadow: 0 0 0 3px var(--red-ghost); }
+.bk-more-t b { font-family: var(--font-display); font-size: .92rem; }
+.bk-more-t span { font-size: .72rem; color: var(--text-soft); }
+.bk-more-t span svg { width: 10px; height: 10px; vertical-align: -1px; margin-right: .15rem; color: var(--text); }
+.bk-flex-in { grid-template-columns: repeat(7, 1fr); }
+.bk-flex-day { align-items: center; text-align: center; padding: .45rem .2rem; }
+.bk-flex-day b { font-size: .66rem; font-weight: 700; color: var(--text-soft); text-transform: uppercase; }
+.bk-flex-day span { font-family: var(--font-display); font-size: .92rem; }
+
+/* Flexible on the time? */
+.bk-flex-card {
+  display: flex; align-items: center; gap: .9rem; padding: .7rem 1rem;
+  border: 1.5px dashed var(--line); border-radius: var(--r-md); background: var(--paper);
+}
+.bk-flex-t { flex: 1; min-width: 0; }
+.bk-flex-t b { display: block; font-size: .95rem; }
+.bk-flex-t span { display: block; font-size: .8rem; color: var(--text-soft); margin-top: .1rem; }
+.bk-flex-b {
+  flex: none; font: inherit; font-size: .84rem; font-weight: 700; cursor: pointer; white-space: nowrap;
+  background: var(--paper-2); color: var(--red); border: 1.5px solid var(--red); border-radius: 999px; padding: .45rem .9rem;
+}
+.bk-flex-b:hover { background: var(--red); color: #fff; }
+@media (max-width: 559.98px) {
+  .bk-recday-in { grid-template-columns: repeat(2, 1fr); }
+  .bk-flex-in { grid-template-columns: repeat(4, 1fr); }
+  .bk-flex-card { flex-direction: column; align-items: stretch; }
+}
 @media (prefers-reduced-motion: reduce) {
-  .bk-recday-opts, .bk-rec-go svg { transition: none; }
+  .bk-recday-opts { transition: none; }
 }
 .bk-recs-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .5rem 1rem; margin-top: .9rem; }
 .bk-recs-all {
@@ -521,35 +556,40 @@ button.bk-wk-c:hover { box-shadow: 0 0 0 2px var(--red-ghost); }
 .bk-wk-sum .bk-wk-short { margin-top: .3rem; color: #7a5209; font-weight: 600; }
 .bk-wk-sum.other { border-color: var(--line); }
 .bk-wk-sum.other b { display: inline; font-family: inherit; font-size: inherit; }
-.bk-wk-chip {
-  font: inherit; font-size: .82rem; font-weight: 700; cursor: pointer; padding: .35rem .7rem; min-height: 36px;
-  background: var(--paper); border: 1.5px solid var(--line); border-radius: 999px; color: var(--text);
-}
-.bk-wk-chip:hover { border-color: var(--red); }
 
-/* The chosen time, in the middle of the bottom bar (the week view only). */
+/* The chosen time, in the middle of the bottom bar, from Time to the last
+   step. One row, as tall as Continue (it stretches to the row), with the
+   suggested time as its own small button. */
 .bk-pick {
-  flex: 0 1 auto; min-width: 0; margin: 0 auto; text-align: center;
-  padding: .4rem .75rem; border: 1.5px solid var(--red); border-radius: var(--r-sm); background: var(--paper-2);
-  font-size: .76rem; line-height: 1.35; color: var(--text-soft);
+  flex: 0 1 auto; min-width: 0; margin: 0 auto; align-self: stretch;
+  display: flex; align-items: center; gap: .6rem;
+  padding: .25rem .3rem .25rem .75rem; border: 1.5px solid var(--red); border-radius: var(--r-sm); background: var(--paper-2);
+  font-size: .74rem; line-height: 1.3; color: var(--text-soft);
 }
-.bk-pick b { display: block; font-family: var(--font-display); font-size: .92rem; color: var(--text); }
-.bk-pick span { display: block; }
-.bk-pick .bk-pick-short { color: #7a5209; font-weight: 600; }
-.bk-pick .bk-pick-chips {
-  display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: .35rem;
-  margin-top: .3rem; color: var(--text); font-weight: 700;
+.bk-pick-txt { min-width: 0; padding-right: .45rem; }
+.bk-pick-txt > b { display: block; font-family: var(--font-display); font-size: .88rem; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bk-pick-txt > span { display: flex; gap: .45rem; white-space: nowrap; }
+.bk-pick-price { overflow: hidden; text-overflow: ellipsis; }
+.bk-pick-change {
+  font: inherit; font-weight: 700; color: var(--red); background: none; border: 0; padding: 0; cursor: pointer;
+  text-decoration: underline; text-underline-offset: 2px;
 }
-.bk-pick .bk-wk-chip { min-height: 30px; padding: .15rem .6rem; font-size: .76rem; }
+.bk-steer {
+  flex: none; align-self: stretch; display: flex; flex-direction: column; justify-content: center; gap: .05rem;
+  font: inherit; text-align: left; cursor: pointer; color: var(--text);
+  background: var(--paper); border: 1.5px solid var(--line); border-radius: calc(var(--r-sm) - 3px); padding: .15rem .6rem;
+}
+.bk-steer:hover { border-color: var(--red); }
+.bk-steer i { display: flex; align-items: center; gap: .2rem; font-style: normal; font-size: .64rem; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; color: var(--red); }
+.bk-steer i svg { width: 10px; height: 10px; color: var(--text); }
+.bk-steer b { font-size: .8rem; white-space: nowrap; }
 .bk-pick:not([hidden]) ~ .bk-nextbtn { margin-left: 0; }
 @media (max-width: 559.98px) {
   .bk-foot { flex-wrap: wrap; row-gap: .6rem; }
-  .bk-pick { order: -1; flex-basis: 100%; text-align: left; }
-  .bk-pick .bk-pick-chips { justify-content: flex-start; }
-  .bk-pick { padding: .35rem .65rem; }
-  .bk-pick .bk-pick-chips { margin-top: .2rem; }
-  .bk-pick .bk-wk-chip { min-height: 32px; }
+  .bk-pick { order: -1; flex-basis: 100%; min-height: 48px; }
+  .bk-steer { margin-left: auto; }
   .bk-pick:not([hidden]) ~ .bk-nextbtn { margin-left: auto; }
+}
 }
 .bk-wk-fine { font-size: .76rem; color: var(--text-soft); line-height: 1.5; margin: .6rem 0 .6rem; }
 .bk-wk-gobar {

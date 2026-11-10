@@ -485,7 +485,6 @@
     var sub = el('bkTitleSub');
     if (sub) { sub.textContent = s.sub || ''; sub.hidden = !s.sub; }
     renderNav();
-    setPick('');
     el('bkBody').innerHTML = s.render();
 
     var back = el('bkBack');
@@ -512,6 +511,7 @@
     }
 
     renderTotal();
+    updatePick();
     var focusable = el('bkBody').querySelector('[data-focus]');
     if (focusable) focusable.focus();
     // Only jump to the top when the STEP changed. Re-rendering in place,
@@ -1989,6 +1989,7 @@
     });
 
     var out = [];
+    if (state.prefer.flex) return 'You asked for any start time on ' + list(days) + '.';
     if (days.length) out.push('You asked for ' + list(days) + '.');
     if (parts.length) out.push((days.length ? 'Ideally ' : 'You asked for ') + list(parts) + '.');
     return out.join(' ');
@@ -2704,9 +2705,11 @@
    * rules can be tuned on what people actually choose (does nothing until
    * analytics is switched on and accepted).
    */
-  function selectSlot(ms, via) {
+  function selectSlot(ms, via, extra) {
     if (state.slot !== ms) state.checkedSlot = null;
     state.slot = ms;
+    // A real time replaces a flexible-day request.
+    if (state.prefer.flex) state.prefer = { parts: [], days: [] };
     state.detailer = (lastCalc && lastCalc.who && lastCalc.who.get(ms)) || 'owner';
     // The rush fee follows the time, so there is no box to tick for it.
     if (!hasCorrection()) state.priority = needsPriority(ms);
@@ -2719,7 +2722,10 @@
         fee_pct: surchargeBp(ms) / 100,
         days_ahead: Math.round((ms - Date.now()) / DAY),
         start_hour: Math.floor(localMin(ms) / 60),
-        detailer: state.detailer
+        detailer: state.detailer,
+        rank: extra && extra.rank || 0,
+        reason: extra && extra.reason || '',
+        rules: P.TIME_RECOMMENDATION_RULES.version
       });
     }
   }
@@ -2770,86 +2776,278 @@
       : '';
   }
 
+  /** Why each pick is offered, in the customer's words (reasons in week.ts). */
+  var PICK_WHY = {
+    soonest: 'Soonest', standard: 'First at the standard price', weekend: 'Weekend',
+    morning: 'Morning', afternoon: 'Afternoon', nextWeek: 'Next week', also: 'Also open'
+  };
+
+  /** "2026-11-13" for the Cincinnati day of a time, in the key format preferPicker uses. */
+  function cinciKey(ms) {
+    var p = tzDay(ms, { year: 'numeric', month: 'numeric', day: 'numeric' }).split('/');
+    return p[2] + '-' + Number(p[0]) + '-' + Number(p[1]);
+  }
+
+  /** The day's open starts, from what the time step last read. */
+  function startsOnDay(ms) {
+    if (!lastCalc || !lastCalc.slots) return [];
+    var key = cinciKey(ms);
+    return lastCalc.slots.filter(function (s) { return cinciKey(s) === key; })
+      .sort(function (x, y) { return x - y; });
+  }
+
+  /** The day's starred starts, exactly as the recommendations choose them. */
+  function suggestionsOnDay(ms) {
+    return P.daySuggestions({
+      starts: startsOnDay(ms), busy: lastCalc ? lastCalc.busy : [], travelGapMin: lastCalc ? lastCalc.buffer : 30,
+      isPremium: timeFeeApplies, timeZone: TZ
+    });
+  }
+
   /**
-   * OUR RECOMMENDED TIMES (owner, November 10): three big choices, the times
-   * we most want, each showing when it starts and roughly when it ends. One
-   * tap books it and moves on. Everything else is behind "See additional
-   * times". The fee is there but quiet: a customer can see a time costs a
-   * little more without the time looking forbidden.
-   */
-  /**
-   * OUR RECOMMENDED TIMES, as days (owner, November 10): three day bars, each
-   * offering its two best starts, at most one of them a fee day, so a quick
-   * standard-price choice is always on screen. Tapping a day opens its two
-   * times in place; tapping a time books it and moves on. The rules live in
-   * TIME_RECOMMENDATION_RULES (week.ts), with a hook for analytics scores.
+   * OUR RECOMMENDED TIMES (owner, November 10, option C): a few one-tap
+   * picks, each on its own day and labelled with why it is offered, so a
+   * jump from a rush Tuesday to Friday explains itself ("Soonest", then
+   * "First at the standard price"). The day is the headline. "More times on
+   * Friday" opens that day's other starts, and "Flexible on the time?" sends
+   * a request for a day, the way "Tell us when does" always has.
+   *
+   * The rules live in TIME_RECOMMENDATION_RULES (week.ts): which reasons, how
+   * many, at most one with a fee, a version for analytics, and a score hook.
+   * Picks past `shown` appear only when the screen has room for them.
    */
   function paintRecs(box, calc, dur) {
-    setPick('');
-    var days = P.recommendDays({
+    var R = P.TIME_RECOMMENDATION_RULES;
+    var picks = P.recommendPicks({
       slots: calc.slots, busy: calc.busy, travelGapMin: calc.buffer,
-      preferred: calc.preferred || undefined, timeZone: TZ,
+      preferred: calc.preferred || undefined, timeZone: TZ, nowMs: Date.now(),
       isPremium: timeFeeApplies,
       isFee: function (ms) { return surchargeBp(ms) > 0; }
     });
 
     var html = unconfiguredNote(calc) + '<div class="bk-recs">' +
       '<h4 class="bk-recs-h">Our recommended times</h4>';
-    if (!days.length) {
+    if (!picks.length) {
       html += '<p class="bk-wk-none">Nothing open in the next two weeks for this detail. ' +
         'See additional times for later dates, or tell us when suits.</p>';
+    } else {
+      html += '<p class="bk-recs-sub">One tap books it. Each shows when we start and finish.</p>';
     }
-    days.forEach(function (day) {
-      var first = day.starts[0];
-      var fee = feeText(first);
-      var label = day.starts.map(function (ms) { return spanLabel(ms, dur); }).join(' or ');
-      var notes = (fee ? '<i>' + esc(fee + ' ' + feeWhy(first)) + '</i>' : '') +
-        (shortNotice(first) ? '<em>Short notice: confirmed once a detailer accepts</em>' : '');
-      var head = '<span class="bk-rec-t"><span class="bk-rec-day">' + esc(tzDay(first, { weekday: 'long', month: 'short', day: 'numeric' })) + '</span>' +
-        '<b class="bk-rec-times">' + esc(label) + '</b>' +
-        '<span class="bk-rec-pick">Pick a start time</span>' + notes + '</span>' +
-        '<span class="bk-rec-go">' + CHEV_R + '</span>';
-
-      // One time that day: the bar books it straight away.
-      if (day.starts.length === 1) {
-        html += '<div class="bk-recday"><button type="button" class="bk-rec' + (state.slot === first ? ' on' : '') +
-          '" data-slot="' + first + '" data-go="1" data-via="recommended">' + head + '</button></div>';
-        return;
-      }
-      html += '<div class="bk-recday" data-recday="' + day.dayStart + '">' +
-        '<button type="button" class="bk-rec" data-recday-toggle="' + day.dayStart + '" aria-expanded="false">' + head + '</button>' +
-        '<div class="bk-recday-opts"><div class="bk-recday-in">' +
-        day.starts.map(function (ms) {
-          return '<button type="button" class="bk-rec-opt' + (state.slot === ms ? ' on' : '') + '" data-slot="' + ms +
-            '" data-go="1" data-via="recommended" tabindex="-1">' +
-            '<b>' + esc(spanLabel(ms, dur)) + '</b>' +
-            (coatingMoves(ms, dur) ? '<em>The coating moves to a warmer day</em>' : '') +
-            '<span class="bk-rec-go">' + CHEV_R + '</span></button>';
-        }).join('') +
-        '</div></div></div>';
+    picks.forEach(function (pk, i) {
+      var ms = pk.ms;
+      var fee = feeText(ms);
+      var attrs = ' data-rank="' + (i + 1) + '" data-reason="' + pk.reason + '"';
+      var tags = (fee
+          ? '<span class="bk-tag fee">' + esc(fee + ' ' + feeWhy(ms)) + '</span>'
+          : '<span class="bk-tag std">Standard price</span>') +
+        (shortNotice(ms) ? '<span class="bk-tag fee">Short notice: confirmed once a detailer accepts</span>' : '') +
+        (coatingMoves(ms, dur) ? '<span class="bk-tag fee">The coating moves to a warmer day</span>' : '');
+      html += '<div class="bk-pickday' + (i >= R.shown ? ' extra' : '') + '" data-pickday="' + pk.dayStart + '">' +
+        '<div class="bk-pick-card' + (state.slot && sameMinute(state.slot, ms) ? ' on' : '') + '">' +
+          '<button type="button" class="bk-pick-go" data-slot="' + ms + '" data-go="1" data-via="recommended"' + attrs + '>' +
+            '<span class="bk-pick-why">' + esc(PICK_WHY[pk.reason] || '') + '</span>' +
+            '<span class="bk-pick-line"><b>' + esc(tzDay(ms, { weekday: 'long', month: 'short', day: 'numeric' })) + '</b>' +
+            '<span>' + esc(spanLabel(ms, dur)) + '</span></span>' +
+            '<span class="bk-rec-go">' + CHEV_R + '</span>' +
+          '</button>' +
+          '<div class="bk-pick-foot">' + tags +
+            '<button type="button" class="bk-pick-more" data-more="' + ms + '"' + attrs + ' aria-expanded="false">' +
+              'More times on ' + esc(tzDay(ms, { weekday: 'long' })) + '</button>' +
+          '</div>' +
+        '</div>' +
+        '<div class="bk-recday-opts"><div class="bk-recday-in bk-more-in"></div></div>' +
+      '</div>';
     });
-    html += weatherNote(calc) +
+    html += flexCard(calc) + weatherNote(calc) +
       '<div class="bk-recs-foot">' +
         '<button type="button" class="bk-recs-all" id="bkShowAll">See additional times</button>' +
         '<button type="button" class="bk-askwhen-link" id="bkAskMode2">None of these work? Tell us when does</button>' +
       '</div></div>';
     box.innerHTML = html;
+    fitPicks(box);
     renderNav();
     renderTotal();
+    updatePick();
+    trackRecsShown(box);
   }
 
-  /** Open one recommended day in place (closing any other), with its times. */
-  function toggleRecDay(dayStart) {
-    root.querySelectorAll('.bk-recday[data-recday]').forEach(function (d) {
-      var open = d.dataset.recday === String(dayStart) && !d.classList.contains('open');
-      d.classList.toggle('open', open);
-      d.querySelector('[data-recday-toggle]').setAttribute('aria-expanded', String(open));
-      d.querySelectorAll('.bk-rec-opt').forEach(function (b) { b.tabIndex = open ? 0 : -1; });
-      if (open) {
-        var firstOpt = d.querySelector('.bk-rec-opt');
-        if (firstOpt) setTimeout(function () { firstOpt.focus({ preventScroll: true }); }, 0);
-      }
+  /**
+   * More picks when the screen has room (owner, November 10): an extra pick
+   * stays while the card itself ends inside the first screen. "Everything
+   * fits" never happened (the flexible card and the links fill the rest), so
+   * those may now start below the fold, cut off, which is the cue to scroll.
+   */
+  function fitPicks(box) {
+    var sc = el('bkScroll');
+    if (!sc) return;
+    var top = sc.getBoundingClientRect().top;
+    var full = false;
+    box.querySelectorAll('.bk-pickday.extra').forEach(function (d) {
+      if (!full && d.getBoundingClientRect().bottom - top > sc.clientHeight) full = true;
+      d.hidden = full;
     });
+  }
+
+  /**
+   * What was offered, once per distinct set, so the rules can be judged on
+   * which picks get booked (time_pick carries the same rank and reason).
+   * Compact: "soonest:20:0:13" is reason, fee %, days ahead, start hour.
+   */
+  var lastRecsShown = '';
+  function trackRecsShown(box) {
+    var shown = [].slice.call(box.querySelectorAll('.bk-pickday:not([hidden]) .bk-pick-go')).map(function (b) {
+      var ms = Number(b.dataset.slot);
+      return b.dataset.reason + ':' + surchargeBp(ms) / 100 + ':' + Math.round((ms - Date.now()) / DAY) + ':' + Math.floor(localMin(ms) / 60);
+    }).join('|');
+    if (!shown || shown === lastRecsShown) return;
+    lastRecsShown = shown;
+    track('time_recs_shown', {
+      rules: P.TIME_RECOMMENDATION_RULES.version,
+      count: shown.split('|').length,
+      picks: shown,
+      flexible: Boolean(box.querySelector('[data-flexwrap]'))
+    });
+  }
+
+  /** Open one panel under a pick (or the flexible card), closing the others. */
+  function togglePanel(wrap, btn) {
+    var open = !wrap.classList.contains('open');
+    root.querySelectorAll('.bk-pickday.open').forEach(function (d) {
+      d.classList.remove('open');
+      var b = d.querySelector('[aria-expanded]');
+      if (b) b.setAttribute('aria-expanded', 'false');
+      d.querySelectorAll('.bk-recday-in button').forEach(function (x) { x.tabIndex = -1; });
+    });
+    if (!open) return false;
+    wrap.classList.add('open');
+    btn.setAttribute('aria-expanded', 'true');
+    var opts = wrap.querySelectorAll('.bk-recday-in button');
+    opts.forEach(function (x) { x.tabIndex = 0; });
+    // Focus lands on a suggested time, not on whatever is first (often an
+    // early start with a fee), so the ring does not look like a choice.
+    var first = wrap.querySelector('.bk-recday-in .sug') || opts[0];
+    if (first) setTimeout(function () { first.focus({ preventScroll: true }); }, 0);
+    return true;
+  }
+
+  /** "More times on Friday": that day's starts, one per hour, one tap each. */
+  function openMoreTimes(btn) {
+    var wrap = btn.closest('.bk-pickday');
+    var inner = wrap.querySelector('.bk-more-in');
+    if (!inner.innerHTML) {
+      var dur = holdMinutes();
+      var sug = suggestionsOnDay(Number(btn.dataset.more));
+      var byHour = {};
+      var order = [];
+      startsOnDay(Number(btn.dataset.more)).forEach(function (ms) {
+        var h = Math.floor(localMin(ms) / 60);
+        if (!byHour[h]) { byHour[h] = []; order.push(h); }
+        byHour[h].push(ms);
+      });
+      inner.innerHTML = order.map(function (h) {
+        var list = byHour[h];
+        // As on the week grid: a starred start wins, then on the hour.
+        var ms = list.filter(function (x) { return sug.some(function (y) { return sameMinute(x, y); }); })[0] ||
+          list.filter(function (x) { return localMin(x) % 60 === 0; })[0] || list[0];
+        var star = sug.some(function (y) { return sameMinute(ms, y); });
+        var fee = feeText(ms);
+        return '<button type="button" class="bk-more-t' + (star ? ' sug' : '') + '" data-slot="' + ms +
+          '" data-go="1" data-via="recommended_more" data-rank="' + btn.dataset.rank + '" data-reason="' + btn.dataset.reason + '" tabindex="-1">' +
+          '<b>' + esc(spanLabel(ms, dur)) + '</b>' +
+          '<span>' + (fee ? esc(fee) : 'Standard price') + (star ? ' &middot; ' + STAR + 'Suggested' : '') + '</span></button>';
+      }).join('');
+    }
+    if (togglePanel(wrap, btn)) {
+      track('time_more_open', { rank: Number(btn.dataset.rank), reason: btn.dataset.reason, rules: P.TIME_RECOMMENDATION_RULES.version });
+    }
+  }
+
+  /**
+   * "Flexible on the time?" (owner, November 10, no discount): pick a day and
+   * we text the start time by the evening before. It is the same request as
+   * "Tell us when does" (state.prefer, isInquiry), for that one day at any
+   * time, so it is priced, sent and confirmed the way requests always are.
+   * Only days with a standard-price start, so nothing on it carries a fee.
+   */
+  function flexCard(calc) {
+    var seen = {};
+    var days = [];
+    calc.slots.slice().sort(function (x, y) { return x - y; }).forEach(function (ms) {
+      var k = cinciKey(ms);
+      if (seen[k] || surchargeBp(ms) > 0) return;
+      seen[k] = true;
+      days.push(ms);
+    });
+    days = days.slice(0, 7);
+    if (!days.length) return '';
+    return '<div class="bk-pickday bk-flex" data-flexwrap>' +
+      '<div class="bk-flex-card">' +
+        '<div class="bk-flex-t"><b>Flexible on the time?</b>' +
+        '<span>Pick a day and we text you the start time by the evening before. Nothing is charged until you agree to it.</span></div>' +
+        '<button type="button" class="bk-flex-b" id="bkFlexOpen" aria-expanded="false">Choose a day</button>' +
+      '</div>' +
+      '<div class="bk-recday-opts"><div class="bk-recday-in bk-flex-in">' +
+        days.map(function (ms) {
+          return '<button type="button" class="bk-flex-day" data-flexday="' + ms + '" tabindex="-1">' +
+            '<b>' + esc(tzDay(ms, { weekday: 'short' })) + '</b><span>' + esc(tzDay(ms, { month: 'short', day: 'numeric' })) + '</span></button>';
+        }).join('') +
+      '</div></div></div>';
+  }
+
+  /** The time step's index, for "Change" in the bottom bar. */
+  function timeStepIndex() {
+    for (var i = 0; i < STEPS.length; i++) if (STEPS[i].id === 'time') return i;
+    return -1;
+  }
+
+  /**
+   * The suggested start to offer instead of the chosen one: the nearest
+   * starred start that same day, never one that adds a fee (owner, November
+   * 10: "not at the cost of a timing fee upsell"). Same day, so the rush fee
+   * cannot change either. None once they have taken a suggestion, or when
+   * the time they picked is already one.
+   */
+  function steerFor(ms) {
+    if (state.steerUsed || !ms) return null;
+    var sug = suggestionsOnDay(ms);
+    if (!sug.length || sug.some(function (s) { return sameMinute(s, ms); })) return null;
+    var bp = surchargeBp(ms);
+    var best = null;
+    sug.forEach(function (s) {
+      if (surchargeBp(s) > bp) return;
+      if (best === null || Math.abs(s - ms) < Math.abs(best - ms)) best = s;
+    });
+    return best;
+  }
+
+  /**
+   * The chosen time, in the middle of the bottom bar, from the time step to
+   * the last step (owner, November 10). One row, as tall as Continue. On the
+   * steps after Time it carries "Change", and the suggested time sits beside
+   * it until it is taken. Gone once the booking is sent.
+   */
+  var steerShown = '';
+  function updatePick() {
+    var ms = state.slot;
+    var ti = timeStepIndex();
+    if (state.done || !ms || isInquiry() || state.timeMode === 'ask' || state.step < ti) return setPick('');
+    var fee = feeText(ms);
+    var later = state.step > ti;
+    var price = (fee ? fee + ' ' + feeWhy(ms) : 'Standard price') + (shortNotice(ms) ? ', short notice' : '');
+    var to = steerFor(ms);
+    setPick(
+      '<span class="bk-pick-txt"><b>' + esc(tzDay(ms, { weekday: 'short', month: 'short', day: 'numeric' }) + ', ' + spanLabel(ms, holdMinutes())) + '</b>' +
+        '<span><span class="bk-pick-price">' + esc(price) + '</span>' +
+        (later ? '<button type="button" class="bk-pick-change" id="bkPickChange">Change</button>' : '') + '</span></span>' +
+      (to
+        ? '<button type="button" class="bk-steer" data-steer="' + to + '">' +
+            '<i>' + STAR + 'Suggested</i><b>' + esc(spanLabel(to, holdMinutes())) + '</b></button>'
+        : '')
+    );
+    if (to && steerShown !== ms + '>' + to) {
+      steerShown = ms + '>' + to;
+      track('time_steer_shown', { step: step().id, shift_min: Math.round((to - ms) / 60000), rules: P.TIME_RECOMMENDATION_RULES.version });
+    }
   }
 
 
@@ -2862,8 +3060,8 @@
     var week = P.buildWeek({
       slots: calc.slots, weekStart: ws, busy: calc.busy, travelGapMin: calc.buffer,
       nowMs: now, needsPriority: needsPriority, timeZone: TZ,
-      // Down to the last hour this job could still be running in, no further.
-      lastRowMin: P.lastRowFor(dur, hasExterior())
+      // Down to the last hour an offered job is still running in, no further.
+      lastRowMin: P.lastRowForSlots(calc.slots, dur)
     });
 
     // Landing on an empty week shows the next one with something in it,
@@ -2907,7 +3105,7 @@
 
     // The chosen time, start to finish, sits in the bottom bar; the coating
     // note is too long for it and stays here.
-    setPick(slotHere ? weekSummary(week, dur) : '');
+    updatePick();
     if (slotHere) {
       html += coatingNote(state.slot, dur) ? '<p class="bk-wk-sum other">' + coatingNote(state.slot, dur) + '</p>' : '';
     } else if (state.slot) {
@@ -3191,37 +3389,7 @@
     return html + '</div>';
   }
 
-  /**
-   * The chosen time, in the middle of the bottom bar beside the price and
-   * Continue (owner, November 10), with the other starts within its hour.
-   * Those chips are one tap like the recommendations: picking one books it
-   * and moves on. Short: the bar has to stay a bar.
-   */
-  function weekSummary(week, dur) {
-    var ms = state.slot;
-    var start = localMin(ms);
-    var fee = feeText(ms);
-    var cell = null;
-    week.days.forEach(function (day) {
-      day.cells.forEach(function (c) { if (!cell && cellHas(c, ms)) cell = c; });
-    });
-
-    var chips = cell && cell.starts.length > 1
-      ? '<span class="bk-pick-chips">Or start at ' + cell.starts.filter(function (s) { return !sameMinute(s, ms); })
-          .map(function (s) {
-            return '<button type="button" class="bk-wk-chip" data-slot="' + s + '" data-go="1" data-via="summary">' +
-              esc(spanLabel(s, dur)) + '</button>';
-          }).join('') + '</span>'
-      : '';
-
-    return '<b>' + esc(tzDay(ms, { weekday: 'short', month: 'short', day: 'numeric' }) + ', ' + spanLabel(ms, dur)) + '</b>' +
-      '<span>Arrive ' + endLabel(start) + ' to ' + endLabel(start + 60) + ' &middot; ' +
-        (fee ? esc(fee + ' ' + feeWhy(ms)) : 'Standard price') + '</span>' +
-      (shortNotice(ms) ? '<span class="bk-pick-short">Short notice: a request until a detailer accepts it</span>' : '') +
-      chips;
-  }
-
-  /** The bottom bar's middle: the chosen time on the week view, else nothing. */
+  /** The bottom bar's middle (updatePick decides what goes in it). */
   function setPick(html) {
     var box = el('bkPick');
     if (!box) return;
@@ -3850,8 +4018,10 @@
     } else if (ask) {
       html += '<div class="bk-asknote">' +
         '<b>This is a request, not a confirmed time</b>' +
-        '<span>' + esc(preferenceSummary()) + ' We will come back with a time that works, ' +
-        'usually within a few hours. <strong>Nothing is charged until you have agreed to it.</strong>' +
+        '<span>' + esc(preferenceSummary()) + (state.prefer.flex
+          ? ' We text you the start time by the evening before. '
+          : ' We will come back with a time that works, usually within a few hours. ') +
+        '<strong>Nothing is charged until you have agreed to it.</strong>' +
         '</span></div>';
     }
 
@@ -4477,10 +4647,10 @@
       '[data-size],[data-intent],[data-pkg],[data-addon],[data-clear],[data-win],[data-slot],' +
       '[data-pay],[data-delveh],[data-browsepick],[data-max],[data-sort],' +
       '[data-kind],[data-paymethod],[data-corr],[data-coating],[data-garage],[data-step],' +
-      '[data-prefday],[data-prefpart],[data-interest],[data-wkday],[data-recday-toggle],[data-access],[data-extrarm],' +
+      '[data-prefday],[data-prefpart],[data-interest],[data-wkday],[data-more],[data-steer],[data-flexday],[data-access],[data-extrarm],' +
       '#bkWkPrev,#bkWkNext,#bkWkNext2,#bkWkToday,#bkWkBack,#bkShowAll,#bkShowRecs,' +
       '#bkAddVeh,#bkNext,#bkBack,#bkClose,#bkScrim,#bkBrowse,#bkBrowseBack,' +
-      '#bkAskMode,#bkAskMode2,#bkSlotMode,' +
+      '#bkAskMode,#bkAskMode2,#bkSlotMode,#bkFlexOpen,#bkPickChange,' +
       '#bkLeaveStay,#bkLeaveKeep,#bkLeaveAsk,#bkLeaveDrop,#bkFresh,' +
       '#bkDoneClose,#bkDoneAsk,#bkDoneCopy,#bkDoneAgain,[data-media],' +
       '#bkCopyQuote,' +
@@ -4635,8 +4805,44 @@
       state.slot = null;
       return render();
     }
+    if (t.dataset.steer) {
+      var steerFrom = state.slot, steerTo = Number(t.dataset.steer), onTime = step().id === 'time';
+      state.steerUsed = true;
+      selectSlot(steerTo, 'steer', { reason: 'steer' });
+      track('time_steer_used', { step: step().id, shift_min: Math.round((steerTo - steerFrom) / 60000) });
+      renderTotal();
+      if (onTime) return advance();
+      // A later step: check the new time is still free, here, and stay put.
+      setPick('<span class="bk-pick-txt"><b>Checking that time</b></span>');
+      return verifySlot().then(function (free) {
+        if (!free) selectSlot(steerFrom);
+        state.checkedSlot = state.slot;
+        render();
+        flash(free
+          ? 'Moved to ' + tzDay(state.slot, { weekday: 'long' }) + ', ' + spanLabel(state.slot, holdMinutes()) + '.'
+          : 'That time was just taken, so you keep ' + spanLabel(state.slot, holdMinutes()) + '.');
+      });
+    }
+    if (t.id === 'bkPickChange') {
+      track('time_change', { step: step().id });
+      return go(timeStepIndex());
+    }
+    if (t.dataset.more) return openMoreTimes(t);
+    if (t.id === 'bkFlexOpen') {
+      if (togglePanel(t.closest('.bk-pickday'), t)) track('time_flex_open', { rules: P.TIME_RECOMMENDATION_RULES.version });
+      return;
+    }
+    if (t.dataset.flexday) {
+      var flexMs = Number(t.dataset.flexday);
+      state.slot = null;
+      state.checkedSlot = null;
+      state.prefer = { parts: [], days: [cinciKey(flexMs)], flex: true };
+      track('time_flex_pick', { days_ahead: Math.round((flexMs - Date.now()) / DAY), rules: P.TIME_RECOMMENDATION_RULES.version });
+      return advance();
+    }
     if (t.dataset.slot) {
-      selectSlot(Number(t.dataset.slot), t.dataset.via || 'calendar');
+      selectSlot(Number(t.dataset.slot), t.dataset.via || 'calendar',
+        t.dataset.rank ? { rank: Number(t.dataset.rank), reason: t.dataset.reason } : null);
       renderTotal();
       // Every time on the time step is one tap (owner, November 10): our
       // recommended times, the chips in the bottom bar, and a start picked on
@@ -4659,7 +4865,6 @@
         : P.addWeeks(state.weekStart, t.id === 'bkWkPrev' ? -1 : 1);
       return loadSlots();
     }
-    if (t.dataset.recdayToggle) return toggleRecDay(t.dataset.recdayToggle);
     if (t.id === 'bkShowAll' || t.id === 'bkShowRecs') {
       if (t.id === 'bkShowAll') track('time_view_all', {});
       state.showAll = t.id === 'bkShowAll';
@@ -4705,6 +4910,8 @@
       var isDay = t.dataset.prefday !== undefined;
       toggle(isDay ? state.prefer.days : state.prefer.parts,
              isDay ? t.dataset.prefday : t.dataset.prefpart);
+      // Chosen by hand, so no longer the one flexible day.
+      state.prefer.flex = false;
       // A preference and a fixed slot are different answers to one question.
       state.slot = null;
 
@@ -5159,7 +5366,8 @@
       (state.slot && shortNotice(state.slot) ? '\n  SHORT NOTICE: not confirmed until a detailer accepts. Reply to them.' : '') +
       (state.slot && coatingMoves(state.slot, holdMinutes()) ? '\n  COATING: too cold or wet on this date. Do the rest, book the coating for a warmer day.' : '') +
       (state.priority ? '\n  RUSH, within ' + RULES.window.minLeadDays + ' days' : '') +
-      (state.preferredWindows.length ? '\n  Prefers: ' + state.preferredWindows.join(', ') : '') + '\n\n' +
+      (state.preferredWindows.length ? '\n  Prefers: ' + state.preferredWindows.join(', ') : '') +
+      (!state.slot && state.prefer.flex ? '\n  FLEXIBLE DAY: any start that day. Text them the start time by the evening before.' : '') + '\n\n' +
       'WHERE\n  ' + [a.line1, a.city, a.region, a.zip].filter(Boolean).join(', ') +
       (state.covered ? '\n  Garage or covered spot: YES' : '') +
       (state.noGoodLocation ? '\n  ** NEEDS A LOCATION SORTED **\n  ' + (state.locationNote || '(no note)') : '') + '\n\n' +
@@ -5269,6 +5477,7 @@
     el('bkNext').hidden = true;
     el('bkBack').hidden = true;
     el('bkTotal').hidden = true;
+    setPick('');
 
     // The step tabs are still on screen from the last render and every one of
     // them is dead: go() calls render(), and render() returns early once
@@ -5284,7 +5493,10 @@
       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 6L9 17l-5-5"/></svg></div>' +
       '<h3>Thanks, ' + esc(state.contact.name.split(' ')[0]) + '.</h3>' +
       '<p>' + (isInquiry()
-        ? 'We have your request and the times that suit you. 513 Auto Clean will come back with a time to confirm.'
+        ? (state.prefer.flex
+          ? 'We have your request for ' + esc(preferenceSummary().replace('You asked for any start time on ', '').replace(/\.$/, '')) +
+            '. We text you the start time by the evening before.'
+          : 'We have your request and the times that suit you. 513 Auto Clean will come back with a time to confirm.')
         : state.advice
           ? 'Your time is held' + (state.slot ? ' for <b>' +
               new Date(state.slot).toLocaleString('en-US', { timeZone: TZ, weekday: 'long', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit' }) +
