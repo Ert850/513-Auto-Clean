@@ -493,7 +493,8 @@
       var target = t.tab === 'Review' && state.ckDone.agree ? 'review' : first;
       var canOpen = reach >= LOC_I && ckCanOpen(target);
       var done = Boolean(state.ckDone[first]);
-      var sum = done ? CK[ckIndex(first)].sum() : (t.tab === 'Review' ? sPay() : '');
+      var c0 = CK[ckIndex(first)];
+      var sum = t.tab === 'Review' ? sPay() : done ? (c0.tabSum ? c0.tabSum() : c0.sum()) : '';
       return seg('data-cksec="' + target + '"', t.tab, sum, t.secs.indexOf(openId) > -1, done, canOpen);
     }).join('');
     el('bkNav').innerHTML =
@@ -536,14 +537,17 @@
    */
   var CK = [
     { id: 'details', title: 'Your details', render: function () { return rDetails(); }, valid: function () { return vDetails(); },
-      sum: function () { var c = state.contact; return [c.name, c.phone, c.email].filter(Boolean).join(' · '); } },
+      sum: function () { var c = state.contact; return [c.name, prettyPhone(c.phone), c.email].filter(Boolean).join(' · '); },
+      tabSum: function () { return state.contact.name.split(' ')[0]; } },
     { id: 'where', title: 'Where are we detailing?', render: function () { return rLoc(); }, valid: function () { return vLoc(); },
-      sum: function () { var a = state.address; return [a.line1, a.city].filter(Boolean).join(', ') + (state.covered ? ' · covered spot' : ''); } },
+      sum: function () { var a = state.address; return [a.line1, a.city].filter(Boolean).join(', ') + (state.covered ? ' · covered spot' : ''); },
+      tabSum: function () { return state.address.city || state.address.zip; } },
     { id: 'when', title: 'Pick your time', render: function () { return rTime(); }, valid: function () { return vTime(); },
       sum: function () {
         if (state.slot) return tzDay(state.slot, { weekday: 'short', month: 'short', day: 'numeric' }) + ', ' + spanLabel(state.slot, holdMinutes());
         return isInquiry() ? preferenceSummary() : '';
-      } },
+      },
+      tabSum: function () { return state.slot ? tzDay(state.slot, { month: 'short', day: 'numeric' }) + ', ' + tzTime(state.slot) : isInquiry() ? 'Requested' : ''; } },
     { id: 'agree', title: 'Almost done', render: function () { return rAgree(); }, valid: function () { return vAgree(); },
       sum: function () {
         return 'Terms accepted · Recording: ' + (state.consent.media ? 'yes' : 'no') + (state.consent.sms ? ' · Texts on' : '');
@@ -628,6 +632,12 @@
     });
     return html;
   }
+  /** "(513) 555-0123" from whatever was typed, or what was typed when it is not ten digits. */
+  function prettyPhone(raw) {
+    var d = String(raw || '').replace(/\D/g, '').replace(/^1(?=\d{10}$)/, '');
+    return d.length === 10 ? '(' + d.slice(0, 3) + ') ' + d.slice(3, 6) + '-' + d.slice(6) : String(raw || '');
+  }
+
   function ckTabOf(id) {
     for (var i = 0; i < CK_TABS.length; i++) if (CK_TABS[i].secs.indexOf(id) > -1) return id === 'agree' ? 'Agree' : CK_TABS[i].tab;
     return '';
@@ -3888,7 +3898,11 @@
   function scrollToEl(node, gap) {
     var sc = el('bkScroll');
     if (!sc || !node || !node.getBoundingClientRect || !sc.getBoundingClientRect) return;
-    var top = sc.scrollTop + node.getBoundingClientRect().top - sc.getBoundingClientRect().top - (gap || 0);
+    // Less any slide-in still under way: it starts the section 22px low, and
+    // measuring then overshot the title by 10px (round 16).
+    var shift = 0;
+    try { var tf = getComputedStyle(node).transform; if (tf && tf !== 'none' && window.DOMMatrix) shift = new DOMMatrix(tf).m42; } catch (e) { shift = 0; }
+    var top = sc.scrollTop + node.getBoundingClientRect().top - shift - sc.getBoundingClientRect().top - (gap || 0);
     try { sc.scrollTo({ top: top, behavior: reducedMotion() ? 'auto' : 'smooth' }); } catch (e) { sc.scrollTop = top; }
   }
 
