@@ -181,6 +181,63 @@ describe("every function survives hostile input with its key present", () => {
     expect(JSON.parse(r.body).sent).toBe(false);
   }, 30_000);
 
+  it("send-confirmation: writes a detailer's job to their own calendar, and only theirs", async () => {
+    // DETAILERS is read here as well as in the browser. The browser names who
+    // took the time; the server writes there only if that name is in its own
+    // setting, so a sender cannot pick a calendar.
+    const KRIS_JOBS = "kris-jobs@group.calendar.google.com";
+    const env = {
+      GOOGLE_OAUTH_CLIENT_ID: "id", GOOGLE_OAUTH_CLIENT_SECRET: "secret", GOOGLE_OAUTH_REFRESH_TOKEN: "refresh",
+      DETAILERS: JSON.stringify([{ name: "Kris", does: "interior",
+        availability: "kris-open@group.calendar.google.com", bookings: KRIS_JOBS }]),
+    };
+    const before = Object.fromEntries(Object.keys(env).map((k) => [k, process.env[k]]));
+    Object.assign(process.env, env);
+    const writes: { url: string; summary: string }[] = [];
+    const realFetch = globalThis.fetch;
+    globalThis.fetch = (async (url: string, init?: { body?: string }) => {
+      const u = String(url);
+      if (u.startsWith("https://oauth2.googleapis.com/token")) {
+        return new Response(JSON.stringify({ access_token: "t", expires_in: 3600 }), { status: 200 });
+      }
+      if (u.includes("googleapis.com/calendar/v3/calendars/")) {
+        writes.push({ url: decodeURIComponent(u), summary: JSON.parse(String(init?.body ?? "{}")).summary });
+        return new Response(JSON.stringify({ id: "e1" }), { status: 200 });
+      }
+      return new Response("{}", { status: 500 });
+    }) as typeof fetch;
+    try {
+      const { handler } = await load("send-confirmation");
+      const book = (detailer: string) => handler({
+        httpMethod: "POST",
+        headers: {},
+        body: JSON.stringify({
+          cart: {
+            vehicles: [{ sizeId: "small", packageIds: ["basic-interior"] }],
+            address: { line1: "1 Main St", city: "Cincinnati", region: "OH", zip: "45220" },
+            slot: Date.now() + 5 * 86_400_000,
+          },
+          contact: { name: "Ada", phone: "5135551212" },
+          mode: "card_only",
+          detailer,
+        }),
+      });
+      await book("kris");
+      await book("somebody-else");
+      expect(writes).toHaveLength(2);
+      expect(writes[0]!.url).toContain(KRIS_JOBS);
+      expect(writes[0]!.summary).toMatch(/^Kris: /);
+      expect(writes[1]!.url, "an unknown name books the default calendar").not.toContain(KRIS_JOBS);
+      expect(writes[1]!.summary).not.toMatch(/^Kris/);
+    } finally {
+      globalThis.fetch = realFetch;
+      for (const [k, v] of Object.entries(before)) {
+        if (v === undefined) delete process.env[k];
+        else process.env[k] = v;
+      }
+    }
+  }, 30_000);
+
   it("paypal-order: refuses an order id that is not an order id", async () => {
     const { handler } = await load("paypal-order");
     const r = await handler({

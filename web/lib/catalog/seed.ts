@@ -21,12 +21,18 @@ export interface VehicleSize {
   label: string;
   examples: string;
   upchargeCents: number;
+  /**
+   * Extra time a bigger vehicle takes, once per vehicle like the upcharge.
+   * Owner, November 10: about 15 minutes more for medium and 30 for large.
+   * It used to be zero, so a large SUV was scheduled into a small car's time.
+   */
+  extraMin: number;
 }
 
 export const VEHICLE_SIZES: VehicleSize[] = [
-  { id: "small", label: "Small", examples: "Sedan, coupe, hatchback", upchargeCents: 0 },
-  { id: "medium", label: "Medium", examples: "SUV, truck, crossover", upchargeCents: 1000 },
-  { id: "large", label: "Large", examples: "3 row SUV, 7+ passenger van", upchargeCents: 2500 },
+  { id: "small", label: "Small", examples: "Sedan, coupe, hatchback", upchargeCents: 0, extraMin: 0 },
+  { id: "medium", label: "Medium", examples: "SUV, truck, crossover", upchargeCents: 1000, extraMin: 15 },
+  { id: "large", label: "Large", examples: "3 row SUV, 7+ passenger van", upchargeCents: 2500, extraMin: 30 },
 ];
 
 /* ===================== components ===================== */

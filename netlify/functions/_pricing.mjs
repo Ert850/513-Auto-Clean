@@ -417,9 +417,9 @@ function findCoatingTerm(id) {
 
 // lib/catalog/seed.ts
 var VEHICLE_SIZES = [
-  { id: "small", label: "Small", examples: "Sedan, coupe, hatchback", upchargeCents: 0 },
-  { id: "medium", label: "Medium", examples: "SUV, truck, crossover", upchargeCents: 1e3 },
-  { id: "large", label: "Large", examples: "3 row SUV, 7+ passenger van", upchargeCents: 2500 }
+  { id: "small", label: "Small", examples: "Sedan, coupe, hatchback", upchargeCents: 0, extraMin: 0 },
+  { id: "medium", label: "Medium", examples: "SUV, truck, crossover", upchargeCents: 1e3, extraMin: 15 },
+  { id: "large", label: "Large", examples: "3 row SUV, 7+ passenger van", upchargeCents: 2500, extraMin: 30 }
 ];
 var c = (id, name, category, durationMin, removable = true) => ({
   id,
@@ -1170,7 +1170,7 @@ function quote(cart, r, taxTable = SEED_TAX_TABLE, year = (/* @__PURE__ */ new D
         label: "Size, " + (vehicle.sizeLabel ?? "vehicle").toLowerCase() + " vehicle",
         vehicleIndex: vi,
         amountCents: vehicle.sizeUpchargeCents,
-        durationMin: 0
+        durationMin: vehicle.sizeExtraMin ?? 0
       });
     }
     const hasInt = vehicle.packages.some((p) => p.category === "interior");
@@ -1887,6 +1887,66 @@ function mergeBusy(list) {
   return out;
 }
 
+// lib/availability/crew.ts
+var OWNER = {
+  id: "owner",
+  name: "Elijah",
+  does: ["interior", "exterior"],
+  availabilityCalendarId: "",
+  bookingsCalendarId: "",
+  owner: true
+};
+var CAL_ID = /^[\w.+-]+@[\w.-]+$/;
+function slug(name) {
+  return name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 30);
+}
+function parseDetailers(raw) {
+  const problems = [];
+  let list = [];
+  const text = String(raw ?? "").trim();
+  if (text) {
+    try {
+      const parsed = JSON.parse(text);
+      if (Array.isArray(parsed)) list = parsed;
+      else problems.push("DETAILERS must be a list, in [ square brackets ]");
+    } catch {
+      problems.push("DETAILERS is not valid JSON");
+    }
+  }
+  const crew = [];
+  let ownerPlaced = false;
+  const seen = /* @__PURE__ */ new Set();
+  list.forEach((entry, i) => {
+    const e = entry ?? {};
+    if (e["owner"] === true) {
+      if (!ownerPlaced) crew.push({ ...OWNER, name: String(e["name"] || OWNER.name).slice(0, 40) });
+      ownerPlaced = true;
+      return;
+    }
+    const name = String(e["name"] ?? "").trim().slice(0, 40);
+    const availability = String(e["availability"] ?? "").trim();
+    const bookings = String(e["bookings"] ?? "").trim();
+    const id = slug(name);
+    if (!name || !id) return problems.push(`entry ${i + 1} has no name`);
+    if (id === OWNER.id || seen.has(id)) return problems.push(`${name} is listed twice`);
+    if (!CAL_ID.test(availability) || !CAL_ID.test(bookings)) {
+      return problems.push(`${name} needs both an availability and a bookings calendar id`);
+    }
+    const does = String(e["does"] ?? "all").toLowerCase();
+    seen.add(id);
+    crew.push({
+      id,
+      name,
+      does: does === "interior" ? ["interior"] : does === "exterior" ? ["exterior"] : ["interior", "exterior"],
+      availabilityCalendarId: availability,
+      bookingsCalendarId: bookings,
+      owner: false
+    });
+  });
+  if (!ownerPlaced) crew.push(OWNER);
+  return { crew, problems };
+}
+
 // lib/pricing/cancellation.ts
 function chargeBpForNotice(hoursUntilStart, r) {
   if (hoursUntilStart >= r.refundFullWindowHours) return 0;
@@ -2387,6 +2447,7 @@ function priceFromWire(wire, opts = {}) {
     return {
       label: wv.label ?? "Vehicle",
       sizeUpchargeCents: size?.upchargeCents ?? 0,
+      sizeExtraMin: size?.extraMin ?? 0,
       sizeLabel: size?.label ?? "",
       packages,
       addons,
@@ -2471,6 +2532,7 @@ export {
   normalisePhone,
   normalisePromo,
   packagesFor,
+  parseDetailers,
   parseIcsBusy,
   pending,
   priceFromWire,

@@ -7,7 +7,7 @@
  * suggest. So the grid can never offer a time the old band picker would not.
  */
 import { localDayStart, localParts, localTimeOnDay, localWeekday } from "../time/zone.js";
-import { bandOf, localMinutesOfDay, recommendStarts, type Interval } from "./slots.js";
+import { bandOf, DEFAULT_BOOKING_WINDOW, localMinutesOfDay, recommendStarts, type Interval } from "./slots.js";
 
 const TZ = "America/New_York";
 const HOUR = 60;
@@ -59,12 +59,16 @@ export function addWeeks(weekStart: number, n: number, timeZone = TZ): number {
 }
 
 /**
- * Rows always cover 10am to 5pm, the standard-price hours, so the block a
- * customer is most likely to want stays in the same place from week to week.
- * Earlier and later rows appear only when this week has something in them.
+ * Rows cover the whole bookable window, 6am to 10pm, every week.
+ *
+ * They used to stop at the week's latest open hour (never before 5pm), so a
+ * week with no evening openings simply ended at 5pm and read as "we close at
+ * 5". Drawing every bookable hour, grey where nothing fits, shows the hours
+ * we keep and that this week's evenings are taken, and the grid never
+ * changes height from one week to the next.
  */
-const ALWAYS_FROM = 10 * HOUR;
-const ALWAYS_TO = 17 * HOUR;
+export const FIRST_ROW_MIN = DEFAULT_BOOKING_WINDOW.earliestStartMin;
+export const LAST_ROW_MIN = DEFAULT_BOOKING_WINDOW.latestStartMin;
 
 export function buildWeek(req: {
   /** Valid starts from computeSlots(), any range; only this week's are used. */
@@ -81,8 +85,6 @@ export function buildWeek(req: {
   const today = localDayStart(req.nowMs, tz);
   const days: WeekDay[] = [];
   let openCount = 0;
-  let lo = ALWAYS_FROM;
-  let hi = ALWAYS_TO;
 
   for (let i = 0; i < 7; i++) {
     const dayStart = localTimeOnDay(req.weekStart, i, 0, tz);
@@ -108,8 +110,6 @@ export function buildWeek(req: {
       const list = byHour.get(h);
       if (list) list.push(ms);
       else byHour.set(h, [ms]);
-      lo = Math.min(lo, h);
-      hi = Math.max(hi, h);
     }
 
     const cells: WeekCell[] = [];
@@ -144,7 +144,7 @@ export function buildWeek(req: {
   }
 
   const rows: number[] = [];
-  for (let h = lo; h <= hi; h += HOUR) rows.push(h);
+  for (let h = FIRST_ROW_MIN; h <= LAST_ROW_MIN; h += HOUR) rows.push(h);
 
   // Fill the gaps so every day has a cell for every row.
   for (const day of days) {
@@ -159,22 +159,55 @@ export function buildWeek(req: {
 }
 
 /**
- * The time to preselect when someone lands on a week with nothing chosen.
+ * "Our recommended times": the three we would most like this customer to take.
  *
- * The owner's steer: a suggested standard-price start (10am or 4pm on a
- * weekday) on the first day that does not carry the rush fee. Only when the
- * week has nothing outside the rush window does it fall back to a rush day,
- * and never to an early or late start, because a preselected surcharge is a
- * fee the customer did not choose.
+ * Owner, November 10: few choices, sooner is better even with the rush fee,
+ * and Kris before Elijah. So:
+ *   - soonest day first, rush days included;
+ *   - on each day, the starts that pack it (straight after an existing job,
+ *     else 10am and 4pm, 10am, 1pm and 4pm at weekends), never an early or
+ *     late hour;
+ *   - within a day, a start the preferred detailer can take comes first;
+ *   - at most two from one day, so the three are a real choice.
  */
-export function defaultPick(week: Week): number | null {
-  const pickFrom = (allowRush: boolean): number | null => {
-    for (const day of week.days) {
-      if (day.past || (day.rush && !allowRush)) continue;
-      const cell = day.cells.find((c) => c.suggested && !c.premium && c.pick !== null);
-      if (cell) return cell.pick;
+export function recommendTimes(req: {
+  slots: number[];
+  busy?: Interval[];
+  travelGapMin: number;
+  /** Starts the first-choice detailer is free for (Kris before Elijah). */
+  preferred?: Set<number>;
+  limit?: number;
+  perDay?: number;
+  timeZone?: string;
+}): number[] {
+  const tz = req.timeZone ?? TZ;
+  const limit = req.limit ?? 3;
+  const perDay = req.perDay ?? 2;
+  const byDay = new Map<number, number[]>();
+  for (const ms of [...new Set(req.slots)].sort((a, b) => a - b)) {
+    if (bandOf(localMinutesOfDay(ms, tz))?.premium) continue;
+    const day = localDayStart(ms, tz);
+    const list = byDay.get(day);
+    if (list) list.push(ms);
+    else byDay.set(day, [ms]);
+  }
+
+  const out: number[] = [];
+  for (const [day, starts] of [...byDay].sort((a, b) => a[0] - b[0])) {
+    if (out.length >= limit) break;
+    const weekday = localWeekday(day + 12 * 3600_000, tz);
+    const theirs = req.preferred ? starts.filter((ms) => req.preferred!.has(ms)) : [];
+    const pool = theirs.length ? theirs : starts;
+    const picks = recommendStarts({
+      starts: pool,
+      busy: req.busy ?? [],
+      travelGapMin: req.travelGapMin,
+      limit: weekday === 0 || weekday === 6 ? 3 : 2,
+      timeZone: tz,
+    }).map((r) => r.ms);
+    for (const ms of picks.slice(0, perDay)) {
+      if (out.length < limit) out.push(ms);
     }
-    return null;
-  };
-  return pickFrom(false) ?? pickFrom(true);
+  }
+  return out;
 }

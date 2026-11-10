@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { zonedToUtc } from "../time/zone.js";
-import { addWeeks, buildWeek, defaultPick, weekStartOf } from "./week.js";
+import { addWeeks, buildWeek, recommendTimes, weekStartOf } from "./week.js";
 
 const TZ = "America/New_York";
 const at = (mo: number, d: number, h: number, mi = 0) => zonedToUtc(2026, mo, d, h, mi, 0, TZ);
@@ -46,9 +46,10 @@ describe("buildWeek", () => {
     for (const d of week.days) expect(d.cells.map((c) => c.hourMin)).toEqual(week.rows);
   });
 
-  it("always shows 10am to 5pm, and stretches to the week's earliest start", () => {
-    expect(week.rows[0]).toBe(8 * 60);
-    expect(week.rows[week.rows.length - 1]).toBe(17 * 60);
+  it("always shows every bookable hour, 6am to 10pm, open or not", () => {
+    expect(week.rows[0]).toBe(6 * 60);
+    expect(week.rows[week.rows.length - 1]).toBe(22 * 60);
+    expect(week.rows.length).toBe(17);
   });
 
   it("puts every start in its hour and leaves the rest unavailable", () => {
@@ -78,32 +79,37 @@ describe("buildWeek", () => {
     expect(c13.pick).toBe(at(11, 17, 13));
   });
 
-  it("preselects a suggested standard start, skipping rush days", () => {
-    expect(defaultPick(week)).toBe(at(11, 17, 10));
-    const rushTue = buildWeek({
-      slots: [...slots, at(11, 19, 16)],
-      weekStart, travelGapMin: 60, nowMs: now,
-      needsPriority: (ms) => ms < at(11, 18, 0),
-    });
-    expect(rushTue.days[2]!.rush).toBe(true);
-    expect(defaultPick(rushTue)).toBe(at(11, 19, 16));
-  });
-
-  it("falls back to a rush day, but never preselects an early or late start", () => {
-    const onlyRush = buildWeek({
-      slots: [at(11, 17, 10)], weekStart, travelGapMin: 60, nowMs: now, needsPriority: () => true,
-    });
-    expect(defaultPick(onlyRush)).toBe(at(11, 17, 10));
-    const onlyEarly = buildWeek({
-      slots: [at(11, 21, 8)], weekStart, travelGapMin: 60, nowMs: now, needsPriority: noRush,
-    });
-    expect(defaultPick(onlyEarly)).toBeNull();
-  });
-
   it("marks days before today as past", () => {
     const w = buildWeek({ slots: [], weekStart, travelGapMin: 60, nowMs: at(11, 18, 9), needsPriority: noRush });
     expect(w.days.map((d) => d.past)).toEqual([true, true, true, false, false, false, false]);
     expect(w.openCount).toBe(0);
-    expect(w.rows).toEqual([600, 660, 720, 780, 840, 900, 960, 1020]);
+    expect(w.rows.length).toBe(17);
+  });
+});
+
+describe("recommendTimes", () => {
+  const slots = [
+    // Tuesday 17th: plenty
+    at(11, 17, 8), at(11, 17, 10), at(11, 17, 11), at(11, 17, 16),
+    // Wednesday 18th
+    at(11, 18, 10), at(11, 18, 16),
+    // Thursday 19th
+    at(11, 19, 10),
+  ];
+
+  it("gives the three soonest packing starts, two a day at most, never early or late", () => {
+    expect(recommendTimes({ slots, travelGapMin: 60 })).toEqual([at(11, 17, 10), at(11, 17, 16), at(11, 18, 10)]);
+  });
+
+  it("prefers a start the first-choice detailer can take, on the same day", () => {
+    const preferred = new Set([at(11, 17, 11)]);
+    const recs = recommendTimes({ slots, travelGapMin: 60, preferred });
+    expect(recs[0]).toBe(at(11, 17, 11));
+    expect(recs).toHaveLength(3);
+  });
+
+  it("returns what there is when the week is thin", () => {
+    expect(recommendTimes({ slots: [at(11, 19, 10), at(11, 19, 7)], travelGapMin: 60 })).toEqual([at(11, 19, 10)]);
+    expect(recommendTimes({ slots: [], travelGapMin: 60 })).toEqual([]);
   });
 });
