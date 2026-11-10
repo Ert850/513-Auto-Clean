@@ -146,6 +146,8 @@
   }
 
   function start() {
+    // The footer link and its leading separator are one hidden <span>, so
+    // without analytics ids the footer shows no stray "· ·".
     document.querySelectorAll('[data-analytics-choices]').forEach(function (b) {
       b.hidden = false;
       b.addEventListener('click', showBanner);

@@ -271,6 +271,13 @@ reorganization only. Reference sites: *links not yet provided*.
   - **Browser support:** Chrome, Edge and Safari. Firefox supports `balance`; for `pretty` it falls back to normal wrapping.
 - **Parallel:** the `subpages-fold` session (port 8793) is making each sub-page's core content fit a laptop screen.
 
+### 13. Footer dots; nav check across 6 pages (November 10)
+- **Footer "· ·".** The hidden "Analytics choices" button kept its separator dot visible. The link and its leading dot are now one hidden `<span data-analytics-choices>` on all 6 pages; `js/analytics.js` reveals the span when analytics ids exist. Checked both ways: "…Cancellation Policy · Built with care…" without ids, and "…Cancellation Policy · Analytics choices · Built…" with them.
+- **Nav click check.** It now runs 6 pages in parallel tabs and prints each result as it happens.
+  - **Result:** 192 checks; 188 OK in the parallel run. The 4 others were in-page smooth-scroll clicks (Results on the home page, Reviews on About) slowed by background-tab throttling; re-run in a foreground tab, both landed exactly at 73 px.
+  - **Effective result:** 192/192.
+- **Carousel round 2** sent back to the carousel session: hover no longer pauses; the button shows Play after an interaction pause; all visible cards sweep together; smoother easing; Instagram button; section whitespace RCA.
+
 ### Reference sites reviewed (design lessons only, nothing copied)
 - **dksdetailing.com:**
   - **What works:** one short line of social proof ("Trusted by 250+"), a one-line headline, and two buttons (a main one plus Call). Packages are grouped by Full, Exterior and Interior.
