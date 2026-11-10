@@ -481,8 +481,32 @@ section { padding-block: clamp(40px, 5vw, 72px); position: relative; }
 .gallery .gal-foot { margin-top: 2.5rem; text-align: center; }
 
 /* before / after sliders */
-.ba-grid { display: grid; gap: 1.5rem; grid-template-columns: 1fr; }
+/* The carousel: a track of cards moved with a transform, never scrolled, so
+   nothing can scroll the page sideways. The cards' shadows fall below them;
+   clip only sideways so the shadows are not cut off at the bottom
+   (overflow: hidden first for browsers without clip). */
+.ba-viewport { overflow: hidden; overflow-x: clip; overflow-y: visible; }
+/* --ba-per is how many cards are in view; js/gallery.js reads it. */
+.ba-track { --ba-per: 1; --ba-gap: 1.5rem; position: relative; display: flex; gap: var(--ba-gap); transition: transform .6s var(--ease); }
+.ba-track > .ba-slider { flex: 0 0 calc((100% - (var(--ba-per) - 1) * var(--ba-gap)) / var(--ba-per)); min-width: 0; }
 .ba-slider { margin: 0; }
+.ba-controls { display: flex; align-items: center; justify-content: center; gap: .25rem; margin-top: 1.1rem; }
+.ba-controls.single [data-step], .ba-controls.single .ba-dots { display: none; }
+.ba-ctl {
+  width: 40px; height: 40px; flex: none; padding: 0; border: 0; border-radius: 50%; cursor: pointer;
+  display: grid; place-items: center; background: transparent; color: var(--text);
+  box-shadow: inset 0 0 0 1.5px var(--line); transition: box-shadow .25s var(--ease);
+}
+.ba-ctl:hover { box-shadow: inset 0 0 0 1.5px var(--ink); }
+.ba-ctl svg { width: 18px; height: 18px; }
+.ba-dots { display: flex; flex-wrap: wrap; justify-content: center; min-width: 0; }
+.ba-dot { width: 24px; height: 40px; padding: 0; border: 0; background: none; cursor: pointer; display: grid; place-items: center; }
+.ba-dot::before {
+  content: ""; width: 10px; height: 10px; border-radius: 5px; box-shadow: inset 0 0 0 1.5px var(--text-soft);
+  transition: background .25s var(--ease), box-shadow .25s var(--ease);
+}
+.ba-dot:hover::before { box-shadow: inset 0 0 0 1.5px var(--ink); }
+.ba-dot[aria-current="true"]::before { background: var(--ink); box-shadow: none; }
 .ba-stage {
   position: relative; aspect-ratio: 4/3; border-radius: var(--r-lg); overflow: hidden;
   background: var(--ink-2); box-shadow: var(--shadow-md); user-select: none; touch-action: pan-y;
@@ -900,10 +924,13 @@ html.scrolling-fast .reveal { transition: none; transition-delay: 0s; }
   .steps { grid-template-columns: repeat(3, 1fr); }
   .rev-grid { grid-template-columns: repeat(3, 1fr); }
   .area-grid { grid-template-columns: repeat(3, 1fr); }
-  .ba-grid { grid-template-columns: repeat(2, 1fr); gap: 1.8rem; }
+  .ba-track { --ba-per: 2; --ba-gap: 1.8rem; }
   .footer-grid { grid-template-columns: 1.6fr 1fr 1fr 1.2fr; }
   .gal-grid { grid-template-columns: repeat(4, 1fr); }
 }
+/* Three cards in view: a third of the container is still about a phone's
+   card (310 to 330 points). Kept after the 820px block so it wins there. */
+@media (min-width: 1100px) { .ba-track { --ba-per: 3; } }
 @media (min-width: 960px) {
   .about-grid { grid-template-columns: .9fr 1.1fr; }
   .contact-grid { grid-template-columns: 1fr 1.1fr; }
