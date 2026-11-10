@@ -46,7 +46,7 @@
       href="images/hero-exterior-960.webp"
       imagesrcset="images/hero-exterior-640.webp 640w, images/hero-exterior-960.webp 960w, images/hero-exterior-1280.webp 1280w, images/hero-exterior-1600.webp 1600w"
       imagesizes="100vw" />
-<link rel="stylesheet" href="styles.css?v=654a562b78" />
+<link rel="stylesheet" href="styles.css?v=325a282313" />
 <!-- Public configuration and third party loaders live in js/, not inline,
      so the Content-Security-Policy can forbid inline scripts outright.
      js/config.js holds publishable keys only. Secret keys never go in a page. -->
@@ -706,13 +706,17 @@
     <div class="section-head center reveal">
       <span class="eyebrow">Our Work</span>
       <h2>Real cars. Real results.</h2>
-      <p>Real details from around Cincinnati. <strong>Drag the slider</strong> on any photo to see the before &amp; after for yourself.</p>
     </div>
 
     <!-- Rendered by js/gallery.js from data/gallery.json. To add a pair:
          drop the two photos in images/ following ba-<slug>-before.jpg and
-         ba-<slug>-after.jpg, then add one entry to that file. -->
-    <div class="ba-grid" id="baGrid"></div>
+         ba-<slug>-after.jpg, then add one entry to that file. js/gallery.js
+         also adds the carousel controls under the photos. -->
+    <div class="ba-carousel reveal" id="baCarousel" role="region" aria-roledescription="carousel" aria-label="Before and after photos">
+      <div class="ba-viewport">
+        <div class="ba-track" id="baGrid" aria-live="off" aria-atomic="false"></div>
+      </div>
+    </div>
 
     <div class="gal-foot reveal">
       <a class="btn btn-ghost btn-lg" href="https://www.instagram.com/513autoclean/" target="_blank" rel="noopener">
@@ -1081,7 +1085,7 @@
 <link rel="stylesheet" href="book.css?v=ef821ee712" />
 <!-- Deferred, in order: the pricing bundle must run before the funnel. -->
 <script src="js/pricing.bundle.js?v=5018f5a403" defer></script>
-<script src="js/gallery.js?v=d9bac1fab2" defer></script>
+<script src="js/gallery.js?v=844be022d5" defer></script>
 <script src="js/reviews.js?v=d59d6040a0" defer></script>
 <script src="js/funnel.js?v=1f6d986f96" defer></script>
 <script src="script.js?v=3a75b08501" defer></script>
