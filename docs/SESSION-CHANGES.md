@@ -198,8 +198,14 @@ reorganization only. Reference sites: *links not yet provided*.
   - "Book Express Exterior" opens the booking form on the Services page.
   - No horizontal overflow.
   - Tests 409/409.
-- **Open with the owner:**
-  - The home page's `#quote` section ("Let's get your car booked"). The owner suggested pointing the home-page Book Now there, with the header Book Now staying instant. My recommendation: keep every Book Now instant and merge `#quote` into the Contact section.
+### 7. Home page Book Now goes to the booking section (owner's decision, November 10)
+- **The hero's Book Now and the services teaser's Book Now** now link to `#quote` ("Let's get your car booked"). They glide there; the section's "Start My Booking" opens the form.
+- **Unchanged, still opening the booking form instantly:** the header Book Now, the mobile-menu Book Now, the sticky phone bar, the footer Book Now, and the hero's "View Services" (which opens the form's browse view).
+- **Verified with real clicks:**
+  - Hero and teaser Book Now land on `#quote` exactly under the header (73 px) at both 1440 and 375 px.
+  - "Start My Booking" opens the form.
+  - The header Book Now still opens the form.
+- **Note:** this was the owner's call over my recommendation, which was to merge `#quote` into Contact so every Book Now stays instant. Worth checking in analytics once GA4 is live: compare `booking_open` from the hero against before.
 
 ### Reference sites reviewed (design lessons only, nothing copied)
 - **dksdetailing.com:**
