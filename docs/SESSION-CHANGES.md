@@ -227,7 +227,8 @@ reorganization only. Reference sites: *links not yet provided*.
 | "See all add-ons" beside the Interior/Exterior tabs | A new `.svc-tabs-row` (tabs plus button). The old button under the cards is removed | 2× capture at 1440 |
 | Footer Explore names | Now exactly the nav: Results, Services, Meet the Team, Reviews, **Range & Travel** (added), FAQ, Contact Us. Same on all 5 pages | 2× capture |
 | Contact layout cramped below 1000 px | From 820 px the grid split 0.8fr/1.2fr, and the phone-first `order: 1` put the **form** in the narrow track. Now two columns only from 1000 px. Below that, "Prefer to talk?", the phone and the email sit in one compact row above a full-width form | 2× captures at 1440, 820 and 375 |
-| Footer Service Areas links | **Pending:** needs anchors on `service-area.html`, which the parallel session is editing. Done after the merge | |
+| Footer Service Areas links | All five opened the top of `service-area.html`. The state cards now have ids `area-oh`, `area-ky` and `area-in`, and each footer place links to its own card | A real click on "Northern Kentucky" lands the Kentucky card at 73 px |
+| Merged `claude/range-travel-colors-bb207f` | Ohio grouped by county (the card got shorter); the fee scale is green, then an amber-to-brown ramp; dots solid and matching their keys; prices in ink. See `docs/SESSION-CHANGES-service-area.md` | Build, tests 409/409 |
 
 ### Reference sites reviewed (design lessons only, nothing copied)
 - **dksdetailing.com:**
