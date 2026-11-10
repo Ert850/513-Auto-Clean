@@ -420,8 +420,10 @@
     var r1 = r.toFixed(1);
     var word = n === 1 ? ' review' : ' reviews';
 
-    var hero = document.querySelector('#google-badge .g-text');
-    if (hero) hero.textContent = 'Rated ' + r1 + ' from ' + n + word + ' on Google & Yelp';
+    // The trust strip's badge and the hero's pill say the same thing.
+    document.querySelectorAll('#google-badge .g-text, .hero-badge .hb-text').forEach(function (el) {
+      el.textContent = 'Rated ' + r1 + ' from ' + n + word + ' on Google & Yelp';
+    });
 
     var num = document.querySelector('#revFallback .rf-score .num');
     if (num) num.textContent = r1;

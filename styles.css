@@ -285,7 +285,7 @@ section { padding-block: clamp(40px, 5vw, 72px); position: relative; }
   padding: .5rem 1rem .5rem .65rem; border-radius: 999px; font-size: .86rem; font-weight: 600;
   color: #fff; backdrop-filter: blur(8px);
 }
-.hero-badge .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--red-bright); box-shadow: 0 0 0 4px rgba(255,59,59,.25); animation: pulse 2.4s infinite; }
+.hero-badge .hb-stars { color: var(--amber); letter-spacing: .08em; }
 
 .hero h1 {
   font-size: clamp(2.7rem, 8vw, 5rem); font-weight: 800; letter-spacing: -.035em;
@@ -315,8 +315,16 @@ section { padding-block: clamp(40px, 5vw, 72px); position: relative; }
 .hero-scroll span { position: absolute; left: 50%; top: 8px; width: 4px; height: 8px; border-radius: 2px; background: #fff; transform: translateX(-50%); animation: scrolldot 1.8s var(--ease) infinite; }
 @keyframes scrolldot { 0% { opacity: 0; top: 8px; } 40% { opacity: 1; } 80% { opacity: 0; top: 22px; } 100% { opacity: 0; } }
 
-.btn-light { --bg: rgba(255,255,255,.96); --fg: var(--ink); }
-.btn-light:hover { --bg: #fff; }
+/* One primary button in the hero (owner, round 4): Book Now stays solid red,
+   View Services and Contact Us are outlined on the photo, with a light tint so
+   they read over its bright patches. On a phone those two share a row under a
+   full-width Book Now (three stacked buttons took 212px of the screen). */
+.hero-cta .btn-ghost.on-dark { background: rgba(8,8,10,.25); backdrop-filter: blur(6px); }
+@media (max-width: 559.98px) {
+  .hero-cta { display: grid; grid-template-columns: 1fr 1fr; }
+  .hero-cta .btn-primary { grid-column: 1 / -1; }
+  .hero-cta .btn { justify-content: center; padding-inline: .8rem; }
+}
 
 /* trust marquee */
 .trustbar { background: var(--ink-2); color: var(--text-inv-soft); border-top: 1px solid var(--line-dark); border-bottom: 1px solid var(--line-dark); }
@@ -905,7 +913,6 @@ main > .areas:first-child .section-head { margin-bottom: 18px; }
    ANIMATIONS
    ============================================================ */
 @keyframes shine { 0% { transform: translateX(-120%); } 60%,100% { transform: translateX(120%); } }
-@keyframes pulse { 0%,100% { box-shadow: 0 0 0 0 var(--red-ghost); } 50% { box-shadow: 0 0 0 6px transparent; } }
 @keyframes floaty { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-9px); } }
 @keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
 
