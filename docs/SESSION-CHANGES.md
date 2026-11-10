@@ -337,6 +337,19 @@ reorganization only. Reference sites: *links not yet provided*.
   - The travel estimator answers ZIP 45040 with "$20 to $35".
   - Tests 416/416.
 
+### 18. Hero image still broken on the local demo (November 10, night)
+- **Report:** the owner's screenshot again showed the home hero as a broken image (alt text and a `?` icon), this time with the new rating pill, so the HTML was current but the photo wasn't.
+- **Checked, and none of these reproduce it:**
+  - Every hero file decodes with macOS's own image library (`sips`), the one Safari uses.
+  - Served with 200 and `image/webp` on both `127.0.0.1` and `localhost`.
+  - The photo loads and paints in the browser pane (Chromium), in headless Chrome at 1440 and 375, and in WebKit (Safari's engine) at 1440, 1000 and 375.
+  - The demo folder holds every image of the build.
+- **Most likely cause: the browser kept a bad copy of the photo.** Python's plain `http.server` sends `Last-Modified` but no cache rules. A photo fetched while an earlier build was still copying images (before fix 16) comes back cut short and undecodable. When the browser later asks "has it changed?", the server compares times only to the second. A copy finished within that same second answers "not modified", so the browser keeps reusing the cut-short copy.
+- **Fix:** the demo on 8799 was relaunched with a server that sends `Cache-Control: no-store` on every response (`demo-server.py` in the session scratchpad; it otherwise behaves like `python3 -m http.server`). The browser now fetches every file fresh on each load, so a bad copy can't persist. Verified after the relaunch in all three engines above. **Production is unaffected:** Netlify sends its own cache headers and publishes atomically.
+- **Test-tool lessons** (also in `CLAUDE.md`):
+  - A WebKit view in a window that's never shown paints no images and pauses CSS animations. Snapshots from it showed a grey hero with no text, a false alarm.
+  - Headless Chrome's `--window-size` can't go below about 500 px, so a "375" screenshot is cropped. Use CDP device emulation or the pane's mobile preset for phone widths.
+
 ### Reference sites reviewed (design lessons only, nothing copied)
 - **dksdetailing.com:**
   - **What works:** one short line of social proof ("Trusted by 250+"), a one-line headline, and two buttons (a main one plus Call). Packages are grouped by Full, Exterior and Interior.
