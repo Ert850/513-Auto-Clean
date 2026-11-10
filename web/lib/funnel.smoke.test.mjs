@@ -513,8 +513,11 @@ describe("the booking funnel opens", () => {
     // and a second vehicle as one line rather than a screen of its own.
     const extras = fresh.lookup("bkBody").innerHTML;
     expect(extras).toContain("Recommended for your Basic Interior");
-    expect(extras, "the full list is still one tap away").toContain("bk-allextras");
-    expect(extras, "a second vehicle is offered here").toContain("bkAddVeh");
+    // Every add-on is listed, under the same kind of heading: nothing folded.
+    expect(extras, "the rest are listed in full").toContain("More extras");
+    expect(extras, "nothing is folded away").not.toContain("<details class=\"bk-allextras");
+    expect(extras.indexOf("bkAddVeh"), "the second vehicle offer comes before the extras")
+      .toBeLessThan(extras.indexOf("Recommended for your"));
     expect(fresh.lookup("bkNav").innerHTML, "no Vehicles step any more").not.toContain("Vehicles");
     // The way past is one tap, and says so (the stub DOM keeps no button text).
     expect(fs.readFileSync(path.join(ROOT, "js/funnel.js"), "utf8"))

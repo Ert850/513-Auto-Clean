@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { zonedToUtc } from "../time/zone.js";
-import { addWeeks, buildWeek, recommendTimes, weekStartOf } from "./week.js";
+import { addWeeks, buildWeek, lastRowFor, recommendTimes, weekStartOf } from "./week.js";
 
 const TZ = "America/New_York";
 const at = (mo: number, d: number, h: number, mi = 0) => zonedToUtc(2026, mo, d, h, mi, 0, TZ);
@@ -46,10 +46,17 @@ describe("buildWeek", () => {
     for (const d of week.days) expect(d.cells.map((c) => c.hourMin)).toEqual(week.rows);
   });
 
-  it("always shows every bookable hour, 6am to 10pm, open or not", () => {
+  it("shows every start hour, 6am to 10pm, by default", () => {
     expect(week.rows[0]).toBe(6 * 60);
     expect(week.rows[week.rows.length - 1]).toBe(22 * 60);
     expect(week.rows.length).toBe(17);
+  });
+
+  it("adds rows only for the hours this job can still be running in", () => {
+    const longer = buildWeek({ slots, weekStart, travelGapMin: 60, nowMs: now, needsPriority: noRush, lastRowMin: 23 * 60 });
+    expect(longer.rows[longer.rows.length - 1]).toBe(23 * 60);
+    // Never a start, so always grey.
+    expect(longer.days.every((d) => d.cells[d.cells.length - 1]!.pick === null)).toBe(true);
   });
 
   it("puts every start in its hour and leaves the rest unavailable", () => {
@@ -111,5 +118,24 @@ describe("recommendTimes", () => {
   it("returns what there is when the week is thin", () => {
     expect(recommendTimes({ slots: [at(11, 19, 10), at(11, 19, 7)], travelGapMin: 60 })).toEqual([at(11, 19, 10)]);
     expect(recommendTimes({ slots: [], travelGapMin: 60 })).toEqual([]);
+  });
+});
+
+describe("lastRowFor", () => {
+  it("keeps 10pm when the job cannot run later than that", () => {
+    // Exterior work must start by 8pm: a 2 hour exterior ends by 10pm.
+    expect(lastRowFor(120, true)).toBe(22 * 60);
+    expect(lastRowFor(60, true)).toBe(22 * 60);
+  });
+
+  it("adds the 11pm row when a job can run toward midnight", () => {
+    expect(lastRowFor(120)).toBe(23 * 60); // a 10pm start ends at midnight
+    expect(lastRowFor(240)).toBe(23 * 60); // an 8pm start ends at midnight
+    expect(lastRowFor(75)).toBe(23 * 60); // a 10pm start ends at 11:15
+    expect(lastRowFor(240, true)).toBe(23 * 60); // an 8pm exterior ends at midnight
+  });
+
+  it("never draws past midnight, whatever the job", () => {
+    expect(lastRowFor(900)).toBe(23 * 60);
   });
 });

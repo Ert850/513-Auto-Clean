@@ -59,16 +59,33 @@ export function addWeeks(weekStart: number, n: number, timeZone = TZ): number {
 }
 
 /**
- * Rows cover the whole bookable window, 6am to 10pm, every week.
+ * Rows: every start hour of the booking window, 6am to 10pm (the site's
+ * standard last start), plus only the rows THIS job needs to finish in.
  *
- * They used to stop at the week's latest open hour (never before 5pm), so a
- * week with no evening openings simply ended at 5pm and read as "we close at
- * 5". Drawing every bookable hour, grey where nothing fits, shows the hours
- * we keep and that this week's evenings are taken, and the grid never
- * changes height from one week to the next.
+ * - They once stopped at the week's latest open hour (never before 5pm), so a
+ *   week with no evening openings ended at 5pm and read as "we close at 5".
+ *   Every start hour is drawn now, grey where nothing fits.
+ * - They then stopped at the last START hour, but the block drawn for a chosen
+ *   time is the whole job, and a job runs past its start: a 4 hour detail from
+ *   8pm ends at midnight, and its block ran off the bottom of the grid
+ *   (November 10).
+ *
+ * So the extra rows come from the job's length and the booking rules
+ * (lastRowFor), not from this week's openings: the grid keeps its shape from
+ * week to week and grows only for a job that can end later. Those rows are
+ * never start times, so they are always grey.
  */
 export const FIRST_ROW_MIN = DEFAULT_BOOKING_WINDOW.earliestStartMin;
-export const LAST_ROW_MIN = DEFAULT_BOOKING_WINDOW.latestStartMin;
+export const LAST_START_ROW_MIN = Math.floor(DEFAULT_BOOKING_WINDOW.latestStartMin / HOUR) * HOUR;
+
+/** The last row a job of this length can still be running in. */
+export function lastRowFor(durationMin: number, hasExterior = false, win = DEFAULT_BOOKING_WINDOW): number {
+  let latestStart = Math.min(win.latestStartMin, win.serviceEndByMin - durationMin);
+  if (hasExterior && win.latestExteriorStartMin !== undefined) latestStart = Math.min(latestStart, win.latestExteriorStartMin);
+  const end = latestStart + Math.max(0, durationMin);
+  const endRow = Math.ceil(end / HOUR) * HOUR - HOUR;
+  return Math.min(Math.max(LAST_START_ROW_MIN, endRow), win.serviceEndByMin - HOUR);
+}
 
 export function buildWeek(req: {
   /** Valid starts from computeSlots(), any range; only this week's are used. */
@@ -79,6 +96,8 @@ export function buildWeek(req: {
   nowMs: number;
   /** Is this start inside the rush window? (slotNeedsPriority in the funnel.) */
   needsPriority: (ms: number) => boolean;
+  /** The last row to draw, from lastRowFor(). Defaults to the last start hour. */
+  lastRowMin?: number;
   timeZone?: string;
 }): Week {
   const tz = req.timeZone ?? TZ;
@@ -144,7 +163,8 @@ export function buildWeek(req: {
   }
 
   const rows: number[] = [];
-  for (let h = FIRST_ROW_MIN; h <= LAST_ROW_MIN; h += HOUR) rows.push(h);
+  const lastRow = Math.max(LAST_START_ROW_MIN, req.lastRowMin ?? LAST_START_ROW_MIN);
+  for (let h = FIRST_ROW_MIN; h <= lastRow; h += HOUR) rows.push(h);
 
   // Fill the gaps so every day has a cell for every row.
   for (const day of days) {
