@@ -186,6 +186,17 @@ export const CAPABILITIES: Capability[] = [
     live: false,
     blockedBy: "TURNSTILE_SECRET_KEY in Netlify and turnstileSiteKey in js/config.js",
   },
+  {
+    id: "weatherCheck",
+    what: "Checking the forecast at the detail's location before offering weather-affected times and offers",
+    // Live: the booking form asks the National Weather Service for the
+    // forecast at the approximate location of the detail (address pick or
+    // ZIP centre, rounded to two decimals, about a kilometre). The privacy
+    // policy names it while this is on, and the form fetches nothing while
+    // it is off, so the two cannot drift.
+    live: true,
+    blockedBy: "nothing: api.weather.gov is free and needs no key",
+  },
 ];
 
 /**
@@ -227,6 +238,7 @@ export const PROCESSORS: Processor[] = [
   { name: "Microsoft Clarity", does: "records how pages are used, such as clicks, scrolling and where people leave, only if you accept analytics. It sets cookies to do so. What you type into forms is hidden from it, and we have told it not to use anything for advertising.", capability: "siteAnalytics" },
   { name: "Neon", does: "stores bookings in our database so your booking link works.", capability: "bookingLink" },
   { name: "Cloudflare Turnstile", does: "checks that a booking is being made by a person, before payment. It may set a cookie to do so.", capability: "botCheck" },
+  { name: "National Weather Service", does: "provides the forecast we check before offering times and offers for weather-affected work. Your browser sends it the approximate location of the detail, rounded to within about a kilometre, never your name, contact details or street address. Like any website, it receives your IP address.", capability: "weatherCheck" },
 ];
 
 export function liveProcessors(): Processor[] {

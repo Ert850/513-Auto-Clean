@@ -1477,8 +1477,9 @@
     var html = '<p class="bk-sub">Optional. Add anything that would help, or carry straight on.</p>' + moreVehicles();
 
     if (recs.length) {
-      html += '<h3 class="bk-grp">Recommended for your ' + esc(pkg || 'detail') + '</h3>';
+      html += '<h3 class="bk-grp">Recommended for your ' + esc(pkg || 'detail') + '</h3><div class="bk-addrecs">';
       recs.forEach(function (a) { html += addonCard(v, a, ctx); });
+      html += '</div>';
     }
 
     // Everything else, listed in full under the same kind of heading: keep
@@ -2038,6 +2039,11 @@
     return Boolean(ms) && ms - Date.now() < SHORT_NOTICE_HOURS * 3600000;
   }
 
+  /** The assigned detailer's id for the server, or '' for the owner. */
+  function detailerParam() {
+    return state.detailer && state.detailer !== 'owner' ? state.detailer : '';
+  }
+
   /** The assigned detailer's name, or '' for the owner. */
   function detailerName() {
     if (!state.detailer || state.detailer === 'owner') return '';
@@ -2062,14 +2068,23 @@
     return parsed.crew;
   }
 
-  /** What the job needs, for who can take it. Help me decide stays with Elijah. */
+  /**
+   * The skills the job needs, for who can take it: a list of words matched
+   * against each detailer's `does` (DETAILERS). Help me decide could turn out
+   * to be anything, so it needs someone who does everything we sell.
+   */
   function jobNeeds() {
-    if (state.advice) return { interior: true, exterior: true };
+    if (state.advice) return ['interior', 'exterior', 'correction', 'coating'];
+    var needs = [];
     var interior = state.vehicles.some(function (v) {
       return v.packageIds.some(function (id) { var p = P.findPackage(id); return p && p.category === 'interior'; }) ||
         v.addons.some(function (a) { var d = P.findAddon(a.addonId); return d && d.scope === 'interior'; });
     });
-    return { interior: interior, exterior: hasExterior() };
+    if (interior) needs.push('interior');
+    if (hasExterior()) needs.push('exterior');
+    if (hasCorrection() || hasAddonIn(CORRECTION_ADDONS)) needs.push('correction');
+    if (hasAddonIn(COATING_ADDONS)) needs.push('coating');
+    return needs;
   }
 
   /**
@@ -2154,7 +2169,7 @@
   /** Every rule the job must meet to be offered. Help me decide counts as interior. */
   function weatherKinds() {
     var kinds = [];
-    if (state.advice || jobNeeds().interior) kinds.push('interior');
+    if (state.advice || jobNeeds().indexOf('interior') > -1) kinds.push('interior');
     if (!state.advice && hasExterior()) kinds.push('exterior');
     if (hasCorrection() || hasAddonIn(CORRECTION_ADDONS)) kinds.push('correction');
     return kinds;
@@ -2250,7 +2265,9 @@
     var hit = ws && weekCache[ws] && weekCache[ws].to >= paintTo ? weekCache[ws] : null;
     var people = hit ? Promise.resolve(hit.crew) : loadCrew(from, to);
     // Interior work only cares about a downpour, and only without cover.
-    var needWeather = !(state.covered && weatherKinds().join() === 'interior');
+    // Nothing is fetched while weatherCheck is off: the privacy policy names
+    // the National Weather Service only while it is on.
+    var needWeather = P.isLive('weatherCheck') && !(state.covered && weatherKinds().join() === 'interior');
     var weather = needWeather ? loadWeather() : Promise.resolve(null);
 
     // Still ours to paint? Not if they have moved to another week since.
@@ -2537,7 +2554,7 @@
         granularityMin: 30,
         notBefore: from,
         notAfter: to,
-        hasExterior: needs.exterior,
+        hasExterior: hasExterior(),
         // A 6pm or later job is the last of the day, so the drive home does
         // not need to fit inside the calendar.
         ignoreReturnAfterMin: P.IGNORE_RETURN_AFTER_MIN,
@@ -2675,8 +2692,15 @@
     return parts.join(' and ') + ' fee';
   }
 
-  /** One place that sets the chosen time, and who will do it. */
-  function selectSlot(ms) {
+  /**
+   * One place that sets the chosen time, and who will do it.
+   *
+   * `via` says how it was picked (recommended, calendar, summary chip). It
+   * goes to analytics with the fee and the notice, so the recommendation
+   * rules can be tuned on what people actually choose (does nothing until
+   * analytics is switched on and accepted).
+   */
+  function selectSlot(ms, via) {
     if (state.slot !== ms) state.checkedSlot = null;
     state.slot = ms;
     state.detailer = (lastCalc && lastCalc.who && lastCalc.who.get(ms)) || 'owner';
@@ -2685,6 +2709,15 @@
     // The address came first, so the drive can be measured for this time
     // (traffic matters) while they carry on.
     if (addressComplete()) measureTravel();
+    if (via) {
+      track('time_pick', {
+        via: via,
+        fee_pct: surchargeBp(ms) / 100,
+        days_ahead: Math.round((ms - Date.now()) / DAY),
+        start_hour: Math.floor(localMin(ms) / 60),
+        detailer: state.detailer
+      });
+    }
   }
 
   function sameMinute(a, b) { return Math.abs(a - b) < 60000; }
@@ -2740,29 +2773,55 @@
    * times". The fee is there but quiet: a customer can see a time costs a
    * little more without the time looking forbidden.
    */
+  /**
+   * OUR RECOMMENDED TIMES, as days (owner, November 10): three day bars, each
+   * offering its two best starts, at most one of them a fee day, so a quick
+   * standard-price choice is always on screen. Tapping a day opens its two
+   * times in place; tapping a time books it and moves on. The rules live in
+   * TIME_RECOMMENDATION_RULES (week.ts), with a hook for analytics scores.
+   */
   function paintRecs(box, calc, dur) {
-    var recs = P.recommendTimes({
+    var days = P.recommendDays({
       slots: calc.slots, busy: calc.busy, travelGapMin: calc.buffer,
       preferred: calc.preferred || undefined, timeZone: TZ,
-      isPremium: timeFeeApplies
+      isPremium: timeFeeApplies,
+      isFee: function (ms) { return surchargeBp(ms) > 0; }
     });
 
     var html = unconfiguredNote(calc) + '<div class="bk-recs">' +
       '<h4 class="bk-recs-h">Our recommended times</h4>';
-    if (!recs.length) {
+    if (!days.length) {
       html += '<p class="bk-wk-none">Nothing open in the next two weeks for this detail. ' +
         'See additional times for later dates, or tell us when suits.</p>';
     }
-    recs.forEach(function (ms) {
-      var fee = feeText(ms);
-      html += '<button type="button" class="bk-rec' + (state.slot === ms ? ' on' : '') +
-        '" data-slot="' + ms + '" data-go="1">' +
-        '<span class="bk-rec-t"><span class="bk-rec-day">' + esc(tzDay(ms, { weekday: 'long', month: 'short', day: 'numeric' })) + '</span>' +
-        '<b>' + esc(spanLabel(ms, dur)) + '</b>' +
-        (fee ? '<i>' + esc(fee + ' ' + feeWhy(ms)) + '</i>' : '') +
-        (shortNotice(ms) ? '<em>Short notice: confirmed once a detailer accepts</em>' : '') +
-        (coatingMoves(ms, dur) ? '<em>The coating moves to a warmer day</em>' : '') +
-        '</span><span class="bk-rec-go">' + CHEV_R + '</span></button>';
+    days.forEach(function (day) {
+      var first = day.starts[0];
+      var fee = feeText(first);
+      var label = day.starts.map(function (ms) { return spanLabel(ms, dur); }).join(' or ');
+      var notes = (fee ? '<i>' + esc(fee + ' ' + feeWhy(first)) + '</i>' : '') +
+        (shortNotice(first) ? '<em>Short notice: confirmed once a detailer accepts</em>' : '');
+      var head = '<span class="bk-rec-t"><span class="bk-rec-day">' + esc(tzDay(first, { weekday: 'long', month: 'short', day: 'numeric' })) + '</span>' +
+        '<b class="bk-rec-times">' + esc(label) + '</b>' +
+        '<span class="bk-rec-pick">Pick a start time</span>' + notes + '</span>' +
+        '<span class="bk-rec-go">' + CHEV_R + '</span>';
+
+      // One time that day: the bar books it straight away.
+      if (day.starts.length === 1) {
+        html += '<div class="bk-recday"><button type="button" class="bk-rec' + (state.slot === first ? ' on' : '') +
+          '" data-slot="' + first + '" data-go="1" data-via="recommended">' + head + '</button></div>';
+        return;
+      }
+      html += '<div class="bk-recday" data-recday="' + day.dayStart + '">' +
+        '<button type="button" class="bk-rec" data-recday-toggle="' + day.dayStart + '" aria-expanded="false">' + head + '</button>' +
+        '<div class="bk-recday-opts"><div class="bk-recday-in">' +
+        day.starts.map(function (ms) {
+          return '<button type="button" class="bk-rec-opt' + (state.slot === ms ? ' on' : '') + '" data-slot="' + ms +
+            '" data-go="1" data-via="recommended" tabindex="-1">' +
+            '<b>' + esc(spanLabel(ms, dur)) + '</b>' +
+            (coatingMoves(ms, dur) ? '<em>The coating moves to a warmer day</em>' : '') +
+            '<span class="bk-rec-go">' + CHEV_R + '</span></button>';
+        }).join('') +
+        '</div></div></div>';
     });
     html += weatherNote(calc) +
       '<div class="bk-recs-foot">' +
@@ -2773,6 +2832,21 @@
     renderNav();
     renderTotal();
   }
+
+  /** Open one recommended day in place (closing any other), with its times. */
+  function toggleRecDay(dayStart) {
+    root.querySelectorAll('.bk-recday[data-recday]').forEach(function (d) {
+      var open = d.dataset.recday === String(dayStart) && !d.classList.contains('open');
+      d.classList.toggle('open', open);
+      d.querySelector('[data-recday-toggle]').setAttribute('aria-expanded', String(open));
+      d.querySelectorAll('.bk-rec-opt').forEach(function (b) { b.tabIndex = open ? 0 : -1; });
+      if (open) {
+        var firstOpt = d.querySelector('.bk-rec-opt');
+        if (firstOpt) setTimeout(function () { firstOpt.focus({ preventScroll: true }); }, 0);
+      }
+    });
+  }
+
 
   function paintWeek(box, calc, dur) {
     var now = Date.now();
@@ -2880,13 +2954,19 @@
    * to its estimated end, to the minute. A 10:30 start for two hours begins
    * halfway down the 10am row and ends halfway down the 12pm row.
    */
-  function spanGeom(ms, col, dur, rows) {
+  function spanGeom(ms, col, dur, rows, suggested) {
     var start = localMin(ms);
     var r0 = Math.floor(start / 60) - P.FIRST_ROW_MIN / 60;
     var rEnd = Math.min(rows, Math.ceil((start + dur) / 60) - P.FIRST_ROW_MIN / 60);
     var hourPx = ROW_PX + GAP_PX;
     return {
+      // The rows the block touches, even partly: their cells hide their
+      // contents, so a half-covered "+$43" never peeks out above or below.
+      r0: r0,
+      rEnd: Math.max(rEnd, r0 + 1),
       area: (r0 + 2) + ' / ' + (col + 3) + ' / ' + (Math.max(rEnd, r0 + 1) + 2) + ' / ' + (col + 4),
+      // One of our suggested starts keeps its star, on the block's time bar.
+      star: Boolean(suggested),
       top: Math.round((start % 60) / 60 * hourPx),
       height: Math.round(dur / 60 * hourPx - GAP_PX),
       start: tzTime(ms),
@@ -2900,7 +2980,7 @@
   }
 
   function spanInner(g) {
-    return '<b>' + esc(g.start) + '</b>' +
+    return '<b>' + esc(g.start) + (g.star ? '<span class="bk-wk-span-star" title="Suggested">' + STAR + '</span>' : '') + '</b>' +
       '<span class="bk-wk-span-fee' + (g.paid ? ' paid' : '') + '"><em>' + esc(g.fee) + '</em>' +
         (g.why ? '<i>' + esc(g.why) + '</i>' : '') + '</span>' +
       '<small>' + esc(g.end) + '</small>';
@@ -2952,20 +3032,32 @@
     };
     html += zone('Early', function (h) { return h < 10 * 60; }) + zone('Late', function (h) { return h >= 18 * 60; });
 
+    // Where the chosen job sits, if it is in this week, before the cells are
+    // drawn: the cells under it hide their contents.
+    var sel = null;
+    week.days.forEach(function (day, i) {
+      if (!state.slot || state.slot < day.dayStart || state.slot >= day.dayStart + DAY) return;
+      var home = day.cells.filter(function (c) { return cellHas(c, state.slot); })[0];
+      sel = { col: i, g: spanGeom(state.slot, i, dur, rows, home && home.suggested && sameMinute(home.pick, state.slot)) };
+    });
+
     week.rows.forEach(function (h, r) {
       html += '<span class="bk-wk-t" role="rowheader" style="grid-area:' + (r + 2) + ' / 2">' + endLabel(h) + '</span>';
       week.days.forEach(function (day, i) {
         var cell = day.cells[r];
         var at = 'grid-area:' + (r + 2) + ' / ' + (i + 3);
+        var under = sel && sel.col === i && r >= sel.g.r0 && r < sel.g.rEnd ? ' under' : '';
+        var where = '" data-col="' + i + '" data-row="' + r;
         if (cell.pick === null) {
-          html += '<span class="bk-wk-c no" role="gridcell" aria-disabled="true" style="' + at + '" aria-label="' +
+          html += '<span class="bk-wk-c no' + under + '" role="gridcell" aria-disabled="true" style="' + at + where + '" aria-label="' +
             esc(cellLabel(day, cell, dur)) + '"></span>';
           return;
         }
         var fee = feeText(cell.pick);
         var on = cellHas(cell, state.slot);
-        html += '<button type="button" class="bk-wk-c ' + (fee ? 'fee' : 'ok') + (on ? ' on' : '') +
-          '" role="gridcell" aria-selected="' + on + '" style="' + at + '" data-col="' + i +
+        html += '<button type="button" class="bk-wk-c ' + (fee ? 'fee' : 'ok') + (on ? ' on' : '') + under +
+          '" role="gridcell" aria-selected="' + on + '" style="' + at + where +
+          (cell.suggested ? '" data-sug="' + cell.pick : '') +
           '" data-slot="' + (on ? state.slot : cell.pick) + '" aria-label="' + esc(cellLabel(day, cell, dur)) + '">' +
           (fee ? '<i>' + esc(fee) + '</i>' : TICK) +
           (cell.suggested ? '<b class="bk-wk-star">' + STAR + '</b>' : '') +
@@ -2986,12 +3078,10 @@
     }
 
     // The chosen job, start to finish.
-    week.days.forEach(function (day, i) {
-      if (!state.slot || state.slot < day.dayStart || state.slot >= day.dayStart + DAY) return;
-      var g = spanGeom(state.slot, i, dur, rows);
-      html += '<div class="bk-wk-span" aria-hidden="true" style="grid-area:' + g.area + '">' +
-        '<i style="top:' + g.top + 'px;height:' + g.height + 'px">' + spanInner(g) + '</i></div>';
-    });
+    if (sel) {
+      html += '<div class="bk-wk-span" aria-hidden="true" style="grid-area:' + sel.g.area + '">' +
+        '<i style="top:' + sel.g.top + 'px;height:' + sel.g.height + 'px">' + spanInner(sel.g) + '</i></div>';
+    }
     // And one for previewing on hover, placed by the mouseover handler.
     html += '<div class="bk-wk-span preview" id="bkWkPreview" aria-hidden="true" hidden><i></i></div>';
     return html + '</div>';
@@ -3010,12 +3100,24 @@
     if (box.scrollHeight > box.clientHeight + 1) span.classList.add('short');
   }
 
+  function clearPreviewUnder(grid) {
+    grid.querySelectorAll('.pvunder').forEach(function (c) { c.classList.remove('pvunder'); });
+  }
+
   /** Hovering a start shows the block that time would book. */
   function previewSpan(t) {
     var grid = t && t.closest('.bk-wk-grid');
     var pv = grid && grid.querySelector('#bkWkPreview');
     if (!pv) return;
-    var g = spanGeom(Number(t.dataset.slot), Number(t.dataset.col), Number(grid.dataset.dur), Number(grid.dataset.rows));
+    var ms = Number(t.dataset.slot);
+    var col = Number(t.dataset.col);
+    var g = spanGeom(ms, col, Number(grid.dataset.dur), Number(grid.dataset.rows), t.dataset.sug && sameMinute(Number(t.dataset.sug), ms));
+    // The cells under the preview hide their contents too, and only those.
+    clearPreviewUnder(grid);
+    grid.querySelectorAll('.bk-wk-c[data-col="' + col + '"]').forEach(function (c) {
+      var r = Number(c.dataset.row);
+      if (r >= g.r0 && r < g.rEnd) c.classList.add('pvunder');
+    });
     pv.style.gridArea = g.area;
     var inner = pv.querySelector('i');
     inner.style.top = g.top + 'px';
@@ -4157,7 +4259,9 @@
         consent: consentPayload(),
         turnstileToken: state.turnstileToken,
         mode: state.payInFull ? 'pay_now' : 'card_only',
-        idempotencyKey: bookingKey()
+        idempotencyKey: bookingKey(),
+        // So the charge carries the same fee-free hours as the booking.
+        detailer: detailerParam()
       })
     })
       .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
@@ -4232,7 +4336,8 @@
               cart: wireCart(),
               contact: state.contact,
               consent: consentPayload(),
-              turnstileToken: state.turnstileToken
+              turnstileToken: state.turnstileToken,
+              detailer: detailerParam()
             })
           }).then(function (r) { return r.json(); }).then(function (j) {
             if (!j.id) throw new Error(j.message || 'PayPal could not start');
@@ -4360,7 +4465,7 @@
       '[data-size],[data-intent],[data-pkg],[data-addon],[data-clear],[data-win],[data-slot],' +
       '[data-pay],[data-delveh],[data-browsepick],[data-max],[data-sort],' +
       '[data-kind],[data-paymethod],[data-corr],[data-coating],[data-garage],[data-step],' +
-      '[data-prefday],[data-prefpart],[data-interest],[data-wkday],[data-access],[data-extrarm],' +
+      '[data-prefday],[data-prefpart],[data-interest],[data-wkday],[data-recday-toggle],[data-access],[data-extrarm],' +
       '#bkWkPrev,#bkWkNext,#bkWkNext2,#bkWkToday,#bkWkBack,#bkShowAll,#bkShowRecs,' +
       '#bkAddVeh,#bkNext,#bkBack,#bkClose,#bkScrim,#bkBrowse,#bkBrowseBack,' +
       '#bkAskMode,#bkAskMode2,#bkSlotMode,' +
@@ -4485,7 +4590,12 @@
       var cur = v.addons.filter(function (a) { return a.addonId === id; })[0];
       v.addons = v.addons.filter(function (a) { return a.addonId !== id; });
       // Tiers are mutually exclusive: tapping the selected one clears it.
-      if (!cur || cur.tierId !== tier) v.addons.push({ addonId: id, tierId: tier });
+      if (!cur || cur.tierId !== tier) {
+        v.addons.push({ addonId: id, tierId: tier });
+        // Which add-ons are taken, and whether we recommended them: the data
+        // the recommendation ranking (recommend.ts) is meant to learn from.
+        track('addon_add', { addon: id, tier: tier, recommended: Boolean(t.closest('.bk-addrecs')), via: 'extras' });
+      }
       pruneAddons(v);
       return render();
     }
@@ -4514,7 +4624,7 @@
       return render();
     }
     if (t.dataset.slot) {
-      selectSlot(Number(t.dataset.slot));
+      selectSlot(Number(t.dataset.slot), t.dataset.via || (t.closest('.bk-wk-sum') ? 'summary' : 'calendar'));
       renderTotal();
       // Our recommended times, and the chips in the summary, are one tap:
       // the time is chosen and checked, and the next step opens.
@@ -4538,7 +4648,9 @@
         : P.addWeeks(state.weekStart, t.id === 'bkWkPrev' ? -1 : 1);
       return loadSlots();
     }
+    if (t.dataset.recdayToggle) return toggleRecDay(t.dataset.recdayToggle);
     if (t.id === 'bkShowAll' || t.id === 'bkShowRecs') {
+      if (t.id === 'bkShowAll') track('time_view_all', {});
       state.showAll = t.id === 'bkShowAll';
       state.weekDay = -1;
       state.weekTouched = false;
@@ -4694,6 +4806,7 @@
         addVeh.addons = addVeh.addons.filter(function (a) { return a.addonId !== picked[0]; });
         addVeh.addons.push({ addonId: picked[0], tierId: picked[1] });
         pruneAddons(addVeh);
+        track('addon_add', { addon: picked[0], tier: picked[1], recommended: false, via: 'confirm' });
       }
       return render();
     }
@@ -4973,7 +5086,7 @@
           source: source(),
           // Who the time was given to. The server only honours a name in its
           // own DETAILERS setting; anything else books the default calendar.
-          detailer: state.detailer && state.detailer !== 'owner' ? state.detailer : ''
+          detailer: detailerParam()
         })
       }).catch(function () {});
     } catch (e) { /* an email must never cost us a booking */ }
@@ -5625,6 +5738,7 @@
       if (!grid || (e.relatedTarget && grid.contains(e.relatedTarget) && e.relatedTarget.closest('[data-slot]'))) return;
       var pv = grid.querySelector('#bkWkPreview');
       if (pv) pv.hidden = true;
+      clearPreviewUnder(grid);
     });
 
     // Phone and ZIP are checked as they are left, with the same rules Continue

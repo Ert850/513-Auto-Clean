@@ -13,6 +13,55 @@ Built overnight, November 10 to 11, for you to evaluate. It combines your 8 answ
   - `web/lib/browser-entry.ts`, `js/pricing.bundle.js` (built), `web/lib/funnel.smoke.test.mjs`.
   - The build also re-stamps `?v=` on every page. Those page changes were left out of the commit; a rebuild after merging restamps them.
 
+## Round 7 (November 10): privacy, payments, block fixes, recommended days, futureproofing
+
+### Privacy policy (legal process followed)
+- **New capability:** `weatherCheck` (on), in `web/lib/site/capabilities.ts`.
+- **Generated from it:**
+  - a "National Weather Service" entry in "Who we share it with";
+  - a sentence under "Information collected automatically": the browser sends the detail's approximate location (address or ZIP, rounded to within about a kilometre), never name, contact details or street address, and the service sees the IP address.
+- **The booking form fetches weather only while `weatherCheck` is on,** so the policy and the behaviour can't drift.
+- **Effective date:** stays 2026-11-10, the date of the change. The earlier 2026-11-10 change wasn't live either; a history note is in `legal.ts`. `npm run lock:legal` was re-run.
+- **Checked:** legal tests (33) pass, no em-dashes, terms unchanged.
+
+### Payments: Kris's fee-free hours
+- **Bug:** `create-payment` and `paypal-order` repriced the booking without the detailer, so a card or PayPal charge would add the late fee the booking email had waived.
+- **Root cause:** the detailer lookup lived only in `send-confirmation`.
+- **Fix:**
+  - one shared helper, `netlify/functions/_detailers.mjs` (`detailerFor`, `timeFeeWaived`), used by all three functions;
+  - the browser sends `detailer` with both payment requests;
+  - only names in the deploy's own `DETAILERS` count.
+- **Tested:** the shared helper; payment itself is switched off.
+
+### Calendar block fixes
+- **Clipping.** A block sits at its exact minute (12:30 starts halfway down the 12pm row), so the cells it half covered showed cut-off "+$43" text above and below. Every cell a block touches, chosen or previewed, now hides its contents and keeps only its outline.
+- **The star.** A suggested start keeps its star on the block's red time bar, top right, for the chosen time and for the hover preview.
+
+### "Our recommended times" as days
+- **Before:** three separate times, all of them rush upsells on a rush week.
+- **Now:** three DAY bars, each listing its two best starts ("Friday, Nov 13: 10am to 12pm or 4pm to 6pm").
+  - Tapping a day opens it in place (animated, or instant with reduced motion) into two small time bars; tapping one books it and moves on. A day with one start books on the first tap.
+  - **At most one fee day** (`maxFeeDays: 1`), so 2 of 6 slots are upsells and the rest are the soonest standard-price days. Fee days fill in only when nothing else is open.
+- **One config,** `TIME_RECOMMENDATION_RULES` in `week.ts` (days 3, timesPerDay 2, maxFeeDays 1). `recommendDays()` takes `scoreFor`, so analytics can later order starts by what converts. 7 tests.
+
+### Futureproofing
+- **Detailer skills:** `does` is a free list of words ("interior", "exterior", "correction", "coating", or anything new), and a job lists the words it needs. A new kind of work is a word in `DETAILERS`, not code. Help me decide needs every skill, so it stays with Elijah.
+- **Analytics events** (they do nothing until analytics is on and accepted):
+  - `time_pick` (how it was picked, fee %, days ahead, start hour, detailer);
+  - `time_view_all`;
+  - `addon_add` (add-on, tier, whether it was recommended, which screen).
+
+  These are the data the add-on ranking (`recommend.ts` `signals.score`) and the time ranking (`recommendDays` `scoreFor`) are built to use.
+
+### Verified
+- **Tests:** 467 of 467.
+- **Headless Chrome, live calendar, test Kris (preview only), 1440 and 375:**
+  - Tuesday (rush, +$25) then Friday and Saturday at standard price, so exactly one fee day;
+  - opening a day shows its two times and moves focus to the first; a tap books it and opens the details step;
+  - `time_pick` is recorded with `via: "recommended"` and `detailer: "kris"`;
+  - the cells under the block show no contents; the star shows on the chosen and the previewed block.
+- **Bug found while validating:** the focus ring on the first time was clipped by the opening animation. The open panel now has 4 px of room.
+
 ## Round 6 (November 10, night): weather by kind of job, cover, Kris's fee hours
 
 ### Weather rules (owner's answers; numbers in `web/lib/availability/weather.ts`)

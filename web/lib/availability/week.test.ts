@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { zonedToUtc } from "../time/zone.js";
-import { addWeeks, buildWeek, lastRowFor, recommendTimes, weekStartOf } from "./week.js";
+import { addWeeks, buildWeek, lastRowFor, recommendDays, weekStartOf } from "./week.js";
 
 const TZ = "America/New_York";
 const at = (mo: number, d: number, h: number, mi = 0) => zonedToUtc(2026, mo, d, h, mi, 0, TZ);
@@ -94,38 +94,58 @@ describe("buildWeek", () => {
   });
 });
 
-describe("recommendTimes", () => {
+describe("recommendDays", () => {
   const slots = [
-    // Tuesday 17th: plenty
-    at(11, 17, 8), at(11, 17, 10), at(11, 17, 11), at(11, 17, 16),
-    // Wednesday 18th
-    at(11, 18, 10), at(11, 18, 16),
-    // Thursday 19th
-    at(11, 19, 10),
+    at(11, 17, 8), at(11, 17, 10), at(11, 17, 11), at(11, 17, 16), // Tuesday
+    at(11, 18, 10), at(11, 18, 16), // Wednesday
+    at(11, 19, 10), at(11, 19, 16), // Thursday
+    at(11, 20, 10), // Friday
   ];
+  const rushThrough = (day: number) => (ms: number) => ms < at(11, day + 1, 0);
 
-  it("gives the three soonest packing starts, two a day at most, never early or late", () => {
-    expect(recommendTimes({ slots, travelGapMin: 60 })).toEqual([at(11, 17, 10), at(11, 17, 16), at(11, 18, 10)]);
+  it("gives three days, each with its two best starts, never early or late", () => {
+    const days = recommendDays({ slots, travelGapMin: 60 });
+    expect(days.map((d) => d.starts)).toEqual([
+      [at(11, 17, 10), at(11, 17, 16)],
+      [at(11, 18, 10), at(11, 18, 16)],
+      [at(11, 19, 10), at(11, 19, 16)],
+    ]);
   });
 
-  it("prefers a start the first-choice detailer can take, on the same day", () => {
-    const preferred = new Set([at(11, 17, 11)]);
-    const recs = recommendTimes({ slots, travelGapMin: 60, preferred });
-    expect(recs[0]).toBe(at(11, 17, 11));
-    expect(recs).toHaveLength(3);
+  it("shows at most one fee day; the rest are the soonest standard days", () => {
+    const days = recommendDays({ slots, travelGapMin: 60, isFee: rushThrough(18) });
+    expect(days.map((d) => [d.dayStart, d.fee])).toEqual([
+      [at(11, 17, 0), true], [at(11, 19, 0), false], [at(11, 20, 0), false],
+    ]);
+  });
+
+  it("falls back to fee days only when nothing else is open", () => {
+    const days = recommendDays({ slots, travelGapMin: 60, isFee: () => true });
+    expect(days).toHaveLength(3);
+    expect(days.every((d) => d.fee)).toBe(true);
+  });
+
+  it("prefers the first-choice detailer's starts within a day", () => {
+    const days = recommendDays({ slots, travelGapMin: 60, preferred: new Set([at(11, 17, 11)]) });
+    expect(days[0]!.starts).toEqual([at(11, 17, 11)]);
   });
 
   it("recommends a late start when the detailer taking it charges no late fee", () => {
-    // Kris works evenings and has no fee from 6 to 7pm: his 6pm counts as standard.
     const evening = [at(11, 17, 18), at(11, 17, 20)];
-    expect(recommendTimes({ slots: evening, travelGapMin: 60 })).toEqual([]);
+    expect(recommendDays({ slots: evening, travelGapMin: 60 })).toEqual([]);
     const isPremium = (ms: number) => ms !== at(11, 17, 18);
-    expect(recommendTimes({ slots: evening, travelGapMin: 60, isPremium })).toEqual([at(11, 17, 18)]);
+    expect(recommendDays({ slots: evening, travelGapMin: 60, isPremium })[0]!.starts).toEqual([at(11, 17, 18)]);
   });
 
-  it("returns what there is when the week is thin", () => {
-    expect(recommendTimes({ slots: [at(11, 19, 10), at(11, 19, 7)], travelGapMin: 60 })).toEqual([at(11, 19, 10)]);
-    expect(recommendTimes({ slots: [], travelGapMin: 60 })).toEqual([]);
+  it("lets a score (from analytics, later) order the starts within a day", () => {
+    const scoreFor = (ms: number) => (ms === at(11, 17, 16) ? 1 : 0);
+    expect(recommendDays({ slots, travelGapMin: 60, scoreFor })[0]!.starts[0]).toBe(at(11, 17, 16));
+  });
+
+  it("can be tuned without touching the funnel", () => {
+    const rules = { days: 2, timesPerDay: 1, maxFeeDays: 0 };
+    const days = recommendDays({ slots, travelGapMin: 60, isFee: rushThrough(17), rules });
+    expect(days.map((d) => d.starts)).toEqual([[at(11, 18, 10)], [at(11, 19, 10)]]);
   });
 });
 
