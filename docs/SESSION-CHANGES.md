@@ -371,6 +371,25 @@ reorganization only. Reference sites: *links not yet provided*.
 - **What to test:** the home page's Book Now section at 375, 820 and 1440.
 - **Also on the pipeline branch:** merged into `eNov10PipelineBranch`, so the two don't conflict.
 
+### 21. Results carousel: faster, synced wipes on a 6 s cycle (November 10, owner's request)
+- **Change:** every card in view now wipes in step on one shared clock, and a cycle takes 6 s instead of about 15 s:
+  1. 0 to 1 s: every handle still, in the middle;
+  2. 1 to 2 s: to the right edge (the whole before);
+  3. 2 to 3 s: back to the left edge (the whole after);
+  4. 3 to 5 s: still, on the after;
+  5. 5 to 6 s: the track moves on (1 card, 2 when 3 are in view) while every handle glides back to the middle.
+- **Why:** the owner asked for "much faster, less time on the before and more focus on the after" and for the wipes to be synced. The old cycle spent 3 s at rest and 4 s wiping, with the cards starting 2.5 s apart.
+- **Root decision:** an owner decision that reverses the earlier rounds' rules (own clocks, 2.5 s stagger, about 15 s a cycle). `CLAUDE.md` "Results carousel" now records the synced 6 s cycle so it isn't reverted.
+- **Which edge is which:** `--pos` is how much of the before is showing, so the right edge is the whole before and the left edge the whole after. "Right, then left" ends on the after, as asked.
+- **How:** `js/gallery.js`: new `WIPE` timeline (1 s, 1 s, 1 s, 2 s), `RETURN_MS` 1000, the stagger and the on-screen sort removed (every card in a cycle gets the same start), and the track moves on the same frame the return starts. `styles.css`: `.ba-track` transition 0.9 s to 1 s, so the shift lasts the owner's second. Everything else stays: one `requestAnimationFrame` loop, transforms and opacity only, no hover pause, the play button is the state, the visitor's pause is final, a touch resumes after 12 s idle, photos fetched a step ahead, the whole group waits for its photos, the loop rearranges the real cards.
+- **Verified (headless Chrome, port 8799 demo; every handle's on-screen position sampled every 50 ms):**
+  - 1440 x 900 (3 in view), 3 cycles: still 1.04 s, right 1.0 s, left 1.0 s, hold on the after 2.0 s, return 1.0 s with the track moving over the same second (shift 4.75 to 5.75 s, return 4.73 to 5.73 s). Cycle 6.05 s. Skew between cards 0 ms in every phase. First card shown 1, 3, 5, 1 (steps of 2, loops).
+  - 375 x 812 (phone emulation, 1 in view), 6 cycles: the same timings, cycle 6.05 s; first card 1, 2, 3, 4, 5, 6, 1 (loops without a jump back).
+  - Pause: the button shows Play, every handle returns to the middle, nothing moves for 7 s; Play: the button shows Pause and the cycle starts again (handles at the right edge 2 s later, as timed).
+  - No sideways scroll at 375, 820 and 1440. Tests 416/416.
+- **Known:** each cycle runs about 50 ms longer than 6 s (the next cycle starts on the frame after the track lands).
+- **What to test:** the home page Results section at 1440 and on a phone: all cards wipe together, right then left, rest on the after, then slide on as the handles return. Pause and Play, and a drag on a photo (pauses, resumes after 12 s).
+
 ### Reference sites reviewed (design lessons only, nothing copied)
 - **dksdetailing.com:**
   - **What works:** one short line of social proof ("Trusted by 250+"), a one-line headline, and two buttons (a main one plus Call). Packages are grouped by Full, Exterior and Interior.

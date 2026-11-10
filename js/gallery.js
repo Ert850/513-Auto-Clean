@@ -89,20 +89,17 @@
    * phone's card. styles.css owns those breakpoints (--ba-per); this reads
    * them.
    *
-   * In every cycle, every card in view wipes, on its own clock (the
-   * owner's rounds 3 and 5): 3 s at rest in the middle (time to reach for
-   * the handle), to the right edge (the whole before), then slowly across
-   * to the left edge (the whole after), where it waits. The cards start
-   * 2.5 s apart, strictly left to right on screen (round 6), so they never
-   * move in lockstep. A card that
-   * stays in view after a shift wipes again; one that slides in joins the
-   * very next cycle. A card sitting still beside moving ones looked broken.
-   *
-   * The last move is shared (round 4): once every wiping card has shown its
-   * whole after for at least 2.5 s, they all glide back to the middle
-   * together, and the track starts moving on as they arrive, by one card
-   * (two when three are in view). So the handles come home with the shift,
-   * and no card waits in the middle for the slowest one.
+   * Every card in view wipes on ONE shared clock, in step (the owner's
+   * decision, November 10: synced, much faster, less time on the before,
+   * more on the after). A 6 s cycle:
+   *   0-1 s  every handle rests in the middle
+   *   1-2 s  to the right edge (the whole before)
+   *   2-3 s  back across to the left edge (the whole after)
+   *   3-5 s  still, on the after
+   *   5-6 s  the track moves on by one card (two when three are in view)
+   *          while every handle glides back to the middle
+   * Then the cards now in view start the next cycle together. A card that
+   * stays in view after a shift wipes again with the new ones.
    *
    * It loops without an end, like Swiper's loop mode or Embla's: past the
    * last comparison it carries on forward into the first, instead of racing
@@ -129,20 +126,15 @@
    * one CSS variable per card, and the stylesheet turns it into transforms
    * and opacity, which the compositor moves without layout or repaint.
    */
-  var WIPE = [             // one card: [ms, where the handle goes]; no target = hold
-    [3000],                // rest in the middle: time to grab the handle
-    [1800, 100],           // to the right edge: the whole before
-    [2000],
-    [4000, 0],             // wipe across, a quarter of the photo a second: the whole after
-    [2500]                 // at least this long on the after, then it waits for the others
+  var WIPE = [             // every card: [ms, where the handle goes]; no target = hold
+    [1000],                // rest in the middle
+    [1000, 100],           // to the right edge: the whole before
+    [1000, 0],             // to the left edge: the whole after
+    [2000]                 // hold on the after
   ];
-  var WIPE_MS = WIPE.reduce(function (t, w) { return t + w[0]; }, 0);    // 13.3 s
-  var RETURN_MS = 1500;    // all together, back to the middle
-  var STAGGER_MS = 2500;   // new cards start this far apart
-  var SLIDE_MS = 900;      // .ba-track's transition
-  // The track starts moving this long before the handles reach the middle,
-  // so the return and the glide read as one motion.
-  var OVERLAP_MS = 400;
+  var WIPE_MS = WIPE.reduce(function (t, w) { return t + w[0]; }, 0);    // 5 s
+  var RETURN_MS = 1000;    // back to the middle, while the track moves on
+  var SLIDE_MS = 1000;     // .ba-track's transition
   var SETTLE_MS = 450;     // a paused card's handle gliding home
   var PHOTO_WAIT_MS = 1500;
   var IDLE_MS = 12000;
@@ -351,7 +343,7 @@
       if (homing) {
         var h = homing, t = Math.min(1, (now - h.t0) / RETURN_MS);
         h.cards.forEach(function (c, j) { paint(c, h.from[j] + (50 - h.from[j]) * ease(t)); });
-        if (!h.moved && now - h.t0 >= RETURN_MS - OVERLAP_MS) {
+        if (!h.moved) {
           h.moved = true;
           if (loops()) move(stepSize());
         }
@@ -363,34 +355,28 @@
       }
       // Nothing new starts while the track glides.
       if (pendingMove) return;
-      // Start a cycle: every card in view, as one group, strictly left to
-      // right by where it is on screen, a stagger apart, whether it just
-      // slid in or was already there. The whole group waits (handles at
-      // rest, at most PHOTO_WAIT_MS) until all of its photos are in. Each
-      // card used to wait on its own photos while the cards to its right
-      // started without it, so after a jump back on a slow connection the
-      // rightmost card moved first.
+      // Start a cycle: every card in view, as one group on one clock,
+      // whether it just slid in or was already there. The whole group
+      // waits (handles at rest, at most PHOTO_WAIT_MS) until all of its
+      // photos are in, so no card starts before the others.
       var start = shown().filter(function (c) { return c._t0 == null; });
       if (start.length) {
         if (cycleWait == null) cycleWait = now;
         if (loaded(start) || now - cycleWait >= PHOTO_WAIT_MS) {
           cycleWait = null;
-          start.map(function (c) { return { c: c, x: c.getBoundingClientRect().left }; })
-            .sort(function (a, b) { return a.x - b.x; })
-            .forEach(function (o, i) {
-              var c = o.c;
-              c._t0 = now + i * STAGGER_MS;
-              c._from = posOf(c);
-              c._user = false;
-              c.classList.add('auto');
-              settles = settles.filter(function (st) { return st.s !== c; });
-            });
+          start.forEach(function (c) {
+            c._t0 = now;
+            c._from = posOf(c);
+            c._user = false;
+            c.classList.add('auto');
+            settles = settles.filter(function (st) { return st.s !== c; });
+          });
         }
       }
       var wiping = slides.filter(function (c) { return c._t0 != null; });
       wiping.forEach(function (c) { wipe(c, now); });
       // Every card in view has started (none still waiting for photos) and
-      // shown the after long enough: home together.
+      // held the after for its 2 s: home together as the track moves on.
       if (wiping.length && shown().every(function (c) { return c._t0 != null; }) && wiping.every(function (c) { return now - c._t0 >= WIPE_MS; })) {
         homing = { t0: now, cards: wiping, from: wiping.map(function (c) { return c._pos; }), moved: false };
       }
@@ -405,7 +391,7 @@
         e -= WIPE[k][0];
         k++;
       }
-      if (k === WIPE.length) return paint(c, from);   // on the after, waiting for the others
+      if (k === WIPE.length) return paint(c, from);   // on the after, until the return
       var to = WIPE[k][1];
       paint(c, to === undefined ? from : from + (to - from) * ease(e / WIPE[k][0]));
     }
