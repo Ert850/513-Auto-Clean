@@ -1374,8 +1374,19 @@ main .svc-card .svc-how { margin-bottom: 1rem; }
 }
 /* Opened: the same box, now scrollable. The card never changes size. */
 .rv-card blockquote.open {
-  display: block; overflow-y: auto; -webkit-line-clamp: unset;
-  scrollbar-width: thin;
+  display: block; overflow-y: scroll; -webkit-line-clamp: unset; padding-right: .5rem;
+}
+/* ALWAYS-VISIBLE SCROLLBAR on an opened review. macOS hides scrollbars until
+   you scroll, so an opened review gave no sign that the rest of the text was
+   inside it. A styled WebKit scrollbar is drawn permanently (Chrome, Edge,
+   Safari). Do NOT add scrollbar-width / scrollbar-color to this rule: in
+   Chrome 121+ either one switches the ::-webkit-scrollbar styling off and the
+   hiding overlay bar comes back. Firefox gets them on its own, below. */
+.rv-card blockquote.open::-webkit-scrollbar { width: 6px; }
+.rv-card blockquote.open::-webkit-scrollbar-track { background: var(--line); border-radius: 3px; }
+.rv-card blockquote.open::-webkit-scrollbar-thumb { background: var(--text-soft); border-radius: 3px; }
+@supports (-moz-appearance: none) {
+  .rv-card blockquote.open { scrollbar-width: thin; scrollbar-color: var(--text-soft) var(--line); }
 }
 .rv-more {
   display: block; margin-top: .3rem; padding: 0; font: inherit; font-size: .8rem;

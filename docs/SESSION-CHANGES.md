@@ -309,6 +309,7 @@ reorganization only. Reference sites: *links not yet provided*.
   - **Spot-checked at 1440×790:** Services Book buttons at 670 px; state cards ending at 509, 618 and 720 px; the About score at 716 px. 287 links, 0 broken.
 - **Duplicate "Add-ons" heading removed.** Root cause: the renderer's add-ons block began with its own small "Add-ons" `<h3>`, from when it sat under the packages on the home page. Under the "Add-ons for any package" section heading it read as a duplicate. It's removed in `render-site.mjs` `addonsHtml()`, not in the page.
 - **Interior and Exterior subheadings** are larger: `.addon-grp` 0.74 → 0.95 rem, with a little more space around them. The first group has no top margin now that the `<h3>` is gone.
+- **Opened reviews show their scrollbar** (About page). Root cause: an opened review scrolls inside a fixed-height card (`overflow-y: auto`, `scrollbar-width: thin`), and macOS hides overlay scrollbars until you scroll, so nothing showed there was more. Now: `overflow-y: scroll` and a styled 6 px WebKit scrollbar, drawn permanently; `scrollbar-width` was removed from that rule, because in Chrome 121+ it disables the WebKit styling. Firefox gets a thin, colored bar via `@supports`. Measured: the scrollbar takes 0 px when closed and 6 px when open (a classic, always-drawn bar, not an overlay), and it's visible in the browser pane.
 - **Running:** carousel round 4 (all visible cards return to the middle together, right before the shift).
 
 ### Reference sites reviewed (design lessons only, nothing copied)
