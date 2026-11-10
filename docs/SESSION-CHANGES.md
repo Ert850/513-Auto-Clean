@@ -312,6 +312,15 @@ reorganization only. Reference sites: *links not yet provided*.
 - **Opened reviews show their scrollbar** (About page). Root cause: an opened review scrolls inside a fixed-height card (`overflow-y: auto`, `scrollbar-width: thin`), and macOS hides overlay scrollbars until you scroll, so nothing showed there was more. Now: `overflow-y: scroll` and a styled 6 px WebKit scrollbar, drawn permanently; `scrollbar-width` was removed from that rule, because in Chrome 121+ it disables the WebKit styling. Firefox gets a thin, colored bar via `@supports`. Measured: the scrollbar takes 0 px when closed and 6 px when open (a classic, always-drawn bar, not an overlay), and it's visible in the browser pane.
 - **Running:** carousel round 4 (all visible cards return to the middle together, right before the shift).
 
+### 16. "Home hero image not loading" (November 10, night)
+- **Report:** the owner's screenshot of the local demo shows the hero as a broken image: the alt text "…white SUV in a Cincinnati driveway" at top left and a `?` icon.
+- **Checked:**
+  - All 9 hero files exist in the repo and in `dist/`, and are served with 200 and `image/webp`.
+  - In headless Chrome at 1× and 2× density, 1440 and 1100 wide, the image loads and decodes (the 1600 px WebP, `complete: true`). Same in the browser pane.
+- **Root cause: the local demo, not the site.** After each build I stopped the demo server, `build-dist.mjs` deleted and recreated `dist/` with images copied last, and then I restarted the server. A page loaded in that window, or restored from the browser's cache, got the page but not its photos.
+- **Fix:** the demo on port 8799 now serves a separate preview folder that's swapped in by rename after a passing build, and the server is never stopped. Checked: 200 before and after a swap, without a restart. **Production is unaffected:** Netlify publishes each deploy atomically.
+- **Running:** home-page whitespace and fold, round 3, in the `subpages-fold` session; carousel round 4 in the `results-carousel` session.
+
 ### Reference sites reviewed (design lessons only, nothing copied)
 - **dksdetailing.com:**
   - **What works:** one short line of social proof ("Trusted by 250+"), a one-line headline, and two buttons (a main one plus Call). Packages are grouped by Full, Exterior and Interior.
