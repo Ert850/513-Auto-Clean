@@ -1777,3 +1777,35 @@ button.bk-wk-c:hover { box-shadow: 0 0 0 2px var(--red-ghost); }
 #bookFunnel .bk-how-tip { display: block; font-size: .8rem; line-height: 1.5; color: var(--text-soft); }
 #bookFunnel .bk-how-tip b { color: var(--text); }
 @media (min-width: 560px) { #bookFunnel .bk-incl { grid-template-columns: 1fr 1fr; column-gap: .9rem; } }
+
+/* ---------- Checkout: one bar (owner, November 11) ----------
+   The title row goes; "Checkout" becomes the bar's own heading, the detail
+   is one chip with Edit, and back and close sit at the bar's two ends,
+   held in place while the tabs scroll on a phone. */
+#bookFunnel .bk-modal.ck .bk-head { display: none; }
+#bookFunnel .bk-modal.ck .bk-nav { align-items: center; padding: .45rem .55rem; }
+#bookFunnel .bk-modal.ck .bk-nav > .bk-back { position: sticky; left: 0; z-index: 2; margin-right: .3rem; box-shadow: 0 0 0 6px var(--paper-2); }
+#bookFunnel .bk-modal.ck .bk-nav > .bk-close { position: sticky; right: 0; z-index: 2; margin-left: auto; box-shadow: 0 0 0 6px var(--paper-2); }
+#bookFunnel .bk-modal.ck .bk-navgrp-ck .bk-navgrp-l {
+  font-family: var(--font-display); font-size: .95rem; font-weight: 700; letter-spacing: 0; text-transform: none;
+  color: var(--text); opacity: 1;
+}
+
+/* Time: the section heading and its sub-heading read as two levels (owner,
+   November 11). "Our recommended times" takes the small group label look
+   that "Interior" and "Exterior" use on the package page. */
+#bookFunnel .bk-recs-h {
+  margin: .2rem 0 .15rem; font-family: inherit; font-size: .74rem; font-weight: 800;
+  letter-spacing: .09em; text-transform: uppercase; color: var(--text-soft);
+}
+@media (max-width: 559.98px) {
+  /* On a phone the bar is Checkout alone; Back reaches the detail. */
+  #bookFunnel .bk-modal.ck .bk-navgrp:not(.bk-navgrp-ck) { display: none; }
+  #bookFunnel .bk-modal.ck .bk-navgrp + .bk-navgrp { margin-left: 0; padding-left: 0; border-left: 0; }
+  #bookFunnel .bk-modal.ck .bk-seg { min-width: 0; padding: .3rem .45rem; }
+  #bookFunnel .bk-modal.ck .bk-nav > .bk-back { box-shadow: -10px 0 0 6px var(--paper-2), 0 0 0 6px var(--paper-2); }
+  #bookFunnel .bk-modal.ck .bk-nav > .bk-close { box-shadow: 10px 0 0 6px var(--paper-2), 0 0 0 6px var(--paper-2); }
+}
+
+/* Air between the last done row and the open section's heading (owner, November 11). */
+#bookFunnel .bk-donerow + .bk-sec { margin-top: 1.1rem; }
