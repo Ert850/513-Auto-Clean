@@ -147,9 +147,25 @@ A job only goes to someone who does every part of it. Save, then **Trigger deplo
 - **Best times (BEST):** Sunday and Monday 10am; Tuesday to Saturday 6pm.
 - **Fee-free:** Tuesday to Saturday, 6 to 7pm (`"Tue-Sat 18:00-19:00"`).
 - **Priority:** 1. **Does:** interior only.
-- **Calendars:** 513 Kris Availability, 513 Kris Bookings.
+- **Calendars:**
+  - 513 Kris Availability: `18f753f8e633da3dec644bca2d658fdccc42ee05a043adbf46dbc939ec88f2dd@group.calendar.google.com` (public, all event details).
+  - 513 Kris Bookings: `b79865896edf56c9cc9985c8607a0a4dfec5df71b032ff7c16d3dae23e793826@group.calendar.google.com` (public, free/busy only). Still to do: share it with Kris once we have his email.
+- **His Netlify `DETAILERS` entry (saved November 10):**
+  ```
+  [{"name":"Kris","does":"interior","noFeeStarts":"Tue-Sat 18:00-19:00",
+    "availability":"18f753f8e633da3dec644bca2d658fdccc42ee05a043adbf46dbc939ec88f2dd@group.calendar.google.com",
+    "bookings":"b79865896edf56c9cc9985c8607a0a4dfec5df71b032ff7c16d3dae23e793826@group.calendar.google.com"},
+   {"name":"Elijah","owner":true}]
+  ```
 
 ## You (Elijah) today
 
 - **Best times:** 10am and 4pm every day, and 6pm Monday to Friday. Your 6pm carries the late fee.
 - **Priority:** 2. **Does:** everything.
+- **Calendars:** 513 Availability `9f26a370ac8629b6df3f7f4e8181aa1086f3acb2b47866e01a1b868cd4ab8161@group.calendar.google.com` (your OPEN and BEST events), and 513 Auto Clean `75726fed82aa92a27201386beda7b3a15f550a3a5691e5e6cfc51382f0f0b9cf@group.calendar.google.com` (your jobs).
+- **Netlify `GOOGLE_BUSY_ONLY_CALENDAR_IDS`** is set to the 513 Auto Clean ID, so the new booking form reads your jobs as busy times only, never their details.
+
+## Netlify settings, for the record
+
+- `DETAILERS` and `GOOGLE_BUSY_ONLY_CALENDAR_IDS` use **All scopes**, with the same value in every context (choosing scopes needs a paid Netlify plan). Neither is marked secret: both are written into the page's `js/config.js`, and a secret value there fails the build.
+- **Not set up yet: writing booked jobs onto the calendars.** Every booking is emailed, but nothing puts the job on 513 Auto Clean or 513 Kris Bookings, so add each job by hand until this is done. It takes a one-time Google sign-in (`npm run gcal:token`), whose three values go into Netlify as `GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET` and `GOOGLE_OAUTH_REFRESH_TOKEN`.
