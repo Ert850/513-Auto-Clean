@@ -706,13 +706,17 @@
     <div class="section-head center reveal">
       <span class="eyebrow">Our Work</span>
       <h2>Real cars. Real results.</h2>
-      <p>Real details from around Cincinnati. <strong>Drag the slider</strong> on any photo to see the before &amp; after for yourself.</p>
     </div>
 
     <!-- Rendered by js/gallery.js from data/gallery.json. To add a pair:
          drop the two photos in images/ following ba-<slug>-before.jpg and
-         ba-<slug>-after.jpg, then add one entry to that file. -->
-    <div class="ba-grid" id="baGrid"></div>
+         ba-<slug>-after.jpg, then add one entry to that file. js/gallery.js
+         also adds the carousel controls under the photos. -->
+    <div class="ba-carousel reveal" id="baCarousel" role="region" aria-roledescription="carousel" aria-label="Before and after photos">
+      <div class="ba-viewport">
+        <div class="ba-track" id="baGrid" aria-live="off" aria-atomic="false"></div>
+      </div>
+    </div>
 
     <div class="gal-foot reveal">
       <a class="btn btn-ghost btn-lg" href="https://www.instagram.com/513autoclean/" target="_blank" rel="noopener">
