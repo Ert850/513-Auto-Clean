@@ -36,7 +36,8 @@ Built overnight, November 10 to 11, for you to evaluate. It combines your 8 answ
 
 ### Verified (headless Chrome, live calendar, test Kris)
 - **Sizes:** 1440×900 and 375×812.
-- **Tests:** 470/470.
+- **Tests:** 470/470, after updating one smoke test that round 1 wrote to require the opposite ("not labelled optional").
+- **A process slip:** commit `239f2ac` went in with that test failing, because I chained the commit after a `grep` of the test output instead of after the test run's exit code. Fixed in `38993e5`. From now on, commits follow the test run's exit code.
 
 ## Round 13 (November 10): a bigger "More times" target, the suggestion as a grey pill
 
