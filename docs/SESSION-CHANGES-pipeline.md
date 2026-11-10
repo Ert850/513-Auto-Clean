@@ -26,7 +26,7 @@ Built overnight, November 10 to 11, for you to evaluate. It combines your 8 answ
 - **Both: on to the exterior list (owner).** Picking an interior package with no exterior yet scrolls the Exterior list up.
 
 ### Must happen before this goes live
-- **Retag the OPEN blocks** (the guide has the exact list). Until then every OPEN hour reads as standard price, because the blocks are untagged. The live site reads `OPEN +20%` as an ordinary OPEN block and merges touching blocks, so retagging now is safe for it.
+- ~~Retag the OPEN blocks~~ Done November 11 by the setup session, checked: Kris and Elijah read +20% before 10am and from 6pm, standard 10am to 6pm, Kris standard 6 to 7:30pm Tuesday to Saturday, in the booking form and in the server's own read. The live site is unaffected (it reads `OPEN +20%` as OPEN and merges touching blocks).
 - **`DETAILER_HOMES`** with Kris's address, for his drive to be his own.
 
 ### Checked
