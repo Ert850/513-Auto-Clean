@@ -17,7 +17,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
-const PAGES = ["index.html", "terms.html", "privacy.html", "404.html", "services.html", "about.html", "service-area.html", "faq.html"];
+const PAGES = ["index.html", "terms.html", "privacy.html", "404.html", "services.html", "about.html", "service-area.html", "faq.html", "contact.html"];
 
 const hashOf = (rel) =>
   // Line endings normalised before hashing. Git hands a Windows checkout CRLF

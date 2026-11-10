@@ -2331,7 +2331,7 @@
       });
       if (!plan.ok) {
         box.innerHTML = '<p class="bk-empty">' + esc(plan.reason) +
-          ' <a href="faq.html#inquiry">Send us a message</a> and we will sort it out.</p>';
+          ' <a href="contact.html">Send us a message</a> and we will sort it out.</p>';
         return;
       }
       return paintMultiDay(box, win, from, to, dur, plan);
@@ -5025,14 +5025,14 @@
   }
 
   /**
-   * The question form lives on faq.html. From a page without it (the home
+   * The question form lives on contact.html. From a page without it (the home
    * page, services.html), carry what they entered across for ONE page load,
    * read once and deleted by script.js, instead of the old fallback: an sms:
    * link, which on a desktop does nothing at all. The privacy policy says so.
    */
   function handOffQuestion(fields, msg) {
     try { sessionStorage.setItem('ac-question', JSON.stringify({ fields: fields, msg: msg })); } catch (e) { /* the form opens empty */ }
-    location.href = 'faq.html#inquiry';
+    location.href = 'contact.html';
   }
 
   function close() {

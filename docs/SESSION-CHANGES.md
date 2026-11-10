@@ -230,6 +230,17 @@ reorganization only. Reference sites: *links not yet provided*.
 | Footer Service Areas links | All five opened the top of `service-area.html`. The state cards now have ids `area-oh`, `area-ky` and `area-in`, and each footer place links to its own card | A real click on "Northern Kentucky" lands the Kentucky card at 73 px |
 | Merged `claude/range-travel-colors-bb207f` | Ohio grouped by county (the card got shorter); the fee scale is green, then an amber-to-brown ramp; dots solid and matching their keys; prices in ink. See `docs/SESSION-CHANGES-service-area.md` | Build, tests 409/409 |
 
+### 10. Contact Us has its own page (November 10)
+- **New `contact.html`:** the same header, menu, footer and phone bar, with only the Contact section (question form, call and email) in `<main>`. Title "Contact Us". Added to `build-dist.mjs`, `stamp-assets.mjs` and `sitemap.xml`.
+- **`faq.html`:** back to just the FAQ.
+- **Every Contact or Ask link** now goes to `contact.html`: header, phone menu, phone bar, hero "Contact Us", `#quote`'s "Ask us instead", About's "Ask a Question", footer Explore, and the booking form's "Send us a message". The booking form's "I have a question" and "change my booking" carry what was entered to `contact.html`.
+- **Found by the link audit and fixed:** the Terms page's "Send us a question" still pointed to `index.html#inquiry`, an anchor that hasn't existed since the form left the home page. It's static text outside the generated regions; now `contact.html`.
+- **Verified:**
+  - **Link audit:** a script checked all 285 internal links across the 9 built pages. Each target page exists, and each `#anchor` exists on its page (`#book` is handled by the booking form). 0 broken.
+  - **Hand-off, end to end:** on `services.html`, started a booking, closed it, chose "I have a question". It landed on `contact.html` with the message prefilled with the booking summary and quote link, and the temporary copy was deleted.
+  - **Contact page:** 2× capture at 1440. Tests 409/409.
+  - **Full nav click check** across 6 pages: re-running.
+
 ### Reference sites reviewed (design lessons only, nothing copied)
 - **dksdetailing.com:**
   - **What works:** one short line of social proof ("Trusted by 250+"), a one-line headline, and two buttons (a main one plus Call). Packages are grouped by Full, Exterior and Interior.
