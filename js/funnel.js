@@ -2722,6 +2722,7 @@
         fee_pct: surchargeBp(ms) / 100,
         days_ahead: Math.round((ms - Date.now()) / DAY),
         start_hour: Math.floor(localMin(ms) / 60),
+        start_min: localMin(ms) % 60,
         detailer: state.detailer,
         rank: extra && extra.rank || 0,
         reason: extra && extra.reason || '',
@@ -2937,24 +2938,19 @@
     if (!inner.innerHTML) {
       var dur = holdMinutes();
       var sug = suggestionsOnDay(Number(btn.dataset.more));
-      var byHour = {};
-      var order = [];
-      startsOnDay(Number(btn.dataset.more)).forEach(function (ms) {
-        var h = Math.floor(localMin(ms) / 60);
-        if (!byHour[h]) { byHour[h] = []; order.push(h); }
-        byHour[h].push(ms);
-      });
-      inner.innerHTML = order.map(function (h) {
-        var list = byHour[h];
-        // As on the week grid: a starred start wins, then on the hour.
-        var ms = list.filter(function (x) { return sug.some(function (y) { return sameMinute(x, y); }); })[0] ||
-          list.filter(function (x) { return localMin(x) % 60 === 0; })[0] || list[0];
+      var lastBand = '';
+      // Every start that day, half hours included, under the same part-of-day
+      // headings as the phone list.
+      inner.innerHTML = startsOnDay(Number(btn.dataset.more)).map(function (ms) {
+        var band = P.bandOf(localMin(ms));
+        var head = band && band.id !== lastBand ? '<h5 class="bk-more-band">' + esc(band.label) + '</h5>' : '';
+        if (band) lastBand = band.id;
         var star = sug.some(function (y) { return sameMinute(ms, y); });
         var fee = feeText(ms);
-        return '<button type="button" class="bk-more-t' + (star ? ' sug' : '') + '" data-slot="' + ms +
+        return head + '<button type="button" class="bk-more-t' + (star ? ' sug' : '') + '" data-slot="' + ms +
           '" data-go="1" data-via="recommended_more" data-rank="' + btn.dataset.rank + '" data-reason="' + btn.dataset.reason + '" tabindex="-1">' +
-          '<b>' + esc(spanLabel(ms, dur)) + '</b>' +
-          '<span>' + (fee ? esc(fee) : 'Standard price') + (star ? ' &middot; ' + STAR + 'Suggested' : '') + '</span></button>';
+          '<b>' + esc(tzTime(ms)) + (star ? STAR : '') + '</b>' +
+          '<span>to ' + esc(endLabel(localMin(ms) + dur)) + (fee ? ' &middot; ' + esc(fee) : '') + '</span></button>';
       }).join('');
     }
     if (togglePanel(wrap, btn)) {
@@ -3117,7 +3113,10 @@
     // The grid's boxes are start times; the block drawn on choosing one is the
     // job. Said once, plainly, above the grid (the phone list shows ranges).
     if (!narrow) {
-      html += '<p class="bk-wk-how">Each box is a start time. Pick one and the block shows the whole detail, start to finish.</p>';
+      html += '<p class="bk-wk-how">' + (FINE_POINTER
+        ? 'Each box is an hour: the top half starts on the hour, the bottom half at half past. ' +
+          'Point at one and the block shows the whole detail, start to finish.'
+        : 'Each box is a start time. Pick one and the block shows the whole detail, start to finish.') + '</p>';
     }
     html += narrow ? weekList(week, dur) : weekGrid(week, dur);
 
@@ -3145,6 +3144,26 @@
     return name + ', ' + spanLabel(cell.pick, dur) + ', ' +
       (fee ? fee + ' ' + feeWhy(cell.pick) : 'standard price') +
       (cell.suggested ? ', suggested' : '');
+  }
+
+  /** A mouse or trackpad, where pointing at half a box is practical. */
+  var FINE_POINTER = Boolean(window.matchMedia && window.matchMedia('(hover: hover) and (pointer: fine)').matches);
+
+  /**
+   * Half-hour starts on the week grid (owner, November 10: "add half-hours
+   * back"; the original pipeline offered every start). A box is an hour; with
+   * a mouse its top half is the start on the hour and its bottom half the
+   * start at half past, and the hover block shows which. Touch keeps one
+   * start per box (the halves are too small to tap), and the phone list
+   * and "More times" offer every half hour as their own buttons.
+   */
+  function halfStart(cell, clientY) {
+    var starts = (cell.dataset.starts || '').split(',').map(Number).filter(Boolean);
+    if (starts.length < 2) return Number(cell.dataset.pick);
+    var r = cell.getBoundingClientRect();
+    var bottom = clientY - r.top > r.height / 2;
+    var on = starts.filter(function (ms) { return (localMin(ms) % 60 >= 30) === bottom; })[0];
+    return on || Number(cell.dataset.pick);
   }
 
   function cellHas(cell, ms) {
@@ -3263,6 +3282,11 @@
         html += '<button type="button" class="bk-wk-c ' + (fee ? 'fee' : 'ok') + (on ? ' on' : '') + under +
           '" role="gridcell" aria-selected="' + on + '" style="' + at + where +
           (cell.suggested ? '" data-sug="' + cell.pick : '') +
+          // Every start in this hour: with a mouse, the bottom half of the box
+          // books the half past (halfStart). data-pick is what a tap or the
+          // keyboard books.
+          (cell.starts.length > 1 ? '" data-starts="' + cell.starts.join(',') : '') +
+          '" data-pick="' + (on ? state.slot : cell.pick) +
           '" data-slot="' + (on ? state.slot : cell.pick) + '" aria-label="' + esc(cellLabel(day, cell, dur)) + '">' +
           (fee ? '<i>' + esc(fee) + '</i>' : TICK) +
           (cell.suggested ? '<b class="bk-wk-star">' + STAR + '</b>' : '') +
@@ -3376,15 +3400,22 @@
         // "Early Morning" and "Late Evening" already say it; no second tag.
         html += '<h5 class="bk-wk-band">' + esc(band.label) + '</h5>';
       }
-      var fee = feeText(cell.pick);
       var on = cellHas(cell, state.slot);
       var ms = on ? state.slot : cell.pick;
-      html += '<button type="button" class="bk-wk-item' + (on ? ' on' : '') +
+      var fee = feeText(ms);
+      // The other start in this hour (half past, or on the hour), one tap too.
+      var alts = cell.starts.filter(function (x) { return !sameMinute(x, ms); });
+      html += '<div class="bk-wk-row"><button type="button" class="bk-wk-item' + (on ? ' on' : '') +
         '" data-slot="' + ms + '" aria-pressed="' + on + '">' +
         '<b>' + esc(spanLabel(ms, dur)) + '</b>' +
         '<span>' + (fee ? esc(fee + ' ' + feeWhy(ms)) : 'Standard price') + '</span>' +
-        (cell.suggested ? '<em>' + STAR + 'Suggested</em>' : '') +
-        '</button>';
+        (cell.suggested && sameMinute(ms, cell.pick) ? '<em>' + STAR + 'Suggested</em>' : '') +
+        '</button>' +
+        alts.map(function (x) {
+          return '<button type="button" class="bk-wk-alt" data-slot="' + x + '" aria-label="' +
+            esc('Start at ' + spanLabel(x, dur) + (feeText(x) ? ', ' + feeText(x) + ' ' + feeWhy(x) : ', standard price')) + '">' +
+            '<i>or</i>' + esc(tzTime(x)) + '</button>';
+        }).join('') + '</div>';
     });
     return html + '</div>';
   }
@@ -5959,7 +5990,19 @@
       var t = e.target.closest && e.target.closest('.bk-wk-grid [data-slot]');
       if (t) previewSpan(t);
     });
+    host.addEventListener('mousemove', function (e) {
+      if (!FINE_POINTER) return;
+      var t = e.target.closest && e.target.closest('.bk-wk-grid [data-starts]');
+      if (!t) return;
+      var ms = halfStart(t, e.clientY);
+      if (Number(t.dataset.slot) === ms) return;
+      t.dataset.slot = String(ms);
+      previewSpan(t);
+    });
     host.addEventListener('mouseout', function (e) {
+      // A box goes back to its default start for a tap or the keyboard.
+      var cell = e.target.closest && e.target.closest('.bk-wk-grid [data-pick]');
+      if (cell && !(e.relatedTarget && cell.contains(e.relatedTarget))) cell.dataset.slot = cell.dataset.pick;
       var grid = e.target.closest && e.target.closest('.bk-wk-grid');
       if (!grid || (e.relatedTarget && grid.contains(e.relatedTarget) && e.relatedTarget.closest('[data-slot]'))) return;
       var pv = grid.querySelector('#bkWkPreview');
