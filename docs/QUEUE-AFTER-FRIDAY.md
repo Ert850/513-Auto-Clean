@@ -39,6 +39,8 @@ Work that's agreed but deliberately not started before Friday. Newest first.
 - **The $100 minimum** for one-off restoration jobs (brief 7.1).
 - **Fill Kris first** (brief 7.1): check the Priority order in the calendars' descriptions.
 
+**Read first:** `docs/BUSINESS-CONTEXT.md` (Elijah, November 11: what sells, customers' words, why leads don't book). It names Full Interior + Steam as the lead offer.
+
 **Touches:**
 - `web/lib/catalog/` (prices live only there);
 - the package cards rendered into `index.html` and `services.html`;
