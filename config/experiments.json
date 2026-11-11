@@ -1,0 +1,24 @@
+{
+  "_read_me": [
+    "A/B tests. How to run and read one: docs/AB-TESTING.md.",
+    "Each visitor in a test is given one version at random, on their first view, and keeps it on later visits (stored in their browser). Nothing is stored for anyone outside a test.",
+    "id: short, lower case, letters, digits and dashes (it goes into analytics, so never rename a running test).",
+    "status: \"off\" (everyone sees the first version, nothing recorded), \"running\" (split and recorded), \"ended\" (everyone sees the winner, nothing recorded).",
+    "versions: name -> share, e.g. {\"no-code\": 50, \"code\": 50}. The FIRST is the control: what people outside the test see.",
+    "sources (optional): only visitors who arrived through these addresses join, e.g. [\"golf\"] for 513autoclean.com/golf. Leave it out for everyone.",
+    "winner: the version everyone gets once status is \"ended\".",
+    "On a page, an element shown for one version only: <p data-exp=\"golf-code:code\">...</p>. In code: window.AC_EXP(\"golf-code\") returns the version.",
+    "Which version a booking saw is printed in the booking email and the calendar event, so bookings can be counted even when the visitor declined analytics.",
+    "A mistake in this file fails the build."
+  ],
+  "experiments": [
+    {
+      "id": "golf-code",
+      "name": "Golf page: show the GOLF10 code, or only the student story",
+      "status": "off",
+      "sources": ["golf"],
+      "versions": { "no-code": 50, "code": 50 },
+      "note": "Owner, November 11, 2026: a discount may not be needed because the story sells. Turn on when the golf page exists and GOLF10 is active in config/promo-codes.json."
+    }
+  ]
+}

@@ -833,6 +833,10 @@ main > .areas:first-child .section-head { margin-bottom: 18px; }
 .mobile-bar .mb-call { background: var(--ink); color: #fff; }
 .mobile-bar .mb-quote { background: linear-gradient(135deg, var(--red), var(--red-deep)); color: #ffffff; }
 
+/* A/B tests (config/experiments.json): an element for one version only, data-exp="test:version",
+   stays hidden until js/analytics.js picks that version. !important beats a component's own display. */
+[data-exp]:not(.exp-on) { display: none !important; }
+
 /* Analytics consent banner (js/analytics.js). Sits above the mobile bar. */
 .consent {
   position: fixed; left: 12px; right: 12px; bottom: 76px; z-index: 95;
