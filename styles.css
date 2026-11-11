@@ -726,37 +726,6 @@ main > .areas:first-child .section-head { margin-bottom: 18px; }
 .faq-item .faq-a { padding: 0 1.4rem 1.3rem; color: var(--text-soft); font-size: 1rem; }
 
 /* ============================================================
-   SCHEDULE / AVAILABILITY CALENDAR
-   ============================================================ */
-.schedule { background: var(--paper-2); }
-.cal-card { background: var(--paper-2); border: 1px solid var(--line); border-radius: var(--r-lg); padding: clamp(.9rem, 3vw, 1.6rem); box-shadow: var(--shadow-md); max-width: 1000px; margin-inline: auto; }
-.cal-legend { display: flex; gap: 1.4rem; justify-content: flex-end; margin-bottom: 1rem; font-size: .85rem; font-weight: 600; color: var(--text-soft); }
-.cal-legend i { width: 13px; height: 13px; border-radius: 3px; display: inline-block; margin-right: .4rem; vertical-align: -1px; }
-.cal-legend .dot-open { background: #fff; border: 1px solid var(--line); }
-.cal-legend .dot-busy { background: var(--red); }
-.cal-foot { text-align: center; margin-top: 1.6rem; }
-.cal-card iframe { border-radius: var(--r-md); display: block; }
-
-/* FullCalendar theming (red/black) */
-#schedule-cal {
-  --fc-border-color: var(--line);
-  --fc-today-bg-color: rgba(224,26,26,.05);
-  --fc-now-indicator-color: var(--red);
-  --fc-page-bg-color: #fff;
-  font-family: var(--font-body); font-size: .92rem;
-}
-#schedule-cal .fc-event, #schedule-cal .fc-timegrid-event { border: none; background: var(--red); box-shadow: none; }
-#schedule-cal .fc-unavail { font-size: .72rem; font-weight: 800; color: #fff; padding: 2px 5px; letter-spacing: .02em; line-height: 1.2; }
-#schedule-cal .fc .fc-button-primary { background: var(--ink); border-color: var(--ink); font-weight: 600; }
-#schedule-cal .fc .fc-button-primary:hover { background: var(--red); border-color: var(--red); }
-#schedule-cal .fc .fc-button-primary:not(:disabled).fc-button-active,
-#schedule-cal .fc .fc-button-primary:not(:disabled):active { background: var(--red); border-color: var(--red); }
-#schedule-cal .fc .fc-toolbar-title { font-family: var(--font-display); font-size: 1.15rem; letter-spacing: -.02em; }
-#schedule-cal .fc .fc-toolbar.fc-header-toolbar { margin-bottom: 1rem; flex-wrap: wrap; gap: .6rem; }
-#schedule-cal .fc-col-header-cell-cushion, #schedule-cal .fc-timegrid-slot-label-cushion { color: var(--text-soft); text-decoration: none; }
-#schedule-cal .fc-col-header-cell-cushion { font-weight: 700; }
-
-/* ============================================================
    CONTACT / QUOTE FORM
    ============================================================ */
 .contact { background: linear-gradient(180deg, var(--ink) 0%, var(--ink-2) 100%); color: var(--text-inv); }
