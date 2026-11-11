@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { findPromo, normalisePromo, promoDiscountCents, PROMOS } from "./promos.js";
+import { checkPromoCodes, findPromo, normalisePromo, promoDiscountCents, PROMOS } from "./promos.js";
 import { quote, type CartInput, type PackageRef } from "./quote.js";
 import { DEFAULT_RULES as R } from "./rules.js";
 
@@ -47,8 +47,9 @@ describe("promo codes", () => {
     const dated = { code: "DATED", label: "dated", percentBp: 1000, active: true, expiresOn: "2026-06-30" };
     PROMOS.push(dated);
     try {
-      expect(findPromo("DATED", { today: new Date(2026, 5, 30) }).promo).toBeTruthy();
-      expect(findPromo("DATED", { today: new Date(2026, 6, 1) }).rejected).toBe("expired");
+      // Noon June 30 and 12:30am July 1, Cincinnati, whatever the machine's zone.
+      expect(findPromo("DATED", { today: new Date(Date.UTC(2026, 5, 30, 16, 0)) }).promo).toBeTruthy();
+      expect(findPromo("DATED", { today: new Date(Date.UTC(2026, 6, 1, 4, 30)) }).rejected).toBe("expired");
     } finally {
       PROMOS.pop();
     }
@@ -292,4 +293,51 @@ describe("discounts stack, and in the right order", () => {
     // The surcharge is charged on what is left after both discounts.
     expect(q.surchargeCents).toBe(Math.round((q.serviceSubtotalCents * q.surchargeBp) / 10_000));
   });
+});
+
+describe("config/promo-codes.json", () => {
+  it("keeps the codes that existed before the move, unchanged", () => {
+    const like = findPromo("LIKENEW").promo;
+    expect(like).toMatchObject({ code: "LIKENEW", percentBp: 1000, active: true });
+    expect(like?.expiresOn).toBeUndefined(); // never ends on its own
+    expect(findPromo("FRIANDFAM").promo?.percentBp).toBe(2500);
+  });
+
+  it("has GOLF10 and PRESTIGE10 ready but switched off", () => {
+    expect(findPromo("GOLF10").rejected).toBe("unknown");
+    expect(findPromo("PRESTIGE10").rejected).toBe("unknown");
+    expect(PROMOS.find((p) => p.code === "GOLF10")).toMatchObject({ active: false, percentBp: 1000 });
+  });
+
+  it("an end date is a Cincinnati date, even on a server running UTC", () => {
+    const dated = { code: "DATED2", label: "d", percentBp: 1000, active: true, expiresOn: "2026-06-30" };
+    PROMOS.push(dated);
+    try {
+      // 9pm June 30 in Cincinnati is 1am July 1 UTC: still June 30 here.
+      expect(findPromo("DATED2", { today: new Date(Date.UTC(2026, 6, 1, 1, 0)) }).promo).toBeTruthy();
+      // 12:30am July 1 in Cincinnati: over.
+      expect(findPromo("DATED2", { today: new Date(Date.UTC(2026, 6, 1, 4, 30)) }).rejected).toBe("expired");
+    } finally {
+      PROMOS.pop();
+    }
+  });
+
+  it("turns friendly units into cents and basis points", () => {
+    const [p] = checkPromoCodes({ codes: [{ code: "ten", label: "T", dollarsOff: 25, minServiceDollars: 100, active: true, until: "2027-01-31" }] });
+    expect(p).toMatchObject({ code: "TEN", amountCents: 2500, minServiceCents: 10000, expiresOn: "2027-01-31" });
+  });
+
+  const bad: [string, unknown][] = [
+    ["no list", {}],
+    ["both kinds of discount", { codes: [{ code: "AB1", label: "x", percentOff: 10, dollarsOff: 5, active: true }] }],
+    ["neither", { codes: [{ code: "AB1", label: "x", active: true }] }],
+    ["percent over 100", { codes: [{ code: "AB1", label: "x", percentOff: 150, active: true }] }],
+    ["active as text", { codes: [{ code: "AB1", label: "x", percentOff: 10, active: "yes" }] }],
+    ["bad date", { codes: [{ code: "AB1", label: "x", percentOff: 10, active: true, until: "June 30" }] }],
+    ["a typo'd field", { codes: [{ code: "AB1", label: "x", percentOff: 10, active: true, untill: "2027-01-01" }] }],
+    ["the same code twice", { codes: [{ code: "AB1", label: "x", percentOff: 10, active: true }, { code: "ab 1", label: "y", percentOff: 5, active: true }] }],
+  ];
+  for (const [what, input] of bad) {
+    it(`refuses ${what}`, () => expect(() => checkPromoCodes(input)).toThrow(/config\/promo-codes\.json/));
+  }
 });

@@ -44,6 +44,16 @@ Built overnight, November 10 to 11, for you to evaluate. It combines your 8 answ
 - **Tests:** `rush.test.ts`, 21 tests: the shipped settings, a golf rule on its own settings, matching, dates in Cincinnati time, bad files, and the server pricing the same cart the same way. The date-arithmetic tests in `pricing.test.ts` and `wire.test.ts` now state their 3-day window outright. 553 of 553 pass.
 - **To test:** in the booking form, a time tomorrow shows the rush fee and the day after tomorrow shows the standard price, for interior, exterior and both. "When is there a fee?" reads "times in the next 2 days".
 
+### Discount codes are a settings file: `config/promo-codes.json`
+- **What:** the codes moved out of `promos.ts` into a file with friendly units: `percentOff` or `dollarsOff`, `active`, an optional `until`, `minServiceDollars`, `blurb`, and a `note` for us. `checkPromoCodes()` checks it when it loads, so a typo, a duplicate code or both kinds of discount fails the build.
+- **Never ends on its own:** a code without `until` has no end date (owner, November 11: printed offers must not quietly stop).
+- **New, switched off:** GOLF10 and PRESTIGE10 (10%), ready for the owner's A/B test. Typed today, they read "We do not recognise that code." "One per customer" (owner) is not enforced yet; the file says so.
+- **Bug fixed: an end date was read on the server's clock.**
+  - **Root cause:** `findPromo` built "today" from the machine's local date. The functions run on UTC, so a code ending on the 30th stopped at 7 or 8pm Cincinnati time on the server while the screen still accepted it. Only a code with an end date was affected, and none had one.
+  - **Fix:** the date is read in Cincinnati (`localParts`).
+  - **Tests:** an end-date test with exact instants, which now passes in UTC too, plus file checks. 565 of 565 pass.
+- **To test:** LIKENEW and FRIANDFAM work as before; GOLF10 is refused.
+
 ## Round 20 (November 12): header at mid widths, one Continue at checkout
 
 ### Header: Priority+ with a More menu (owner's pick B of three, `docs/mockups/nav-widths-*.png`)

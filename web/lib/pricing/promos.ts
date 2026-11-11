@@ -1,17 +1,22 @@
 /**
  * Promo codes.
  *
- * One table, edited here, read by the funnel AND by the payment functions.
- * The browser is never trusted with a discount: it sends the code the
- * customer typed, and the server looks it up in this same list and applies it
- * itself. A tampered request that claims "PROMO: 90% off" gets repriced at
- * whatever this table actually says, or at nothing if the code is not here.
+ * One table, config/promo-codes.json, read by the funnel AND by the payment
+ * functions. The browser is never trusted with a discount: it sends the code
+ * the customer typed, and the server looks it up in this same list and
+ * applies it itself. A tampered request that claims "PROMO: 90% off" gets
+ * repriced at whatever this table actually says, or at nothing if the code is
+ * not here.
  *
- * TO ADD A CODE: add a row. To turn one off: set `active: false`, or give it
- * an `expiresOn`. Nothing else has to change, and no deploy step is special.
+ * TO ADD A CODE: add a block to the file. To turn one off: `active: false`,
+ * or an `until` date. A code with no `until` never ends on its own (owner,
+ * November 11: printed offers must not quietly stop). The file is checked
+ * when this module loads, so a typo fails the build and the tests.
  *
  * Percentages are basis points, money is integer cents, as everywhere else.
  */
+import raw from "../../../config/promo-codes.json" with { type: "json" };
+import { localParts } from "../time/zone.js";
 
 export interface Promo {
   /** Matched case and whitespace insensitively. Stored uppercase. */
@@ -23,7 +28,7 @@ export interface Promo {
   /** Flat money off. Never takes the subtotal below zero. */
   amountCents?: number;
   active: boolean;
-  /** ISO date, inclusive. The code stops working the day after. */
+  /** ISO date, inclusive, Cincinnati. The code stops working the day after. */
   expiresOn?: string;
   /** Refuse the code under this much service. Guards against a $10 job. */
   minServiceCents?: number;
@@ -31,26 +36,48 @@ export interface Promo {
   blurb?: string;
 }
 
-export const PROMOS: Promo[] = [
-  {
-    code: "LIKENEW",
-    label: "LIKENEW, 10% off",
-    percentBp: 1000,
-    active: true,
-    blurb: "10% off your service.",
-  },
-  {
-    // Not advertised anywhere on the site. It works when somebody types it,
-    // which is the point: Elijah hands it out to friends, family and anyone
-    // working for him, and nothing on the page invites a stranger to guess
-    // at it. If it ever leaks, set active to false and it stops that minute.
-    code: "FRIANDFAM",
-    label: "FRIANDFAM, 25% off",
-    percentBp: 2500,
-    active: true,
-    blurb: "Friends and family rate, 25% off your service.",
-  },
-];
+/** The file's friendly shape (percentOff, dollarsOff, until) into Promo. Throws on a mistake. */
+export function checkPromoCodes(input: unknown): Promo[] {
+  const bad = (where: string, what: string): never => {
+    throw new Error(`config/promo-codes.json: ${where}: ${what}`);
+  };
+  const codes = (input as { codes?: unknown })?.codes;
+  if (!Array.isArray(codes)) bad("codes", "must be a list");
+  const seen = new Set<string>();
+  const known = ["code", "label", "percentOff", "dollarsOff", "active", "until", "minServiceDollars", "blurb", "note"];
+  return (codes as unknown[]).map((c, i) => {
+    const o = (c ?? {}) as Record<string, unknown>;
+    const code = typeof o["code"] === "string" ? normalisePromo(o["code"]) : "";
+    const where = code || `code ${i + 1}`;
+    if (!/^[A-Z0-9]{3,32}$/.test(code)) bad(where, "code must be 3 to 32 letters or digits");
+    if (seen.has(code)) bad(where, "this code is listed twice");
+    seen.add(code);
+    for (const k of Object.keys(o)) if (!known.includes(k)) bad(where, `unknown field "${k}" (use ${known.join(", ")})`);
+    if (typeof o["label"] !== "string" || !o["label"].trim()) bad(where, "needs a label");
+    if (typeof o["active"] !== "boolean") bad(where, "active must be true or false");
+    const pct = o["percentOff"];
+    const usd = o["dollarsOff"];
+    if ((pct === undefined) === (usd === undefined)) bad(where, "give percentOff OR dollarsOff, not both or neither");
+    if (pct !== undefined && (typeof pct !== "number" || !(pct > 0 && pct <= 100))) bad(where, "percentOff must be more than 0 and at most 100");
+    if (usd !== undefined && (typeof usd !== "number" || !(usd > 0))) bad(where, "dollarsOff must be more than 0");
+    const until = o["until"];
+    if (until !== undefined && (typeof until !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(until))) bad(where, "until must be a date like 2027-06-30");
+    const min = o["minServiceDollars"];
+    if (min !== undefined && (typeof min !== "number" || min < 0)) bad(where, "minServiceDollars must be 0 or more");
+    return {
+      code,
+      label: (o["label"] as string).trim(),
+      ...(pct !== undefined ? { percentBp: Math.round((pct as number) * 100) } : {}),
+      ...(usd !== undefined ? { amountCents: Math.round((usd as number) * 100) } : {}),
+      active: o["active"] as boolean,
+      ...(until !== undefined ? { expiresOn: until as string } : {}),
+      ...(min !== undefined ? { minServiceCents: Math.round((min as number) * 100) } : {}),
+      ...(typeof o["blurb"] === "string" ? { blurb: o["blurb"] } : {}),
+    };
+  });
+}
+
+export const PROMOS: Promo[] = checkPromoCodes(raw);
 
 /** Uppercase, trimmed, and stripped of the spaces people type out of habit. */
 export function normalisePromo(code: string): string {
@@ -83,14 +110,12 @@ export function findPromo(
 
   if (hit.expiresOn) {
     // Compared as dates, not timestamps: a code that expires on the 30th
-    // should work all day on the 30th in Cincinnati, not stop at midnight UTC.
+    // should work all day on the 30th in Cincinnati. The date is read in
+    // Cincinnati, not from the machine: the functions run on UTC, where the
+    // 30th ended at 7 or 8pm Cincinnati time while the screen still took it.
     const today = opts.today ?? new Date();
-    const stamp =
-      today.getFullYear() +
-      "-" +
-      String(today.getMonth() + 1).padStart(2, "0") +
-      "-" +
-      String(today.getDate()).padStart(2, "0");
+    const { y, mo, d } = localParts(today.getTime(), "America/New_York");
+    const stamp = `${y}-${String(mo).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
     if (stamp > hit.expiresOn) return { promo: null, rejected: "expired" };
   }
 
