@@ -67,6 +67,31 @@ Built overnight, November 10 to 11, for you to evaluate. It combines your 8 answ
 - **Tests:** `experiments.test.ts`, 17 tests. They run the real `analytics.js` in a sandbox: weights, stickiness, the source rule, off/ended/unknown tests, element switching, nothing reaching GA before Accept, and storage blocked. 582 of 582 pass.
 - **To test:** with a test set to running, open /?utm_source=golf: `localStorage['ac-exp']` holds a version and only that version's element shows. A booking email carries "A/B TESTS".
 
+### Analytics set up (November 11)
+- **Netlify:** `GA4_MEASUREMENT_ID` = `G-P11P7V82FM` and `CLARITY_PROJECT_ID` = `zc5bvd0743`, all scopes and contexts, not secret. The live site (`main`) has no analytics code, so nothing changes there until the merge.
+- **GA4 property `513autoclean.com`:**
+  - event data retention 2 months to 14;
+  - Google signals confirmed off;
+  - ads personalization was allowed in all 307 regions, now 0, to match the privacy policy's "never used for advertising";
+  - 8 event-scoped custom dimensions: `method`, `detailer`, `reason`, `via`, `step`, `section`, `answer`, `exp_variant_string`.
+- **Clarity:** masking confirmed Balanced.
+- **Not done:**
+  - key events can only be starred once each event has arrived, so that happens after the deploy;
+  - the Clarity-to-GA4 link is a Google sign-in that grants Clarity access, so it waits for your OK.
+- **Also confirmed in Netlify:** `GOOGLE_BUSY_ONLY_CALENDAR_IDS` is set (the review's top condition), and `DETAILERS` is set. The owner confirmed Kris goes live with the new site.
+- **`check-live.mjs`:** read keys only in single quotes, but the published `config.js` is minified with double quotes, so every live key read "not set". It now matches either quote, and also checks GA4 and Clarity.
+
+### Draft print landing pages: `lp-golf.html`, `lp-prestige.html` (for the owner's approval)
+- **What:** the owner's brief: lead with the story (a UC student's business, five-star reviews), then three options (interior, exterior, paint correction with protection, shown as coming soon).
+  - Golf: "Get your car detailed while you play", at home, at the office, or at the course (the owner says the club car park is fine until told otherwise).
+  - Prestige Living: "A showroom finish, at your door", with steam treatment and ceramic coating mentioned.
+- **Built from existing components:** About's photo and story grid, promise ticks and buttons, plus a small `.lp-*` grid for the options. On phones and tablets (under 960 px), where nearly everyone scanning arrives, the story comes first and the photo after.
+- **The rating** uses the home page's "Rated … from N reviews on Google" wording, so `render-site.mjs` keeps it current.
+- **A/B test ready:** the golf page has the GOLF10 line as `data-exp="golf-code:code"`. It's hidden while the test is off.
+- **Kept honest:** nothing promises a time ("within a day" was dropped, since the times depend on the calendars). Paint correction and coating say "Coming soon". Showroom Ready is called our most thorough **interior** detail, because the exterior one isn't bookable yet.
+- **Not live:** `/golf` and `/prestige` still redirect to the home page. After approval, point each redirect at its page in `netlify.toml`. The pages are noindex and left out of the sitemap on purpose (print readers only), and registered in `CHROME_PAGES`, `FILES`, `PAGES` (stamp) and render-site's `PAGES`.
+- **Screenshots:** `docs/mockups/lp-*.png` (1440 and 375). No sideways scroll, no console errors at 375, 820 or 1440.
+
 ### Links to the old one-page home page lead to the right page (found by the production-readiness review)
 - **Bug:** the live site is one page, so the Google Business Profile, ads and bookmarks may link to `/#faq`, `/#reviews`, `/#inquiry` and so on. On the new site those sections are pages of their own, so such a link opened the top of the home page.
 - **Fix (`script.js`, home page only):** an old section id with no element on the page leads to its new page.

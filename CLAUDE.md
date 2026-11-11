@@ -95,6 +95,7 @@ Read this before changing anything. Every rule below came from a real bug or an 
   - `FILES` in `web/scripts/build-dist.mjs`, or it is never published;
   - `PAGES` in `web/scripts/stamp-assets.mjs`;
   - `sitemap.xml`.
+- **Print landing pages (`lp-golf.html`, `lp-prestige.html`) stay out of the sitemap and carry `noindex`**: they're for people holding the print piece, reached through `/golf` and `/prestige` (redirects in `netlify.toml`). Every other new-page step applies.
 - A page whose Book buttons should open the booking form in place needs `<div id="bookFunnel" hidden>`, `book.css`, `js/vendors.js`, `js/pricing.bundle.js` and `js/funnel.js` (as on `index.html` and `services.html`), and its Book links must be `href="book.html"`, which the form intercepts. On pages without the form, Book links are `index.html#book`.
 - **The home page keeps the full package cards** (the owner reverted a compact teaser: "it looked fine before"). `CATALOG:SERVICES` is rendered into both `index.html` and `services.html`. Ask before replacing an established section's look, even for a decided restructure.
 - **Never link to a hidden element** (such as an inactive tab panel) without something that reveals it first.

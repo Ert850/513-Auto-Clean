@@ -35,7 +35,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..")
 // The catalog is split across pages now: packages on the home page, add-ons
 // on services.html, the FAQ (and its price sentence) on faq.html, and the
 // reviews block that carries the rating on about.html.
-const PAGES = ["index.html", "services.html", "faq.html", "about.html"];
+const PAGES = ["index.html", "services.html", "faq.html", "about.html", "lp-golf.html", "lp-prestige.html"];
 const read = (f) => fs.readFileSync(path.join(root, f), "utf8");
 
 const money = (c) => {

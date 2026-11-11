@@ -45,15 +45,15 @@ That's all. Everything below runs on its own.
 1. **Netlify.** Add `GA4_MEASUREMENT_ID` and `CLARITY_PROJECT_ID` (all deploy contexts, *not* marked secret, because the build writes them into the page).
 2. **Privacy policy.** Switch the `siteAnalytics` capability to live in `web/lib/site/capabilities.ts` and bump the policy date (`web/lib/site/legal.ts`, then `npm run lock:legal`). Check that the policy names Google Analytics and Microsoft Clarity, says nothing loads before Accept, and that the banner wording matches. Run the legal tests.
 3. **GA4 settings:**
-   - **Admin → Data retention:** 14 months.
-   - **Google signals:** off.
-   - **Data collection for ads personalization:** off.
-   - **Key events** (Admin → Events → mark as key event): `booking_complete`, `booking_request`, `contact_click`.
-   - **Custom dimensions** (Admin → Custom definitions), event-scoped: `method` (call/text/email), `kind` (booking/request), `detailer`, `reason` (which recommended time), `via` (how a time was picked).
+   - **Admin → Data retention:** 14 months. **Done November 11** (it was 2 months).
+   - **Google signals:** off. **Checked November 11:** it was never turned on.
+   - **Data collection for ads personalization:** off. **Done November 11:** it was allowed in all 307 regions; now it's allowed in 0.
+   - **Key events** (Admin → Events → the star beside the event): `booking_complete`, `booking_request`, `contact_click`. **Still to do:** Analytics only lists an event after it has arrived once, so this happens after the deploy, from the first real visits.
+   - **Custom dimensions** (Admin → Custom definitions), event-scoped. **Done November 11:** `method` (call/text/email), `detailer`, `reason` (which recommended time), `via` (how a time or extra was picked), `step` (booking step), `section` (checkout section), `answer` (where they heard about us), `exp_variant_string` (A/B test version). There's no `kind` dimension: no event sends that parameter; `booking_complete` and `booking_request` are separate events.
    - Filter out your own visits: add your home IP under **Data streams → Configure tag settings → Define internal traffic**, if you want that, and turn the filter on.
 4. **Clarity settings:**
    - **Masking mode: Balanced** (Clarity's default, confirmed in settings). It hides what people type into form boxes, which our privacy policy promises. Strict would also hide every word on the page, which would make the recordings much less useful.
-   - **Setup → Google Analytics integration:** connect to the new GA4 property, so recordings can be filtered by GA4 events.
+   - **Setup → Google Analytics integration:** connect to the new GA4 property, so recordings can be filtered by GA4 events. **Waiting for your OK:** it's a Google sign-in that grants Microsoft Clarity access to the Analytics account. Masking is on Balanced (checked November 11).
 5. **Checks on a deploy preview,** before anything goes live:
    - Decline: nothing from Google or Clarity loads, and the network shows no requests to them.
    - Accept: GA4 **Realtime** shows the visit, and Clarity shows a live session within a few minutes.

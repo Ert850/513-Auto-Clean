@@ -31,6 +31,9 @@ const FILES = [
   "service-area.html",
   "faq.html",
   "contact.html",
+  // Print landing pages (QR codes), not linked from the site and not in the sitemap.
+  "lp-golf.html",
+  "lp-prestige.html",
   "styles.css",
   "book.css",
   "script.js",
