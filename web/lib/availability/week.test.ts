@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { zonedToUtc } from "../time/zone.js";
-import { addWeeks, buildWeek, dayOpenShare, daySuggestions, lastRowForSlots, STARTS_PER_DAY, stretchStarts, timelineRange, recommendBestDays, TIME_RECOMMENDATION_RULES, weekStartOf } from "./week.js";
+import { addWeeks, buildWeek, dayOpenShare, startsPossible, daySuggestions, lastRowForSlots, STARTS_PER_DAY, stretchStarts, timelineRange, recommendBestDays, TIME_RECOMMENDATION_RULES, weekStartOf } from "./week.js";
 
 const TZ = "America/New_York";
 const at = (mo: number, d: number, h: number, mi = 0) => zonedToUtc(2026, mo, d, h, mi, 0, TZ);
@@ -190,6 +190,15 @@ describe("dayOpenShare (the day strip's bar, November 11)", () => {
   });
   it("is the share of starts left", () => {
     expect(dayOpenShare(day(2, 1))).toBeCloseTo(3 / 33);
+  });
+  it("measures against what a free day could offer this job (owner, November 11)", () => {
+    // 4.5 hours must finish by midnight: last start 7:30pm, so 28 starts from 6am.
+    expect(startsPossible(270)).toBe(28);
+    // Exterior starts by 8pm: 29 starts for a 2-hour exterior job.
+    expect(startsPossible(120, true)).toBe(29);
+    // A free day for a long job is full, not 85%.
+    expect(dayOpenShare(day(...Array(14).fill(2)), 270)).toBe(1);
+    expect(dayOpenShare(day(...Array(7).fill(2)), 270)).toBeCloseTo(14 / 28);
   });
 });
 

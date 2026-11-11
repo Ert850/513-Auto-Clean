@@ -92,17 +92,34 @@ export function lastRowForSlots(slots: number[], durationMin: number, timeZone =
 }
 
 /**
- * How much of a day is open, 0 to 1: its starts against every half-hour start
- * the booking window allows (6am to 10pm, 33). The day strip's bar fills to
- * this (owner, November 11: the bar shows relative availability), so a day
- * with only an evening slot left reads as nearly full and a free day as open.
+ * How much of a day is open, 0 to 1: its starts against the most starts a
+ * fully open day could offer THIS job. The day strip's bar fills to this
+ * (owner, November 11: "the percentage of remaining options available out
+ * of the normal maximum amount of options available on a given day"), so a
+ * day with only an evening slot left reads as nearly full and a free day as
+ * open.
+ *
+ * The maximum depends on the job: a long detail must finish by midnight, so
+ * its late starts never exist, and exterior work starts by 8pm. Against a
+ * fixed 33 (every half hour, 6am to 10pm) a free day read 85% for a 4.5-hour
+ * job (owner's screenshot, November 11).
  */
 export const STARTS_PER_DAY =
   (DEFAULT_BOOKING_WINDOW.latestStartMin - DEFAULT_BOOKING_WINDOW.earliestStartMin) / 30 + 1;
 
-export function dayOpenShare(day: WeekDay): number {
+/** Half-hour starts the booking window allows for a job this long. */
+export function startsPossible(durationMin = 0, hasExterior = false, win = DEFAULT_BOOKING_WINDOW): number {
+  const latest = hasExterior && win.latestExteriorStartMin !== undefined
+    ? Math.min(win.latestStartMin, win.latestExteriorStartMin) : win.latestStartMin;
+  let n = 0;
+  for (let m = win.earliestStartMin; m <= latest; m += 30) if (m + Math.max(0, durationMin) <= win.serviceEndByMin) n++;
+  return n;
+}
+
+export function dayOpenShare(day: WeekDay, durationMin = 0, hasExterior = false): number {
   const open = day.cells.reduce((n, c) => n + c.starts.length, 0);
-  return Math.min(1, open / STARTS_PER_DAY);
+  const max = startsPossible(durationMin, hasExterior);
+  return max ? Math.min(1, open / max) : 0;
 }
 
 /**

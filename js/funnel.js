@@ -4043,7 +4043,8 @@
     week.days.forEach(function (day, i) {
       var starts = dayStarts(day);
       var std = starts.some(function (s) { return !surchargeBp(s.ms); });
-      var fill = Math.max(12, Math.round(P.dayOpenShare(day) * 100));
+      // Against what a free day could offer this job (owner, November 11).
+      var fill = Math.max(12, Math.round(P.dayOpenShare(day, holdMinutes(), hasExterior()) * 100));
       var name = tzDay(day.dayStart + DAY / 2, { weekday: 'long', month: 'long', day: 'numeric' });
       html += '<button type="button" class="bk-wk-day' + (i === sel ? ' on' : '') + (day.past ? ' past' : '') +
         '" role="tab" aria-selected="' + (i === sel) + '" data-wkday="' + i + '" aria-label="' +
