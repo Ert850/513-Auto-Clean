@@ -52,11 +52,100 @@
     try { return sessionStorage.getItem(SOURCE_KEY) || ''; } catch (e) { return ''; }
   };
 
+  /* ---------- A/B tests (config/experiments.json, docs/AB-TESTING.md) ---------- */
+
+  /*
+   * A visitor in a running test is given one version at random on first view
+   * and keeps it (localStorage), so they see the same page every visit. That
+   * choice identifies nobody, goes to no third party by itself, and the
+   * privacy policy says it happens. It is made before any consent choice,
+   * because the page has to show something; analytics only hears about it
+   * after Accept. Which version a booking saw also goes in the booking email,
+   * so tests can be counted without analytics.
+   */
+  var EXP_KEY = 'ac-exp';
+  var TESTS = window.AC_EXPERIMENTS || [];
+  var given = {};    // id -> version, for tests this visitor is in, this page
+  var pending = [];  // exposures waiting for analytics to load
+
+  function storedTests() {
+    try { return JSON.parse(localStorage.getItem(EXP_KEY) || '{}') || {}; } catch (e) { return {}; }
+  }
+
+  function draw(versions) {
+    var total = 0, i;
+    for (i = 0; i < versions.length; i++) total += versions[i][1];
+    var r = Math.random() * total;
+    for (i = 0; i < versions.length; i++) { r -= versions[i][1]; if (r < 0) return versions[i][0]; }
+    return versions[versions.length - 1][0];
+  }
+
+  /** The version of a test this visitor sees: the control (first) when they are not in it. */
+  window.AC_EXP = function (id) {
+    var t = null, i;
+    for (i = 0; i < TESTS.length; i++) if (TESTS[i].id === id) t = TESTS[i];
+    if (!t) return '';
+    var control = t.versions[0][0];
+    if (t.status === 'ended') return t.winner;
+    if (t.status !== 'running') return control;
+    if (given[id]) return given[id];
+    var all = storedTests();
+    var v = all[id];
+    var known = t.versions.some(function (x) { return x[0] === v; });
+    if (!known) {
+      // Only visitors who arrived the right way join. Once in, they stay in,
+      // even on a later visit that came in some other way.
+      var src = window.AC_SOURCE().split('/')[0].trim().toLowerCase();
+      if (t.sources && t.sources.indexOf(src) < 0) return control;
+      v = draw(t.versions);
+      all[id] = v;
+      try { localStorage.setItem(EXP_KEY, JSON.stringify(all)); } catch (e) { /* this page only */ }
+    }
+    given[id] = v;
+    pending.push([id, v]);
+    flushTests();
+    return v;
+  };
+
+  /** "golf-code: code", for the booking email. Empty when in no test. */
+  window.AC_EXPS = function () {
+    return Object.keys(given).map(function (id) { return id + ': ' + given[id]; }).join(', ');
+  };
+
+  function variantString() {
+    return Object.keys(given).map(function (id) { return 'ac-' + id + '-' + given[id]; }).join(',').slice(0, 100);
+  }
+
+  /* GA4's own pattern for outside testing tools, and a Clarity tag to filter recordings. */
+  function flushTests() {
+    if (!loaded) return;
+    while (pending.length) {
+      var p = pending.shift();
+      try {
+        if (window.gtag) window.gtag('event', 'experience_impression', { exp_variant_string: 'ac-' + p[0] + '-' + p[1] });
+        if (window.clarity) window.clarity('set', 'exp_' + p[0], p[1]);
+      } catch (e) { /* measurement must never break the page */ }
+    }
+  }
+
+  /* Elements for one version only: data-exp="golf-code:code". Hidden by CSS until chosen. */
+  function showTestElements() {
+    document.querySelectorAll('[data-exp]').forEach(function (el) {
+      var parts = el.getAttribute('data-exp').split(':');
+      if (window.AC_EXP(parts[0]) === parts[1]) el.classList.add('exp-on');
+    });
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', showTestElements);
+  else showTestElements();
+
   /** Record an event. Does nothing unless analytics is loaded. */
   window.AC_TRACK = function (name, params) {
     if (!loaded) return;
     try {
-      if (window.gtag) window.gtag('event', name, params || {});
+      var p = params || {};
+      var tests = variantString();
+      if (tests && !p.exp_variant_string) p.exp_variant_string = tests;
+      if (window.gtag) window.gtag('event', name, p);
       if (window.clarity) window.clarity('event', name);
     } catch (e) { /* measurement must never break the page */ }
   };
@@ -96,6 +185,7 @@
       window.clarity('consentv2', { ad_Storage: 'denied', analytics_Storage: 'granted' });
       script('https://www.clarity.ms/tag/' + encodeURIComponent(CL));
     }
+    flushTests();
   }
 
   function getChoice() {

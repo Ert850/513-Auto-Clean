@@ -20,6 +20,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { experimentsForPage } from "./experiments.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const TEMPLATE = path.join(root, "js/config.template.js");
@@ -68,7 +69,13 @@ if (/\{\{[A-Z0-9_]+\}\}/.test(out)) {
   throw new Error("render-config: a placeholder survived substitution");
 }
 
-fs.writeFileSync(OUT, out);
+// The A/B tests (config/experiments.json), checked here so a mistake fails the
+// build. JSON is valid JavaScript, and the ids and version names are limited
+// to letters, digits and dashes, so nothing in it can end the statement.
+const experiments = experimentsForPage();
+const outWithTests = out + "\nwindow.AC_EXPERIMENTS = " + JSON.stringify(experiments) + ";\n";
+
+fs.writeFileSync(OUT, outWithTests);
 
 const shape = (n) => {
   const v = String(process.env[n] ?? DEFAULTS[n] ?? "");
@@ -78,6 +85,7 @@ const shape = (n) => {
 console.log(
   `js/config.js: ${found.length} set${found.length ? " (" + found.map((n) => `${n} ${shape(n)}`).join(", ") + ")" : ""}`,
 );
+console.log(`  A/B tests: ${experiments.map((x) => `${x.id} ${x.status}`).join(", ") || "none"}`);
 if (missing.length) {
   for (const n of missing) console.log(`  not set: ${n}, so ${COSTS[n]}`);
 }

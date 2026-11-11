@@ -45,6 +45,8 @@ export const LEGAL = {
   // calendar (Google Calendar), answers given after booking ("Help us get
   // ready") are collected, Resend's role is stated without reminders that do
   // not exist, and the record of what was agreed names the terms' date.
+  // 2026-11-11 (later): A/B tests (config/experiments.json) remember which
+  // version a visitor saw and send it with a booking. Same day, nothing live.
   privacyEffective: "2026-11-11",
 } as const;
 

@@ -330,6 +330,7 @@ function eventDescription({ contact, cart, priced, extras, payInFull, kind }) {
   if (extras.notes) lines.push(`  Notes: ${extras.notes}`);
   if (extras.locationNote) lines.push(`  ** NEEDS A LOCATION SORTED ** ${extras.locationNote}`);
   if (extras.source) lines.push("", "SOURCE", `  ${extras.source}`);
+  if (extras.experiments) lines.push("", "A/B TESTS", `  ${extras.experiments}`);
   if (extras.heard) lines.push("", "HEARD ABOUT US", `  ${extras.heard}`);
 
   return lines.join("\n");
@@ -452,6 +453,8 @@ export async function handler(event) {
     locationNote: text(rawCart.locationNote, 300),
     // The tagged link they arrived through (a magazine QR code), for ROI.
     source: text(payload?.source, 120),
+    // Which A/B test versions they saw (config/experiments.json), "golf-code: code".
+    experiments: text(payload?.experiments, 200),
     // Their answer to "Where did you hear about us?" on the checkout.
     heard: text(payload?.heard, 60),
   };

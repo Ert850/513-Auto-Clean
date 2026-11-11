@@ -1400,6 +1400,8 @@
     if (window.AC_TRACK) window.AC_TRACK(name, params);
   }
   function source() { return window.AC_SOURCE ? window.AC_SOURCE() : ''; }
+  /** Which A/B test versions this visitor saw, "golf-code: code" (config/experiments.json). */
+  function experiments() { return window.AC_EXPS ? window.AC_EXPS() : ''; }
 
   /**
    * Is the chosen time STILL free?
@@ -6745,6 +6747,8 @@
           idempotencyKey: bookingKey(),
           // Which tagged link brought them here, e.g. a magazine QR code.
           source: source(),
+          // Which A/B test versions they saw, so bookings count per version.
+          experiments: experiments(),
           // Their own answer to "Where did you hear about us?".
           heard: state.heard,
           // Who the time was given to. The server only honours a name in its
@@ -6853,6 +6857,7 @@
       '\n  Filming: ' + (state.consent.media ? 'YES' : 'no') + '\n\n' +
       (state.notes ? 'NOTES\n  ' + state.notes + '\n' : '') +
       (source() ? '\nSOURCE\n  ' + source() + '\n' : '') +
+      (experiments() ? '\nA/B TESTS\n  ' + experiments() + '\n' : '') +
       (state.heard ? '\nHEARD ABOUT US\n  ' + state.heard + '\n' : '');
   }
 

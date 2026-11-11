@@ -54,6 +54,19 @@ Built overnight, November 10 to 11, for you to evaluate. It combines your 8 answ
   - **Tests:** an end-date test with exact instants, which now passes in UTC too, plus file checks. 565 of 565 pass.
 - **To test:** LIKENEW and FRIANDFAM work as before; GOLF10 is refused.
 
+### A/B testing: `config/experiments.json` (owner and user, November 11)
+- **What:** a random split per visitor that sticks across visits, in `js/analytics.js` (`AC_EXP`). It has a source rule (only /golf visitors join, for example) and elements per version (`data-exp="test:version"`, hidden by CSS until chosen, so the wrong version never flashes up).
+- **Results:**
+  - the booking email and the calendar event name the version ("A/B TESTS"), counted even when analytics is declined;
+  - after Accept only, GA4 gets `experience_impression` with `exp_variant_string`, and every event carries it;
+  - after Accept only, Clarity gets a tag.
+- **How to run and read a test:** `docs/AB-TESTING.md`. It includes why a split per visitor and not the owner's two weeks on, two weeks off.
+- **Config:** checked at build (`web/scripts/experiments.mjs`, from `render-config.mjs`) and written into `js/config.js` as `AC_EXPERIMENTS`. A typo fails the build.
+- **First test, set up but off:** `golf-code`, "no-code" against "code", for /golf visitors. It waits on the golf page and on GOLF10 being switched on.
+- **Privacy policy:** a new paragraph saying a test version is remembered and sent with a booking. The "Apart from those two" count is fixed. Date unchanged (same day, nothing live); re-locked.
+- **Tests:** `experiments.test.ts`, 17 tests. They run the real `analytics.js` in a sandbox: weights, stickiness, the source rule, off/ended/unknown tests, element switching, nothing reaching GA before Accept, and storage blocked. 582 of 582 pass.
+- **To test:** with a test set to running, open /?utm_source=golf: `localStorage['ac-exp']` holds a version and only that version's element shows. A booking email carries "A/B TESTS".
+
 ## Round 20 (November 12): header at mid widths, one Continue at checkout
 
 ### Header: Priority+ with a More menu (owner's pick B of three, `docs/mockups/nav-widths-*.png`)
