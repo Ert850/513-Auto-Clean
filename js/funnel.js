@@ -3849,7 +3849,8 @@
     // (checkout review, November 10: the time was on screen four times).
     if (onCheckout() && state.ckDone.when && !steerFor(ms)) return setPick('');
     var fee = feeText(ms);
-    var later = state.step > ti;
+    // No "Change" while Time is open: the times are already on screen.
+    var later = state.step > ti && !(onCheckout() && ckOpenId() === 'when');
     // Compact, so the line fits beside a suggestion: "+$37.50 rush + early".
     // The full wording, short notice included, is on the steps themselves.
     // The fee's one name (owner's approval, November 10), in dollars.
@@ -4260,10 +4261,11 @@
       '<b>' + esc(spanLabel(ms, dur)) + '</b>' + priceTag(ms, true) +
       '<p>' + esc(arrivingBetween(ms)) + '</p>' +
       '<p>About ' + esc(fmtDur(dur)) + ' detailing</p>' +
-      (chosen
-        ? '<p class="bk-tl-card-mine">Your time</p>'
-        : '<button type="button" class="bk-tl-card-go" data-slot="' + ms + '" data-row="' + row + '"' + (sug ? ' data-sug="1"' : '') +
-          ' data-via="timeline_card">Choose this time</button>');
+      (chosen ? '<p class="bk-tl-card-mine">' + TICK + 'Your time</p>' : '') +
+      // Chosen or not, the button moves on with this time (owner, November
+      // 12: a tap on a row only selects it).
+      '<button type="button" class="bk-tl-card-go" data-slot="' + ms + '" data-row="' + row + '"' + (sug ? ' data-sug="1"' : '') +
+        ' data-via="timeline_card">' + (chosen ? 'Continue with this time' : 'Choose this time') + '</button>';
   }
   /** A short fade as text changes in place (none when motion is reduced). */
   function fadeIn(node) {
@@ -6088,9 +6090,23 @@
       // the week (its hover block already showed the whole detail, start to
       // finish). The time is chosen and checked, and the next step opens.
       // Coming back shows it as the block and in the bottom bar.
-      // On the day timeline, the whole job shows as a solid block for a
-      // moment first, so a tap (no pointing on a touch screen) sees its
-      // start and finish too before the form moves on (November 11).
+      // The day timeline is the exception (owner, November 12): a tap on a
+      // row only selects it, so its card can be read and times compared (a
+      // touch screen has no pointing, so the tap was the only way to see a
+      // card, and it left the calendar). The card's button, or Continue in
+      // the bar, moves on.
+      if (t.closest('.bk-tl') && !t.closest('#bkTlCard')) {
+        var keep = t.dataset.slot;
+        repaintSlots();
+        updatePick();
+        if (onCheckout()) el('bkNext').hidden = ckNextIdle();
+        var again = root.querySelector('.bk-tl .bk-tl-s[data-slot="' + keep + '"]');
+        if (again && again.focus) again.focus({ preventScroll: true });
+        updateCue();
+        return;
+      }
+      // The card's button: the whole job shows as a solid block for a
+      // moment first, then the form moves on (November 11).
       if (t.closest('.bk-tl')) {
         tlPicking = true;
         previewTl(t, true);
