@@ -62,6 +62,12 @@ The 513 Auto Clean jobs calendar goes free/busy only **the minute this branch is
 - **Now:** a bold "Extras:" line with no price, then each extra indented, with its option in grey only when it adds something ("Stain Treatment  Moderate to major removal  $100"), prices in the usual column. With several vehicles, "Extras (vehicle 2):".
 - **To test:** Review with two extras, at 1440 and 375 wide.
 
+### Day timeline: one block at a time, fee words where you can see them (owner's screenshot, November 11)
+- **Bug: a big "Suggested" box, only sometimes.** *Root cause:* with a time already chosen (often the suggested one, picked from the recommended cards), the timeline draws that job as a block. Pointing at another start drew the preview block on top of it instead of replacing it, so the two overlapped and the chosen job's visible top hour, tagged "Suggested", read as the suggestion taking a whole block. It only happened with a time chosen and the pointer on a start inside its job. Now pointing hides the chosen job and its rows show again; blocks carry no "Suggested" tag, so a suggestion is only ever its own row with the star.
+- **The fee in words on the first row you can see.** The words ("+$25 rush fee", "Standard price") were on the first row of each same-price stretch even when a block covered that row, leaving "+$25" alone below it. Rows under a block (chosen or pointed at) now count as hidden; otherwise still once per stretch.
+- **Earlier and Later times fold again** whenever the day or the week changes (day buttons, the week arrows, This week, Go to a date), as they do when the calendar opens.
+- **To test:** pick a recommended time, open See additional times, point at a start inside the chosen job (one block only, the suggested row back with its star); open Earlier times, then change day: folded again.
+
 ### Still open from that validation
 - When the card-on-file switch goes live, its payment box should carry the short-notice line and the "a few quick questions" line too (latent: the switch is off).
 
