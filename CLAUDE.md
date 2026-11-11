@@ -75,6 +75,7 @@ Read this before changing anything. Every rule below came from a real bug or an 
 - **Design:** keep the site's current look (colors, type, components in `styles.css`). Changes are cleanup and reorganization for conversion, not restyling.
 - **Booking:** never break existing booking behavior. Check what the live site does first (`node web/scripts/check-live.mjs`, or step through the form without submitting). GoHighLevel runs *alongside* the current flow, not instead of it.
 - **Wording:** for every change, ask whether the wording reflects the reality of the business. No em-dashes in anything a customer reads.
+- **Business context:** before changing copy, services, prices pages, FAQ or the booking flow, read `docs/BUSINESS-CONTEXT.md` (what sells, target areas, customers' own words, why leads don't book, wording rules). The full version with customer data is the owner's private Data Pack doc.
 - **Tracking:** log every change, with what to test, in `docs/SESSION-CHANGES.md` (parallel sessions: `docs/SESSION-CHANGES-<topic>.md`). Each fixed bug gets its root cause written down.
 
 ## Build and test
