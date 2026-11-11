@@ -4128,7 +4128,7 @@
   }
 
   /** Each half-hour row of the day timeline is this tall, plus the gap under it (book.css .bk-tl). */
-  var TL_ROW = 36, TL_GAP = 3;
+  var TL_ROW = 30, TL_GAP = 2;
 
   /**
    * Laptops, desktops and tablets: one day as a timeline, every half hour
@@ -4172,7 +4172,8 @@
     }));
 
     html += hidEarly.length ? foldButton('early', hidEarly) : '';
-    html += '<div class="bk-tl" data-dur="' + dur + '" data-rows="' + shown.length +
+    var dayName = tzDay(day.dayStart + DAY / 2, { weekday: 'long', month: 'long', day: 'numeric' });
+    html += '<div class="bk-tl" data-dur="' + dur + '" data-day="' + esc(dayName) + '" data-rows="' + shown.length +
       '" style="grid-template-rows:repeat(' + shown.length + ', ' + TL_ROW + 'px)">';
     shown.forEach(function (x, i) {
       var s = byMin[x];
@@ -4196,6 +4197,15 @@
     // The chosen job, start to finish, and one for pointing at a start.
     if (mine > -1) html += tlBlock(byMin[shown[mine]].ms, mine, shown.length, dur, 'mine');
     html += '<div class="bk-tl-span preview" id="bkTlPreview" aria-hidden="true" hidden></div>';
+    // The side card (owner's pick C, November 11): the chosen time, else the
+    // suggested start, else the first; pointing at a start shows that one.
+    var cardRow = mine;
+    if (cardRow < 0) shown.forEach(function (x, i) { if (cardRow < 0 && byMin[x] && byMin[x].sug) cardRow = i; });
+    if (cardRow < 0) shown.forEach(function (x, i) { if (cardRow < 0 && byMin[x]) cardRow = i; });
+    if (cardRow > -1) {
+      html += '<aside class="bk-tl-card" id="bkTlCard" style="grid-row:1 / span ' + shown.length + '" aria-live="polite">' +
+        tlCard(byMin[shown[cardRow]].ms, cardRow, dur, dayName, byMin[shown[cardRow]].sug, cardRow === mine) + '</aside>';
+    }
     html += '</div>';
     return html + (hidLate.length ? foldButton('late', hidLate) : '');
   }
@@ -4213,7 +4223,39 @@
   }
   function tlBlockInner(ms, dur) {
     var h = Math.round(dur / 30 * (TL_ROW + TL_GAP) - TL_GAP);
-    return '<i style="height:' + h + 'px"><b>' + esc(spanLabel(ms, dur)) + '</b>' + priceTag(ms, true) + '</i>';
+    // The price is on the side card, so the block says the time and the length.
+    return '<i style="height:' + h + 'px"><b>' + esc(spanLabel(ms, dur)) + '</b>' +
+      '<span class="bk-tl-len">About ' + esc(fmtDur(dur)) + ' detailing</span></i>';
+  }
+
+  /** "Arriving between 6 and 7am" (owner, November 11). */
+  function arrivingBetween(ms) {
+    return 'Arriving between ' + arrivalWindow(ms).replace(' to ', ' and ');
+  }
+
+  /**
+   * The side card: the day, the time, its price in words, when we arrive and
+   * for how long. Its button is the same start as its row (data-slot and
+   * data-row), so it picks the time the way a tap on the row does.
+   */
+  function tlCard(ms, row, dur, dayName, sug, chosen) {
+    return '<h6>' + esc(dayName) + '</h6>' +
+      (sug ? '<em class="bk-tl-star">' + STAR + 'Suggested</em>' : '') +
+      '<b>' + esc(spanLabel(ms, dur)) + '</b>' + priceTag(ms, true) +
+      '<p>' + esc(arrivingBetween(ms)) + '</p>' +
+      '<p>About ' + esc(fmtDur(dur)) + ' detailing</p>' +
+      (chosen
+        ? '<p class="bk-tl-card-mine">Your time</p>'
+        : '<button type="button" class="bk-tl-card-go" data-slot="' + ms + '" data-row="' + row + '"' + (sug ? ' data-sug="1"' : '') +
+          ' data-via="timeline_card">Choose this time</button>');
+  }
+  function renderTlCard(tl, t) {
+    var card = tl && tl.querySelector('#bkTlCard');
+    if (!card) return;
+    var src = t || tl.querySelector('.bk-tl-s[aria-pressed="true"]') || tl.querySelector('.bk-tl-s[data-sug]') || tl.querySelector('.bk-tl-s[data-slot]');
+    if (!src) return;
+    card.innerHTML = tlCard(Number(src.dataset.slot), Number(src.dataset.row), Number(tl.dataset.dur), tl.dataset.day,
+      Boolean(src.dataset.sug), src.getAttribute('aria-pressed') === 'true');
   }
 
   /** A timeline row's price, both ways: in words when the row leads its stretch (.lead), else "+$25" or nothing. */
@@ -4275,6 +4317,8 @@
     // overlapped, and the chosen job's top read as a big "Suggested" box).
     tl.classList.toggle('pointing', t.getAttribute('aria-pressed') !== 'true');
     markAllLeads();
+    // The card follows the start being pointed at, but not its own button.
+    if (!t.closest('#bkTlCard')) renderTlCard(tl, t);
   }
   function clearTlPreview(tl) {
     tl.querySelectorAll('.pv').forEach(function (c) { c.classList.remove('pv'); });
@@ -4282,6 +4326,7 @@
     if (pv) pv.hidden = true;
     tl.classList.remove('pointing');
     markAllLeads();
+    renderTlCard(tl, null);
   }
 
   /**

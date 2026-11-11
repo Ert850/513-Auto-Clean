@@ -461,9 +461,32 @@ body.bk-open { overflow: hidden; }
    times are grey hatched. Row height lives in funnel.js too (TL_ROW,
    TL_GAP): change both together. */
 .bk-tl-day { margin: 0 0 .5rem; font-family: var(--font-display); font-size: 1.02rem; }
-.bk-tl { display: grid; grid-template-columns: 3.6rem minmax(0, 1fr); gap: 3px 0; }
-.bk-tl-t { grid-column: 1; align-self: center; text-align: right; padding-right: .6rem; font-size: .8rem; font-weight: 700; color: var(--text-soft); white-space: nowrap; }
-.bk-tl-t.half { font-size: .72rem; font-weight: 600; opacity: .75; }
+/* Option C (owner, November 11): bigger hour labels, rows only as wide as
+   what they say (full-width rows were mostly empty), and a card beside them
+   with the time's details. Rows are 30px (TL_ROW), 2px apart (TL_GAP). */
+.bk-tl { display: grid; grid-template-columns: 4.6rem minmax(0, 18rem) minmax(12.5rem, 1fr); gap: 2px 0; }
+.bk-tl-t { grid-column: 1; align-self: center; text-align: right; padding-right: .8rem; font-size: 1rem; font-weight: 800; color: var(--ink); white-space: nowrap; }
+.bk-tl-t.half { font-size: .84rem; font-weight: 600; color: var(--text-soft); }
+.bk-tl-s .bk-px { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.bk-tl-len { font-size: .8rem; font-weight: 600; color: var(--text-soft); }
+.bk-tl-card {
+  grid-column: 3; align-self: start; position: sticky; top: .6rem; margin-left: .9rem;
+  background: var(--paper-2); border: 1.5px solid var(--line); border-radius: 10px;
+  padding: .85rem .95rem; font-size: .86rem; line-height: 1.4;
+  display: flex; flex-direction: column; align-items: flex-start; gap: .15rem;
+}
+.bk-tl-card h6 { margin: 0; font-size: .72rem; letter-spacing: .06em; text-transform: uppercase; color: var(--text-soft); }
+.bk-tl-card > b { font-family: var(--font-display); font-size: 1.15rem; margin: .1rem 0 .15rem; }
+.bk-tl-card .bk-px { font-size: .86rem; font-weight: 800; }
+.bk-tl-card .bk-px.fee { background: rgba(240,169,63,.18); padding: .05rem .4rem; border-radius: 4px; }
+.bk-tl-card p { margin: .1rem 0 0; color: var(--text-soft); }
+.bk-tl-card .bk-tl-star { margin-left: 0; }
+.bk-tl-card-go {
+  margin-top: .65rem; width: 100%; min-height: 44px; border: 0; border-radius: 8px; cursor: pointer;
+  background: var(--red); color: #fff; font: inherit; font-weight: 800;
+}
+.bk-tl-card-go:hover { background: var(--red-deep); }
+.bk-tl-card p.bk-tl-card-mine { margin-top: .5rem; color: var(--text); font-weight: 800; }
 /* Rows past the last start shown: only room for that job's block to finish
    in (no box, not "not available"). */
 .bk-tl-t.tail { opacity: .4; }
