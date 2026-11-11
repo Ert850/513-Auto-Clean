@@ -61,4 +61,4 @@ That's all. Everything below runs on its own.
    - The Content Security Policy reports nothing for Google or Clarity (both are already allowed in `netlify.toml`).
 6. **Logs:** record every change in `docs/SESSION-CHANGES-pipeline.md`, plus a short "how to read your reports" note: visits by source, bookings by source, and where people leave the booking form.
 
-**What still needs you after that:** nothing for analytics. The magazine pages need the owner's answers (`docs/OWNER-QUESTIONS-MAGAZINES.md`). Going live needs the pipeline merged into `main` with your approval. Before that merge goes live, the 513 Auto Clean jobs calendar must be switched to busy only (see `docs/DETAILERS-GUIDE.md`).
+**What still needs you after that:** nothing for analytics. The magazine pages need the owner's answers (`docs/OWNER-QUESTIONS-MAGAZINES.md`). Going live needs the pipeline merged into `main` with your approval. The minute that merge goes live, the 513 Auto Clean jobs calendar must be switched to free/busy only (not before; see `docs/DETAILERS-GUIDE.md`).

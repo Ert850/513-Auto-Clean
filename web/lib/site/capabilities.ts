@@ -109,7 +109,7 @@ export const CAPABILITIES: Capability[] = [
     // arrive. Tying email to that would hold back a working feature for
     // weeks for no reason.
     id: "automatedEmail",
-    what: "Automatic confirmation and reminder emails",
+    what: "Automatic confirmation emails",
     /*
      * Live, and verified: POST /api/send-confirmation returned
      * {sent:true, owner:true} from production, and the domain is verified so
@@ -237,11 +237,14 @@ export const PROCESSORS: Processor[] = [
   { name: "cdnjs (Cloudflare)", does: "serves the map library, so Cloudflare receives your IP address when the map loads." },
   { name: "Google Places", does: "suggests addresses as you type in the booking form. What you type in that box goes to Google.", capability: "placesAutocomplete" },
   { name: "Google Maps (Routes)", does: "measures the drive to your address so we can price travel. This happens from our server, with your address, not from your browser.", capability: "measuredTravel" },
-  { name: "Google Calendar", does: "holds our availability. Your browser reads our open times from it.", capability: "liveCalendar" },
+  // Bookings are written to it too (send-confirmation.mjs, _gcal.mjs), on a
+  // calendar shared as free/busy only, so the public sees busy times and
+  // never a booking's details (session audit, November 11).
+  { name: "Google Calendar", does: "holds our availability and our schedule. When you book, the job goes onto our booking calendar with your name, phone, email, address and notes, so we know where to be. That calendar is private: anyone else sees only that the time is taken. Your browser reads only our open times.", capability: "liveCalendar" },
   { name: "Stripe", does: "takes card payments and keeps your card on file. Card details go straight to Stripe over an encrypted connection; we never see or store the card number.", capability: "cardOnFile" },
   { name: "PayPal", does: "takes PayPal and Venmo payments.", capability: "digitalWallets" },
   { name: "Twilio", does: "sends our appointment text messages.", capability: "automatedTexts" },
-  { name: "Resend", does: "sends our confirmation and reminder emails.", capability: "automatedEmail" },
+  { name: "Resend", does: "sends our booking confirmation emails, and the emails we receive about bookings and unfinished checkouts.", capability: "automatedEmail" },
   // Named separately from the hosting row on purpose. "Netlify hosts the
   // website" does not tell a reader that a script is running in their
   // browser and reporting back, and that is the part worth knowing.

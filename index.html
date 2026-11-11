@@ -650,7 +650,7 @@
            the trust strip below starts under a laptop's fold. Same words as
            the trust badge; the build stamps the count and js/reviews.js keeps
            it live. -->
-      <span class="hero-badge reveal"><span class="hb-stars" aria-hidden="true">★★★★★</span> <span class="hb-text">Rated 5.0 from 32 reviews on Google &amp; Yelp</span></span>
+      <span class="hero-badge reveal"><span class="hb-stars" aria-hidden="true">★★★★★</span> <span class="hb-text">Rated 5.0 from 32 reviews on Google</span></span>
       <h1 class="reveal" data-d="1">Car detailing in Cincinnati, <span class="grad">brought to your door.</span></h1>
       <p class="hero-sub reveal" data-d="2">513 Auto Clean is a UC student-owned team bringing professional interior and exterior detailing to your home or workplace. Get a showroom-clean car without losing your day to a shop.</p>
       <div class="hero-cta reveal" data-d="3">
@@ -679,7 +679,7 @@
     <!-- Google reviews badge (rating text kept in step by js/reviews.js) -->
     <a class="g-badge" id="google-badge" href="https://maps.app.goo.gl/PAAdpX7owQmc1cAz9" target="_blank" rel="noopener" aria-label="Read our reviews on Google">
         <svg class="g-logo" viewBox="0 0 24 24"><path fill="#4285F4" d="M22 12c0-.6-.1-1.2-.2-1.8H12v3.6h5.6a4.8 4.8 0 0 1-2 3.1v2.6h3.2A9.6 9.6 0 0 0 22 12z"/><path fill="#34A853" d="M12 22c2.7 0 5-.9 6.6-2.4l-3.2-2.6c-.9.6-2 .9-3.4.9-2.6 0-4.8-1.7-5.6-4.1H3.1v2.6A10 10 0 0 0 12 22z"/><path fill="#FBBC05" d="M6.4 13.8a6 6 0 0 1 0-3.6V7.6H3.1a10 10 0 0 0 0 8.8z"/><path fill="#EA4335" d="M12 6.4c1.5 0 2.8.5 3.8 1.5l2.8-2.8A10 10 0 0 0 3.1 7.6l3.3 2.6C7.2 8 9.4 6.4 12 6.4z"/></svg>
-        <span class="g-meta"><span class="g-stars">★★★★★</span><span class="g-text">Rated 5.0 from 32 reviews on Google &amp; Yelp</span></span>
+        <span class="g-meta"><span class="g-stars">★★★★★</span><span class="g-text">Rated 5.0 from 32 reviews on Google</span></span>
       </a>
     <div class="trust-items">
       <span class="ti"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg> UC student-owned &amp; operated</span>
@@ -801,7 +801,7 @@
             <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 6L9 17l-5-5"/></svg> Clean door jams</li>
             <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 6L9 17l-5-5"/></svg> Brush detail every crack and crevice</li>
           </ul>
-          <details class="svc-how"><summary>How it works</summary><p>Everything in Basic, then the deep work: engrained particles pulled out of the carpet, upholstery shampooed and scrubbed, mats washed and dressed, leather conditioned, glass and door jams cleaned, and every crack and crevice brush detailed. Stain reduction is part of it. It does NOT guarantee a stain comes out completely, steam sanitize the whole vehicle, or remove the seats to get underneath them. Most engrained fibers and pet hair come out at this level, but the truly stubborn ones woven deep into the carpet backing need the individual fiber lifting in Showroom Ready. Deep set stains want the extraction add-on and lingering smells want ozone.</p></details>
+          <details class="svc-how"><summary>How it works</summary><p>Everything in Basic, then the deep work: engrained particles pulled out of the carpet, upholstery shampooed and scrubbed, mats washed and dressed, leather conditioned, glass and door jams cleaned, and every crack and crevice brush detailed. Stain reduction is part of it. It does NOT guarantee a stain comes out completely, steam sanitize the whole vehicle, or remove the seats to get underneath them. Most engrained fibers and pet hair come out at this level, but the truly stubborn ones woven deep into the carpet backing need the individual fiber lifting in Showroom Ready. Deep set stains want the Stain Treatment extra and lingering smells want the Ozone Odor Reset.</p></details>
           <div class="svc-foot"><a class="btn btn-primary btn-block" href="book.html" data-book-package="full-interior">Book Full Interior</a></div>
         </article>
 
@@ -1094,16 +1094,19 @@
 
 <!-- CHROME:SCRIPTS:START -->
 <!-- The booking form is on every page, so Book Now opens it where you are. -->
-<div id="bookFunnel" hidden></div>
+<!-- data-clarity-mask: Clarity recordings never show what is typed or shown
+     back in the booking form (names, addresses, phone), as the privacy policy
+     promises. Balanced masking alone hides inputs, not the Review screen. -->
+<div id="bookFunnel" hidden data-clarity-mask="true"></div>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&family=Hanken+Grotesk:wght@400;500;600;700&display=swap" />
 <link rel="stylesheet" href="book.css?v=92c557e8d4" />
 <!-- Deferred, so they run in this order: the pricing bundle before the
      booking form and before any page script that prices (travel.js). -->
-<script src="js/pricing.bundle.js?v=5ec9b9c8b4" defer></script>
-<script src="js/funnel.js?v=74dd3618b0" defer></script>
+<script src="js/pricing.bundle.js?v=b1da446f6c" defer></script>
+<script src="js/funnel.js?v=20bf015788" defer></script>
 <script src="script.js?v=62c84151cf" defer></script>
 <!-- CHROME:SCRIPTS:END -->
 <script src="js/gallery.js?v=7e24648f8a" defer></script>
-<script src="js/reviews.js?v=bdd1232676" defer></script>
+<script src="js/reviews.js?v=14c0b9156b" defer></script>
 </body>
 </html>

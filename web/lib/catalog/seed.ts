@@ -162,9 +162,9 @@ const PACKAGES: Package[] = [
     category: "interior",
     tagline: "A deep, top to bottom detail that makes it feel new again.",
     note:
-      "Everything in Basic, then the deep work: engrained particles pulled out of the carpet, upholstery shampooed and scrubbed, mats washed and dressed, leather conditioned, glass and door jams cleaned, and every crack and crevice brush detailed. Stain reduction is part of it. It does NOT guarantee a stain comes out completely, steam sanitize the whole vehicle, or remove the seats to get underneath them. Most engrained fibers and pet hair come out at this level, but the truly stubborn ones woven deep into the carpet backing need the individual fiber lifting in Showroom Ready. Deep set stains want the extraction add-on and lingering smells want ozone.",
+      "Everything in Basic, then the deep work: engrained particles pulled out of the carpet, upholstery shampooed and scrubbed, mats washed and dressed, leather conditioned, glass and door jams cleaned, and every crack and crevice brush detailed. Stain reduction is part of it. It does NOT guarantee a stain comes out completely, steam sanitize the whole vehicle, or remove the seats to get underneath them. Most engrained fibers and pet hair come out at this level, but the truly stubborn ones woven deep into the carpet backing need the individual fiber lifting in Showroom Ready. Deep set stains want the Stain Treatment extra and lingering smells want the Ozone Odor Reset.",
     notIncluded: ["A promise every stain comes out completely", "Steam sanitizing the whole vehicle", "Taking the seats out to clean underneath"],
-    tip: "Deep stains or smells? Add the extraction or ozone extra. The most stubborn pet hair needs Showroom Ready.",
+    tip: "Deep stains or smells? Add a Stain Treatment or the Ozone Odor Reset. The most stubborn pet hair needs Showroom Ready.",
     priceCents: 21500,
     durationMin: 240,
     componentIds: [...FULL_INT_IDS],

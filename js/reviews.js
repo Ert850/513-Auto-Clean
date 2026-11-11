@@ -422,7 +422,7 @@
 
     // The trust strip's badge and the hero's pill say the same thing.
     document.querySelectorAll('#google-badge .g-text, .hero-badge .hb-text').forEach(function (el) {
-      el.textContent = 'Rated ' + r1 + ' from ' + n + word + ' on Google & Yelp';
+      el.textContent = 'Rated ' + r1 + ' from ' + n + word + ' on Google';
     });
 
     var num = document.querySelector('#revFallback .rf-score .num');

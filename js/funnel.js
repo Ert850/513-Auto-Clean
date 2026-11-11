@@ -4485,7 +4485,9 @@
       mediaQuestion() +
       consentBox('sms', 'bkSms',
         '<b>Text me about this booking</b> <em class="bk-opt">Optional</em>',
-        'A confirmation, a reminder and an on-the-way text. Msg and data rates may apply. Reply STOP to opt out, HELP for help.') +
+        // What we actually send today: texts about this booking, by hand (no
+        // automatic reminders yet), session audit, November 11.
+        'Texts about this booking, such as when we are on the way. Usually 2 to 5 messages per booking. Msg and data rates may apply. Reply STOP to opt out, HELP for help.') +
       heard;
   }
 
@@ -4703,7 +4705,8 @@
     };
     return '<div class="bk-acc bk-media' + (m === null ? '' : ' answered') + '">' +
       '<div class="bk-media-t"><p class="bk-acc-q">Can we record during the detail? <span class="bk-req" aria-hidden="true">*</span></p>' +
-      '<p class="bk-acc-h">For short clips on our social media. We always blur faces, license plates and anything private. ' +
+      // The same promise as the terms (section 10), word for word on what is blurred.
+      '<p class="bk-acc-h">For short clips on our social media. We always blur children, license plates, house numbers and anything private. ' +
       '<a href="https://www.instagram.com/513autoclean/" target="_blank" rel="noopener">See what we post</a></p></div>' +
       '<div class="bk-acc-opts" role="group" aria-label="Can we record during the detail?">' +
         opt('yes', 'Yes') + opt('no', 'No') + '</div>' +
@@ -4775,7 +4778,9 @@
         track('booking_followup', { water: Boolean(state.access.water), power: Boolean(state.access.power) });
         if (quiet) return;
         var box = root.querySelector('#bkPrep');
-        if (box) box.innerHTML = '<h4>Thanks, that is with your detailer</h4><p class="bk-prep-sub">It is attached to your booking.</p>';
+        // True to what happens: it is an email to us, which we use to get ready
+        // (session audit, November 11: "attached to your booking" was not).
+        if (box) box.innerHTML = '<h4>Thanks, we have it</h4><p class="bk-prep-sub">We will use it to get ready for your detail.</p>';
       })
       .catch(function () {
         prepSent = false;
@@ -4824,6 +4829,12 @@
         (email ? 'by email' : 'by text or email, whichever you said') +
         '. Nothing is booked and nothing is charged until you say yes to it.</li>');
       out.push('<li><b>Say yes and it is yours.</b> That is the point the time is held and these terms start.</li>');
+    } else if (state.slot && shortNotice(state.slot)) {
+      // Short notice is a request until a detailer accepts it (owner,
+      // November 10), and the screen and the email say so too (session
+      // audit, November 11: the email used to say "confirmed").
+      out.push('<li><b>It is a request until a detailer accepts it.</b> It is short notice, so we reply as ' +
+        'fast as we can, ' + (email ? 'by email' : 'by phone') + '. Nothing is charged either way.</li>');
     } else if (calendar) {
       // The calendar is live, so the slot really was taken when they picked
       // it. Saying somebody will confirm it by hand would be wrong.
@@ -4841,10 +4852,13 @@
         'Until you hear back, treat the time as requested rather than locked in.</li>');
     }
 
-    out.push(texts
-      ? '<li><b>A reminder before the day</b>, and a text when we are on the way.</li>'
-      : '<li><b>A text before we set off</b>, with an ETA. We send that one by hand, so if you need to ' +
-        'move anything, replying to it reaches a person.</li>');
+    // Only texts to people who said yes to texts (terms, section 11).
+    out.push(state.consent.sms !== true
+      ? '<li><b>A call before we set off</b>, if anything changes. You said no to texts, so we email or call.</li>'
+      : texts
+        ? '<li><b>A reminder before the day</b>, and a text when we are on the way.</li>'
+        : '<li><b>A text before we set off</b>, with an ETA. We send that one by hand, so if you need to ' +
+          'move anything, replying to it reaches a person.</li>');
 
     if (state.advice && state.slot) {
       out.push('<li><b>Pay when it is done</b>, by ' + IN_PERSON + ', for whatever we agreed to do. ' +

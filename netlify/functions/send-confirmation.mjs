@@ -121,7 +121,7 @@ ${
   }`;
 }
 
-function customerEmail({ contact, when, priced, kind, slot }) {
+function customerEmail({ contact, when, priced, kind, slot, textsOk }) {
   const name = esc(String(contact.name || "").split(" ")[0] || "there");
 
   if (kind === "inquiry" || !when) {
@@ -150,8 +150,11 @@ ${receiptRows(priced)}`,
    * leave. That gets a line saying so rather than a blanket hedge on every
    * booking.
    */
-  const confirmed = isLive("liveCalendar");
   const soon = slot !== null && slot - Date.now() < 24 * 60 * 60 * 1000;
+  // Short notice is a request until a detailer accepts it, as the booking
+  // form says (owner, November 10; session audit, November 11: this email
+  // used to tell the same customer it was "confirmed and booked in").
+  const confirmed = isLive("liveCalendar") && !soon;
 
   /*
    * A HELD TIME WITH NO PRICE ON IT.
@@ -174,27 +177,31 @@ ${receiptRows(priced)}`,
       ? `<p style="margin:0 0 14px">This is <strong>confirmed and booked in</strong>. Nothing else is needed from you, and there is nothing left to accept.</p>`
       : `<p style="margin:0 0 14px">We will confirm this with you shortly, usually within a few hours. Treat the time as requested until you hear back.</p>`;
 
-  const shortNotice = confirmed && soon
+  const shortNotice = soon && !advice
     ? `<p style="margin:0 0 14px;padding:10px 12px;background:#fdf3e3;border-radius:8px;font-size:14px">` +
-      `Because this is within the next day, we will send a quick message to double check we can ` +
-      `make it. If anything has to move we will call you, not leave you waiting.</p>`
+      `This is short notice, so it is a request until a detailer accepts it. We will reply as fast as ` +
+      `we can, and nothing is charged either way.</p>`
     : "";
 
   return {
     subject: advice
       ? `Your time is held for ${when}`
-      : confirmed
-        ? `Booked in for ${when}`
-        : `We have your booking for ${when}`,
+      : soon
+        ? `We have your short-notice request for ${when}`
+        : confirmed
+          ? `Booked in for ${when}`
+          : `We have your booking for ${when}`,
     html: SHELL(
       advice
         ? `Thanks ${name}, your time is held`
-        : confirmed
-          ? `Thanks ${name}, you are booked in`
-          : `Thanks ${name}, we have your booking`,
+        : soon
+          ? `Thanks ${name}, we have your request`
+          : confirmed
+            ? `Thanks ${name}, you are booked in`
+            : `Thanks ${name}, we have your booking`,
       `${opening}${shortNotice}<p style="margin:0 0 6px;font-size:13px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#5a6069">When</p>
 <p style="margin:0 0 16px;font-size:18px;font-weight:700">${esc(when)}</p>
-<p style="margin:0 0 14px">That is a start time, not how long we stay: we arrive within the hour after it. We will text you an ETA before we set off.</p>
+<p style="margin:0 0 14px">That is a start time, not how long we stay: we arrive within the hour after it. ${textsOk ? "We will text you an ETA before we set off." : "If anything changes we will call or email you."}</p>
 ${
   advice
     ? `<p style="margin:0 0 14px">We have set aside <strong>${Math.round(ADVICE_HOLD_MIN / 60)} hours</strong>, which covers our longest single-vehicle detail. If what you pick needs less, we finish earlier and you pay less.</p>`
@@ -211,7 +218,7 @@ function ownerEmail({ contact, when, priced, kind, cart, detailer }) {
     subject:
       // "HELP ME DECIDE" first, because it is the one that needs something
       // from him before the day rather than just turning up.
-      `${kind === "advice" ? "HELP ME DECIDE" : kind === "inquiry" ? "REQUEST" : "BOOKING"}, ${contact.name}, ` +
+      `${kind === "advice" ? "HELP ME DECIDE" : kind === "inquiry" ? "REQUEST" : cart?.slot && cart.slot - Date.now() < 24 * 60 * 60 * 1000 ? "SHORT NOTICE REQUEST" : "BOOKING"}, ${contact.name}, ` +
       `${kind === "advice" ? "no package yet" : $(priced?.totalCents ?? 0)}${when ? `, ${when}` : ""}`,
     html: SHELL(
       kind === "advice" ? "Time held, package to work out" : kind === "inquiry" ? "New request" : "New booking",
@@ -395,7 +402,7 @@ export async function handler(event) {
     blockFeeBp: await blockFeeFor(detailer, cart.slot, payload?.timeFeeBp),
   });
   const when = whenLabel(cart.slot);
-  const ctx = { contact, when, priced, kind, cart, slot: cart.slot ?? null, detailer };
+  const ctx = { contact, when, priced, kind, cart, slot: cart.slot ?? null, detailer, textsOk: payload?.consent?.sms === true };
 
   const rawCart = payload?.cart ?? {};
   const rawAccess = rawCart.access ?? {};

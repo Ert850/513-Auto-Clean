@@ -41,7 +41,11 @@ export const LEGAL = {
   // reach the owner for one follow-up (checkoutFollowUp), and "where you
   // heard about us" is collected. Same day again, nothing live yet, so the
   // date stands.
-  privacyEffective: "2026-11-10",
+  // 2026-11-11 (session audit): bookings are written to our private booking
+  // calendar (Google Calendar), answers given after booking ("Help us get
+  // ready") are collected, Resend's role is stated without reminders that do
+  // not exist, and the record of what was agreed names the terms' date.
+  privacyEffective: "2026-11-11",
 } as const;
 
 export function longDate(iso: string): string {
