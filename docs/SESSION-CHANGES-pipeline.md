@@ -50,6 +50,17 @@ Built overnight, November 10 to 11, for you to evaluate. It combines your 8 answ
 - **Fix:** the line names the top recommended extras for this detail (`recommend.ts`, the ranking analytics will tune later): two for one side, one each for inside and out. The count is only extras this detail can still add. When every addable extra is named it says so plainly ("1 extra: headlight restoration"), and with none left, "Nothing more to add to this package". The line above drops its fixed examples.
 - **Now reads:** Basic Interior "4 extras, like pet hair removal or stain treatment"; Express Exterior "6 extras, like tire and rim shine or engine bay detail"; Full Exterior "1 extra: headlight restoration"; inside and out "10 extras, like pet hair removal or tire and rim shine".
 
+### Package level icons (owner's picks, November 12)
+- **Bug:** the Package row repeated the Service row's icon (Exterior and Express Exterior showed the same car). **Root cause:** `doneIcon()` mapped both steps to the service picture.
+- **Picked from mockups** (`docs/mockups/package-icons-*.png`, `package-cards-*.png`): round 1 A bars, B dots, C gauge; owner: "iterate on B". Round 2 B1 number badge, B2 level meter, B3 sparkle count; owner: **B2**. Cards: P1 icon, P2 meter after the name, P3 meter above the price; owner: **P2**, with more room before "Most popular".
+- **Built:**
+  - **Package row:** the service's picture over a four-segment meter, 1 to 4 filled.
+  - **Inside and out:** the seat over the interior level and the car over the exterior level, the shine sparkles top centre and a faint dashed line between (owner's design notes).
+  - **Package cards:** the same meter right after the name, read by screen readers as "Level 2 of 4".
+- **Levels come from the catalog order on each side** (`pkgLevel()`): Maintenance or Express 1, Basic 2, Full 3, Showroom Ready 4. Not from the card's position: inside and out shows no Maintenance, and numbering by position made Basic Interior read as level 1 in the first mockup.
+- **Lesson:** icon lines are drawn at a fixed screen width (`.bk-pic-ic * { vector-effect: non-scaling-stroke }`), so a scaled-down part needs no thicker stroke. Thickening it drew the seat and car as solid blobs.
+- **Checked:** 1440 and 375 px, each side, inside and out; every booking path to Done; 526 tests. Built screenshots: `docs/mockups/package-level-built-*.png`.
+
 ### Also
 - The QR code generator (`segno`, Python) is installed (your OK, November 12), ready for the magazine pages.
 
