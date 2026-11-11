@@ -5657,13 +5657,29 @@
     // Travel is drawn on its own below, with the distance and the drive time
     // behind it. Leaving the quote's own bare "Travel" line in as well
     // printed the same fee twice.
-    var rows = quote.lines.filter(function (l) {
-      return l.kind !== 'travel';
-    }).map(function (l) {
-      return '<tr class="' + l.kind + (l.amountCents < 0 ? ' neg' : '') + '">' +
-        '<td>' + esc(l.label) +
-        (l.vehicleIndex !== null && state.vehicles.length > 1 ? ' <i>(vehicle ' + (l.vehicleIndex + 1) + ')</i>' : '') +
-        '</td><td>' + $(l.amountCents) + '</td></tr>';
+    // Row classes are "ln-" + the line's kind. A bare "addon" picked up the
+    // site's add-on card (styles.css .addon: border, padding, a hover lift),
+    // so every extra drew as a big box that did nothing on hover (owner's
+    // screenshot, November 11).
+    var lines = quote.lines.filter(function (l) { return l.kind !== 'travel'; });
+    var vehNote = function (l) {
+      return l.vehicleIndex !== null && state.vehicles.length > 1 ? ' <i>(vehicle ' + (l.vehicleIndex + 1) + ')</i>' : '';
+    };
+    var rows = lines.map(function (l, i) {
+      if (l.kind === 'addon') {
+        // A vehicle's extras: one bold "Extras:" line with no price, then
+        // each extra indented, its price in the price column (owner, November 11).
+        var prev = lines[i - 1];
+        var head = !prev || prev.kind !== 'addon' || prev.vehicleIndex !== l.vehicleIndex
+          ? '<tr class="ln-extras-h"><td>Extras' + vehNote(l) + ':</td><td></td></tr>' : '';
+        var cut = l.label.indexOf(': ');
+        var name = cut > -1 ? l.label.slice(0, cut) : l.label;
+        var tier = cut > -1 ? l.label.slice(cut + 2) : '';
+        return head + '<tr class="ln-addon"><td>' + esc(name) + (tier ? ' <i>' + esc(tier) + '</i>' : '') +
+          '</td><td>' + $(l.amountCents) + '</td></tr>';
+      }
+      return '<tr class="ln-' + l.kind + (l.amountCents < 0 ? ' neg' : '') + '">' +
+        '<td>' + esc(l.label) + vehNote(l) + '</td><td>' + $(l.amountCents) + '</td></tr>';
     }).join('');
 
     /*

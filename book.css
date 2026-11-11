@@ -994,7 +994,11 @@ button.bk-tl-s:hover { border-color: var(--red); box-shadow: 0 0 0 3px var(--red
 .bk-lines td:last-child { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .bk-lines i { font-style: normal; color: var(--text-soft); font-size: .8rem; }
 .bk-lines .neg td { color: #1a8a3f; }
-.bk-lines .surcharge td { color: #7a5209; }
+.bk-lines .ln-surcharge td { color: #7a5209; }
+/* Extras: a bold heading line with no price, then each extra indented. */
+.bk-lines .ln-extras-h td { font-weight: 700; padding-bottom: .1rem; }
+.bk-lines .ln-addon td:first-child { padding-left: 1rem; }
+.bk-lines .ln-addon td { padding-top: .12rem; padding-bottom: .12rem; }
 .bk-lines .pending td:last-child { color: var(--text-soft); font-style: italic; font-size: .79rem; }
 .bk-lines .tot td { border-top: 1px solid var(--line); padding-top: .55rem; font-weight: 800; font-size: 1rem; }
 .bk-lines .when td { color: var(--red); font-weight: 700; padding-top: .5rem; }

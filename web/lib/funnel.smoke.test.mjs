@@ -949,11 +949,18 @@ describe("what the screen says about money and time", () => {
   it("prices the receipt's travel row from the quote, not from a second sum", () => {
     // Rebuilding the fee here meant the row could disagree with the total
     // directly beneath it, which is the one thing a receipt must never do.
-    const code = fn("lineTable", 2600);
+    const code = fn("lineTable", 4200);
     expect(code).toContain("quote.travelCents");
     expect(code, "no second mileage calculation").not.toContain("mileageFeeCents");
     expect(code, "the quote's own travel line would print the fee twice")
       .toContain("l.kind !== 'travel'");
+  });
+
+  it("lists extras under one bold Extras line, never as the site's add-on cards (owner, November 11)", () => {
+    const code = fn("lineTable", 4200);
+    expect(code, "a bare 'addon' class picked up styles.css .addon").toContain("'<tr class=\"ln-' + l.kind");
+    expect(code).toContain("ln-extras-h");
+    expect(code).not.toContain("'<tr class=\"' + l.kind");
   });
 
   it("takes bookings up to a year ahead, as the live site does, and no further", () => {
