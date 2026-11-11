@@ -5861,13 +5861,12 @@
     }
 
     if (t.dataset.steer) {
-      var steerFrom = state.slot, steerTo = Number(t.dataset.steer), onTime = step().id === 'time';
+      var steerFrom = state.slot, steerTo = Number(t.dataset.steer);
       state.steerUsed = true;
       selectSlot(steerTo, 'steer', { reason: 'steer' });
       track('time_steer_used', { step: step().id, shift_min: Math.round((steerTo - steerFrom) / 60000) });
       renderTotal();
-      if (onTime) return advance();
-      // A later step: check the new time is still free, here, and stay put.
+      // Check the new time is still free, here, and stay put.
       setPick('<span class="bk-pick-txt"><b>Checking that time</b></span>');
       return verifySlot().then(function (free) {
         if (!free) selectSlot(steerFrom);
@@ -5883,8 +5882,7 @@
     }
     if (t.id === 'bkPickChange') {
       track('time_change', { step: step().id });
-      if (onCheckout()) return ckOpenSection('when');
-      return go(timeStepIndex());
+      return ckOpenSection('when');
     }
     if (t.dataset.more) return openMoreTimes(t);
     if (t.id === 'bkFlexOpen') {
