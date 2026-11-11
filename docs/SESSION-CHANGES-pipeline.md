@@ -57,6 +57,11 @@ The 513 Auto Clean jobs calendar goes free/busy only **the minute this branch is
 - **Smaller:** the checkout chip names vehicle 1's detail, then "+1 vehicle"; the request time bands say "usually +20%" (Kris's evening interior starts are standard); Help me decide's intro says a time within the next day is a request; Send with nothing answered says "Answer any of the questions above, then send."
 - **Services full lists** open from 940 px tall (was 900): since the eyebrow came back (owner, November 10), the banner under full lists ended at 926. At 1440×790 the Book buttons end at 698 and the banner at 801, 11 px under the screen, as after the eyebrow decision; tell me if that should be tightened.
 
+### Review price table: extras as plain lines (owner's screenshot, November 11)
+- **Bug:** each extra on Review drew as a big bordered box with a hover lift that did nothing. *Root cause:* the table gave each row its line kind as a class, and an extra's kind is `addon`, the class of the site's add-on cards on the Services page (`styles.css .addon`). Rows are now `ln-` + kind; only `addon` collided.
+- **Now:** a bold "Extras:" line with no price, then each extra indented, with its option in grey only when it adds something ("Stain Treatment  Moderate to major removal  $100"), prices in the usual column. With several vehicles, "Extras (vehicle 2):".
+- **To test:** Review with two extras, at 1440 and 375 wide.
+
 ### Still open from that validation
 - When the card-on-file switch goes live, its payment box should carry the short-notice line and the "a few quick questions" line too (latent: the switch is off).
 
