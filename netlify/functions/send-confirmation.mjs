@@ -121,7 +121,7 @@ ${
   }`;
 }
 
-function customerEmail({ contact, when, priced, kind, slot, textsOk }) {
+function customerEmail({ contact, when, priced, kind, slot, textsOk, flex, asked }) {
   const name = esc(String(contact.name || "").split(" ")[0] || "there");
 
   if (kind === "inquiry" || !when) {
@@ -129,7 +129,11 @@ function customerEmail({ contact, when, priced, kind, slot, textsOk }) {
       subject: "We have your request, 513 Auto Clean",
       html: SHELL(
         `Thanks ${name}, we have your request`,
-        `<p style="margin:0 0 14px">We will come back with a time that works, usually within a few hours.</p>
+        `${asked ? `<p style="margin:0 0 14px">You asked for ${esc(asked)}.</p>` : ""}<p style="margin:0 0 14px">${
+          flex
+            ? "We confirm the day with you, usually within a few hours, and let you know the start time by the evening before."
+            : "We will come back with a time that works, usually within a few hours."
+        }</p>
 <p style="margin:0 0 14px"><strong>Nothing is booked and nothing is charged until you say yes to it.</strong></p>
 ${receiptRows(priced)}`,
       ),
@@ -211,30 +215,55 @@ ${
   };
 }
 
-function ownerEmail({ contact, when, priced, kind, cart, detailer }) {
+/**
+ * The days and parts of the day a request asked for, from the raw cart (the
+ * pricing check does not carry them), or "" (validation, November 11: the
+ * owner's email said only "not selected", so nobody could reply with a time).
+ */
+export function askedFor(prefer) {
+  if (!prefer || typeof prefer !== "object") return "";
+  const days = (Array.isArray(prefer.days) ? prefer.days : [])
+    .filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(String(d))).slice(0, 14)
+    .map((d) => {
+      const [y, m, day] = String(d).split("-").map(Number);
+      return new Date(Date.UTC(y, m - 1, day, 12)).toLocaleDateString("en-US", { timeZone: "UTC", weekday: "short", month: "short", day: "numeric" });
+    });
+  const parts = (Array.isArray(prefer.parts) ? prefer.parts : [])
+    .map((x) => String(x).replace(/[^a-z -]/gi, "").slice(0, 20)).filter(Boolean).slice(0, 4);
+  if (!days.length && !parts.length) return "";
+  return [days.join(", "), prefer.flex === true ? "any start that day" : parts.join(", ")].filter(Boolean).join("; ");
+}
+
+function ownerEmail({ contact, when, priced, kind, cart, detailer, asked, notes }) {
   const a = cart?.address ?? {};
   const where = [a.line1, a.city, a.region, a.zip].filter(Boolean).join(", ");
+  const soon = kind === "booking" && cart?.slot && cart.slot - Date.now() < 24 * 60 * 60 * 1000;
   return {
     subject:
       // "HELP ME DECIDE" first, because it is the one that needs something
       // from him before the day rather than just turning up.
-      `${kind === "advice" ? "HELP ME DECIDE" : kind === "inquiry" ? "REQUEST" : cart?.slot && cart.slot - Date.now() < 24 * 60 * 60 * 1000 ? "SHORT NOTICE REQUEST" : "BOOKING"}, ${contact.name}, ` +
+      `${kind === "advice" ? "HELP ME DECIDE" : kind === "inquiry" ? "REQUEST" : soon ? "SHORT NOTICE REQUEST" : "BOOKING"}, ${contact.name}, ` +
       `${kind === "advice" ? "no package yet" : $(priced?.totalCents ?? 0)}${when ? `, ${when}` : ""}`,
     html: SHELL(
-      kind === "advice" ? "Time held, package to work out" : kind === "inquiry" ? "New request" : "New booking",
+      kind === "advice"
+        ? cart?.slot ? "Time held, package to work out" : "Help me decide, no time yet"
+        : kind === "inquiry" ? "New request" : soon ? "Short-notice request, not confirmed until you accept it" : "New booking",
       `<table style="width:100%;font-size:14px;border-collapse:collapse">
 <tr><td style="padding:4px 0;color:#5a6069;width:90px">Who</td><td style="padding:4px 0">${esc(contact.name)}<br>${esc(contact.phone)}${contact.email ? `<br>${esc(contact.email)}` : ""}</td></tr>
-<tr><td style="padding:4px 0;color:#5a6069">When</td><td style="padding:4px 0">${esc(when || "not selected, they asked us to come back with a time")}</td></tr>
+<tr><td style="padding:4px 0;color:#5a6069">When</td><td style="padding:4px 0">${esc(when || (asked ? `asked for ${asked}` : "not selected, they asked us to come back with a time"))}</td></tr>
 <tr><td style="padding:4px 0;color:#5a6069">Where</td><td style="padding:4px 0">${esc(where || "not given")}</td></tr>
 ${detailer ? `<tr><td style="padding:4px 0;color:#5a6069">Detailer</td><td style="padding:4px 0">${esc(detailer.name)}</td></tr>` : ""}
 </table>
 ${
   kind === "advice"
     ? `<p style="margin:16px 0 0;padding:10px 12px;background:#fdf3e3;border-radius:8px;font-size:14px">` +
-      `<strong>They have not picked a package.</strong> ${Math.round(ADVICE_HOLD_MIN / 60)} hours are blocked on the calendar. ` +
-      `Read what they wrote about the vehicle, and either come back with a recommendation beforehand or work it out on the driveway.</p>`
+      `<strong>They have not picked a package.</strong> ` +
+      (cart?.slot
+        ? `${Math.round(ADVICE_HOLD_MIN / 60)} hours are blocked on the calendar. Read what they wrote about the vehicle, and either come back with a recommendation beforehand or work it out on the driveway.`
+        : `Nothing is held. Come back with a package, its price and a time from the days they asked for.`) +
+      `</p>`
     : ""
-}${receiptRows(priced)}`,
+}${notes ? `<p style="margin:16px 0 0;font-size:14px"><strong>What they wrote:</strong> ${esc(notes)}</p>` : ""}${receiptRows(priced)}`,
     ),
   };
 }
@@ -265,7 +294,7 @@ function eventDescription({ contact, cart, priced, extras, payInFull, kind }) {
     const size = v.sizeId ? vehicleSize(v.sizeId) : null;
     const pkgs = (v.packageIds ?? []).map((id) => findPackage(id)?.name).filter(Boolean);
     lines.push(
-      `VEHICLE ${i + 1}  ${v.label || "(not named)"}${size ? `  [${size.label}]` : ""}`,
+      `VEHICLE ${i + 1}${v.label ? `  ${v.label}` : ""}${size ? `  [${size.label}]` : ""}`,
     );
     if (pkgs.length) lines.push(`  ${pkgs.join(" + ")}`);
     for (const ad of v.addons ?? []) {
@@ -284,14 +313,19 @@ function eventDescription({ contact, cart, priced, extras, payInFull, kind }) {
     for (const l of priced.lines ?? []) lines.push(`  ${l.label}: ${$(l.amountCents)}`);
     lines.push(`  TOTAL: ${$(priced.totalCents)}`);
     lines.push(`  ${payInFull ? "PAID IN FULL online" : "TO COLLECT on the day"}`);
-    lines.push(`  Travel: added at confirmation, not in the figure above`);
+    // Travel is a line above when the drive was measured (validation,
+    // November 11: this said "not in the figure above" even then).
+    if (!(priced.lines ?? []).some((l) => /travel/i.test(l.label))) lines.push(`  Travel: added once the drive is measured, not in the figure above`);
     lines.push(`  On site: about ${Math.round((priced.serviceDurationMin ?? 0) / 60 * 10) / 10} hours`);
   }
 
   lines.push("");
   lines.push("ON ARRIVAL");
-  lines.push(`  Outdoor tap: ${ACCESS[extras.water] ?? "not answered"}`);
-  lines.push(`  Outdoor outlet: ${ACCESS[extras.power] ?? "not answered"}`);
+  // Asked after booking now, so usually blank here: say where the answers go
+  // rather than "not answered" (validation, November 11).
+  if (ACCESS[extras.water]) lines.push(`  Outdoor tap: ${ACCESS[extras.water]}`);
+  if (ACCESS[extras.power]) lines.push(`  Outdoor outlet: ${ACCESS[extras.power]}`);
+  if (!ACCESS[extras.water] && !ACCESS[extras.power] && !extras.parking) lines.push("  Tap, outlet and parking: asked after booking; any answers reach the owner by email (BOOKING FOLLOW-UP).");
   if (extras.parking) lines.push(`  Parking: ${extras.parking}`);
   if (extras.notes) lines.push(`  Notes: ${extras.notes}`);
   if (extras.locationNote) lines.push(`  ** NEEDS A LOCATION SORTED ** ${extras.locationNote}`);
@@ -320,7 +354,10 @@ async function writeCalendar({ contact, cart, priced, extras, payInFull, key, ki
   return createBookingEvent({
     // The title is what Elijah reads at a glance on a phone, so it says the
     // thing he needs to know before setting off: nobody has chosen yet.
-    summary: (detailer ? `${detailer.name}: ` : "") + (kind === "advice"
+    // A short-notice time is a request until someone accepts it, and the
+    // calendar says so too (validation, November 11).
+    summary: (kind === "booking" && cart.slot - Date.now() < 24 * 60 * 60 * 1000 ? "SHORT NOTICE, accept or decline: " : "") +
+      (detailer ? `${detailer.name}: ` : "") + (kind === "advice"
       ? `HELP ME DECIDE, ${contact.name}`
       : `${names.join(" + ") || "Detail"}, ${contact.name}`),
     description: eventDescription({ contact, cart, priced, extras, payInFull, kind }),
@@ -417,6 +454,9 @@ export async function handler(event) {
     // Their answer to "Where did you hear about us?" on the checkout.
     heard: text(payload?.heard, 60),
   };
+  ctx.asked = cart.slot ? "" : askedFor(rawCart.prefer);
+  ctx.flex = !cart.slot && rawCart.prefer?.flex === true;
+  ctx.notes = extras.notes;
 
   // THE CALENDAR FIRST. It is the half that stops the slot being sold again,
   // and it is the half nobody can reconstruct from memory at 11pm.

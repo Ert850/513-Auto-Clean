@@ -1816,7 +1816,10 @@ button.bk-tl-s:hover { border-color: var(--red); box-shadow: 0 0 0 3px var(--red
 #bookFunnel .bk-prep .bk-acc { display: flex; align-items: center; justify-content: space-between; gap: .6rem; border: 0; border-top: 1px solid var(--line); border-radius: 0; padding: .45rem 0; margin: 0; background: none; box-shadow: none; }
 #bookFunnel .bk-prep .bk-acc-q { margin: 0; font-size: .86rem; font-weight: 700; }
 #bookFunnel .bk-prep .bk-acc-opts { display: flex; gap: .3rem; flex: none; }
-#bookFunnel .bk-prep .bk-acc-b { padding: .32rem .62rem; font-size: .8rem; min-height: 0; }
+/* 44 px: a thumb-sized target on a phone (validation, November 11: 33 px). */
+#bookFunnel .bk-prep .bk-acc-b { padding: .32rem .62rem; font-size: .8rem; min-height: 44px; }
+/* Done has nothing in the footer, so it takes no room. */
+#bookFunnel .bk-modal.is-done .bk-foot { display: none; }
 #bookFunnel .bk-prep .bk-field { margin: .6rem 0 0; }
 #bookFunnel .bk-prep .bk-field label { font-size: .82rem; }
 /* The one red action on the Done screen (owner, November 11). */
