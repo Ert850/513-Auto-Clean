@@ -187,18 +187,6 @@ section { padding-block: clamp(40px, 5vw, 72px); position: relative; }
    (every jump to a section then landed about 9px low). */
 .brand .mark-img { width: 28px; height: 46px; object-fit: cover; flex-shrink: 0; display: block; }
 .mobile-menu .brand .mark-img, .footer .brand .mark-img { width: 40px; height: 40px; }
-.brand .mark {
-  width: 42px; height: 42px; border-radius: 12px; flex-shrink: 0;
-  background: linear-gradient(140deg, var(--ink) 0%, var(--ink-3) 100%);
-  display: grid; place-items: center; color: var(--red-bright);
-  font-family: var(--font-display); font-weight: 800; font-size: .92rem; letter-spacing: -.04em;
-  box-shadow: var(--shadow-sm); position: relative; overflow: hidden;
-}
-.brand .mark::after {
-  content: ""; position: absolute; inset: 0;
-  background: linear-gradient(120deg, transparent 40%, rgba(255,80,80,.5) 50%, transparent 60%);
-  transform: translateX(-100%); animation: shine 5s var(--ease) 1.5s infinite;
-}
 .brand .b-name { font-family: var(--font-display); font-weight: 800; font-size: 1.16rem; letter-spacing: -.03em; line-height: 1; }
 .brand .b-sub { font-size: .68rem; letter-spacing: .12em; text-transform: uppercase; color: var(--text-soft); font-weight: 600; }
 /* On the smallest phones the tag line is what gives way, not the page width. */
@@ -386,7 +374,6 @@ section { padding-block: clamp(40px, 5vw, 72px); position: relative; }
 .svc-card h3 { font-size: 1.35rem; margin-bottom: .2rem; }
 .svc-card .svc-meta { display: flex; align-items: baseline; gap: .6rem; margin-bottom: .75rem; flex-wrap: wrap; }
 .svc-card .price { font-family: var(--font-display); font-weight: 800; font-size: 1.85rem; color: var(--ink); letter-spacing: -.03em; }
-.svc-card .price s { color: var(--text-soft); font-size: 1.1rem; font-weight: 500; opacity: .7; }
 .svc-card .dur { font-size: .85rem; color: var(--text-soft); font-weight: 600; display: inline-flex; align-items: center; gap: .35rem; }
 .svc-card .dur svg { width: 14px; height: 14px; }
 .svc-card .svc-desc { color: var(--text-soft); font-size: .92rem; margin-bottom: .85rem; }
@@ -410,7 +397,6 @@ section { padding-block: clamp(40px, 5vw, 72px); position: relative; }
 
 /* add-ons */
 .addons { margin-top: 1.6rem; }
-.addons h3 { font-size: 1.2rem; margin-bottom: .8rem; }
 /* auto-fill against a minimum width rather than a fixed column count: six
    columns of a paragraph plus a price gave one word per line. */
 .addon-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(245px, 1fr)); gap: .7rem; }
@@ -782,7 +768,6 @@ main > .areas:first-child .section-head { margin-bottom: 18px; }
    ============================================================ */
 .footer { background: var(--ink); color: var(--text-inv-soft); padding-block: clamp(48px, 6vw, 72px) 2rem; }
 .footer-grid { display: grid; gap: 2.5rem; margin-bottom: 3rem; }
-.footer .brand .b-name, .footer .brand .mark { color: var(--red-bright); }
 .footer .brand .b-name { color: #fff; }
 /* logo-mark.png is a square with the bottle in its middle third, so at 40px
    the bottle drew 13px wide with 13px of empty space each side. Larger, with
@@ -845,7 +830,6 @@ main > .areas:first-child .section-head { margin-bottom: 18px; }
 /* ============================================================
    ANIMATIONS
    ============================================================ */
-@keyframes shine { 0% { transform: translateX(-120%); } 60%,100% { transform: translateX(120%); } }
 @keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
 
 .reveal { opacity: 0; transform: translateY(28px); transition: opacity .7s var(--ease), transform .7s var(--ease); }
