@@ -183,6 +183,14 @@
     # web/lib/site/capabilities.ts.
     Content-Security-Policy-Report-Only = "default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://js.stripe.com https://www.paypal.com https://challenges.cloudflare.com https://www.googletagmanager.com https://*.clarity.ms; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://*.tile.openstreetmap.org https://*.googleusercontent.com https://lh3.googleusercontent.com https://*.paypal.com https://*.paypalobjects.com https://*.google-analytics.com https://www.googletagmanager.com https://*.clarity.ms https://c.bing.com; connect-src 'self' https://api.web3forms.com https://nominatim.openstreetmap.org https://places.googleapis.com https://www.googleapis.com https://api.stripe.com https://*.paypal.com https://challenges.cloudflare.com https://*.google-analytics.com https://*.analytics.google.com https://www.googletagmanager.com https://*.clarity.ms https://api.weather.gov; frame-src https://js.stripe.com https://hooks.stripe.com https://www.paypal.com https://*.paypal.com https://challenges.cloudflare.com; base-uri 'self'; form-action 'self' https://api.web3forms.com; object-src 'none'; frame-ancestors 'self'"
 
+# Print landing pages (/golf and /prestige lead here): kept out of search
+# results by a header as well as their meta tag. "/lp-*" also covers the
+# extensionless /lp-golf that Netlify serves for lp-golf.html.
+[[headers]]
+  for = "/lp-*"
+  [headers.values]
+    X-Robots-Tag = "noindex"
+
 # Every asset URL carries a content hash (?v=...), so it can be cached hard.
 [[headers]]
   for = "/js/*"

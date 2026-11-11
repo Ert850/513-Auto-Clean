@@ -57,4 +57,23 @@ describe("printed QR codes", () => {
       expect(got, file).toBe(sum);
     }
   });
+
+  // Landing pages are for people holding the print piece, never search
+  // results (Google: noindex, crawlable, no canonical pointing elsewhere).
+  for (const name of PRINTED) {
+    const page = `lp-${name}.html`;
+    it(`${page} stays out of search and out of the site's own links`, () => {
+      const html = read(page);
+      expect(html).toMatch(/<meta name="robots" content="noindex" \/>/);
+      expect(html, "noindex with a canonical sends Google mixed signals").not.toMatch(/rel="canonical"/);
+      expect(read("netlify.toml")).toMatch(/for = "\/lp-\*"[\s\S]{0,80}X-Robots-Tag = "noindex"/);
+      expect(read("sitemap.xml")).not.toContain("lp-");
+      expect(read("robots.txt"), "a blocked page never shows its noindex").not.toMatch(/Disallow:\s*\/lp-/);
+      for (const other of fs.readdirSync(root).filter((f) => f.endsWith(".html") && !f.startsWith("lp-"))) {
+        expect(read(other), `${other} links to ${page}`).not.toContain(page);
+      }
+      const rule = redirects().find((r) => r.from === `/${name}`);
+      expect(rule?.to.startsWith(`/${page}?utm_source=${name}`)).toBe(true);
+    });
+  }
 });

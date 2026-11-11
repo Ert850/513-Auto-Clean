@@ -81,6 +81,24 @@ Built overnight, November 10 to 11, for you to evaluate. It combines your 8 answ
 - **Also confirmed in Netlify:** `GOOGLE_BUSY_ONLY_CALENDAR_IDS` is set (the review's top condition), and `DETAILERS` is set. The owner confirmed Kris goes live with the new site.
 - **`check-live.mjs`:** read keys only in single quotes, but the published `config.js` is minified with double quotes, so every live key read "not set". It now matches either quote, and also checks GA4 and Clarity.
 
+### Landing pages stay out of search results (user's question, November 11)
+- **Google's guidance (Search Central, "Block search indexing"):**
+  - `noindex` drops a page from results "regardless of whether other sites link to it";
+  - the page must stay crawlable, because a page blocked in `robots.txt` never shows its `noindex` and can still be listed from links elsewhere;
+  - the `X-Robots-Tag` header does the same job as the meta tag.
+  
+  Separately, Google advises against `noindex` combined with a canonical pointing elsewhere.
+- **Fixed:** both pages had a canonical pointing at `/golf` or `/prestige`, which is itself a redirect, next to their `noindex`. The canonical is gone, and `og:url` names the page itself.
+- **Added:**
+  - `X-Robots-Tag: noindex` for `/lp-*` in `netlify.toml` (it also covers the extensionless `/lp-golf`);
+  - tests (`printed-qr.test.ts`): `noindex` present, no canonical, the header rule, not in the sitemap, not blocked in `robots.txt`, no other page links to them, and each redirect leads to its page with its tag.
+- **Verified as landing pages** (headless Chrome, phone size, arriving with the redirect's tags):
+  - the visit is tagged "golf / print / qr";
+  - Book Now opens the booking form on the landing page;
+  - the tag is still there on Services, so a booking names the source;
+  - the code line stays hidden while the test is off.
+- **Not possible from here:** a real check of the 302 redirects needs Netlify, so it is on the deploy-preview checklist in `docs/GO-LIVE.md`. After launch, Search Console's URL Inspection on `/lp-golf.html` should say "Excluded by noindex".
+
 ### "Copy code" button on the golf page's offer line (owner and user, November 11)
 - **What:** the GOLF10 line (shown only to the "code" half of the `golf-code` A/B test, which is off) now has a small ink pill with a clipboard icon reading "Copy code". It becomes "Copied" with a tick for 2 seconds. The line says where the code goes: "Paste it into Promo code on the last step."
 - **Ink, not red:** red is Book Now and "that did not work" (CLAUDE.md colours), and a second red button would compete with Book Now right below it.
