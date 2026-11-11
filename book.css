@@ -464,6 +464,9 @@ body.bk-open { overflow: hidden; }
 .bk-tl { display: grid; grid-template-columns: 3.6rem minmax(0, 1fr); gap: 3px 0; }
 .bk-tl-t { grid-column: 1; align-self: center; text-align: right; padding-right: .6rem; font-size: .8rem; font-weight: 700; color: var(--text-soft); white-space: nowrap; }
 .bk-tl-t.half { font-size: .72rem; font-weight: 600; opacity: .75; }
+/* Rows past the last start shown: only room for that job's block to finish
+   in (no box, not "not available"). */
+.bk-tl-t.tail { opacity: .4; }
 .bk-tl-s {
   grid-column: 2; display: flex; align-items: center; gap: .5rem; min-width: 0; padding: 0 .75rem;
   border-radius: 6px; font: inherit; text-align: left;
