@@ -67,6 +67,12 @@ Built overnight, November 10 to 11, for you to evaluate. It combines your 8 answ
 - **Tests:** `experiments.test.ts`, 17 tests. They run the real `analytics.js` in a sandbox: weights, stickiness, the source rule, off/ended/unknown tests, element switching, nothing reaching GA before Accept, and storage blocked. 582 of 582 pass.
 - **To test:** with a test set to running, open /?utm_source=golf: `localStorage['ac-exp']` holds a version and only that version's element shows. A booking email carries "A/B TESTS".
 
+### The phone bar no longer covers the footer's legal links (found by the UI validation agent)
+- **Bug:** at the very bottom of every page on phones and tablets, the fixed bottom bar (Call / Book, 58 px) covered "Privacy Policy · Terms · Cancellation Policy". They were partly covered at 375 px and fully covered at 820. The same bug is on the live site.
+- **Root cause:** the footer ended 2rem from the bottom of the page, and nothing reserved room for a bar fixed over it.
+- **Fix:** `.footer` gets 58 px more bottom padding wherever the bar can show (under 720 px, and in `html.nav-burger`); none where it can't.
+- **Verified:** in headless Chrome, scrolled to the bottom of 6 pages. The last footer line now ends 56 px (375) and 35 px (820) above the bar. Nothing changes at 1440.
+
 ## Round 20 (November 12): header at mid widths, one Continue at checkout
 
 ### Header: Priority+ with a More menu (owner's pick B of three, `docs/mockups/nav-widths-*.png`)

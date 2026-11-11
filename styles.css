@@ -832,6 +832,9 @@ main > .areas:first-child .section-head { margin-bottom: 18px; }
 .mobile-bar a svg { width: 19px; height: 19px; }
 .mobile-bar .mb-call { background: var(--ink); color: #fff; }
 .mobile-bar .mb-quote { background: linear-gradient(135deg, var(--red), var(--red-deep)); color: #ffffff; }
+/* Room under the footer for the fixed bar (58 px), wherever the bar can show:
+   at the bottom of a page it covered the Privacy, Terms and Cancellation links. */
+.footer { padding-bottom: calc(2rem + 58px); }
 
 /* A/B tests (config/experiments.json): an element for one version only, data-exp="test:version",
    stays hidden until js/analytics.js picks that version. !important beats a component's own display. */
@@ -955,6 +958,7 @@ html.scrolling-fast .reveal { transition: none; transition-delay: 0s; }
   html:not(.nav-burger) .nav-cta { display: flex; }
   html:not(.nav-burger) .nav-toggle { display: none; }
   html:not(.nav-burger) .mobile-bar { display: none !important; }
+  html:not(.nav-burger) .footer { padding-bottom: 2rem; }
 }
 
 /* ============================================================
