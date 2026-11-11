@@ -489,8 +489,8 @@ button.bk-tl-s:hover { border-color: var(--red); box-shadow: 0 0 0 3px var(--red
 .bk-tl.pointing .bk-tl-s.under:not(.pv) > * { visibility: visible; }
 /* Each row carries its price both ways; the first row you can see of each
    stretch says it in words ("+$25 rush fee", "Standard price"). */
-.bk-tl-s .pw-l, .bk-tl-s.lead .pw-s { display: none; }
-.bk-tl-s.lead .pw-l { display: inline; }
+.bk-tl-s .pw-l, .bk-tl-s.lead .pw-s, .bk-wk-item .pw-l, .bk-wk-item.lead .pw-s { display: none; }
+.bk-tl-s.lead .pw-l, .bk-wk-item.lead .pw-l { display: inline; }
 /* The job, start to estimated finish, over the rows it covers. */
 .bk-tl-span { grid-column: 2; position: relative; z-index: 3; pointer-events: none; overflow: hidden; border-radius: 6px; }
 .bk-tl-span > i {

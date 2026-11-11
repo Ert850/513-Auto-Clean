@@ -775,6 +775,7 @@
 
   /** The "More below" cue: shown while more than a little is below the fold. */
   function updateCue() {
+    markAllLeads();
     var sc = el('bkScroll'), cue = el('bkCue');
     if (!sc || !cue) return;
     cue.hidden = !(sc.scrollHeight - sc.clientHeight - sc.scrollTop > 48);
@@ -4105,9 +4106,13 @@
         var sug = c.suggested && sameMinute(r.ms, c.pick);
         // The other start in this hour (half past, or on the hour), one tap too.
         var alts = c.starts.filter(function (x) { return !sameMinute(x, r.ms); });
-        html += '<div class="bk-wk-row"><button type="button" class="bk-wk-item' + (r.on ? ' on' : '') +
-          '" data-slot="' + r.ms + '" aria-pressed="' + r.on + '" aria-label="' + esc(startLabel(day, r.ms, dur, sug)) + '">' +
-          '<b>' + esc(spanLabel(r.ms, dur)) + '</b>' + priceTag(r.ms, !same && first[i]) +
+        // One price for the whole part of the day: said once, on its heading.
+        // Otherwise each row carries both forms and the highest one you can
+        // see of each stretch says it in words (markAllLeads).
+        html += '<div class="bk-wk-row"><button type="button" class="bk-wk-item' + (r.on ? ' on' : '') + (!same && first[i] ? ' lead' : '') +
+          '" data-slot="' + r.ms + '"' + (same ? '' : ' data-pw="' + esc(keys[i]) + '"') +
+          ' aria-pressed="' + r.on + '" aria-label="' + esc(startLabel(day, r.ms, dur, sug)) + '">' +
+          '<b>' + esc(spanLabel(r.ms, dur)) + '</b>' + (same ? priceTag(r.ms, false) : rowPrice(r.ms)) +
           (sug ? '<em>' + STAR + 'Suggested</em>' : '') +
           '</button>' +
           alts.map(function (x) {
@@ -4218,18 +4223,33 @@
   }
 
   /**
-   * Which rows lead their stretch, among the rows you can see: not under the
-   * chosen job (unless something else is being pointed at, which hides it)
-   * and not under the block being pointed at.
+   * Which rows say their price in words: the highest row you can see of each
+   * same-price stretch (owner, November 11: "the highest visible row in
+   * general"). A row is out of sight when it is scrolled above the top of
+   * the window, or under what is pinned there (the phone's part-of-day
+   * heading), or under a block (the chosen job, unless something else is
+   * being pointed at, which hides it; the block being pointed at).
    */
-  function markLeads(tl) {
-    var pointing = tl.classList.contains('pointing');
+  function markLeads(group, rowSel, viewTop) {
+    var pointing = group.classList.contains('pointing');
     var prev = null;
-    tl.querySelectorAll('.bk-tl-s').forEach(function (c) {
-      var hidden = c.classList.contains('pv') || (!pointing && c.classList.contains('under'));
+    group.querySelectorAll(rowSel).forEach(function (c) {
+      var hidden = c.classList.contains('pv') || (!pointing && c.classList.contains('under')) ||
+        c.getBoundingClientRect().top < viewTop - 1;
       var key = hidden || !c.dataset.pw ? null : c.dataset.pw;
       c.classList.toggle('lead', key !== null && key !== prev);
       prev = key;
+    });
+  }
+  /** Run on every scroll, resize and repaint (from updateCue). */
+  function markAllLeads() {
+    var sc = el('bkScroll');
+    if (!root || !sc || !sc.getBoundingClientRect) return;
+    var top = sc.getBoundingClientRect().top;
+    root.querySelectorAll('.bk-tl').forEach(function (tl) { markLeads(tl, '.bk-tl-s', top); });
+    root.querySelectorAll('.bk-wk-sec').forEach(function (sec) {
+      var band = sec.querySelector('.bk-wk-band');
+      markLeads(sec, '.bk-wk-item', Math.max(top, band ? band.getBoundingClientRect().bottom : top));
     });
   }
 
@@ -4253,14 +4273,14 @@
     // instead of drawing over it (owner's screenshot, November 11: the two
     // overlapped, and the chosen job's top read as a big "Suggested" box).
     tl.classList.toggle('pointing', t.getAttribute('aria-pressed') !== 'true');
-    markLeads(tl);
+    markAllLeads();
   }
   function clearTlPreview(tl) {
     tl.querySelectorAll('.pv').forEach(function (c) { c.classList.remove('pv'); });
     var pv = tl.querySelector('#bkTlPreview');
     if (pv) pv.hidden = true;
     tl.classList.remove('pointing');
-    markLeads(tl);
+    markAllLeads();
   }
 
   /**
