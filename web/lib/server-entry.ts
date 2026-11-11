@@ -12,21 +12,16 @@ import {
   ADDONS,
   COATING_COVERAGE,
   COATING_EXPLAINER,
-  COATING_TERMS,
   CORRECTION_RULES,
   CORRECTION_TIERS,
-  MAINTENANCE_PLAN,
   addonsFor,
   findAddon,
   findCoatingTerm,
   findCorrectionTier,
-  isSelectable,
-  isUnpriced,
   unavailableReason,
 } from "./catalog/addons.js";
 import {
   SEED_CATALOG,
-  VEHICLE_SIZES,
   findPackage,
   packagesFor,
   vehicleSize,
@@ -207,12 +202,10 @@ export function priceFromWire(wire: WireCart, opts: PriceOptions = {}): PricedCa
 import { addonIcon } from "./catalog/icons.js";
 
 export { MAX_ONE_WAY_MINUTES } from "./travel/zipRanges.js";
-export { validateWire, driveTooFar, normalisePhone, WIRE_LIMITS, ADVICE_HOLD_MIN } from "./pricing/wire.js";
+export { validateWire, driveTooFar, ADVICE_HOLD_MIN } from "./pricing/wire.js";
 export { MAX_BOOKING_CENTS } from "./pricing/rules.js";
-export { slotNeedsPriority } from "./pricing/surcharge.js";
 export { LEGAL, longDate } from "./site/legal.js";
 export { legalFingerprint } from "./site/legalFingerprint.js";
-export { PROMOS, findPromo, normalisePromo, promoDiscountCents, promoMessage } from "./pricing/promos.js";
 export { parseIcsBusy, mergeBusy } from "./booking/ics.js";
 export { parseDetailers, waivesFeeAt, canDo } from "./availability/crew.js";
 export { loadWindow, blockFeeAt } from "./google/publicCalendar.js";
@@ -238,13 +231,9 @@ export function wireNeeds(wire: WireCart): string[] {
   if (addId(["ceramic-coating"])) needs.push("coating");
   return needs;
 }
-export { averageOneWayMinutes, mileageFeeCents } from "./pricing/mileage.js";
-export {
-  computeCancellation,
-  computeReschedule,
-  cancellationLadder,
-} from "./pricing/cancellation.js";
-export { CAPABILITIES, GATED_COPY, PROCESSORS, copyFor, dormantProcessors, isLive, liveProcessors, pending } from "./site/capabilities.js";
+export { mileageFeeCents } from "./pricing/mileage.js";
+export { cancellationLadder } from "./pricing/cancellation.js";
+export { CAPABILITIES, copyFor, isLive, liveProcessors } from "./site/capabilities.js";
 export { estimateOneWayMinutes } from "./travel/zipRanges.js";
 
 export {
@@ -252,21 +241,15 @@ export {
   addonIcon,
   COATING_COVERAGE,
   COATING_EXPLAINER,
-  COATING_TERMS,
   CORRECTION_RULES,
   CORRECTION_TIERS,
   DEFAULT_RULES,
-  MAINTENANCE_PLAN,
   SEED_CATALOG,
-  VEHICLE_SIZES,
   addonsFor,
   componentsOf,
   findAddon,
   findPackage,
-  isSelectable,
-  isUnpriced,
   packagesFor,
-  quote,
   unavailableReason,
   vehicleSize,
 };

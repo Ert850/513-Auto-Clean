@@ -306,13 +306,11 @@
     function armWheel() {
       if (map.scrollWheelZoom.enabled()) return;
       map.scrollWheelZoom.enable();
-      host.classList.add('zoom-on');
       if (zoomHint) zoomHint.textContent = 'Scroll to zoom. Move off the map to scroll the page again.';
     }
 
     function disarmWheel() {
       map.scrollWheelZoom.disable();
-      host.classList.remove('zoom-on');
       if (zoomHint) zoomHint.textContent = idleZoomHint();
     }
 

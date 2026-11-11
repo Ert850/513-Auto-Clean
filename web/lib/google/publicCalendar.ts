@@ -190,14 +190,6 @@ export function isConfigured(cfg: Partial<PublicCalendarConfig> | null | undefin
   return Boolean(cfg && cfg.calendarId && cfg.apiKey);
 }
 
-export async function fetchEvents(
-  cfg: PublicCalendarConfig,
-  fromMs: number,
-  toMs: number,
-): Promise<RawEvent[]> {
-  return (await readCalendars(cfg, fromMs, toMs)).events;
-}
-
 /** A detailer's calendars read together: the events, and the best Priority line. */
 export interface CalendarRead {
   events: RawEvent[];
