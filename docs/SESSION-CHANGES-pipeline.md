@@ -73,6 +73,15 @@ The 513 Auto Clean jobs calendar goes free/busy only **the minute this branch is
 - **The day bar measures against this job.** It showed open starts out of 33 (every half hour, 6am to 10pm), but a long detail must finish by midnight and exterior work starts by 8pm, so a free day read about 85% for a 4.5-hour job. It is now out of the starts a free day could offer this job (`startsPossible`: 28 for 4.5 hours, 29 for a 2-hour exterior job). Free days read 100%.
 - **The suggested star stays visible over a block** (chosen or pointed at), on its own row; the rest of a covered row stays hidden.
 
+### Day timeline layout, option C (owner's pick, November 11)
+- **Why:** the half-hour rows ran the full width with only a small price in them, the hour labels were small and grey, and a job block was a big empty box. About 6 hours of a day fitted a laptop screen.
+- **Now** (tablets and up; phones keep their list):
+  - hour labels are 1rem and extra bold, half hours 0.84rem and not faded;
+  - rows are 30px high (36 before) and 18rem wide, so about 8 hours fit;
+  - a card beside them shows the day, the time, its price in words, "Arriving between 6 and 7am" and the detailing time, with a red "Choose this time" button. It shows the chosen time, else the suggested start, else the first, and follows the start being pointed at. Its button is the same start as the row, so it picks the time the way a tap does. It stays in view while the day scrolls;
+  - the block says the time and "About 2 hrs detailing" (the price is on the card).
+- **To test:** See additional times at 1440, 1024 and 820 wide: point at starts (block and card follow), scroll down (the card stays), press Choose this time (the form moves on).
+
 ### Still open from that validation
 - When the card-on-file switch goes live, its payment box should carry the short-notice line and the "a few quick questions" line too (latent: the switch is off).
 
