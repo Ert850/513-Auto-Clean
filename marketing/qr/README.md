@@ -22,7 +22,7 @@ Made November 11, 2026, for the two print pieces, from the owner's recorded answ
 
 ## Why these won't break
 
-- **The codes hold only a short address on our own domain.** Where that address leads is set in `netlify.toml` and can change at any time without reprinting. Today `/golf` and `/prestige` land on the home page, tagged so analytics and the booking email name the source. A `golf.html` or `prestige.html` page takes over its address on its own.
+- **The codes hold only a short address on our own domain.** Where that address leads is set in `netlify.toml` and can change at any time without reprinting. Since November 11 (owner approved), `/golf` leads to `lp-golf.html` and `/prestige` to `lp-prestige.html`, tagged so analytics and the booking email name the source.
 - **Highest error correction (H):** up to 30% of the code can be scuffed, torn or dirty and it still scans. Tested with the zxing scanner engine: both codes read after the corner was torn off, a patch in the middle was whited out, a black scratch was drawn across, after heavy blur, and at 0.33 inch.
 - **A test guards the addresses.** `web/lib/site/printed-qr.test.ts` fails if either address stops leading somewhere, if a redirect becomes a 301 (a browser keeps a 301 forever, so a later change would never reach anyone who had scanned once), if the generator's addresses change, or if any file below changes.
 - **The files are rebuilt byte for byte** by `python3 marketing/qr/make_qr.py` (needs `pip install segno`), so they can always be remade identically.

@@ -89,19 +89,18 @@
 # magazine). These two addresses are in print from 2027 for about a year and
 # can never change (marketing/qr/README.md). Never delete them or rename them:
 # printed-qr.test.ts fails if either stops being served. Where they lead CAN
-# change: until each has its own page they land on the home page, tagged so
-# analytics and the booking email name the source. A golf.html or
-# prestige.html page takes the address over by itself (a page wins over a
-# redirect that isn't forced). 302, never 301: a browser keeps a 301 forever,
-# so a later change would never reach anyone who had scanned once.
+# change: each goes to its own landing page (owner approved, November 11),
+# tagged so analytics and the booking email name the source. 302, never 301:
+# a browser keeps a 301 forever, so a later change would never reach anyone
+# who had scanned once.
 [[redirects]]
   from = "/golf"
-  to = "/?utm_source=golf&utm_medium=print&utm_campaign=qr"
+  to = "/lp-golf.html?utm_source=golf&utm_medium=print&utm_campaign=qr"
   status = 302
 
 [[redirects]]
   from = "/prestige"
-  to = "/?utm_source=prestige&utm_medium=print&utm_campaign=qr"
+  to = "/lp-prestige.html?utm_source=prestige&utm_medium=print&utm_campaign=qr"
   status = 302
 
 # The old booking page is a section of the home page now.
