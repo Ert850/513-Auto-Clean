@@ -3,7 +3,7 @@
 Built overnight, November 10 to 11, for you to evaluate. It combines your 8 answers with the 11 ideas in `docs/BOOKING-PIPELINE.md`.
 
 - **Scope:** only the booking form and the code it uses.
-- **Branch:** started from `eNov6` at `fb29b30`. `eNov6` has not moved, so merging is a fast-forward with no conflicts. Nothing was pushed.
+- **Branch:** started from `eNov6` at `fb29b30`. On November 11 the calendar time-picker branch was merged in, `eNov6` was fast-forwarded to this branch, and both were pushed to GitHub as a backup. Nothing is on `main`.
 - **To see it:**
   - Local preview: <http://127.0.0.1:8790>. Open any Book Now.
   - If the preview isn't running, run `scratchpad/pipe-publish.sh` and start `scratchpad/demo-server.py 8790 scratchpad/pipe` (paths are in the session scratchpad).
@@ -56,7 +56,8 @@ Built overnight, November 10 to 11, for you to evaluate. It combines your 8 answ
 
 ### Must happen before this goes live
 - ~~Retag the OPEN blocks~~ Done November 11 by the setup session, checked: Kris and Elijah read +20% before 10am and from 6pm, standard 10am to 6pm, Kris standard 6 to 7:30pm Tuesday to Saturday, in the booking form and in the server's own read. The live site is unaffected (it reads `OPEN +20%` as OPEN and merges touching blocks).
-- **`DETAILER_HOMES`** with Kris's address, for his drive to be his own.
+- ~~**`DETAILER_HOMES`** with Kris's address~~ Done November 11 (Netlify, marked secret).
+- **Make the 513 Auto Clean jobs calendar free/busy only the minute the first production deploy of this branch goes live.** The Google sign-in values are in Netlify for every context, so that deploy starts writing customer names and addresses onto the calendar, which today is shared publicly with full details. Not earlier: the live site (`main`) still reads that calendar's events in full and would stop seeing jobs. The setting also hides events written before it. Steps in `docs/DETAILERS-GUIDE.md`.
 
 ### Checked
 - Tests 502 of 502 (Eastern time), 13 new.
@@ -107,8 +108,8 @@ Built overnight, November 10 to 11, for you to evaluate. It combines your 8 answ
 
 ### Left from the calendar setup (November 10)
 - Share 513 Kris Bookings with Kris, once we have his email.
-- Writing booked jobs onto the calendars: not set up (no Google credentials in Netlify). Until it is, every job, Kris's included, goes onto its calendar by hand, or the time stays offered. Steps in `docs/DETAILERS-GUIDE.md`.
-- After the merge: make the 513 Auto Clean jobs calendar free/busy only. The Netlify half is done.
+- Writing booked jobs onto the calendars: the one-time Google sign-in was done November 11 and its three values are in Netlify (secret). It takes effect on the next deploy; check that a test booking lands on its calendar. Until then, every job goes onto its calendar by hand.
+- Right after that deploy goes live (not before, which would blind `main`, and not days later): make the 513 Auto Clean jobs calendar free/busy only. The Netlify half is done.
 - If the fee standard changes (option B), Kris's `DETAILERS` entry changes with it.
 
 ### Questions for the owner

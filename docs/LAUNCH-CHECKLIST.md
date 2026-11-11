@@ -1,6 +1,17 @@
 # What is blocking a fully working site
 
-Last updated 2026-09-14.
+Last updated 2026-09-14. **One rule added 2026-11-11, read it first:**
+
+> **The minute the booking pipeline branch (`eNov10PipelineBranch`, now also
+> `eNov6`) goes live in production, make the 513 Auto Clean jobs calendar
+> free/busy only.** The Google sign-in values that let the site write booked
+> jobs onto the calendars are already in Netlify for every context, so that
+> deploy starts writing customer names and addresses there. Today that
+> calendar is shared publicly with full details. Not before the deploy: the
+> live site still reads its events in full and would stop seeing jobs. The
+> setting also hides anything written before it. `docs/DETAILERS-GUIDE.md`
+> has the steps. The calendar-write paragraph below is from September: the
+> write now uses that Google sign-in, not `GOOGLE_SERVICE_ACCOUNT_JSON`.
 
 Everything on the site works today except the parts that need an account in
 your name. This is that list: what you have to do, what you have to send me,

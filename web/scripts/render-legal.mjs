@@ -106,10 +106,11 @@ function collectList() {
     "The services you picked, the time you picked, and any notes",
     "Your answers to the three questions we ask when you book: whether you accept the terms, whether we may text you, and whether we may film the detail",
     "Where you heard about us, if you choose to tell us",
+    "Anything you tell us right after booking, if you choose to: whether there is an outdoor tap or outlet, where to park, the vehicle, and notes for the detailer",
   ];
   if (isLive("checkoutFollowUp")) {
     items.push(
-      "If you reach checkout and leave without booking: the name, phone number and email you typed there, and what you had picked",
+      "If you reach checkout and leave without booking: the name, phone number and email you typed there, the city and ZIP, the services and time you had picked, and how you found us",
     );
   }
   if (isLive("cardOnFile")) {
@@ -228,7 +229,7 @@ function retainPara() {
 }
 
 function changesPara() {
-  return `<p>If we change how we handle your information, we will update this page and change the version date at the top. The version that applied when you booked is recorded with your booking. Significant changes will be made clear on the website.</p>`;
+  return `<p>If we change how we handle your information, we will update this page and change the version date at the top. The date of the terms you accepted is recorded with your booking. Significant changes will be made clear on the website.</p>`;
 }
 
 /* ======================================================================

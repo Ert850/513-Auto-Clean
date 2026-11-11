@@ -109,8 +109,13 @@ export const WIRE_LIMITS = {
   maxCity: 60,
   maxRegion: 30,
   maxPromo: 32,
-  /** How far ahead a slot may be. Past this it is a conversation, not a form. */
-  maxDaysAhead: 400,
+  /**
+   * How far ahead a slot may be. Past this it is a conversation, not a form.
+   * The form offers 92 days (MAX_BOOK_DAYS in js/funnel.js, owner, November
+   * 10); one day of slack covers a page left open overnight. It was 400,
+   * which let a hand-made request book 13 months out (audit, November 11).
+   */
+  maxDaysAhead: 93,
   /**
    * ZIPs we will price. Ohio is 43000 to 45999, Kentucky 40000 to 42799,
    * Indiana 46000 to 47999. Everything else is outside the twelve hour

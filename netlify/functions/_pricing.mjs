@@ -527,9 +527,9 @@ var PACKAGES = [
     name: "Full Interior",
     category: "interior",
     tagline: "A deep, top to bottom detail that makes it feel new again.",
-    note: "Everything in Basic, then the deep work: engrained particles pulled out of the carpet, upholstery shampooed and scrubbed, mats washed and dressed, leather conditioned, glass and door jams cleaned, and every crack and crevice brush detailed. Stain reduction is part of it. It does NOT guarantee a stain comes out completely, steam sanitize the whole vehicle, or remove the seats to get underneath them. Most engrained fibers and pet hair come out at this level, but the truly stubborn ones woven deep into the carpet backing need the individual fiber lifting in Showroom Ready. Deep set stains want the extraction add-on and lingering smells want ozone.",
+    note: "Everything in Basic, then the deep work: engrained particles pulled out of the carpet, upholstery shampooed and scrubbed, mats washed and dressed, leather conditioned, glass and door jams cleaned, and every crack and crevice brush detailed. Stain reduction is part of it. It does NOT guarantee a stain comes out completely, steam sanitize the whole vehicle, or remove the seats to get underneath them. Most engrained fibers and pet hair come out at this level, but the truly stubborn ones woven deep into the carpet backing need the individual fiber lifting in Showroom Ready. Deep set stains want the Stain Treatment extra and lingering smells want the Ozone Odor Reset.",
     notIncluded: ["A promise every stain comes out completely", "Steam sanitizing the whole vehicle", "Taking the seats out to clean underneath"],
-    tip: "Deep stains or smells? Add the extraction or ozone extra. The most stubborn pet hair needs Showroom Ready.",
+    tip: "Deep stains or smells? Add a Stain Treatment or the Ozone Odor Reset. The most stubborn pet hair needs Showroom Ready.",
     priceCents: 21500,
     durationMin: 240,
     componentIds: [...FULL_INT_IDS],
@@ -1370,8 +1370,13 @@ var WIRE_LIMITS = {
   maxCity: 60,
   maxRegion: 30,
   maxPromo: 32,
-  /** How far ahead a slot may be. Past this it is a conversation, not a form. */
-  maxDaysAhead: 400,
+  /**
+   * How far ahead a slot may be. Past this it is a conversation, not a form.
+   * The form offers 92 days (MAX_BOOK_DAYS in js/funnel.js, owner, November
+   * 10); one day of slack covers a page left open overnight. It was 400,
+   * which let a hand-made request book 13 months out (audit, November 11).
+   */
+  maxDaysAhead: 93,
   /**
    * ZIPs we will price. Ohio is 43000 to 45999, Kentucky 40000 to 42799,
    * Indiana 46000 to 47999. Everything else is outside the twelve hour
@@ -1617,7 +1622,11 @@ var LEGAL = {
   // reach the owner for one follow-up (checkoutFollowUp), and "where you
   // heard about us" is collected. Same day again, nothing live yet, so the
   // date stands.
-  privacyEffective: "2026-11-10"
+  // 2026-11-11 (session audit): bookings are written to our private booking
+  // calendar (Google Calendar), answers given after booking ("Help us get
+  // ready") are collected, Resend's role is stated without reminders that do
+  // not exist, and the record of what was agreed names the terms' date.
+  privacyEffective: "2026-11-11"
 };
 function longDate(iso) {
   const [y, m, d] = iso.split("-").map(Number);
@@ -2427,7 +2436,7 @@ var CAPABILITIES = [
     // arrive. Tying email to that would hold back a working feature for
     // weeks for no reason.
     id: "automatedEmail",
-    what: "Automatic confirmation and reminder emails",
+    what: "Automatic confirmation emails",
     /*
      * Live, and verified: POST /api/send-confirmation returned
      * {sent:true, owner:true} from production, and the domain is verified so
@@ -2536,11 +2545,14 @@ var PROCESSORS = [
   { name: "cdnjs (Cloudflare)", does: "serves the map library, so Cloudflare receives your IP address when the map loads." },
   { name: "Google Places", does: "suggests addresses as you type in the booking form. What you type in that box goes to Google.", capability: "placesAutocomplete" },
   { name: "Google Maps (Routes)", does: "measures the drive to your address so we can price travel. This happens from our server, with your address, not from your browser.", capability: "measuredTravel" },
-  { name: "Google Calendar", does: "holds our availability. Your browser reads our open times from it.", capability: "liveCalendar" },
+  // Bookings are written to it too (send-confirmation.mjs, _gcal.mjs), on a
+  // calendar shared as free/busy only, so the public sees busy times and
+  // never a booking's details (session audit, November 11).
+  { name: "Google Calendar", does: "holds our availability and our schedule. When you book, the job goes onto our booking calendar with your name, phone, email, address and notes, so we know where to be. That calendar is private: anyone else sees only that the time is taken. Your browser reads only our open times.", capability: "liveCalendar" },
   { name: "Stripe", does: "takes card payments and keeps your card on file. Card details go straight to Stripe over an encrypted connection; we never see or store the card number.", capability: "cardOnFile" },
   { name: "PayPal", does: "takes PayPal and Venmo payments.", capability: "digitalWallets" },
   { name: "Twilio", does: "sends our appointment text messages.", capability: "automatedTexts" },
-  { name: "Resend", does: "sends our confirmation and reminder emails.", capability: "automatedEmail" },
+  { name: "Resend", does: "sends our booking confirmation emails, and the emails we receive about bookings and unfinished checkouts.", capability: "automatedEmail" },
   // Named separately from the hosting row on purpose. "Netlify hosts the
   // website" does not tell a reader that a script is running in their
   // browser and reporting back, and that is the part worth knowing.

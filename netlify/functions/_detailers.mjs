@@ -47,7 +47,10 @@ export function detailerFor(raw, cart) {
  */
 export async function blockFeeFor(detailer, slotMs, shownBp) {
   if (!slotMs) return null;
-  const apiKey = process.env.GOOGLE_CALENDAR_API_KEY || process.env.GOOGLE_API_KEY;
+  // A server-only key first: the browser key can then be locked to the site's
+  // own pages (an HTTP-referrer restriction), which a function call never
+  // passes. Without one, the browser key is used, as before.
+  const apiKey = process.env.GOOGLE_CALENDAR_SERVER_KEY || process.env.GOOGLE_CALENDAR_API_KEY || process.env.GOOGLE_API_KEY;
   const calendarId = detailer ? detailer.availabilityCalendarId : OWNER_AVAILABILITY;
   if (apiKey && calendarId) {
     try {
