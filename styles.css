@@ -837,7 +837,6 @@ main > .areas:first-child .section-head { margin-bottom: 18px; }
 .reveal[data-d="1"] { transition-delay: .08s; }
 .reveal[data-d="2"] { transition-delay: .16s; }
 .reveal[data-d="3"] { transition-delay: .24s; }
-.reveal[data-d="4"] { transition-delay: .32s; }
 
 /* THE HERO DOES NOT WAIT FOR JAVASCRIPT.
    .reveal holds an element invisible until script.js adds .in, and script.js
@@ -852,7 +851,6 @@ main > .areas:first-child .section-head { margin-bottom: 18px; }
 .hero .reveal[data-d="1"] { animation-delay: .06s; }
 .hero .reveal[data-d="2"] { animation-delay: .12s; }
 .hero .reveal[data-d="3"] { animation-delay: .18s; }
-.hero .reveal[data-d="4"] { animation-delay: .24s; }
 
 /* Fast scrubbing: when the user flicks quickly, drop the fade + stagger so no
    element is ever caught mid-transition. Specificity (0,2,1) beats the
@@ -1435,7 +1433,6 @@ body > #quote { padding-block: clamp(40px, 4.4vw, 64px); }
   padding: .7rem 0; font-size: .9rem; color: var(--text-soft); line-height: 1.45;
 }
 .svc-corr .corr-tiers li + li { border-top: 1px solid var(--line); }
-.svc-corr .corr-tiers li svg { display: none; }
 .svc-corr .corr-tiers strong { color: var(--text); }
 .svc-corr .corr-price { color: var(--red); font-family: var(--font-display); font-weight: 800; text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .svc-corr .corr-meta { grid-column: 1; font-size: .8rem; color: var(--text-soft); margin-top: .12rem; }

@@ -1328,7 +1328,7 @@
     return false;
   }
   function placeMsg(p, near, body) {
-    var box = near && (near.closest('.bk-field,.bk-check,.bk-cards,.bk-acc') || near);
+    var box = near && (near.closest('.bk-field,.bk-check,.bk-acc') || near);
     if (!box || !box.parentNode) { body.appendChild(p); return null; }
     var parent = box.parentNode;
     if (box.classList && box.classList.contains('bk-field') &&
