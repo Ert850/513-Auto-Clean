@@ -406,6 +406,9 @@ describe("the booking funnel opens", () => {
 
     const ms = /data-slot="(\d+)"/.exec(slots)[1];
     click(fresh, { dataset: { slot: ms } });
+    // This stub's closest() matches the day timeline, where a tap only
+    // selects (owner, November 12); Continue in the bar moves on.
+    click(fresh, { id: "bkNext" });
 
     // Round 15: picking a time on the checkout selects it and moves down the
     // same page; nothing is sent until Confirm.

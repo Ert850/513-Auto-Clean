@@ -457,7 +457,10 @@ body.bk-open { overflow: hidden; }
   background: var(--red); color: #fff; font: inherit; font-weight: 800;
 }
 .bk-tl-card-go:hover { background: var(--red-deep); }
-.bk-tl-card p.bk-tl-card-mine { margin-top: .5rem; color: var(--text); font-weight: 800; }
+/* The chosen time, labelled as the bar labels it (red, ticked). */
+.bk-tl-card p.bk-tl-card-mine { display: flex; align-items: center; gap: .25rem; margin-top: .6rem; color: var(--red); font-size: .7rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+.bk-tl-card-mine svg { width: 12px; height: 12px; flex: none; }
+.bk-tl-card-mine + .bk-tl-card-go { margin-top: .35rem; }
 /* Rows past the last start shown: only room for that job's block to finish
    in (no box, not "not available"). */
 .bk-tl-t.tail { opacity: .4; }

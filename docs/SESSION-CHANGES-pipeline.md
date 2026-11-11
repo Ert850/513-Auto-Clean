@@ -31,6 +31,12 @@ Built overnight, November 10 to 11, for you to evaluate. It combines your 8 answ
 - When the fee is measured and still below the fold, the form scrolls just far enough to show it, never so far that the box being typed in leaves the screen (`revealTravel()`).
 - Measured: the whole fee card is on screen at 1440×790, 1280×720 and 375×812. In a 700×400 window the ZIP box stays in view and the fee shows partly.
 
+### Day timeline: a tap on a row selects, it no longer moves on (owner's yes, November 12)
+- **Why:** on a tablet there is no pointing, so tapping a row was the only way to see its card, and the same tap left the calendar; times could not be compared, and a mis-tap on a 30 px row meant reopening Time and See additional times.
+- **Now:** a tap draws the chosen block, the card says "Your time" with **Continue with this time**, and the bar shows the time with Continue. Pointing at (or tapping) another start shows its card with **Choose this time**. The card's button, or the bar's Continue, moves on. The page keeps its scroll and the tapped row keeps focus.
+- **Unchanged:** the recommended time cards and the phone list are still one tap. The bar's time card no longer offers "Change" while Time is open.
+- **To test (tablet or laptop):** See additional times, tap two rows in turn (the form stays put, the block and the bar follow), then Continue with this time; again with the bar's Continue.
+
 ### Also
 - The QR code generator (`segno`, Python) is installed (your OK, November 12), ready for the magazine pages.
 
