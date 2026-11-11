@@ -145,9 +145,6 @@ body.bk-open { overflow: hidden; }
 }
 .bk-fine { font-size: .8rem; color: var(--text-soft); line-height: 1.55; margin-top: 1rem; }
 
-/* ---------- choice cards ---------- */
-.bk-cards { display: grid; gap: .6rem; }
-
 /* ---------- packages ---------- */
 .bk-pkgs { display: grid; gap: .6rem; }
 .bk-pkg {
