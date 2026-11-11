@@ -90,7 +90,6 @@
       access: { water: null, power: null, parking: '' },
       // Set when the funnel was opened from a shared quote link.
       quotedSlot: null,
-      slotTaken: false,
       promoCode: '',
       // True while the "are you sure" panel is up.
       leaving: false,
@@ -3284,11 +3283,18 @@
         return Math.abs(ms - state.quotedSlot) < 60000;
       });
       if (!stillFree && state.slot === state.quotedSlot) {
+        // Taken since the quote was shared: drop it and say why, as for a
+        // kept draft whose time has passed. This called renderQuoteBanner(),
+        // which never existed, so the call threw and the picker showed no
+        // times at all, only the request form (cleanup review, November 11).
         state.slot = null;
-        state.slotTaken = true;
-        renderQuoteBanner();
-      } else if (stillFree) {
-        state.slotTaken = false;
+        state.checkedSlot = null;
+        state.whenNote = 'The time in your quote has been booked since. Pick another below.';
+        var whenSec = root && root.querySelector('[data-sec="when"]');
+        if (whenSec && !whenSec.querySelector('.bk-secnote')) {
+          var h3 = whenSec.querySelector('.bk-sec-h');
+          if (h3) h3.insertAdjacentHTML('afterend', '<p class="bk-err bk-secnote" role="alert">' + esc(state.whenNote) + '</p>');
+        }
       }
     }
 
