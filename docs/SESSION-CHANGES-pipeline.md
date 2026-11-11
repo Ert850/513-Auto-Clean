@@ -68,6 +68,11 @@ The 513 Auto Clean jobs calendar goes free/busy only **the minute this branch is
 - **Earlier and Later times fold again** whenever the day or the week changes (day buttons, the week arrows, This week, Go to a date), as they do when the calendar opens.
 - **To test:** pick a recommended time, open See additional times, point at a start inside the chosen job (one block only, the suggested row back with its star); open Earlier times, then change day: folded again.
 
+### Timeline follow-ups (owner, November 11)
+- **Fee words follow scrolling** ("the highest visible row in general"). The highest row you can see of each same-price stretch says the price in words. A row counts as out of sight when it is scrolled above the window's top, under the phone's pinned part-of-day heading, or under a block. It updates on every scroll, resize and repaint (`markAllLeads`, from `updateCue`). Re-checked by scrolling at 1440 and 375 px.
+- **The day bar measures against this job.** It showed open starts out of 33 (every half hour, 6am to 10pm), but a long detail must finish by midnight and exterior work starts by 8pm, so a free day read about 85% for a 4.5-hour job. It is now out of the starts a free day could offer this job (`startsPossible`: 28 for 4.5 hours, 29 for a 2-hour exterior job). Free days read 100%.
+- **The suggested star stays visible over a block** (chosen or pointed at), on its own row; the rest of a covered row stays hidden.
+
 ### Still open from that validation
 - When the card-on-file switch goes live, its payment box should carry the short-notice line and the "a few quick questions" line too (latent: the switch is off).
 
