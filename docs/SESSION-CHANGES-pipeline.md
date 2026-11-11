@@ -13,6 +13,41 @@ Built overnight, November 10 to 11, for you to evaluate. It combines your 8 answ
   - `web/lib/browser-entry.ts`, `js/pricing.bundle.js` (built), `web/lib/funnel.smoke.test.mjs`.
   - The build also re-stamps `?v=` on every page. Those page changes were left out of the commit; a rebuild after merging restamps them.
 
+## Round 19 (November 11, late): honesty audit, follow-up validation, merges
+
+### Honesty audit (a check of every promise against what the code does)
+- **Privacy policy (dated 2026-11-11, relocked):** names the private bookings calendar the jobs are written to, drops the reminders Resend does not send, and lists the after-booking answers among what we collect.
+- **Short notice is a request everywhere:** the next steps, the customer email ("not confirmed until a detailer accepts it"), the owner's subject and heading ("SHORT NOTICE REQUEST"), and now the calendar event's title too. Root cause: short notice was added to the Done screen only, so three other places still said "confirmed".
+- **Texts only for people who said yes:** the ETA text line appears only with SMS consent; everyone else reads "a call before we set off". The SMS opt-in wording says what is sent, how often, and STOP/HELP.
+- **Smaller wording:** the filming promise matches the terms word for word; Full Interior's note names Stain Treatment and Ozone Odor Reset; the rating badges say "on Google" (the count is Google's alone, "& Yelp" was not true).
+- **Clarity never records the booking form:** `data-clarity-mask` on `#bookFunnel` (`web/partials/scripts.html`). Balanced masking hides what is typed, not the Review screen that shows it back.
+- **`/golf` and `/prestige`** redirect (302, temporary) to the home page tagged `utm_source=golf|prestige&utm_medium=print&utm_campaign=qr`, until the magazine pages exist.
+- **`GOOGLE_CALENDAR_SERVER_KEY`** (optional): the booking functions use it first, so the browser key can be locked to the site's pages. Until it is set, don't restrict the browser key.
+- **Server date cap 93 days** (was 400). The form offers 92.
+- **CSP:** `api.weather.gov` added to `connect-src` (the forecast fetch would have been reported as a violation).
+- **Docs brought up to date:** DETAILER_HOMES done, Google sign-in done, the colour scale, and the calendar switch-over order (below).
+- **`npm run gcal:token`:** a Web application client (Google's docs: a localhost redirect is a web client), accepts the downloaded JSON's path, cleans pasted values, never opens a browser itself (it opened the wrong Chrome profile).
+
+### The calendar switch-over, corrected
+The 513 Auto Clean jobs calendar goes free/busy only **the minute this branch is live in production**, not before (today's live site reads its events in full and would stop seeing jobs) and not later (from that deploy, jobs written there carry customer names and addresses). The setting also hides events written before it. In `LAUNCH-CHECKLIST.md`, `DETAILERS-GUIDE.md` and `ANALYTICS-SETUP.md`.
+
+### Bugs from the optional-questions validation, fixed (each verified in headless Chrome and against the server handler)
+1. **Critical: a second booking in one visit crashed.** At checkout, Back and × move into the step bar; `done()` replaced the whole bar and deleted them, so Done had no × and the next `open()` or "Book another vehicle" threw. *Root cause:* two places own the bar, and only `renderNav` put the buttons back first. `done()` now does the same.
+2. **Requests never said which days were asked for** (both emails said "not selected"). *Root cause:* the email read `state.preferredWindows`, which the old day picker filled and the new one does not. Both emails now print the days and parts of the day (`askedFor` on the server).
+3. **Old answers were sent again as a "follow-up".** *Root cause:* `prepAnswered()` asked "is anything filled", not "did anything change on Done". It now compares with a snapshot taken when Done opens.
+4. **"not answered" and "(not named)" on every booking email and calendar event.** Gone: the lines appear only when answered, otherwise one line says the answers come by follow-up email.
+5. **Typed answers lost** on closing the tab, on "Book another vehicle", and racing "Something needs changing". Now sent on page hide and before the next booking, with `keepalive`. The next booking gets its own booking key.
+6. **Wording per path:** a flexible day says "we confirm the day, usually within a few hours, and let you know the start time by the evening before" everywhere (Review, Done, steps, email); Review calls a request a request; "by email" only when they gave one; a booked time no longer says "only really settled once you have heard back" (requests still say it); "before travel" only while the drive is unmeasured; Help me decide without a time says it is a recommendation request, and its owner email says nothing is held and shows what they wrote; the travel line in both records says what the total holds; the promo saving is said once.
+7. **Closing while Confirm was sending** sent an "unfinished booking" capture and hid the Done screen. Close waits for the send (up to 20 seconds), and nothing is captured mid-send.
+8. Smaller: "Water: not sure" (not "unsure"); Help me decide's email has no "$0 total"; the abandoned-checkout phone check matches the server's (no area code starts with 0 or 1); the Yes / No / Not sure buttons are 44 px; Done has no empty footer strip on phones.
+
+### Still open from that validation (needs a decision)
+- **The follow-up answers reach the owner's inbox, not the detailer's calendar.** Kris never sees them unless they are forwarded. Writing them onto the calendar event (found by its booking key) is a small server function; it is a new public endpoint, so it is left for your go-ahead. The button still says "Send to your detailer" (your label); with this gap it is only true for the owner's own jobs.
+- When the card-on-file switch goes live, its payment box should carry the short-notice line and the "a few quick questions" line too (latent: the switch is off).
+
+### Checked
+- Tests 518 of 518 (Eastern time). Validation scripts re-run on the rebuilt preview: Done keeps ×, reopen and "Book another vehicle" work with no console errors, one follow-up per change, none untouched, page hide sends typed answers once; server emails show the asked-for days, the short-notice heading and event title, no "not answered".
+
 ## Round 18 (November 11): Review as option D, setup questions after booking
 
 ### What changed

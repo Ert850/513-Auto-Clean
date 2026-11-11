@@ -197,6 +197,8 @@ Read this before changing anything. Every rule below came from a real bug or an 
 - **A heading that stays pinned while its items show is `position: sticky` inside a wrapper holding only its group.** It leaves with the wrapper. When other bars are pinned above it, measure their heights (`pinWeek()` sets `--wk-h`, `--wk-strip`); never guess them.
 - **Phones (window under 768 px) show the day's list; tablets and up show one day as half-hour rows** (owner's picks B and C). Decide by the window (`phoneView()`), not the form: the form is at most 680 px on any big screen, so its width can't tell a big phone from a laptop, and a 520 px form-width line sent 540 to 600 px phones the laptop design.
 - **No dead grey rows on the timeline** (owner, November 11). Rows run from the first time shown to the end of the last one's job (`timelineRange`). Grey hatching is only a gap between two times. The rows after the last start are that job's tail, drawn empty with a faded hour, never as times: offering the late times that fall in a tail grew the rows again, until "Later times" never folded.
+- **At checkout, Back and × live inside `#bkNav`.** Anything that rewrites `#bkNav` (`renderNav`, `done()`) must first move them back into `.bk-head`, or it deletes them: Done lost its × and the next booking crashed (November 11).
+- **A follow-up sends what changed, not what is filled.** Done's setup answers are compared with a snapshot taken when Done opens (`prepBase`); answers given earlier are already in the booking email.
 - **A pinned bar's height can change after it is measured** (a web font wrapping a line at 320 px). Re-measure with a `ResizeObserver`.
 
 ## Verifying UI changes
