@@ -20,6 +20,8 @@
  * exits. Copy it into Netlify and close the window.
  */
 import crypto from "node:crypto";
+import fs from "node:fs";
+import os from "node:os";
 import http from "node:http";
 import { createInterface } from "node:readline/promises";
 import { spawn } from "node:child_process";
@@ -62,10 +64,54 @@ Before starting, in the Google Cloud console for the 513 Auto Clean project:
        Copy the client ID and client secret.
 `);
 
-const clientId = await ask("Client ID:     ");
-const clientSecret = await ask("Client secret: ");
+/*
+ * EASIEST: pass the JSON file Google lets you download when the client is
+ * created, and nothing has to be pasted:
+ *   npm run gcal:token -- ~/Downloads/client_secret_XXXX.json
+ *
+ * Pasting is where it broke (November 11): a pasted ID can carry spaces,
+ * quotes, the secret, or a terminal's invisible paste markers, and Google
+ * answers that with a bare "400. That's an error. ... malformed". So both
+ * values are cleaned, and the ID is checked for its shape before any link
+ * is opened.
+ */
+const clean = (v) => String(v ?? "")
+  .replace(/\x1b\[20[01]~/g, "")        // bracketed-paste markers
+  .replace(/[\x00-\x1f\x7f]/g, "")       // any other control character
+  .trim()
+  .replace(/^["'](.*)["']$/, "$1")
+  .trim();
+const ID_SHAPE = /^\d+-[a-z0-9]+\.apps\.googleusercontent\.com$/;
+
+let clientId = "", clientSecret = "";
+const file = process.argv[2];
+if (file) {
+  try {
+    const j = JSON.parse(fs.readFileSync(file.replace(/^~(?=\/)/, os.homedir()), "utf8"));
+    const c = j.web || j.installed || j;
+    clientId = clean(c.client_id);
+    clientSecret = clean(c.client_secret);
+    if (j.web && !(c.redirect_uris || []).includes(REDIRECT)) {
+      console.error(`\nThis Web client does not list ${REDIRECT} under Authorized redirect URIs.\n` +
+        "Add it exactly in Google Cloud (Clients, this client), save, wait a few minutes, and run this again.");
+      process.exit(1);
+    }
+  } catch (e) {
+    console.error(`\nCould not read ${file}: ${e.message}`);
+    process.exit(1);
+  }
+} else {
+  clientId = clean(await ask("Client ID:     "));
+  clientSecret = clean(await ask("Client secret: "));
+}
 if (!clientId || !clientSecret) {
   console.error("\nBoth are needed. Nothing was sent anywhere.");
+  process.exit(1);
+}
+if (!ID_SHAPE.test(clientId)) {
+  console.error("\nThat Client ID does not look right. It should look like\n" +
+    "  123456789012-abc123def456.apps.googleusercontent.com\n" +
+    "with nothing before or after it. Nothing was sent anywhere. Easiest: pass the downloaded JSON file instead.");
   process.exit(1);
 }
 
