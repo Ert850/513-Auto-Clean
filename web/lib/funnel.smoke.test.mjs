@@ -956,8 +956,8 @@ describe("what the screen says about money and time", () => {
       .toContain("l.kind !== 'travel'");
   });
 
-  it("takes bookings up to three months ahead, and no further", () => {
-    expect(src(), "owner, November 10: cap at 3 months").toContain("var MAX_BOOK_DAYS = 92;");
+  it("takes bookings up to a year ahead, as the live site does, and no further", () => {
+    expect(src(), "November 11: the same limit as the live site").toContain("var MAX_BOOK_DAYS = 365;");
     const code = fn("paintWeek", 1200);
     expect(code, "the forward chevron stops at the cap").toContain("lastBookableMs()");
   });

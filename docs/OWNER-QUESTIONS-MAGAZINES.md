@@ -111,3 +111,10 @@
 **15. Kris's email,** to share his bookings calendar with him.
 
 **16. GoHighLevel:** the account's API key and location ID, plus whether texting (A2P registration) is approved. Reminders and texts through GoHighLevel can't be connected without these.
+
+**17. How far ahead can customers book online?** The live site takes bookings up to a year ahead, and the new booking form does the same for now. A shorter limit (for example 3 months) stops bookings so far out that plans, prices or hours may have changed by then. Anything further ahead can still be arranged by phone.
+- [ ] Keep one year, as today
+- [ ] 3 months
+- [ ] Other: ________
+
+*Recommended:* keep one year until you have a reason to shorten it; your OPEN events already decide which days can actually be booked.

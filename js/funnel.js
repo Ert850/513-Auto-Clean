@@ -3879,7 +3879,7 @@
     // grid, November 10).
     html += '<div class="bk-wk-h"><div class="bk-wk-ttl"><h4 id="bkWkTitle">' + esc(title) + '</h4>' +
       '<span class="bk-wk-tz">Hours are in Cincinnati Time Zone (' + zoneName(first.dayStart + DAY / 2) + ')' +
-      (canNext ? '' : '. We take bookings up to 3 months ahead') + '</span></div><div class="bk-wk-nav">' +
+      (canNext ? '' : '. We take bookings up to a year ahead') + '</span></div><div class="bk-wk-nav">' +
       (canPrev ? '<button type="button" class="bk-wk-today" id="bkWkToday">This week</button>' : '') +
       '<button type="button" class="bk-wk-arrow" id="bkWkPrev" aria-label="Previous week"' + (canPrev ? '' : ' disabled') + '>' + CHEV_L + '</button>' +
       '<button type="button" class="bk-wk-arrow" id="bkWkNext" aria-label="Next week"' + (canNext ? '' : ' disabled') + '>' + CHEV_R + '</button>' +
@@ -4311,8 +4311,12 @@
 
   function localMin(ms) { return P.localMinutesOfDay(ms); }
 
-  /** How far ahead anyone can book: three months (owner, November 10). */
-  var MAX_BOOK_DAYS = 92;
+  /**
+   * How far ahead anyone can book: the live site's year (November 11: "keep
+   * booking ahead cap equivalent to live site"; it was three months from the
+   * November 10 answers). Owner question 17 in docs/OWNER-QUESTIONS-MAGAZINES.md.
+   */
+  var MAX_BOOK_DAYS = 365;
 
   /** "2026-03-14" as local midnight. Built by parts: Date.parse treats a bare
    *  date string as UTC, which lands on the previous evening in Cincinnati. */
