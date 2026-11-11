@@ -53,7 +53,7 @@ describe("printed QR codes", () => {
     const rows = [...readme.matchAll(/^\| `([^`]+)` \| `([0-9a-f]{64})` \|/gm)];
     expect(rows.length).toBeGreaterThanOrEqual(PRINTED.length * 5);
     for (const [, file, sum] of rows) {
-      const got = crypto.createHash("sha256").update(fs.readFileSync(path.join(root, "marketing/qr", file))).digest("hex");
+      const got = crypto.createHash("sha256").update(fs.readFileSync(path.join(root, "marketing/qr", file!))).digest("hex");
       expect(got, file).toBe(sum);
     }
   });

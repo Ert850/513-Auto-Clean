@@ -127,20 +127,23 @@ describe("a detailer who works the late hours anyway", () => {
 });
 
 describe("booking window", () => {
+  // The date arithmetic, on a 3-day window. How many days the site uses comes
+  // from config/rush-fee.json and is tested in rush.test.ts.
+  const W = { minLeadDays: 3 };
   const mondayMidnight = new Date(2026, 8, 7); // Mon 7 Sep 2026, local midnight
 
   it("puts Monday's earliest booking on Thursday", () => {
-    expect(earliestBookableDate(mondayMidnight, R.window).getDay()).toBe(4); // Thu
+    expect(earliestBookableDate(mondayMidnight, W).getDay()).toBe(4); // Thu
   });
 
   it("shifts to Friday the moment it becomes Tuesday", () => {
     const tuesday = new Date(2026, 8, 8);
-    expect(earliestBookableDate(tuesday, R.window).getDay()).toBe(5); // Fri
+    expect(earliestBookableDate(tuesday, W).getDay()).toBe(5); // Fri
   });
 
   it("flags nearer dates as needing Priority Booking", () => {
     const needs = (dayOffset: number) =>
-      requiresPriorityBooking(new Date(2026, 8, 7 + dayOffset), mondayMidnight, R.window);
+      requiresPriorityBooking(new Date(2026, 8, 7 + dayOffset), mondayMidnight, W);
     expect(needs(0)).toBe(true); // today
     expect(needs(1)).toBe(true);
     expect(needs(2)).toBe(true);

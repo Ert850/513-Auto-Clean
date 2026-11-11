@@ -60,6 +60,7 @@ import {
   slotNeedsPriority,
 } from "./pricing/surcharge.js";
 import { quote } from "./pricing/quote.js";
+import { rushWindow } from "./pricing/rush.js";
 import {
   QUOTE_TTL_HOURS,
   decodeQuote,
@@ -174,6 +175,7 @@ const api = {
   minutesOfDay,
   earliestBookableDate,
   slotNeedsPriority,
+  rushWindow,
   LEGAL,
   IN_PERSON,
   isLive,

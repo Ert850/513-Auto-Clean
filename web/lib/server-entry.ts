@@ -30,6 +30,7 @@ import { componentsOf } from "./catalog/types.js";
 import { DEFAULT_RULES } from "./pricing/rules.js";
 import { SEED_TAX_TABLE } from "./pricing/tax.js";
 import { minutesOfDay, slotNeedsPriority } from "./pricing/surcharge.js";
+import { rushWindow } from "./pricing/rush.js";
 import { localMinutesOfDay } from "./availability/slots.js";
 import { estimateOneWayMinutes } from "./travel/zipRanges.js";
 import { quote, type AddonRef, type CartInput, type PackageRef } from "./pricing/quote.js";
@@ -153,7 +154,13 @@ export function priceFromWire(wire: WireCart, opts: PriceOptions = {}): PricedCa
   });
 
   const nowMs = opts.nowMs ?? Date.now();
-  const priority = wire.slot ? slotNeedsPriority(wire.slot, nowMs, DEFAULT_RULES.window) : false;
+  // How many days carry the rush fee depends on the booking and where the
+  // visit came from (config/rush-fee.json), judged exactly as the browser does.
+  const rushWin = rushWindow(
+    { source: wire.source ?? null, packageIds: wire.vehicles.flatMap((v) => v.packageIds ?? []) },
+    nowMs,
+  );
+  const priority = wire.slot ? slotNeedsPriority(wire.slot, nowMs, rushWin) : false;
   const payInFull = opts.payInFull ?? false;
 
   const cart: CartInput = {
