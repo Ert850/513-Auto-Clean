@@ -23,7 +23,10 @@ describe("all-day events are Cincinnati days, not UTC days", () => {
 
   it("an all-day Vacation blocks its own evening and leaves the evening before", () => {
     const ev: RawEvent = { summary: "Vacation", start: eventTime("2026-11-20"), end: eventTime("2026-11-21"), allDay: true, transparent: false };
-    const win = resolveWindow([ev], at(19, 0), at(22, 0));
+    // Open around the clock, so only the Vacation decides (OPEN is needed for
+    // anything to be bookable since November 11).
+    const open: RawEvent = { summary: "OPEN", start: at(19, 0), end: at(22, 0), allDay: false, transparent: false };
+    const win = resolveWindow([open, ev], at(19, 0), at(22, 0));
     const slots = computeSlots({ openBlocks: win.open, busy: win.busy, serviceDurationMin: 120, travelBeforeMin: 60, travelAfterMin: 60,
       granularityMin: 30, notBefore: at(19, 0), notAfter: at(22, 0), hasExterior: false, ignoreReturnAfterMin: 1080, ignoreOutboundBeforeMin: 600 });
     expect(slots.some((s) => s >= at(20, 0) && s < at(21, 0)), "nothing on the 20th").toBe(false);

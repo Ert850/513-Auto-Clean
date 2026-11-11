@@ -14,8 +14,8 @@ This guide covers changing working hours, best start times, fees and who is offe
 - **A "Priority" line** in each calendar's description says who is offered first: 1 goes first, then 2.
 - **Anything else on an availability calendar blocks time,** like a dentist appointment, unless it is set to Free. So do booked jobs on a bookings calendar.
 - **Each OPEN block sets its own price.** A start costs what the block it starts in says: `OPEN` is the standard price, `OPEN +20%` adds 20%, `OPEN +35%` adds 35%, any number. A job may run on into the next block; only where it starts counts.
-- **Rush:** a booking within 3 days adds 20%. With a block's fee the two together are capped at 30%, unless the block alone asks for more.
-- **No OPEN blocks at all** (or the calendar can't be read): the old clock rule, +20% before 10am or from 6pm.
+- **Rush:** a booking for today or tomorrow adds 20% (2 days, set in `config/rush-fee.json`). With a block's fee the two together are capped at 30%, unless the block alone asks for more.
+- **No OPEN blocks at all:** nothing can be booked (owner, November 11: "if it doesn't say open, you can't book"). If a calendar can't be read when a booking is priced, the fee falls back to the old clock rule, +20% before 10am or from 6pm.
 - **Customers see a 1-hour arrival window**, for example "We arrive between 6 and 7pm", and the drive may use that hour. So a detailer whose OPEN starts at 6pm can be booked for 6pm, as long as the drive is under the hour.
 - **Each detailer drives from their own home** (Netlify `DETAILER_HOMES`, section E). Their drive sets their travel fee and how close together their jobs can be.
 
@@ -68,7 +68,7 @@ To move a best time, edit the BEST event's start time. To stop offering it, dele
 
 **For a whole day off:** click that day's OPEN event, choose **Delete**, then **This event**. No OPEN means no bookings that day.
 
-**For part of a day:** create any event (for example "Dentist") on that person's availability calendar and leave it **Busy**. It blocks that time.
+**For part of a day:** create an event titled **DNS** (do not schedule) for the hours that can't be booked, on that person's bookings calendar or availability calendar, and leave it **Busy**. This is the owner's preferred way, because it says plainly that the time is not to be booked. Any other Busy event (for example "Dentist") blocks the same way.
 
 ## D. Change who is offered first (Priority)
 
@@ -94,7 +94,7 @@ Today Kris is Priority 1 and you are Priority 2. When two people are free at the
 
 **Arrival window (optional):** in someone's `DETAILERS` entry, `"arrivalWindow": 30` gives them 30 minutes instead of the usual 60.
 
-**Old setting:** `"noFeeStarts"` in `DETAILERS` still works for a calendar with no OPEN blocks, but tagged OPEN blocks replace it.
+**Old setting:** `"noFeeStarts"` in `DETAILERS` only matters when a calendar can't be read at booking time; tagged OPEN blocks replace it.
 
 ## F. Change what someone does (Netlify)
 

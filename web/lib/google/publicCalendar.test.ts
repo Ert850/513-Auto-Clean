@@ -69,9 +69,9 @@ describe("best start times and priority, set in Google Calendar (November 10)", 
     expect(w.busy).toEqual([{ start: at(0, 19, 2)[0], end: at(0, 19, 2)[1] }]);
   });
 
-  it("works when there are no OPEN blocks too", () => {
+  it("keeps BEST times and busy events when there are no OPEN blocks", () => {
     const w = resolveWindow([ev("BEST", at(0, 10, 0.25)), ev("Dentist", at(0, 14, 1))], from, to);
-    expect(w.mode).toBe("blacklist");
+    expect(w.mode).toBe("noOpen");
     expect(w.best).toEqual([at(0, 10, 0)[0]]);
     expect(w.busy).toHaveLength(1);
   });
@@ -127,16 +127,18 @@ describe("whitelist mode, when OPEN blocks exist", () => {
       expect(resolveWindow([ev(title, at(0, 6, 12))], from, to).mode).toBe("whitelist");
     }
     // But not something that merely mentions it.
-    expect(resolveWindow([ev("Shop is open", at(0, 6, 12))], from, to).mode).toBe("blacklist");
+    expect(resolveWindow([ev("Shop is open", at(0, 6, 12))], from, to).mode).toBe("noOpen");
   });
 });
 
-describe("blacklist mode, when nobody has written an OPEN block", () => {
-  it("falls back to business hours minus everything on the calendar", () => {
+describe("no OPEN block in the window (owner, November 11: no OPEN, no booking)", () => {
+  it("offers nothing, where it used to offer 5am to 1am minus the calendar", () => {
+    // A detailer who deleted their OPEN events for a holiday was offered every
+    // hour of it. Now: if it doesn't say open, it can't be booked.
     const w = resolveWindow([ev("Full Interior", at(0, 16, 3))], from, to);
-    expect(w.mode).toBe("blacklist");
-    expect(w.open.length, "business hours still get offered").toBeGreaterThan(0);
-    expect(w.busy, "and the job still blocks").toHaveLength(1);
+    expect(w.mode).toBe("noOpen");
+    expect(w.open, "nothing bookable").toEqual([]);
+    expect(w.busy, "the job is still read").toHaveLength(1);
   });
 
   it("still ignores anything marked Free", () => {

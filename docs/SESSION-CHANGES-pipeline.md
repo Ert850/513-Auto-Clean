@@ -67,6 +67,16 @@ Built overnight, November 10 to 11, for you to evaluate. It combines your 8 answ
 - **Tests:** `experiments.test.ts`, 17 tests. They run the real `analytics.js` in a sandbox: weights, stickiness, the source rule, off/ended/unknown tests, element switching, nothing reaching GA before Accept, and storage blocked. 582 of 582 pass.
 - **To test:** with a test set to running, open /?utm_source=golf: `localStorage['ac-exp']` holds a version and only that version's element shows. A booking email carries "A/B TESTS".
 
+### No OPEN events means no bookings (owner's answer to question 13)
+- **Before:** a calendar read with no OPEN event in the window fell back to "business hours", 5am to 1am every day, minus its events. So a detailer who deleted their OPEN events for a holiday was offered every hour of it.
+- **Now:** that mode (`noOpen`, was `blacklist`) offers nothing: "if it doesn't say open, you can't book."
+- **Unchanged:**
+  - business hours still back the `unconfigured` fallback (no calendar key, as in a local preview), which the form labels as times to confirm;
+  - the server's fee check reads only OPEN blocks, so it's unaffected.
+- **Owner's habit for blocked time:** a Busy event titled "DNS" (do not schedule) on the bookings or availability calendar. `DETAILERS-GUIDE.md` now says so. It also now gives the rush window as 2 days; it still said 3, which the earlier sweep missed because it only checked customer-facing pages.
+- **Tests:** the fallback tests now expect nothing offered. The all-day Vacation test, which used the fallback as its backdrop, has an explicit OPEN block. 594 of 594 pass.
+- **To test:** on 8799 (real calendars), times still show for Elijah and Kris. A calendar with its OPEN events removed for a week shows "Nothing open this week".
+
 ### Settings files: three holes closed (found by the bug-testing agent)
 - **Bug 1: the browser and the server could read a source differently.**
   - **Root cause:** the browser lowercased the source and split it on "/". The wire also stripped everything but letters, digits, - and _, and cut it to 40. With a rule for "golf course", the screen showed $278.12 and the card would have been charged $301.30.

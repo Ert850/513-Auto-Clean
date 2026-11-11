@@ -9,16 +9,20 @@ import { localDayStart, localTimeOnDay, localWeekday, zonedToUtc } from "../time
  * no backend at all. The service-account path in ./calendar.ts stays for the
  * server side, where writing booked jobs needs real credentials.
  *
- * TWO MODES, detected automatically, because Elijah's calendar today holds his
- * BUSY commitments rather than availability blocks:
+ * TWO MODES, detected automatically:
  *
  *   whitelist  Events titled "OPEN..." exist in the window. Those events ARE
- *              the availability, and everything else is ignored.
- *   blacklist  No OPEN events. Availability is business hours MINUS every
- *              event on the calendar.
+ *              the availability, and everything else on the calendar blocks.
+ *   noOpen     No OPEN events: nothing is bookable (owner, November 11: "if it
+ *              doesn't say open, you can't book"). This used to fall back to
+ *              business hours (5am to 1am, every day) minus the calendar's
+ *              events, so a detailer who deleted their OPEN events for a
+ *              holiday was offered every hour of it. To block time, a detailer
+ *              deletes the OPEN window or puts a Busy event ("DNS", do not
+ *              schedule) over it.
  *
- * This means it works with the calendar as it is now, and keeps working
- * unchanged the day he switches to recurring OPEN blocks.
+ * Business hours remain only for the `unconfigured` fallback (no calendar key,
+ * as in a local preview), which the form labels as times still to confirm.
  */
 
 const API = "https://www.googleapis.com/calendar/v3/calendars";
@@ -148,7 +152,7 @@ export interface RawEvent {
   transparent: boolean;
 }
 
-export type AvailabilityMode = "whitelist" | "blacklist" | "unconfigured";
+export type AvailabilityMode = "whitelist" | "noOpen" | "unconfigured";
 
 export interface CalendarWindow {
   mode: AvailabilityMode;
@@ -339,14 +343,12 @@ export function businessHoursWindows(
 /**
  * Resolve a window of the calendar into bookable time.
  *
- * All-day events are treated as blocking the whole of that day in blacklist
- * mode, because an all-day "Vacation" should not leave the day bookable.
+ * With no OPEN events in the window nothing is bookable (see the modes above).
  */
 export function resolveWindow(
   events: RawEvent[],
   fromMs: number,
   toMs: number,
-  hours: BusinessHours = DEFAULT_HOURS,
 ): CalendarWindow {
   const isBest = (e: RawEvent) => titleIs(e.summary, BEST_PREFIX);
   // Best start times mark a time; they never take it away, Busy or Free.
@@ -389,8 +391,8 @@ export function resolveWindow(
   }
 
   return {
-    mode: "blacklist",
-    open: businessHoursWindows(fromMs, toMs, hours),
+    mode: "noOpen",
+    open: [],
     busy: usable.map((e) => ({ start: e.start, end: e.end })),
     events,
     best,
@@ -401,13 +403,12 @@ export async function loadWindow(
   cfg: PublicCalendarConfig,
   fromMs: number,
   toMs: number,
-  hours: BusinessHours = DEFAULT_HOURS,
 ): Promise<CalendarWindow> {
   const [read, busy] = await Promise.all([
     calendarIds(cfg).length ? readCalendars(cfg, fromMs, toMs) : Promise.resolve({ events: [] as RawEvent[], priority: null }),
     fetchBusyOnly(cfg.apiKey, busyOnlyIds(cfg), fromMs, toMs),
   ]);
-  return { ...resolveWindow(read.events.concat(busy), fromMs, toMs, hours), priority: read.priority };
+  return { ...resolveWindow(read.events.concat(busy), fromMs, toMs), priority: read.priority };
 }
 
 /**
