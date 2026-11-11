@@ -367,6 +367,7 @@ async function writeCalendar({ contact, cart, priced, extras, payInFull, key, ki
     startMs: cart.slot,
     endMs: cart.slot + minutes * 60_000,
     key,
+    phone: String(contact.phone ?? "").replace(/\D/g, "").replace(/^1(?=\d{10}$)/, ""),
     calendarId: detailer ? detailer.bookingsCalendarId : "",
   });
 }
