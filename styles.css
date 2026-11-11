@@ -193,7 +193,9 @@ section { padding-block: clamp(40px, 5vw, 72px); position: relative; }
 /* 364, not 359: at 360 the tag line made the header 361 px and the phone zoomed out (final validation, November 11). */
 @media (max-width: 364px) { .header .brand .b-sub { display: none; } }
 
-.nav-links { display: none; align-items: center; gap: 0; }
+.nav-mid { display: none; align-items: center; min-width: 0; }
+/* Shrinks with the window and clips; script.js moves what does not fit into More. */
+.nav-links { display: flex; align-items: center; gap: 0; min-width: 0; overflow: hidden; padding: 4px; margin: -4px; } /* room for focus rings inside the clip */
 .nav-links a {
   font-weight: 600; font-size: .9rem; color: var(--text); padding: .5rem .52rem; border-radius: 8px;
   position: relative; transition: color .2s; white-space: nowrap;
@@ -205,6 +207,27 @@ section { padding-block: clamp(40px, 5vw, 72px); position: relative; }
 }
 .nav-links a:hover { color: var(--red-deep); }
 .nav-links a:hover::after { transform: scaleX(1); }
+.nav-links a.pp-off { display: none; }
+.nav-more { position: relative; flex: none; }
+.nav-more[hidden] { display: none; }
+.nav-more > button {
+  display: inline-flex; align-items: center; gap: .25rem; padding: .5rem .52rem; border: 0; border-radius: 8px; background: none;
+  font: inherit; font-weight: 600; font-size: .9rem; color: var(--text); cursor: pointer; white-space: nowrap;
+}
+.nav-more > button:hover, .nav-more > button[aria-expanded="true"] { color: var(--red-deep); }
+.nav-more > button svg { width: 14px; height: 14px; transition: transform .2s; }
+.nav-more > button[aria-expanded="true"] svg { transform: rotate(180deg); }
+.nav-more-menu {
+  position: absolute; top: calc(100% + 10px); right: 0; min-width: 13rem; z-index: 110;
+  display: flex; flex-direction: column; padding: .4rem;
+  background: #fff; border: 1px solid var(--line); border-radius: var(--r-md); box-shadow: var(--shadow-md);
+}
+.nav-more-menu[hidden] { display: none; }
+.nav-more-menu a { padding: .65rem .85rem; border-radius: 9px; font-weight: 600; font-size: .92rem; color: var(--text); }
+.nav-more-menu a:hover, .nav-more-menu a:focus-visible { background: var(--red-ghost); color: var(--red-deep); }
+/* Tight: Contact Us shows its icon only (its words stay for screen readers). */
+.nav.pp-tight .nav-cta .btn-ghost { font-size: 0; gap: 0; padding: .75rem .85rem; }
+.nav.pp-tight .nav-cta .btn-ghost svg { width: 18px; height: 18px; }
 
 .nav-cta { display: none; align-items: center; gap: .5rem; flex-shrink: 0; }
 .nav-cta .btn { padding: .75rem 1.1rem; font-size: .92rem; }
@@ -823,7 +846,7 @@ main > .areas:first-child .section-head { margin-bottom: 18px; }
 .consent a { text-decoration: underline; }
 .consent-btns { display: flex; gap: .6rem; justify-content: flex-end; }
 .consent-btns .btn { padding: .6rem 1.1rem; font-size: .92rem; }
-@media (min-width: 1040px) { .consent { bottom: 20px; left: 20px; right: auto; margin: 0; } }
+@media (min-width: 720px) { .consent { bottom: 20px; left: 20px; right: auto; margin: 0; } }
 .linklike { background: none; border: 0; padding: 0; font: inherit; color: inherit; cursor: pointer; text-decoration: underline; }
 .linklike[hidden] { display: none; }
 
@@ -918,9 +941,11 @@ html.scrolling-fast .reveal { transition: none; transition-delay: 0s; }
   .contact-grid { grid-template-columns: 1fr 1.1fr; }
   .hero-scroll { display: block; }
 }
-/* Full top nav only appears once there is room for all links + CTAs */
-@media (min-width: 1040px) {
-  .nav-links { display: flex; }
+/* The top nav, from tablet width up. Links that do not fit go into More
+   (script.js); the menu button and the bottom bar are for phones only
+   (owner, November 12: from 1040 to 1089 px Book Now ran off the window). */
+@media (min-width: 720px) {
+  .nav-mid { display: flex; }
   .nav-cta { display: flex; }
   .nav-toggle { display: none; }
   .mobile-bar { display: none !important; }

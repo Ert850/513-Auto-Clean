@@ -230,14 +230,14 @@ function fillWhere(env) {
 function toTime(env) {
   type(env, { dataset: { c: "name" } }, "Ada");
   type(env, { dataset: { c: "phone" } }, "5135551212");
-  click(env, { dataset: { ckcont: "details" } });
+  click(env, { id: "bkNext" });
   fillWhere(env);
-  click(env, { dataset: { ckcont: "where" } });
+  click(env, { id: "bkNext" });
 }
 function agreeToReview(env) {
   change(env, { dataset: { consentbox: "terms" }, checked: true });
   click(env, { dataset: { media: "no" } });
-  click(env, { dataset: { ckcont: "agree" } });
+  click(env, { id: "bkNext" });
   return env.lookup("bkBody").innerHTML;
 }
 
@@ -427,7 +427,7 @@ describe("the booking funnel opens", () => {
     expect(fresh.lookup("bkTitle").textContent, "recording unanswered must hold the booking")
       .toBe("Checkout");
     click(fresh, { dataset: { media: "no" } });
-    click(fresh, { dataset: { ckcont: "agree" } });
+    click(fresh, { id: "bkNext" });
 
     const last = fresh.lookup("bkBody").innerHTML;
 

@@ -13,6 +13,30 @@ Built overnight, November 10 to 11, for you to evaluate. It combines your 8 answ
   - `web/lib/browser-entry.ts`, `js/pricing.bundle.js` (built), `web/lib/funnel.smoke.test.mjs`.
   - The build also re-stamps `?v=` on every page. Those page changes were left out of the commit; a rebuild after merging restamps them.
 
+## Round 20 (November 12): header at mid widths, one Continue at checkout
+
+### Header: Priority+ with a More menu (owner's pick B of three, `docs/mockups/nav-widths-*.png`)
+- **Bug:** from 1040 to 1089 px the header was 1083 px wide, so Book Now ran up to 43 px off the window and the page scrolled sideways; up to about 1135 px the right margin collapsed. **Root cause:** the full nav switched on at one fixed width (1040), set before the links and Contact Us grew; nothing checked that they still fit (the same trap as Bootstrap's `navbar-expand-*`).
+- **Fix:** from 720 px the nav is always shown. When the links don't fit, Contact Us shows its icon only, then links move from the end, in the same order, into "More" (`script.js`, measured with a ResizeObserver and again once the fonts load). The menu button and the bottom bar are phones only (under 720). Same height (73 px) and the same look at 1440.
+- **What shows where:** 1150 px and up, everything; 1050, Contact as an icon; 950 to 1000, More holds Range & Travel and FAQ; 900, Reviews too; 720 to 850, Results and Services, the rest in More.
+- **More menu:** opens on click or Enter, Escape closes it and returns focus, a click elsewhere or tabbing out closes it.
+- **To test:** drag a desktop window from wide to 720 on any page: Book Now always fully in view, no sideways scroll, More lists exactly the missing links, each opens its page. Under 720: the menu button and the bottom bar, as before.
+
+### Checkout: Continue lives in the bottom bar for every section
+- **Change (owner):** Contact, Address, Time and "Almost done" no longer have their own dark Continue under the section; the bar's red Continue (bottom right, where it is on the first page and where Confirm is) finishes the open section. Time shows it once there is a time or a request. Enter in a section's last box still continues it.
+- **Bug fixed with it: "Your time" was off centre in the bar.** **Root cause:** the card centres itself in the space left beside the total (`margin: 0 auto`). Before checkout that space ended at Continue; at checkout Continue was hidden, so the card centred between the total and the bar's edge, well right of the middle. With Continue back in the bar it sits between the two again.
+
+### Address: the travel fee shows on a laptop screen
+- "* Required" moved onto the open section's heading line (it had a line of its own above the folded rows); the two optional tick boxes are closer together (less padding, 8 px apart instead of 14).
+- When the fee is measured and still below the fold, the form scrolls just far enough to show it, never so far that the box being typed in leaves the screen (`revealTravel()`).
+- Measured: the whole fee card is on screen at 1440×790, 1280×720 and 375×812. In a 700×400 window the ZIP box stays in view and the fee shows partly.
+
+### Also
+- The QR code generator (`segno`, Python) is installed (your OK, November 12), ready for the magazine pages.
+
+### Checked
+- 526 of 526 tests. Every booking path (short notice, request, flexible day, Help me decide with and without a time, two vehicles) to its Done screen at 1440 and 375 px, no console errors. Header sweep: 700 to 1500 px in 10 px steps on three pages, no overflow, no clipped link, Book Now always in view.
+
 ## Round 19 (November 11, late): honesty audit, follow-up validation, merges
 
 ### Honesty audit (a check of every promise against what the code does)

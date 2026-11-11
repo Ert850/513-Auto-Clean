@@ -89,6 +89,67 @@
     if (e.key === 'Escape' && mobileMenu.classList.contains('open')) closeMenu();
   });
 
+  /* ---------- Priority+ top nav (owner, November 12) ----------
+     From 1040 to 1089 px the header was wider than the window and Book Now
+     ran off the right edge. Now, when the links do not fit, Contact Us shows
+     its icon only, then links move from the end, in the same order, into
+     More. Book Now and Contact stay on screen at every width from 720 px. */
+  var navEl = document.querySelector('.header .nav');
+  var navLinks = navEl && navEl.querySelector('.nav-links');
+  var navMore = document.getElementById('navMore');
+  var navMoreBtn = document.getElementById('navMoreBtn');
+  var navMoreMenu = document.getElementById('navMoreMenu');
+  if (navLinks && navMore && navMoreBtn && navMoreMenu) {
+    var ppLinks = Array.prototype.slice.call(navLinks.children);
+    var ppShut = function (refocus) {
+      navMoreMenu.hidden = true;
+      navMoreBtn.setAttribute('aria-expanded', 'false');
+      if (refocus) navMoreBtn.focus();
+    };
+    var ppOver = function () { return navLinks.scrollWidth > navLinks.clientWidth + 1; };
+    var ppFit = function () {
+      ppShut(false);
+      navEl.classList.remove('pp-tight');
+      navMore.hidden = true;
+      ppLinks.forEach(function (a) { a.classList.remove('pp-off'); });
+      navMoreMenu.innerHTML = '';
+      if (!navLinks.offsetParent) return; // phones: the menu button has them
+      if (!ppOver()) return;
+      navEl.classList.add('pp-tight');
+      var n = ppLinks.length;
+      while (ppOver() && n > 1) {
+        n--;
+        ppLinks[n].classList.add('pp-off');
+        navMore.hidden = false;
+      }
+      ppLinks.slice(n).forEach(function (a) {
+        var c = document.createElement('a');
+        c.href = a.getAttribute('href');
+        c.textContent = a.textContent;
+        navMoreMenu.appendChild(c);
+      });
+    };
+    ppFit();
+    if (window.ResizeObserver) new ResizeObserver(function () { ppFit(); }).observe(navEl);
+    else window.addEventListener('resize', ppFit);
+    // The web fonts change the links' widths after first paint.
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(ppFit);
+    navMoreBtn.addEventListener('click', function () {
+      var open = navMoreMenu.hidden;
+      navMoreMenu.hidden = !open;
+      navMoreBtn.setAttribute('aria-expanded', String(open));
+    });
+    document.addEventListener('click', function (e) {
+      if (!navMoreMenu.hidden && !navMore.contains(e.target)) ppShut(false);
+    });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && !navMoreMenu.hidden) ppShut(true);
+    });
+    navMore.addEventListener('focusout', function (e) {
+      if (!navMore.contains(e.relatedTarget)) ppShut(false);
+    });
+  }
+
   /* ---------- Land where the link said, even while the page is still filling ----------
      A jump to a section is aimed at where that section is AT THAT MOMENT. The
      gallery (built from data/gallery.json), the review ticker (shown once

@@ -662,6 +662,15 @@
     track('checkout_open', { section: id });
     render();
   }
+  /**
+   * Whether the bar's Continue has nothing to do: Time with neither a time
+   * nor a request yet. Every checkout section continues from the bar, the
+   * same place as the build steps and Confirm (owner, November 12: an inline
+   * Continue under a long section sat below the fold on laptops).
+   */
+  function ckNextIdle() {
+    return ckOpenId() === 'when' && !state.slot && !isInquiry();
+  }
   /** Continue in a section: check it, fold it, and open the next one. */
   function ckAdvance(id) {
     var c = CK[ckIndex(id)];
@@ -681,15 +690,16 @@
 
   function rCheckout(grew) {
     var open = ckOpenId();
-    var html = '<p class="bk-reqnote"><span class="bk-req" aria-hidden="true">*</span> Required</p>';
+    var html = '';
     CK.forEach(function (c) {
       if (c.id === open) {
-        var cont = c.id === 'review' ? ''
-          : c.id === 'when' && !state.slot && !isInquiry() ? ''
-          : '<button type="button" class="bk-ckcont" data-ckcont="' + c.id + '">Continue' + CHEV_R + '</button>';
         var note = c.id === 'when' && state.whenNote ? '<p class="bk-err bk-secnote" role="alert">' + esc(state.whenNote) + '</p>' : '';
         html += '<section class="bk-sec bk-ck' + (grew ? ' bk-sec-in' : '') + '" data-sec="' + c.id + '">' +
-          '<h3 class="bk-sec-h" tabindex="-1">' + esc(c.title) + '</h3>' + note + c.render() + cont + '</section>';
+                    // "* Required" on the heading's line, not a line of its own above
+          // the folded rows (owner, November 12: the travel fee sat below a
+          // laptop's fold).
+          '<p class="bk-reqnote"><span class="bk-req" aria-hidden="true">*</span> Required</p>' +
+          '<h3 class="bk-sec-h" tabindex="-1">' + esc(c.title) + '</h3>' + note + c.render() + '</section>';
       } else if (state.ckDone[c.id]) {
         html += '<button type="button" class="bk-donerow" data-cksec="' + c.id + '">' +
           '<span>' + esc(ckTabOf(c.id)) + '</span><b>' + esc(c.sum()) + '</b><em>Change</em></button>';
@@ -765,12 +775,6 @@
     var sc = el('bkScroll'), cue = el('bkCue');
     if (!sc || !cue) return;
     cue.hidden = !(sc.scrollHeight - sc.clientHeight - sc.scrollTop > 48);
-    // Never over the Continue it would point at (checkout review, November 10).
-    var cont = el('bkBody') && el('bkBody').querySelector('.bk-ckcont');
-    if (!cue.hidden && cont && cont.getBoundingClientRect) {
-      var cr = cont.getBoundingClientRect(), sr = sc.getBoundingClientRect();
-      if (cr.top >= sr.top && cr.bottom <= sr.bottom) cue.hidden = true;
-    }
     // Above a bar pinned to the bottom of the window, but only while it is
     // actually stuck there: lifted over a bar sitting mid-page, its fade
     // washed the bar out (round 15).
@@ -818,9 +822,10 @@
     back.hidden = state.step === 0;
 
     var next = el('bkNext');
-    next.hidden = s.auto || (onCheckout() && ckOpenId() !== 'review');
+    next.hidden = s.auto || (onCheckout() && ckNextIdle());
     next.querySelector('span').textContent =
-      s.id === 'pay'
+      onCheckout() && ckOpenId() !== 'review' ? 'Continue'
+        : s.id === 'pay'
         ? (isInquiry() ? 'Send request' : state.payInFull ? 'Pay and confirm' : 'Confirm booking')
         : s.id === 'addons' ? 'Continue to checkout'
         : 'Continue';
@@ -1482,6 +1487,8 @@
   }
 
   function advance() {
+    // On the checkout, Continue finishes the open section; Review books.
+    if (onCheckout() && ckOpenId() !== 'review') return ckAdvance(ckOpenId());
     var prob = firstProblem();
     if (prob) { showProblem(prob); return; }
 
@@ -2280,6 +2287,24 @@
     if (!root) return;
     var box = root.querySelector('.bk-travel-slot');
     if (box) box.outerHTML = travelLine();
+    revealTravel();
+  }
+
+  /**
+   * Once the fee is measured, scroll just far enough to show it, keeping
+   * the field being typed in on screen (owner, November 12: on a laptop the
+   * fee arrived below the fold and nothing said so).
+   */
+  function revealTravel() {
+    var box = root.querySelector('div.bk-travel-slot:not(.pending)'), sc = el('bkScroll');
+    if (!box || !sc || !box.getBoundingClientRect) return;
+    var top = sc.getBoundingClientRect().top;
+    var over = box.getBoundingClientRect().bottom + 12 - sc.getBoundingClientRect().bottom;
+    var a = document.activeElement;
+    if (a && a !== sc && sc.contains(a)) over = Math.min(over, a.getBoundingClientRect().top - top - 8);
+    if (over <= 0) return;
+    if (sc.scrollBy) sc.scrollBy({ top: over, behavior: reducedMotion() ? 'auto' : 'smooth' });
+    else sc.scrollTop += over;
   }
 
   /**
@@ -5858,7 +5883,7 @@
       '[data-size],[data-intent],[data-pkg],[data-addon],[data-clear],[data-slot],' +
       '[data-pay],[data-delveh],[data-browsepick],[data-max],[data-sort],[data-pkgfirst],' +
       '[data-kind],[data-paymethod],[data-corr],[data-coating],[data-garage],[data-step],' +
-      '[data-prefday],[data-prefpart],[data-interest],[data-wkday],[data-more],[data-steer],[data-flexday],[data-wkfold],[data-ckcont],[data-cksec],[data-access],[data-extrarm],' +
+      '[data-prefday],[data-prefpart],[data-interest],[data-wkday],[data-more],[data-steer],[data-flexday],[data-wkfold],[data-cksec],[data-access],[data-extrarm],' +
       '#bkWkPrev,#bkWkNext,#bkWkNext2,#bkWkToday,#bkWkBack,#bkShowAll,#bkShowRecs,#bkFeeWhy,' +
       '#bkAddVeh,#bkNext,#bkBack,#bkClose,#bkScrim,#bkBrowse,#bkBrowseBack,' +
       '#bkAskMode,#bkAskMode2,#bkSlotMode,#bkFlexOpen,#bkPickChange,#bkShowExtras,' +
@@ -6159,20 +6184,13 @@
         p.className = ok ? 'bk-pref-ok' : 'bk-pref-hint';
         p.textContent = ok ? PREF_OK : PREF_ASK;
       });
-      // The Time section's Continue is drawn only for a time or a request, and
-      // this updates in place, so add or remove it here (final validation,
-      // November 11: "Carry on" with nothing to carry on with).
-      var whenSec = root.querySelector('[data-sec="when"]');
-      var cont = whenSec && whenSec.querySelector(':scope > .bk-ckcont');
-      if (whenSec && isInquiry() && !cont) {
-        whenSec.insertAdjacentHTML('beforeend', '<button type="button" class="bk-ckcont" data-ckcont="when">Continue' + CHEV_R + '</button>');
-      } else if (cont && !state.slot && !isInquiry()) {
-        cont.remove();
-      }
+      // Continue shows only for a time or a request, and this updates in
+      // place, so show or hide it here (final validation, November 11:
+      // "Carry on" with nothing to carry on with).
+      if (onCheckout()) el('bkNext').hidden = ckNextIdle();
       renderTotal();
       return;
     }
-    if (t.dataset.ckcont) return ckAdvance(t.dataset.ckcont);
     if (t.dataset.cksec) return ckOpenSection(t.dataset.cksec);
     if (t.dataset.wkfold) {
       if (t.dataset.wkfold === 'early') state.wkEarly = true;
