@@ -4203,7 +4203,7 @@
     if (cardRow < 0) shown.forEach(function (x, i) { if (cardRow < 0 && byMin[x] && byMin[x].sug) cardRow = i; });
     if (cardRow < 0) shown.forEach(function (x, i) { if (cardRow < 0 && byMin[x]) cardRow = i; });
     if (cardRow > -1) {
-      html += '<aside class="bk-tl-card" id="bkTlCard" style="grid-row:1 / span ' + shown.length + '" aria-live="polite">' +
+      html += '<aside class="bk-tl-card" id="bkTlCard" data-ms="' + byMin[shown[cardRow]].ms + '" style="grid-row:1 / span ' + shown.length + '" aria-live="polite">' +
         tlCard(byMin[shown[cardRow]].ms, cardRow, dur, dayName, byMin[shown[cardRow]].sug, cardRow === mine) + '</aside>';
     }
     html += '</div>';
@@ -4249,11 +4249,19 @@
         : '<button type="button" class="bk-tl-card-go" data-slot="' + ms + '" data-row="' + row + '"' + (sug ? ' data-sug="1"' : '') +
           ' data-via="timeline_card">Choose this time</button>');
   }
+  /** A short fade as text changes in place (none when motion is reduced). */
+  function fadeIn(node) {
+    if (node && node.animate && !reducedMotion()) node.animate([{ opacity: 0.25 }, { opacity: 1 }], { duration: 150, easing: 'ease-out' });
+  }
   function renderTlCard(tl, t) {
     var card = tl && tl.querySelector('#bkTlCard');
     if (!card) return;
     var src = t || tl.querySelector('.bk-tl-s[aria-pressed="true"]') || tl.querySelector('.bk-tl-s[data-sug]') || tl.querySelector('.bk-tl-s[data-slot]');
     if (!src) return;
+    // Rewritten only when the time it shows changes, with a short fade.
+    if (card.dataset.ms === src.dataset.slot) return;
+    card.dataset.ms = src.dataset.slot;
+    fadeIn(card);
     card.innerHTML = tlCard(Number(src.dataset.slot), Number(src.dataset.row), Number(tl.dataset.dur), tl.dataset.day,
       Boolean(src.dataset.sug), src.getAttribute('aria-pressed') === 'true');
   }
@@ -4303,13 +4311,24 @@
     if (!pv) return;
     var row = Number(t.dataset.row), rows = Number(tl.dataset.rows), dur = Number(tl.dataset.dur);
     var span = Math.max(1, Math.min(rows - row, Math.ceil(dur / 30)));
-    clearTlPreview(tl);
+    // Only the rows' marks are cleared here, not the block: hiding it on the
+    // way to its next place stopped it gliding there.
+    tl.querySelectorAll('.pv').forEach(function (c) { c.classList.remove('pv'); });
     tl.querySelectorAll('.bk-tl-s').forEach(function (c) {
       var r = Number(c.dataset.row);
       if (r >= row && r < row + span) c.classList.add('pv');
     });
-    pv.style.gridRow = (row + 1) + ' / span ' + span;
-    pv.innerHTML = tlBlockInner(Number(t.dataset.slot), dur);
+    // Placed from the top row and moved down by transform, so moving between
+    // starts glides (owner, November 11: "smoothen the jumpiness") instead
+    // of jumping between grid rows. book.css .bk-tl-span.preview.
+    var moved = pv.dataset.ms !== t.dataset.slot;
+    pv.style.gridRow = '1 / span ' + span;
+    pv.style.transform = 'translateY(' + row * (TL_ROW + TL_GAP) + 'px)';
+    if (moved) {
+      pv.innerHTML = tlBlockInner(Number(t.dataset.slot), dur);
+      pv.dataset.ms = t.dataset.slot;
+      fadeIn(pv.firstChild);
+    }
     pv.classList.toggle('solid', Boolean(solid));
     pv.hidden = false;
     // One block at a time: pointing at another start hides the chosen job
@@ -4323,7 +4342,7 @@
   function clearTlPreview(tl) {
     tl.querySelectorAll('.pv').forEach(function (c) { c.classList.remove('pv'); });
     var pv = tl.querySelector('#bkTlPreview');
-    if (pv) pv.hidden = true;
+    if (pv) { pv.hidden = true; delete pv.dataset.ms; }
     tl.classList.remove('pointing');
     markAllLeads();
     renderTlCard(tl, null);
@@ -4335,14 +4354,24 @@
    * sits under the other two, so their heights are measured, not guessed.
    */
   var pinWatch = null;
+  var PIN_ROOM_MIN = 150;
   function pinWeek() {
     var wk = root.querySelector('.bk-wk.narrow');
     var h = wk && wk.querySelector('.bk-wk-h');
     var st = wk && wk.querySelector('.bk-wk-strip');
     if (!h || !st || !h.getBoundingClientRect) return;
     var set = function () {
-      wk.style.setProperty('--wk-h', Math.round(h.getBoundingClientRect().height) + 'px');
-      wk.style.setProperty('--wk-strip', Math.round(st.getBoundingClientRect().height) + 'px');
+      var hh = Math.round(h.getBoundingClientRect().height), sh = Math.round(st.getBoundingClientRect().height);
+      wk.style.setProperty('--wk-h', hh + 'px');
+      wk.style.setProperty('--wk-strip', sh + 'px');
+      // A short window (a phone on its side): the week bar, the day strip and
+      // a part-of-day heading pinned together left 18 to 53 px for the times,
+      // less than one row (owner, November 11). Below room for about two and
+      // a half rows, the week bar and the strip scroll away; the small
+      // heading stays pinned.
+      var sc = el('bkScroll'), band = wk.querySelector('.bk-wk-band');
+      var room = sc ? sc.clientHeight - hh - sh - (band ? band.getBoundingClientRect().height : 0) : Infinity;
+      wk.classList.toggle('nopin', room < PIN_ROOM_MIN);
     };
     set();
     // Measured again whenever either bar changes size: at 320 px the time
@@ -4353,6 +4382,8 @@
       pinWatch = new ResizeObserver(set);
       pinWatch.observe(h);
       pinWatch.observe(st);
+      // ...and when the window, so the scrolling area, changes height.
+      if (el('bkScroll')) pinWatch.observe(el('bkScroll'));
     }
   }
 
