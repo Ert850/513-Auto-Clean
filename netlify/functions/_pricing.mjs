@@ -830,7 +830,6 @@ function computeTax(taxableBaseCents, zip, table, currentYear) {
 }
 
 // lib/time/zone.ts
-var DAY_MS = 864e5;
 function zoneOffsetMs(utcMs, timeZone) {
   const dtf = new Intl.DateTimeFormat("en-US", {
     timeZone,
@@ -881,10 +880,6 @@ function localParts(ms, timeZone) {
 function localDayStart(ms, timeZone) {
   const { y, mo, d } = localParts(ms, timeZone);
   return zonedToUtc(y, mo, d, 0, 0, 0, timeZone);
-}
-function localTimeOnDay(dayStartMs, daysAhead, minutesOfDay2, timeZone) {
-  const { y, mo, d } = localParts(dayStartMs + daysAhead * DAY_MS + DAY_MS / 2, timeZone);
-  return zonedToUtc(y, mo, d, 0, minutesOfDay2, 0, timeZone);
 }
 function localWeekday(ms, timeZone) {
   const name = new Intl.DateTimeFormat("en-US", { timeZone, weekday: "short" }).format(new Date(ms));
@@ -1836,7 +1831,7 @@ function legalFingerprint(html) {
 }
 
 // lib/booking/ics.ts
-var DAY_MS2 = 864e5;
+var DAY_MS = 864e5;
 function parseTime(value, params, fallbackZone) {
   const v = value.trim();
   const dateOnly = /^(\d{4})(\d{2})(\d{2})$/.exec(v);
@@ -2021,7 +2016,7 @@ function expand(startMs, rule, from, to, cap) {
     return true;
   };
   if (rule.freq === "DAILY") {
-    const step = rule.interval * DAY_MS2;
+    const step = rule.interval * DAY_MS;
     let ms = startMs;
     if (rule.count === null && from > startMs) {
       ms = startMs + Math.floor((from - startMs) / step) * step;
@@ -2032,7 +2027,7 @@ function expand(startMs, rule, from, to, cap) {
     return out;
   }
   if (rule.freq === "WEEKLY") {
-    const week = rule.interval * 7 * DAY_MS2;
+    const week = rule.interval * 7 * DAY_MS;
     const days = rule.byDay.length ? rule.byDay : [new Date(startMs).getUTCDay()];
     let anchor = startMs;
     if (rule.count === null && from - week > startMs) {
@@ -2042,7 +2037,7 @@ function expand(startMs, rule, from, to, cap) {
       const base = new Date(anchor);
       for (const d of days) {
         const shift = (d - base.getUTCDay() + 7) % 7;
-        const ms = anchor + shift * DAY_MS2;
+        const ms = anchor + shift * DAY_MS;
         if (ms < startMs) continue;
         if (ms > hardEnd) continue;
         if (!push(ms)) return out;
@@ -2084,8 +2079,8 @@ function parseIcsBusy(text, opts) {
     let lengthMs;
     if (e.end) lengthMs = e.end.ms - e.start.ms;
     else if (e.durationMs !== null) lengthMs = e.durationMs;
-    else lengthMs = e.start.allDay ? DAY_MS2 : 0;
-    if (lengthMs <= 0) lengthMs = e.start.allDay ? DAY_MS2 : 30 * 60 * 1e3;
+    else lengthMs = e.start.allDay ? DAY_MS : 0;
+    if (lengthMs <= 0) lengthMs = e.start.allDay ? DAY_MS : 30 * 60 * 1e3;
     const starts = [];
     if (e.rrule && !e.recurrenceId) {
       const rule = parseRule(e.rrule, zone);
@@ -2350,24 +2345,7 @@ var DEFAULT_HOURS = {
   days: [0, 1, 2, 3, 4, 5, 6],
   timeZone: "America/New_York"
 };
-function businessHoursWindows(fromMs, toMs, hours = DEFAULT_HOURS) {
-  const tz = hours.timeZone ?? "America/New_York";
-  const out = [];
-  const day0 = localDayStart(fromMs, tz);
-  for (let i = 0; i < 400; i++) {
-    const dayStart = localTimeOnDay(day0, i, 0, tz);
-    if (dayStart >= toMs) break;
-    if (hours.days.includes(localWeekday(dayStart + 12 * 36e5, tz))) {
-      const start = localTimeOnDay(day0, i, hours.openMin, tz);
-      const end = localTimeOnDay(day0, i, hours.closeMin, tz);
-      if (end > fromMs && start < toMs) {
-        out.push({ start: Math.max(start, fromMs), end: Math.min(end, toMs) });
-      }
-    }
-  }
-  return out;
-}
-function resolveWindow(events, fromMs, toMs, hours = DEFAULT_HOURS) {
+function resolveWindow(events, fromMs, toMs) {
   const isBest = (e) => titleIs(e.summary, BEST_PREFIX);
   const best = [...new Set(events.filter((e) => isBest(e) && !e.allDay && e.start >= fromMs && e.start < toMs).map((e) => e.start))].sort((a, b) => a - b);
   const usable = events.filter((e) => !e.transparent && !isBest(e));
@@ -2386,19 +2364,19 @@ function resolveWindow(events, fromMs, toMs, hours = DEFAULT_HOURS) {
     };
   }
   return {
-    mode: "blacklist",
-    open: businessHoursWindows(fromMs, toMs, hours),
+    mode: "noOpen",
+    open: [],
     busy: usable.map((e) => ({ start: e.start, end: e.end })),
     events,
     best
   };
 }
-async function loadWindow(cfg, fromMs, toMs, hours = DEFAULT_HOURS) {
+async function loadWindow(cfg, fromMs, toMs) {
   const [read, busy] = await Promise.all([
     calendarIds(cfg).length ? readCalendars(cfg, fromMs, toMs) : Promise.resolve({ events: [], priority: null }),
     fetchBusyOnly(cfg.apiKey, busyOnlyIds(cfg), fromMs, toMs)
   ]);
-  return { ...resolveWindow(read.events.concat(busy), fromMs, toMs, hours), priority: read.priority };
+  return { ...resolveWindow(read.events.concat(busy), fromMs, toMs), priority: read.priority };
 }
 
 // lib/pricing/cancellation.ts
