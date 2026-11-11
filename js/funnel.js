@@ -516,6 +516,7 @@
       '<div class="bk-navgrp"><span class="bk-navgrp-l">Your detail</span><div class="bk-navgrp-t">' + build + '</div></div>' +
       '<div class="bk-navgrp bk-navgrp-ck"><span class="bk-navgrp-l">Checkout</span><div class="bk-navgrp-t">' + ck + '</div></div>';
     root.querySelector('.bk-modal').classList.toggle('ck', onCheckout());
+    root.querySelector('.bk-modal').classList.remove('is-done');
     if (onCheckout()) {
       el('bkNav').insertBefore(backBtn, el('bkNav').firstChild);
       el('bkNav').appendChild(closeBtn);
@@ -885,8 +886,10 @@
       var plain = cart();
       plain.promoCode = null;
       var before = P.quote(plain, RULES);
-      sub.innerHTML = '<s>' + $(before.totalCents) + '</s> ' +
-        esc(quote.promoCode) + ' saves you ' + $(before.totalCents - quote.totalCents);
+      // The saving itself is said once, in the price table's "You saved"
+      // (validation, November 11: this bar said $13.47 with the tax, the
+      // table $12.50 without, on one screen).
+      sub.innerHTML = '<s>' + $(before.totalCents) + '</s> ' + esc(quote.promoCode) + ' applied';
     } else if (quote.multiVehicleDiscountCents > 0) {
       // Lead with the saving, not the duration: this is the moment the second
       // vehicle has to look like a good idea.
@@ -4743,9 +4746,26 @@
       '</div>';
   }
 
+  /** Water, power and parking as email lines, only those answered. */
+  function accessText() {
+    var word = function (v) { return v === 'unsure' ? 'not sure' : v; };
+    return [
+      state.access.water ? '  Water: ' + word(state.access.water) : '',
+      state.access.power ? '  Power: ' + word(state.access.power) : '',
+      String(state.access.parking || '').trim() ? '  Parking: ' + state.access.parking : ''
+    ].filter(Boolean).join('\n');
+  }
+
+  var prepBase = '';
+  function prepState() {
+    return JSON.stringify([state.access.water || '', state.access.power || '', String(state.access.parking || '').trim(),
+      String(state.notes || '').trim(), state.vehicles.map(function (v) { return String(v.label || '').trim(); })]);
+  }
+
+  /** Something answered or changed on the Done screen itself. */
   function prepAnswered() {
-    return Boolean(state.access.water || state.access.power || String(state.access.parking || '').trim() ||
-      String(state.notes || '').trim() || state.vehicles.some(function (v) { return String(v.label || '').trim(); }));
+    return prepState() !== prepBase && Boolean(accessText() || String(state.notes || '').trim() ||
+      state.vehicles.some(function (v) { return String(v.label || '').trim(); }));
   }
 
   /** The follow-up email. `quiet` when sent on close, where nobody is watching. */
@@ -4766,12 +4786,12 @@
     fd.append('message',
       'Answers given right after booking ("Help us get ready").\n\n' +
       'WHO\n  ' + state.contact.name + '\n  ' + state.contact.phone + '\n\n' +
-      'ACCESS\n  Water: ' + (state.access.water || 'not answered') +
-      '\n  Power: ' + (state.access.power || 'not answered') +
-      (String(state.access.parking || '').trim() ? '\n  Parking: ' + state.access.parking : '') + '\n\n' +
+      (accessText() ? 'ACCESS\n' + accessText() + '\n\n' : '') +
       state.vehicles.map(function (v, i) { return String(v.label || '').trim() ? 'VEHICLE' + (state.vehicles.length > 1 ? ' ' + (i + 1) : '') + '\n  ' + v.label + '\n\n' : ''; }).join('') +
       (String(state.notes || '').trim() ? 'NOTES\n  ' + state.notes + '\n' : ''));
-    fetch('https://api.web3forms.com/submit', { method: 'POST', body: fd, headers: { Accept: 'application/json' } })
+    // keepalive: a quiet send on close often races a page change ("Something
+    // needs changing" navigates away at once, and so does closing the tab).
+    fetch('https://api.web3forms.com/submit', { method: 'POST', body: fd, keepalive: true, headers: { Accept: 'application/json' } })
       .then(function (r) { return r.json().then(function (j) { return r.ok && j.success; }); })
       .then(function (ok) {
         if (!ok) throw new Error('not sent');
@@ -4803,7 +4823,8 @@
    * the fastest way to look unreliable while doing everything right.
    */
   function nextSteps() {
-    var email = P.isLive('automatedEmail');
+    // "By email" only when they gave an address (validation, November 11).
+    var email = P.isLive('automatedEmail') && Boolean(String(state.contact.email || '').trim());
     var texts = P.isLive('automatedTexts');
     var calendar = P.isLive('liveCalendar');
     var requested = isInquiry();
@@ -4824,6 +4845,10 @@
       out.push('<li><b>We come back with a recommendation.</b> Usually within a few hours: the package ' +
         'we would suggest, what it costs, and a time from the days you picked.</li>');
       out.push('<li><b>You decide.</b> Nothing is booked and nothing is charged until you say yes to it.</li>');
+    } else if (requested && state.prefer.flex) {
+      out.push('<li><b>We confirm the day.</b> Usually within a few hours, ' +
+        (email ? 'by email' : 'by text or phone, whichever you said') +
+        ', then the start time by the evening before. Nothing is charged until you say yes to it.</li>');
     } else if (requested) {
       out.push('<li><b>We come back with a time.</b> Usually within a few hours, ' +
         (email ? 'by email' : 'by text or email, whichever you said') +
@@ -5018,7 +5043,7 @@
       html += '<div class="bk-asknote">' +
         '<b>This is a request, not a confirmed time</b>' +
         '<span>' + esc(preferenceSummary()) + (state.prefer.flex
-          ? ' We text you the start time by the evening before. '
+          ? ' We confirm the day, usually within a few hours, and let you know the start time by the evening before. '
           : ' We will come back with a time that works, usually within a few hours. ') +
         '<strong>Nothing is charged until you have agreed to it.</strong>' +
         '</span></div>';
@@ -5117,6 +5142,10 @@
                   'We reply as fast as we can, and nothing is charged either way.'
                 : P.isLive('liveCalendar') && state.slot && !isInquiry()
                 ? 'Send it and the time is yours.'
+                : isInquiry()
+                // A request is not a booking (validation, November 11).
+                ? (state.prefer.flex ? 'Send your request and we will confirm the day, usually within a few hours.'
+                  : 'Send your request and we will come back with a time, usually within a few hours.')
                 : 'Send your booking and we will confirm it, usually within a few hours.') +
               ' After you book, a few quick questions help us get ready.') +
         '</p></div>';
@@ -6038,7 +6067,11 @@
       // Same person, same address, same day if they picked one. Only the
       // vehicle changes, so everything else stays put.
       var keep = { address: state.address, contact: state.contact, access: state.access };
+      // This booking's answers go before the next one starts, and the next
+      // booking gets its own key, so its emails never merge with this one.
+      sendPrep(true);
       reset();
+      _key = null;
       state.address = keep.address;
       state.contact = keep.contact;
       state.access = keep.access;
@@ -6280,6 +6313,7 @@
     if (state.sending) return;
     var msg = root.querySelector('#bkMsg');
     state.sending = true;
+    state.sendingSince = Date.now();
     if (msg) { msg.className = 'bk-msg ok'; msg.textContent = 'Confirming...'; }
     el('bkNext').disabled = true;
 
@@ -6435,14 +6469,16 @@
       (state.slot && shortNotice(state.slot) ? '\n  SHORT NOTICE: not confirmed until a detailer accepts. Reply to them.' : '') +
       (state.slot && coatingMoves(state.slot, holdMinutes()) ? '\n  COATING: too cold or wet on this date. Do the rest, book the coating for a warmer day.' : '') +
       (state.priority ? '\n  RUSH, within ' + RULES.window.minLeadDays + ' days' : '') +
-      (state.preferredWindows.length ? '\n  Prefers: ' + state.preferredWindows.join(', ') : '') +
+      // The days a request asks for (validation, November 11: the email said
+      // only "not selected", so nobody could reply with a time).
+      (!state.slot && preferenceSummary() ? '\n  ' + preferenceSummary().replace(/^You asked for /, 'ASKED FOR: ') : '') +
       (!state.slot && state.prefer.flex ? '\n  FLEXIBLE DAY: any start that day. Text them the start time by the evening before.' : '') + '\n\n' +
       'WHERE\n  ' + [a.line1, a.city, a.region, a.zip].filter(Boolean).join(', ') +
       (state.covered ? '\n  Garage or covered spot: YES' : '') +
       (state.noGoodLocation ? '\n  ** NEEDS A LOCATION SORTED **\n  ' + (state.locationNote || '(no note)') : '') + '\n\n' +
       'VEHICLES\n' + state.vehicles.map(function (v, i) {
         var size = v.size ? P.vehicleSize(v.size) : null;
-        return '  ' + (i + 1) + '. ' + (v.label || '(not named)') + (size ? ' [' + size.label + ']' : '') +
+        return '  ' + (i + 1) + '. ' + [v.label, size ? '[' + size.label + ']' : ''].filter(Boolean).join(' ') +
           '\n     ' + v.packageIds.map(function (id) { return (P.findPackage(id) || {}).name; }).join(' + ') +
           (v.addons.length ? '\n     Add-ons: ' + v.addons.map(function (x) {
             var d = P.findAddon(x.addonId);
@@ -6450,6 +6486,7 @@
             return d.name + (tr && d.tiers.length > 1 ? ' (' + tr.label + ')' : '');
           }).join(', ') : '');
       }).join('\n') + '\n\n' +
+      (state.advice ? 'PRICING\n  None yet: no package chosen. Agree the package and price with them first.\n\n' :
       'PRICING\n' + quote.lines.map(function (l) {
         return '  ' + l.label + ': ' + $(l.amountCents);
       }).join('\n') +
@@ -6459,11 +6496,13 @@
         : state.mandate
           ? 'on the day; card on file is cancellation cover only'
           : 'in full when the detail is finished; no card taken') +
-      '\n  Travel: added at confirmation' +
-      '\n  On site: ' + fmtDur(quote.serviceDurationMin) + '\n\n' +
-      'ACCESS\n  Water: ' + (state.access.water || 'not answered') +
-      '\n  Power: ' + (state.access.power || 'not answered') +
-      (state.access.parking ? '\n  Parking: ' + state.access.parking : '') + '\n\n' +
+      // What the total really holds (validation, November 11: this line said
+      // "added at confirmation" even when the measured drive was in the total).
+      '\n  Travel: ' + (quote.travelIsEstimate ? 'added once the drive is measured' : $(quote.travelCents) + ', in the total') +
+      (quote.serviceDurationMin ? '\n  On site: ' + fmtDur(quote.serviceDurationMin) : '') + '\n\n') +
+      // The setup questions come after booking now, as a separate follow-up
+      // email, so this booking has them only if they were given earlier.
+      (accessText() ? 'ACCESS\n' + accessText() + '\n\n' : 'ACCESS\n  Asked after booking. Any answers come as a BOOKING FOLLOW-UP email.\n\n') +
       'CONSENT\n  Terms: yes, version ' + P.LEGAL.termsEffective +
       '\n  Card authorization: ' + (state.mandate ? 'YES' : 'no') +
       '\n  SMS: ' + (state.consent.sms ? 'YES' : 'no') +
@@ -6529,6 +6568,11 @@
     }).join('') + '</dl>';
   }
 
+  /** " before travel" while the drive is unmeasured, ", travel included" once it is in the total. */
+  function travelWord(quote) {
+    return quote.travelIsEstimate ? ' before travel' : quote.travelCents > 0 ? ', travel included' : '';
+  }
+
   function done(quote) {
     state.done = true;
     clearDraft();
@@ -6553,6 +6597,14 @@
     // them is dead: go() calls render(), and render() returns early once
     // state.done is set. A row of buttons that look clickable and do nothing
     // is worse than no buttons, so they become a finished-state line.
+    // At checkout Back and the close button live in this bar: put them back in
+    // the header first, or replacing the bar deletes them (validation,
+    // November 11: no close button on Done, and the next open() crashed).
+    var head = root.querySelector('.bk-head');
+    if (head) { head.insertBefore(el('bkBack'), head.firstChild); head.appendChild(el('bkClose')); }
+    root.querySelector('.bk-modal').classList.remove('ck');
+    // Nothing is left in the footer on Done (an empty strip on phones).
+    root.querySelector('.bk-modal').classList.add('is-done');
     el('bkNav').innerHTML = '<span class="bk-nav-done">' +
       (isInquiry() ? 'Request sent' : 'Booked') + ' &middot; ' +
       esc(new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })) +
@@ -6562,10 +6614,15 @@
       '<div class="bk-done"><div class="bk-done-ic">' +
       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 6L9 17l-5-5"/></svg></div>' +
       '<h3>Thanks, ' + esc(state.contact.name.split(' ')[0]) + '.</h3>' +
-      '<p>' + (isInquiry()
+      '<p>' + (state.advice && !state.slot
+        // Help me decide with no time (validation, November 11: it read as a
+        // plain time request, with no word of the recommendation).
+        ? 'We have your request for a recommendation. We will read what you told us and come back with the package ' +
+          'we would suggest, what it costs and a time from the days you picked, usually within a few hours.'
+        : isInquiry()
         ? (state.prefer.flex
           ? 'We have your request for ' + esc(preferenceSummary().replace('You asked for any start time on ', '').replace(/\.$/, '')) +
-            '. We text you the start time by the evening before.'
+            '. We confirm the day, usually within a few hours, and let you know the start time by the evening before.'
           : 'We have your request and the times that suit you. 513 Auto Clean will come back with a time to confirm.')
         : state.advice
           ? 'Your time is held' + (state.slot ? ' for <b>' +
@@ -6576,10 +6633,10 @@
           ? 'We have your short-notice request for <b>' +
               new Date(state.slot).toLocaleString('en-US', { timeZone: TZ, weekday: 'long', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit' }) +
               '</b>. It is not confirmed until we reply, which depends on whether a detailer can take it. ' +
-              'We will be in touch as fast as we can. Your total is <b>' + $(quote.totalCents) + '</b> before travel.'
+              'We will be in touch as fast as we can. Your total is <b>' + $(quote.totalCents) + '</b>' + travelWord(quote) + '.'
           : 'We have your booking' + (state.slot ? ' for <b>' +
               new Date(state.slot).toLocaleString('en-US', { timeZone: TZ, weekday: 'long', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit' }) +
-              '</b>' : '') + '. Your total is <b>' + $(quote.totalCents) + '</b> before travel.') +
+              '</b>' : '') + '. Your total is <b>' + $(quote.totalCents) + '</b>' + travelWord(quote) + '.') +
       '</p>' +
 
       (state.advice ? '' : prepBlock()) +
@@ -6595,12 +6652,18 @@
         '<button type="button" class="bk-done-copy" id="bkDoneCopy">Copy my booking link</button>' +
         '<button type="button" class="bk-done-again" id="bkDoneAgain">Book another vehicle</button>' +
       '</div>' +
-      '<p class="bk-done-call">Or call or text <a href="tel:+15132792915">(513) 279-2915</a>. ' +
-      'A booking is only really settled once you have heard back from us.</p>' +
+      // A booked time is settled; only a request waits on us (validation,
+      // November 11: this line contradicted "You are booked in").
+      '<p class="bk-done-call">Or call or text <a href="tel:+15132792915">(513) 279-2915</a>' +
+      (asked || state.advice || !P.isLive('liveCalendar') ? '. Nothing is settled until you hear back from us.</p>' : ' if anything needs changing.</p>') +
 
       '<button type="button" class="bk-doneclose" id="bkDoneClose">Close</button>' +
       '</div>';
 
+    // What the setup answers were when Done opened. Only a change made here
+    // is a follow-up: anything given earlier is already in the booking email
+    // (validation, November 11: a resumed draft's notes were sent twice).
+    prepBase = prepState();
     el('bkBody').scrollTop = 0;
     el('bkScroll').scrollTop = 0;
   }
@@ -6980,12 +7043,13 @@
     var c = state.contact;
     var digits = String(c.phone || '').replace(/\D/g, '').replace(/^1(?=\d{10}$)/, '');
     var email = String(c.email || '').trim();
-    return Boolean(String(c.name || '').trim()) && (digits.length === 10 || /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email));
+    return Boolean(String(c.name || '').trim()) && (/^[2-9]\d{9}$/.test(digits) || /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email));
   }
 
   function captureUnfinished(reason) {
     try {
-      if (!P.isLive('checkoutFollowUp') || state.done || state.noFollowUp || !onCheckout()) return;
+      // While Confirm is still sending, this is a booking, not an abandoned one.
+      if (!P.isLive('checkoutFollowUp') || state.done || state.sending || state.noFollowUp || !onCheckout()) return;
       var c = state.contact;
       var digits = String(c.phone || '').replace(/\D/g, '').replace(/^1(?=\d{10}$)/, '');
       var email = String(c.email || '').trim();
@@ -7025,6 +7089,10 @@
 
   function close() {
     if (!host) return;
+    // Closing mid-send hid the Done screen that came back a moment later
+    // (validation, November 11). Wait for it, but never trap anyone: after 20
+    // seconds close works whatever the network is doing.
+    if (state.sending && Date.now() - (state.sendingSince || 0) < 20000) return;
     if (!host.hidden) captureUnfinished('closed');
     // Answers given after booking still reach us if the screen just closes.
     if (state.done) sendPrep(true);
@@ -7058,7 +7126,12 @@
       state.revOpen[d.getAttribute('data-revrow')] = !d.open;
     });
     // Leaving the page from the checkout counts as leaving it unfinished.
-    window.addEventListener('pagehide', function () { if (host && !host.hidden) captureUnfinished('left_page'); });
+    window.addEventListener('pagehide', function () {
+      if (!host || host.hidden) return;
+      captureUnfinished('left_page');
+      // Answers typed on Done and never sent still reach us when the tab closes.
+      if (state.done) sendPrep(true);
+    });
     host.innerHTML = SHELL;
     root = host;
 
