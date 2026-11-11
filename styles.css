@@ -846,7 +846,7 @@ main > .areas:first-child .section-head { margin-bottom: 18px; }
 .consent a { text-decoration: underline; }
 .consent-btns { display: flex; gap: .6rem; justify-content: flex-end; }
 .consent-btns .btn { padding: .6rem 1.1rem; font-size: .92rem; }
-@media (min-width: 720px) { .consent { bottom: 20px; left: 20px; right: auto; margin: 0; } }
+@media (min-width: 720px) { html:not(.nav-burger) .consent { bottom: 20px; left: 20px; right: auto; margin: 0; } }
 .linklike { background: none; border: 0; padding: 0; font: inherit; color: inherit; cursor: pointer; text-decoration: underline; }
 .linklike[hidden] { display: none; }
 
@@ -944,11 +944,13 @@ html.scrolling-fast .reveal { transition: none; transition-delay: 0s; }
 /* The top nav, from tablet width up. Links that do not fit go into More
    (script.js); the menu button and the bottom bar are for phones only
    (owner, November 12: from 1040 to 1089 px Book Now ran off the window). */
+/* html.nav-burger: fewer than Results, Services and Meet the Team fit, so
+   the phone header is used instead (owner, November 12). */
 @media (min-width: 720px) {
-  .nav-mid { display: flex; }
-  .nav-cta { display: flex; }
-  .nav-toggle { display: none; }
-  .mobile-bar { display: none !important; }
+  html:not(.nav-burger) .nav-mid { display: flex; }
+  html:not(.nav-burger) .nav-cta { display: flex; }
+  html:not(.nav-burger) .nav-toggle { display: none; }
+  html:not(.nav-burger) .mobile-bar { display: none !important; }
 }
 
 /* ============================================================
