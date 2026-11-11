@@ -203,7 +203,8 @@ section { padding-block: clamp(40px, 5vw, 72px); position: relative; }
 .brand .b-name { font-family: var(--font-display); font-weight: 800; font-size: 1.16rem; letter-spacing: -.03em; line-height: 1; }
 .brand .b-sub { font-size: .68rem; letter-spacing: .12em; text-transform: uppercase; color: var(--text-soft); font-weight: 600; }
 /* On the smallest phones the tag line is what gives way, not the page width. */
-@media (max-width: 359px) { .header .brand .b-sub { display: none; } }
+/* 364, not 359: at 360 the tag line made the header 361 px and the phone zoomed out (final validation, November 11). */
+@media (max-width: 364px) { .header .brand .b-sub { display: none; } }
 
 .nav-links { display: none; align-items: center; gap: 0; }
 .nav-links a {
@@ -325,6 +326,9 @@ section { padding-block: clamp(40px, 5vw, 72px); position: relative; }
   .hero-cta .btn-primary { grid-column: 1 / -1; }
   .hero-cta .btn { justify-content: center; padding-inline: .8rem; }
 }
+/* Under 360 the two outlined buttons need 303 px in a 280 px row and ran off
+   the screen (final validation, November 11), so they stack there. */
+@media (max-width: 359.98px) { .hero-cta { grid-template-columns: minmax(0, 1fr); } }
 
 /* trust marquee */
 .trustbar { background: var(--ink-2); color: var(--text-inv-soft); border-top: 1px solid var(--line-dark); border-bottom: 1px solid var(--line-dark); }
@@ -631,7 +635,8 @@ main > .areas:first-child .section-head { margin-bottom: 18px; }
 /* Offset so the #travel anchor does not land under the sticky header. */
 .anchor-alias { position: absolute; margin-top: -80px; }
 
-.areas-tool { display: grid; gap: 1.1rem; grid-template-areas: "side" "map" "states" "extra"; }
+/* minmax(0, 1fr): an auto column grew to the estimator row's 303 px at 320 (final validation, November 11). */
+.areas-tool { display: grid; gap: 1.1rem; grid-template-columns: minmax(0, 1fr); grid-template-areas: "side" "map" "states" "extra"; }
 .at-side { grid-area: side; }
 .at-map { grid-area: map; }
 .at-extra { grid-area: extra; }

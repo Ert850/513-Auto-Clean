@@ -535,9 +535,24 @@
     return i;
   }
   /** "Basic Interior", "Full Interior + Basic Exterior", or "Help me decide". */
+  /**
+   * Render, then put keyboard focus back where it was: a re-render replaces
+   * the button that had it, and focus fell to the page (final validation,
+   * November 11: after Apply on a promo code, and after adding an extra).
+   */
+  function renderKeepFocus(sel, fallback) {
+    render();
+    var active = document.activeElement;
+    if (active && active !== document.body && root.contains(active)) return;
+    var e = root.querySelector(sel) || (fallback ? root.querySelector(fallback) : null);
+    if (e && e.focus) e.focus({ preventScroll: true });
+  }
+
   function detailChip() {
     if (state.advice) return 'Help me decide';
-    var names = veh().packageIds.map(function (id) { return (P.findPackage(id) || {}).name; }).filter(Boolean);
+    // The first vehicle's detail, then "+1 vehicle" (final validation,
+    // November 11: veh() is the active vehicle, so it showed the second one's).
+    var names = state.vehicles[0].packageIds.map(function (id) { return (P.findPackage(id) || {}).name; }).filter(Boolean);
     var more = state.vehicles.length > 1 ? ' +' + (state.vehicles.length - 1) + ' vehicle' + (state.vehicles.length > 2 ? 's' : '') : '';
     return (names.join(' + ') || 'Your detail') + more;
   }
@@ -893,10 +908,9 @@
     } else if (quote.multiVehicleDiscountCents > 0) {
       // Lead with the saving, not the duration: this is the moment the second
       // vehicle has to look like a good idea.
-      // Quote the visible gap, not the pre-tax discount, so the two numbers
-      // on screen actually subtract to the figure beside them.
-      sub.innerHTML = '<s>' + $(quote.grossBeforeMultiCents) + '</s> saving ' +
-        $(quote.grossBeforeMultiCents - quote.totalCents);
+      // The amount is said once, in the price table's "You saved", as with a
+      // promo code (final validation, November 11: $75 there, $64.68 here).
+      sub.innerHTML = '<s>' + $(quote.grossBeforeMultiCents) + '</s> multi-vehicle saving applied';
     } else {
       sub.textContent = dur ? 'about ' + fmtDur(dur) + ' on site' : '';
     }
@@ -2397,7 +2411,8 @@
      * be, which is exactly the question they asked us.
      */
     var html = state.advice
-      ? '<p class="bk-sub">Pick a time and it is yours. We will work out the right package with you ' +
+      // A short-notice time is still a request (final validation, November 11).
+      ? '<p class="bk-sub">Pick a time and we hold it for you (a time within the next day is a request until a detailer accepts it). We will work out the right package with you ' +
         'before we start, so nothing is priced yet.</p>' +
         '<p class="bk-note">We are holding <b>' + Math.round(P.ADVICE_HOLD_MIN / 60) + ' hours</b>, ' +
         'which covers our longest single-vehicle detail. If the package we recommend needs less, we ' +
@@ -3155,7 +3170,10 @@
         '<b>' + esc(w.label) + '</b><span>' + esc(w.range) + '</span>' +
         // The surcharge is named on the band they are asking for, not sprung
         // on them when we come back with a time.
-        (w.premium ? '<em>+' + RULES.surcharge.timeOfDayBp / 100 + '% ' + (w.fromMin < 12 * 60 ? 'early start fee' : 'late start fee') + '</em>' : '') +
+        // "Usually": the fee comes from each detailer's hours (fee standard B),
+        // and some evening starts are standard price (final validation,
+        // November 11: Kris's 6 to 7:30pm interior starts).
+        (w.premium ? '<em>usually +' + RULES.surcharge.timeOfDayBp / 100 + '% ' + (w.fromMin < 12 * 60 ? 'early start fee' : 'late start fee') + '</em>' : '') +
         '</button>';
     }).join('');
 
@@ -4775,6 +4793,13 @@
 
   /** The follow-up email. `quiet` when sent on close, where nobody is watching. */
   function sendPrep(quiet) {
+    if (!quiet && !prepSent && state.done && !prepAnswered()) {
+      // Pressed with nothing new to send: say so rather than do nothing
+      // (final validation, November 11).
+      var m0 = root.querySelector('#bkPrepMsg');
+      if (m0) { m0.className = 'bk-msg'; m0.textContent = 'Answer any of the questions above, then send.'; }
+      return;
+    }
     if (prepSent || !state.done || state.advice || !prepAnswered()) return;
     prepSent = true;
     var msg = root.querySelector('#bkPrepMsg');
@@ -5717,7 +5742,7 @@
       var pbox = el('bkPromo');
       // Normalised on the way in, so "  likenew " and "LIKENEW" are one code.
       state.promoCode = pbox ? P.normalisePromo(pbox.value) : '';
-      return render();
+      return renderKeepFocus('#bkPromoClear', '#bkPromo');
     }
     if (t.id === 'bkBrowse') { state.browse = true; return render(); }
     if (t.id === 'bkBrowseBack') { state.browse = false; return render(); }
@@ -5843,7 +5868,7 @@
         track('addon_add', { addon: id, tier: tier, recommended: Boolean(t.closest('.bk-addrecs')), via: 'extras' });
       }
       pruneAddons(v);
-      return render();
+      return renderKeepFocus('[data-addon="' + id + '"][data-tier="' + tier + '"]');
     }
     if (t.dataset.extrarm) {
       // "1|pet-hair": the vehicle index matters here, because the confirm
@@ -6009,6 +6034,16 @@
         p.className = ok ? 'bk-pref-ok' : 'bk-pref-hint';
         p.textContent = ok ? PREF_OK : PREF_ASK;
       });
+      // The Time section's Continue is drawn only for a time or a request, and
+      // this updates in place, so add or remove it here (final validation,
+      // November 11: "Carry on" with nothing to carry on with).
+      var whenSec = root.querySelector('[data-sec="when"]');
+      var cont = whenSec && whenSec.querySelector(':scope > .bk-ckcont');
+      if (whenSec && isInquiry() && !cont) {
+        whenSec.insertAdjacentHTML('beforeend', '<button type="button" class="bk-ckcont" data-ckcont="when">Continue' + CHEV_R + '</button>');
+      } else if (cont && !state.slot && !isInquiry()) {
+        cont.remove();
+      }
       renderTotal();
       return;
     }
