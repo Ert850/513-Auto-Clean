@@ -132,18 +132,30 @@ const authUrl =
     // Google returns only an access token on the second and later runs,
     // which looks like the script quietly failing.
     access_type: "offline",
-    prompt: "consent",
+    prompt: "consent select_account",
     code_challenge: challenge,
     code_challenge_method: "S256",
     state,
   });
 
-console.log(`\nOpening your browser. If it does not open, paste this in:\n\n${authUrl}\n`);
-spawn(process.platform === "win32" ? "cmd" : "open", process.platform === "win32" ? ["/c", "start", "", authUrl] : [authUrl], {
-  stdio: "ignore",
-  detached: true,
-  shell: process.platform === "linux",
-}).unref();
+// Never opened automatically: the default browser is often signed in as the
+// wrong Google account (November 11: it opened in another person's profile).
+// The link goes on the clipboard, to paste into the Chrome profile signed in
+// as the calendars' owner, and Google is asked to show the account picker.
+let copied = false;
+if (process.platform === "darwin") {
+  try {
+    const pb = spawn("pbcopy", [], { stdio: ["pipe", "ignore", "ignore"] });
+    pb.on("error", () => {});
+    pb.stdin.end(authUrl);
+    copied = true;
+  } catch { copied = false; }
+}
+console.log(
+  "\nOpen this link in the Chrome profile signed in as the account that owns the calendars" +
+  (copied ? " (it is already on your clipboard: paste it into that profile's address bar):" : ":") +
+  `\n\n${authUrl}\n\nOn Google's page, choose that account, then Allow.\n`,
+);
 
 const code = await new Promise((resolve, reject) => {
   const server = http.createServer((req, res) => {
