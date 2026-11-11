@@ -88,6 +88,11 @@ The 513 Auto Clean jobs calendar goes free/busy only **the minute this branch is
 - **Smoother timeline:** the pointed-at block glides between starts (moved by transform, 0.14 s), and the block's and the card's text fade in when the time changes (0.15 s); none of it with reduced motion. *Cause of the jump:* the block was re-placed by grid row and hidden on the way, so it could not move smoothly.
 - **Results carousel: an 8 s cycle** with the same proportions as the 6 s one: each step is 1.333 s. Measured in the browser: 8.0 s between moves.
 
+### Cleanup merged, and a live bug it found (November 11, night)
+- **Merged `cleanup-nov11`:** 591 lines of dead code out (log: `docs/SESSION-CHANGES-cleanup.md`). The only conflicts were asset stamps and the pricing bundle, rebuilt from the merged sources. Checked against this afternoon's code: every pricing name the scripts use still exists, and no removed style is used by new code. Every page, the phone steps (20 screenshots) and the time page are pixel-identical to the version before the merge, apart from sub-pixel anti-aliasing on a moving block; 363 offered starts price the same.
+- **Bug, also on the live site: a shared quote link whose time was booked since crashed the time picker.** *Root cause:* `paintSlotsInner` called `renderQuoteBanner()`, which never existed, so the picker showed only the request form. Now the time is dropped with "The time in your quote has been booked since. Pick another below." Re-checked with a crafted link on 8799: the note and 5 recommended times, no errors. Confirm already refused such a time ("Someone booked that time while you were deciding").
+- **Morning report:** `docs/STATUS-2026-11-11.md` / `.pdf`.
+
 ### Still open from that validation
 - When the card-on-file switch goes live, its payment box should carry the short-notice line and the "a few quick questions" line too (latent: the switch is off).
 
