@@ -4155,10 +4155,15 @@
     byMin = {};
     starts.forEach(function (s) { var x = localMin(s.ms); if (x >= range.from && x <= range.last) byMin[x] = s; });
 
-    var first = P.stretchStarts(shown.map(function (x) { return byMin[x] ? priceWords(byMin[x].ms) : null; }));
     var mine = -1;
     shown.forEach(function (x, i) { if (byMin[x] && sameMinute(byMin[x].ms, state.slot)) mine = i; });
     var cover = mine > -1 ? Math.ceil(dur / 30) : 0;
+    // The price in words goes on the first row of each stretch that can be
+    // SEEN: rows under the chosen job count as hidden, so the row after it
+    // says "+$25 rush fee", not just "+$25" (owner, November 11).
+    var first = P.stretchStarts(shown.map(function (x, i) {
+      return byMin[x] && !(mine > -1 && i >= mine && i < mine + cover) ? priceWords(byMin[x].ms) : null;
+    }));
 
     html += hidEarly.length ? foldButton('early', hidEarly) : '';
     html += '<div class="bk-tl" data-dur="' + dur + '" data-rows="' + shown.length +
@@ -4178,12 +4183,12 @@
       }
       var on = i === mine;
       html += '<button type="button" class="bk-tl-s ' + (feeText(s.ms) ? 'fee' : 'std') + under +
-        '" style="grid-row:' + (i + 1) + '" data-slot="' + s.ms + '" data-row="' + i + '"' + (s.sug ? ' data-sug="1"' : '') +
-        ' aria-pressed="' + on + '" aria-label="' + esc(startLabel(day, s.ms, dur, s.sug)) + '">' +
-        priceTag(s.ms, first[i]) + (s.sug ? '<em class="bk-tl-star">' + STAR + 'Suggested</em>' : '') + '</button>';
+        (first[i] ? ' lead' : '') + '" style="grid-row:' + (i + 1) + '" data-slot="' + s.ms + '" data-row="' + i + '"' + (s.sug ? ' data-sug="1"' : '') +
+        ' data-pw="' + esc(priceWords(s.ms)) + '" aria-pressed="' + on + '" aria-label="' + esc(startLabel(day, s.ms, dur, s.sug)) + '">' +
+        rowPrice(s.ms) + (s.sug ? '<em class="bk-tl-star">' + STAR + 'Suggested</em>' : '') + '</button>';
     });
     // The chosen job, start to finish, and one for pointing at a start.
-    if (mine > -1) html += tlBlock(byMin[shown[mine]].ms, mine, shown.length, dur, byMin[shown[mine]].sug, '');
+    if (mine > -1) html += tlBlock(byMin[shown[mine]].ms, mine, shown.length, dur, 'mine');
     html += '<div class="bk-tl-span preview" id="bkTlPreview" aria-hidden="true" hidden></div>';
     html += '</div>';
     return html + (hidLate.length ? foldButton('late', hidLate) : '');
@@ -4191,18 +4196,41 @@
 
   /**
    * The job's block: it spans the rows the job touches, and its box is as
-   * tall as the job to the minute. The price is said once, in the middle;
-   * a suggested start keeps its star where the row has it.
+   * tall as the job to the minute. The price is said once, in the middle.
+   * No "Suggested" tag: a suggestion is marked on its own row only, so a
+   * chosen job never reads as the suggestion (owner, November 11).
    */
-  function tlBlock(ms, row, rows, dur, sug, cls) {
+  function tlBlock(ms, row, rows, dur, cls) {
     var span = Math.max(1, Math.min(rows - row, Math.ceil(dur / 30)));
     return '<div class="bk-tl-span' + (cls ? ' ' + cls : '') + '" aria-hidden="true" style="grid-row:' + (row + 1) + ' / span ' + span + '">' +
-      tlBlockInner(ms, dur, sug) + '</div>';
+      tlBlockInner(ms, dur) + '</div>';
   }
-  function tlBlockInner(ms, dur, sug) {
+  function tlBlockInner(ms, dur) {
     var h = Math.round(dur / 30 * (TL_ROW + TL_GAP) - TL_GAP);
-    return '<i style="height:' + h + 'px"><b>' + esc(spanLabel(ms, dur)) + '</b>' + priceTag(ms, true) +
-      (sug ? '<em class="bk-tl-star">' + STAR + 'Suggested</em>' : '') + '</i>';
+    return '<i style="height:' + h + 'px"><b>' + esc(spanLabel(ms, dur)) + '</b>' + priceTag(ms, true) + '</i>';
+  }
+
+  /** A timeline row's price, both ways: in words when the row leads its stretch (.lead), else "+$25" or nothing. */
+  function rowPrice(ms) {
+    var fee = feeText(ms);
+    return '<span class="bk-px' + (fee ? ' fee' : ' std') + '"><span class="pw-l">' + esc(priceWords(ms)) +
+      '</span><span class="pw-s">' + esc(fee) + '</span></span>';
+  }
+
+  /**
+   * Which rows lead their stretch, among the rows you can see: not under the
+   * chosen job (unless something else is being pointed at, which hides it)
+   * and not under the block being pointed at.
+   */
+  function markLeads(tl) {
+    var pointing = tl.classList.contains('pointing');
+    var prev = null;
+    tl.querySelectorAll('.bk-tl-s').forEach(function (c) {
+      var hidden = c.classList.contains('pv') || (!pointing && c.classList.contains('under'));
+      var key = hidden || !c.dataset.pw ? null : c.dataset.pw;
+      c.classList.toggle('lead', key !== null && key !== prev);
+      prev = key;
+    });
   }
 
   /** Pointing at (or tapping) a start draws the block it would book. */
@@ -4218,14 +4246,21 @@
       if (r >= row && r < row + span) c.classList.add('pv');
     });
     pv.style.gridRow = (row + 1) + ' / span ' + span;
-    pv.innerHTML = tlBlockInner(Number(t.dataset.slot), dur, Boolean(t.dataset.sug));
+    pv.innerHTML = tlBlockInner(Number(t.dataset.slot), dur);
     pv.classList.toggle('solid', Boolean(solid));
     pv.hidden = false;
+    // One block at a time: pointing at another start hides the chosen job
+    // instead of drawing over it (owner's screenshot, November 11: the two
+    // overlapped, and the chosen job's top read as a big "Suggested" box).
+    tl.classList.toggle('pointing', t.getAttribute('aria-pressed') !== 'true');
+    markLeads(tl);
   }
   function clearTlPreview(tl) {
     tl.querySelectorAll('.pv').forEach(function (c) { c.classList.remove('pv'); });
     var pv = tl.querySelector('#bkTlPreview');
     if (pv) pv.hidden = true;
+    tl.classList.remove('pointing');
+    markLeads(tl);
   }
 
   /**
@@ -5981,6 +6016,9 @@
         t.id === 'bkWkToday' || t.id === 'bkWkBack') {
       state.weekTouched = true;
       state.weekDay = -1;
+      // Another week starts with Earlier and Later times folded, as a new
+      // view does (owner, November 11).
+      state.wkEarly = state.wkLate = false;
       state.weekStart = t.id === 'bkWkToday' ? P.weekStartOf(Date.now())
         : t.id === 'bkWkBack' ? P.weekStartOf(state.slot)
         : P.addWeeks(state.weekStart, t.id === 'bkWkPrev' ? -1 : 1);
@@ -6002,6 +6040,8 @@
     }
     if (t.dataset.wkday !== undefined) {
       state.weekDay = Number(t.dataset.wkday);
+      // Another day starts with Earlier and Later times folded (owner, November 11).
+      state.wkEarly = state.wkLate = false;
       return repaintSlots();
     }
 
@@ -6255,6 +6295,7 @@
       if (!jumped) return;
       state.weekTouched = true;
       state.weekDay = -1;
+      state.wkEarly = state.wkLate = false;
       state.weekStart = P.weekStartOf(jumped + DAY / 2);
       return loadSlots();
     }

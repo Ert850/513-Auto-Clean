@@ -484,6 +484,13 @@ button.bk-tl-s:hover { border-color: var(--red); box-shadow: 0 0 0 3px var(--red
 /* Rows under a block (chosen or pointed at) keep their outline and hide
    what is in them, so the block shows its price once. */
 .bk-tl-s.under > *, .bk-tl-s.pv > * { visibility: hidden; }
+/* Pointing at another start hides the chosen job, and its rows show again. */
+.bk-tl.pointing .bk-tl-span.mine { visibility: hidden; }
+.bk-tl.pointing .bk-tl-s.under:not(.pv) > * { visibility: visible; }
+/* Each row carries its price both ways; the first row you can see of each
+   stretch says it in words ("+$25 rush fee", "Standard price"). */
+.bk-tl-s .pw-l, .bk-tl-s.lead .pw-s { display: none; }
+.bk-tl-s.lead .pw-l { display: inline; }
 /* The job, start to estimated finish, over the rows it covers. */
 .bk-tl-span { grid-column: 2; position: relative; z-index: 3; pointer-events: none; overflow: hidden; border-radius: 6px; }
 .bk-tl-span > i {
@@ -495,9 +502,6 @@ button.bk-tl-s:hover { border-color: var(--red); box-shadow: 0 0 0 3px var(--red
 .bk-tl-span b { font-family: var(--font-display); font-size: 1.05rem; color: var(--text); }
 .bk-tl-span .bk-px { font-size: .84rem; font-weight: 800; }
 .bk-tl-span .bk-px.fee { background: rgba(240,169,63,.18); padding: .05rem .4rem; border-radius: 4px; }
-/* The star exactly where the start's row has it: right side, middle of the
-   first row (32px inside the 2px border = the 36px row). */
-.bk-tl-span .bk-tl-star { position: absolute; top: 0; right: calc(.75rem - .5px); height: 32px; }
 .bk-tl-span.preview > i { border-style: dashed; background: linear-gradient(rgba(196,20,20,.05), rgba(196,20,20,.05)), var(--paper-2); }
 .bk-tl-span.preview.solid > i { border-style: solid; background: linear-gradient(rgba(196,20,20,.10), rgba(196,20,20,.10)), var(--paper-2); }
 /* "Earlier times" and "Later times": the folded starts, one tap away. */
