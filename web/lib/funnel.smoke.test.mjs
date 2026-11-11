@@ -580,7 +580,18 @@ describe("the booking funnel opens", () => {
     await new Promise((r) => setTimeout(r, 0));
     const week = fresh.lookup("bkSlots").innerHTML;
     expect(week, "no week calendar").toContain("bk-wk");
-    expect(week, "the legend explains the colours").toContain("Small fee: early, late or rush");
+    expect(week, "a fee is explained one tap away").toContain("When is there a fee?");
+    expect(week, "no top half / bottom half to decode (owner, November 11)").not.toContain("top half");
+    expect(week, "no ticks on every time any more").not.toContain("bk-wk-key ok");
+    // The open day: a timeline of half-hour rows on wide screens, or on a
+    // phone its times under part-of-day headings, each in its own section so
+    // the heading stays pinned while its times show.
+    expect(week, "the open day is drawn").toMatch(/class="bk-tl"|bk-wk-sec|bk-wk-none/);
+    expect(week, "the day strip bars show how open each day is").toContain("bk-wk-bar");
+    // The price is said once per stretch, not on every row (owner, November 11).
+    const rowsN = (week.match(/class="bk-tl-s (std|fee)/g) || []).length;
+    const said = (week.match(/class="bk-tl-s [^"]*"[^>]*><span class="bk-px[^"]*">[^<]*(Standard price| fee)</g) || []).length;
+    if (rowsN > 1) expect(said, "every row repeats its price").toBeLessThan(rowsN);
     expect(week, "and a way back to the three").toContain("bkShowRecs");
   });
 
@@ -1141,7 +1152,7 @@ describe("help me choose a time", () => {
     const slots = env.lookup("bkSlots").innerHTML;
     const offer = slots.indexOf("bkAskMode2");
     expect(offer, "the way out is beside our recommended times").toBeGreaterThan(-1);
-    expect(slots, "the full calendar is not drawn yet").not.toContain("bk-wk-grid");
+    expect(slots, "the full calendar is not drawn yet").not.toContain("bk-wk-strip");
   });
 
   it("swaps the calendar for the picker, and back", async () => {
