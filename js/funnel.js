@@ -1963,6 +1963,22 @@
     return P.recommendAddons({ candidates: candidates, sides: sides }).map(P.findAddon).filter(Boolean);
   }
 
+  /**
+   * ", like pet hair removal or stain treatment": the top recommended extras
+   * (recommend.ts, which analytics will tune), one per side when both are
+   * booked, so the line always names extras this detail can take.
+   */
+  function extrasLike(recs, sides, count) {
+    var names = [];
+    var onSide = function (side) { var ids = P.addonsFor(side).map(function (a) { return a.id; }); return recs.filter(function (a) { return ids.indexOf(a.id) > -1; }); };
+    if (sides.length > 1) sides.forEach(function (side) { var r = onSide(side)[0]; if (r) names.push(r.name); });
+    else names = recs.slice(0, 2).map(function (a) { return a.name; });
+    if (!names.length) return '';
+    names = names.map(function (n) { return n.toLowerCase(); });
+    // Every one named: say which, not "like".
+    return count <= names.length ? ': ' + esc(names.join(' and ')) : ', like ' + esc(names.join(' or '));
+  }
+
   /** One add-on card, as the Extras step has always drawn it. */
   function addonCard(v, a, ctx) {
     var html = '';
@@ -2039,16 +2055,23 @@
 
     // The second vehicle first, as one slim line: worth seeing before anyone
     // scrolls, and quiet enough not to compete with the extras or Continue.
-    var html = '<p class="bk-sub">Optional. Extras are for specific needs, like pet hair, stains, odors or a deeper clean. ' +
-      'Skip this if your car does not need them.</p>' + moreVehicles();
+    // No examples here: a fixed list named pet hair on exterior jobs, and
+    // wheels on packages that already include them (owner, November 12).
+    // The line under "View additional options" names real ones.
+    var html = '<p class="bk-sub">Optional. Extras are for specific needs. Skip this if your car does not need them.</p>' + moreVehicles();
 
     // Hidden until asked for (owner, November 10: do not flood the page).
     // Open by itself once something is added, so a choice is never hidden.
     var chosenAny = state.vehicles.some(function (x) { return x.addons.length; });
     if (!state.showExtras && !chosenAny) {
-      var count = sides.reduce(function (n, side) { return n + P.addonsFor(side).length; }, 0);
+      // Only extras this detail can still take: not "coming soon", not
+      // already in the package (owner, November 12).
+      var count = sides.reduce(function (n, side) {
+        return n + P.addonsFor(side).filter(function (a) { return P.isSelectable(a) && !P.addonBlockedReason(a, ctx); }).length;
+      }, 0);
       return html + '<button type="button" class="bk-extras-open" id="bkShowExtras">' +
-        '<span><b>View additional options for your detail</b><i>' + count + ' extras, like pet hair and stain removal</i></span>' +
+        '<span><b>View additional options for your detail</b><i>' +
+          (count ? count + (count === 1 ? ' extra' : ' extras') + extrasLike(recs, sides, count) : 'Nothing more to add to this package') + '</i></span>' +
         '<svg class="bk-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 9l6 6 6-6"/></svg>' +
       '</button>';
     }
