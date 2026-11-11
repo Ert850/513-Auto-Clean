@@ -91,13 +91,14 @@
    *
    * Every card in view wipes on ONE shared clock, in step (the owner's
    * decision, November 10: synced, much faster, less time on the before,
-   * more on the after). A 6 s cycle:
-   *   0-1 s  every handle rests in the middle
-   *   1-2 s  to the right edge (the whole before)
-   *   2-3 s  back across to the left edge (the whole after)
-   *   3-5 s  still, on the after
-   *   5-6 s  the track moves on by one card (two when three are in view)
-   *          while every handle glides back to the middle
+   * more on the after). An 8 s cycle (owner, November 11: the same
+   * proportions as the first 6 s one, a quarter slower), each step 1/6 of it:
+   *   0-1.33 s     every handle rests in the middle
+   *   1.33-2.67 s  to the right edge (the whole before)
+   *   2.67-4 s     back across to the left edge (the whole after)
+   *   4-6.67 s     still, on the after
+   *   6.67-8 s     the track moves on by one card (two when three are in
+   *                view) while every handle glides back to the middle
    * Then the cards now in view start the next cycle together. A card that
    * stays in view after a shift wipes again with the new ones.
    *
@@ -126,15 +127,16 @@
    * one CSS variable per card, and the stylesheet turns it into transforms
    * and opacity, which the compositor moves without layout or repaint.
    */
+  var STEP = 1333;          // one sixth of the 8 s cycle; .ba-track's transition is 1.333s
   var WIPE = [             // every card: [ms, where the handle goes]; no target = hold
-    [1000],                // rest in the middle
-    [1000, 100],           // to the right edge: the whole before
-    [1000, 0],             // to the left edge: the whole after
-    [2000]                 // hold on the after
+    [STEP],                // rest in the middle
+    [STEP, 100],           // to the right edge: the whole before
+    [STEP, 0],             // to the left edge: the whole after
+    [2 * STEP]             // hold on the after
   ];
-  var WIPE_MS = WIPE.reduce(function (t, w) { return t + w[0]; }, 0);    // 5 s
-  var RETURN_MS = 1000;    // back to the middle, while the track moves on
-  var SLIDE_MS = 1000;     // .ba-track's transition
+  var WIPE_MS = WIPE.reduce(function (t, w) { return t + w[0]; }, 0);    // 6.67 s
+  var RETURN_MS = STEP;    // back to the middle, while the track moves on
+  var SLIDE_MS = STEP;     // .ba-track's transition
   var SETTLE_MS = 450;     // a paused card's handle gliding home
   var PHOTO_WAIT_MS = 1500;
   var IDLE_MS = 12000;
