@@ -48,6 +48,15 @@ The 513 Auto Clean jobs calendar goes free/busy only **the minute this branch is
 - **To test on a deploy preview:** book a time, answer on Done, press Send, then open the job on its calendar: the answers are at the bottom. Needs the Google sign-in values, which are set.
 - Tests: `web/lib/booking-followup.test.ts` (5), and the function is in the hostile-input smoke test.
 
+### Final validation of the merged `eNov6` (fixed, re-checked on 8799)
+- **"Tell us when does" was a dead end** ("Carry on" with no Continue). *Root cause:* the Time section draws its Continue at render time only for a time or a request, and the day and part-of-day buttons update in place without a render. The handler now adds or removes the Continue itself. Re-checked: day plus midday, Continue, Agree, Review, Send request.
+- The Done crash, "before travel" and the two savings figures were already fixed above; the multi-vehicle bar now says "multi-vehicle saving applied" too, so the amount is said once, in the table.
+- **Phone package cards** (560 px and under) line up on the left again: a desktop rule (`.bk-pkgcard .bk-pkg { align-items: center }`) outranked the phone rule.
+- **360 and 320 px:** the header tag line hides up to 364 px (the header was 361 px at 360 and the phone zoomed out); the Range & Travel tool and the home hero buttons no longer run past 320. Re-checked: page width equals the screen width on Home, Services and Range & Travel at both sizes.
+- **Focus** stays on the promo box (or its Remove) after Apply, and on the extra after adding it, instead of falling to the page.
+- **Smaller:** the checkout chip names vehicle 1's detail, then "+1 vehicle"; the request time bands say "usually +20%" (Kris's evening interior starts are standard); Help me decide's intro says a time within the next day is a request; Send with nothing answered says "Answer any of the questions above, then send."
+- **Services full lists** open from 940 px tall (was 900): since the eyebrow came back (owner, November 10), the banner under full lists ended at 926. At 1440×790 the Book buttons end at 698 and the banner at 801, 11 px under the screen, as after the eyebrow decision; tell me if that should be tightened.
+
 ### Still open from that validation
 - When the card-on-file switch goes live, its payment box should carry the short-notice line and the "a few quick questions" line too (latent: the switch is off).
 
