@@ -54,8 +54,9 @@ export interface SurchargeRules {
    * Hard ceiling once the above are added together.
    *
    * At 3000 the two surcharges DO compound: a standard-time booking inside
-   * three days is +20%, an early or late slot further out is +20%, and an
-   * early or late slot inside three days is +30% rather than +40%.
+   * the rush window (config/rush-fee.json) is +20%, an early or late slot
+   * further out is +20%, and an early or late slot inside the window is +30%
+   * rather than +40%.
    */
   maxTotalBp: number;
 }
