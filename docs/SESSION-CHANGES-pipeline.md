@@ -67,6 +67,25 @@ Built overnight, November 10 to 11, for you to evaluate. It combines your 8 answ
 - **Tests:** `experiments.test.ts`, 17 tests. They run the real `analytics.js` in a sandbox: weights, stickiness, the source rule, off/ended/unknown tests, element switching, nothing reaching GA before Accept, and storage blocked. 582 of 582 pass.
 - **To test:** with a test set to running, open /?utm_source=golf: `localStorage['ac-exp']` holds a version and only that version's element shows. A booking email carries "A/B TESTS".
 
+### Settings files: three holes closed (found by the bug-testing agent)
+- **Bug 1: the browser and the server could read a source differently.**
+  - **Root cause:** the browser lowercased the source and split it on "/". The wire also stripped everything but letters, digits, - and _, and cut it to 40. With a rule for "golf course", the screen showed $278.12 and the card would have been charged $301.30.
+  - **Status:** latent. No source rule exists.
+  - **Fix:** one `sourceKey()` (rush.ts) is used by both sides, and a rule's sources must already be in that form.
+- **Bug 2: a typo could waive the rush fee for everyone, and the build passed.**
+  - **Root cause:** only the keys inside `when` were checked. A rule written with "When" had no conditions, so it matched every booking.
+  - **Fix:**
+    - every key at every level of all three settings files is checked;
+    - a rule needs at least one condition (for everything, change `defaultRushDays`);
+    - dates must be real dates (2027-13-45 is refused).
+- **Bug 3: the build only failed on a bad file by accident.**
+  - **Root cause:** esbuild bundles the files without running the checks, and only `render-site.mjs` happened to load the server bundle.
+  - **Fix:** `render-config.mjs` now loads it on purpose. Verified: a misspelt "When" stops the build with `config/rush-fee.json: golf: unknown key "When"`.
+- **Also:** the booking email's "RUSH" line is worked out from the chosen time, not the remembered `state.priority`, which a package change after picking a time could leave stale. Prices were always right.
+- **Verified:**
+  - the agent's parity script (browser bundle against server bundle across a grid of clock times, DST days, carts and sources) finds 0 disagreements in 62,090 rush cases;
+  - the agent's failing cases are now tests; 594 of 594 pass.
+
 ### The phone bar no longer covers the footer's legal links (found by the UI validation agent)
 - **Bug:** at the very bottom of every page on phones and tablets, the fixed bottom bar (Call / Book, 58 px) covered "Privacy Policy · Terms · Cancellation Policy". They were partly covered at 375 px and fully covered at 820. The same bug is on the live site.
 - **Root cause:** the footer ended 2rem from the bottom of the page, and nothing reserved room for a bar fixed over it.

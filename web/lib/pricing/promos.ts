@@ -17,6 +17,7 @@
  */
 import raw from "../../../config/promo-codes.json" with { type: "json" };
 import { localParts } from "../time/zone.js";
+import { isRealDate } from "./rush.js";
 
 export interface Promo {
   /** Matched case and whitespace insensitively. Stored uppercase. */
@@ -41,7 +42,9 @@ export function checkPromoCodes(input: unknown): Promo[] {
   const bad = (where: string, what: string): never => {
     throw new Error(`config/promo-codes.json: ${where}: ${what}`);
   };
-  const codes = (input as { codes?: unknown })?.codes;
+  if (!input || typeof input !== "object" || Array.isArray(input)) bad("the file", "is not a JSON object");
+  for (const k of Object.keys(input as object)) if (!["_read_me", "codes"].includes(k)) bad("the file", `unknown key "${k}" (use codes)`);
+  const codes = (input as { codes?: unknown }).codes;
   if (!Array.isArray(codes)) bad("codes", "must be a list");
   const seen = new Set<string>();
   const known = ["code", "label", "percentOff", "dollarsOff", "active", "until", "minServiceDollars", "blurb", "note"];
@@ -61,7 +64,7 @@ export function checkPromoCodes(input: unknown): Promo[] {
     if (pct !== undefined && (typeof pct !== "number" || !(pct > 0 && pct <= 100))) bad(where, "percentOff must be more than 0 and at most 100");
     if (usd !== undefined && (typeof usd !== "number" || !(usd > 0))) bad(where, "dollarsOff must be more than 0");
     const until = o["until"];
-    if (until !== undefined && (typeof until !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(until))) bad(where, "until must be a date like 2027-06-30");
+    if (until !== undefined && !isRealDate(until)) bad(where, "until must be a real date like 2027-06-30");
     const min = o["minServiceDollars"];
     if (min !== undefined && (typeof min !== "number" || min < 0)) bad(where, "minServiceDollars must be 0 or more");
     return {

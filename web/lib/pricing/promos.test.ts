@@ -335,6 +335,8 @@ describe("config/promo-codes.json", () => {
     ["active as text", { codes: [{ code: "AB1", label: "x", percentOff: 10, active: "yes" }] }],
     ["bad date", { codes: [{ code: "AB1", label: "x", percentOff: 10, active: true, until: "June 30" }] }],
     ["a typo'd field", { codes: [{ code: "AB1", label: "x", percentOff: 10, active: true, untill: "2027-01-01" }] }],
+    ["a misspelt top-level key", { code: [] }],
+    ["an impossible date", { codes: [{ code: "AB1", label: "x", percentOff: 10, active: true, until: "2027-02-30" }] }],
     ["the same code twice", { codes: [{ code: "AB1", label: "x", percentOff: 10, active: true }, { code: "ab 1", label: "y", percentOff: 5, active: true }] }],
   ];
   for (const [what, input] of bad) {

@@ -83,6 +83,7 @@ describe("config/experiments.json", () => {
   });
   const bad: [string, unknown][] = [
     ["no list", {}],
+    ["a misspelt top-level key", { experiments: [], experiment: [] }],
     ["bad id", { experiments: [{ id: "Golf Code", status: "off", versions: { a: 1, b: 1 } }] }],
     ["one version", { experiments: [{ id: "x", status: "off", versions: { a: 1 } }] }],
     ["zero share", { experiments: [{ id: "x", status: "off", versions: { a: 0, b: 1 } }] }],

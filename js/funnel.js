@@ -6816,7 +6816,7 @@
       'WHEN\n  ' + (state.slot ? new Date(state.slot).toLocaleString('en-US', { timeZone: TZ }) : 'not selected') +
       (state.slot && shortNotice(state.slot) ? '\n  SHORT NOTICE: not confirmed until a detailer accepts. Reply to them.' : '') +
       (state.slot && coatingMoves(state.slot, holdMinutes()) ? '\n  COATING: too cold or wet on this date. Do the rest, book the coating for a warmer day.' : '') +
-      (state.priority ? '\n  RUSH, within ' + rushWin().minLeadDays + (rushWin().minLeadDays === 1 ? ' day' : ' days') : '') +
+      (state.slot && needsPriority(state.slot) ? '\n  RUSH, within ' + rushWin().minLeadDays + (rushWin().minLeadDays === 1 ? ' day' : ' days') : '') +
       // The days a request asks for (validation, November 11: the email said
       // only "not selected", so nobody could reply with a time).
       (!state.slot && preferenceSummary() ? '\n  ' + preferenceSummary().replace(/^You asked for /, 'ASKED FOR: ') : '') +
