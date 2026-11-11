@@ -114,7 +114,6 @@ p, li, figcaption, label, legend, summary, blockquote { text-wrap: pretty; }
   color: var(--red-deep); display: inline-flex; align-items: center; gap: .55rem;
 }
 .eyebrow::before { content: ""; width: 26px; height: 2px; background: var(--red); border-radius: 2px; }
-.eyebrow.on-dark { color: var(--red-bright); }
 
 /* ---------- Layout helpers ---------- */
 .wrap { width: 100%; max-width: var(--maxw); margin-inline: auto; padding-inline: var(--pad); }
@@ -434,28 +433,6 @@ section { padding-block: clamp(40px, 5vw, 72px); position: relative; }
 .addon span { font-size: .79rem; color: var(--text-soft); line-height: 1.45; display: block; margin-top: .15rem; }
 
 /* ============================================================
-   PROCESS
-   ============================================================ */
-.process { background: var(--ink); color: var(--text-inv); }
-.process .section-head h2 { color: #fff; }
-.process .section-head p { color: var(--text-inv-soft); }
-.steps { display: grid; gap: 1rem; counter-reset: step; }
-.step {
-  position: relative; background: var(--ink-2); border: 1px solid var(--line-dark); border-radius: var(--r-lg);
-  padding: 2rem 1.7rem; transition: transform .3s var(--ease), border-color .3s;
-}
-.step:hover { transform: translateY(-5px); border-color: rgba(255,80,80,.4); }
-.step .step-num {
-  font-family: var(--font-display); font-weight: 800; font-size: 1rem; color: #ffffff;
-  width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; margin-bottom: 1.2rem;
-  background: linear-gradient(135deg, var(--red-bright), var(--red-deep));
-}
-.step h3 { font-size: 1.2rem; color: #fff; margin-bottom: .4rem; }
-.step p { color: var(--text-inv-soft); font-size: .92rem; line-height: 1.55; }
-.step .step-ic { position: absolute; top: 1.9rem; right: 1.7rem; color: rgba(255,255,255,.14); }
-.step .step-ic svg { width: 40px; height: 40px; }
-
-/* ============================================================
    ABOUT / OWNER
    ============================================================ */
 .about { background: var(--paper); }
@@ -485,24 +462,6 @@ section { padding-block: clamp(40px, 5vw, 72px); position: relative; }
    below, the full padding left about 150 px of blank page under the
    photos at 1440 (this section's bottom padding plus the next one's top). */
 .gallery { background: var(--paper-2); padding-block: clamp(32px, 4vw, 56px); }
-.gal-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: .8rem; }
-.gal-item {
-  position: relative; overflow: hidden; border-radius: var(--r-md); aspect-ratio: 1/1;
-  background: var(--ink-2); cursor: pointer;
-}
-.gal-item img { width: 100%; height: 100%; object-fit: cover; transition: transform .6s var(--ease); }
-.gal-item:hover img { transform: scale(1.07); }
-.gal-item .gal-cap {
-  position: absolute; left: 0; right: 0; bottom: 0; padding: 1.5rem 1rem .9rem;
-  background: linear-gradient(to top, rgba(8,10,14,.85), transparent);
-  color: #fff; font-weight: 600; font-size: .9rem; transform: translateY(8px); opacity: 0; transition: .3s var(--ease);
-}
-.gal-item:hover .gal-cap { transform: translateY(0); opacity: 1; }
-.gal-item .gal-badge {
-  position: absolute; top: .7rem; left: .7rem; background: rgba(8,10,14,.7); color: #fff; backdrop-filter: blur(4px);
-  font-size: .68rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; padding: .3rem .6rem; border-radius: 6px;
-}
-.gal-item .gal-badge.after { background: var(--red-deep); color: #ffffff; }
 .gallery .gal-foot { margin-top: 1rem; text-align: center; }
 
 /* before / after sliders */
@@ -918,7 +877,6 @@ main > .areas:first-child .section-head { margin-bottom: 18px; }
    ANIMATIONS
    ============================================================ */
 @keyframes shine { 0% { transform: translateX(-120%); } 60%,100% { transform: translateX(120%); } }
-@keyframes floaty { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-9px); } }
 @keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
 
 .reveal { opacity: 0; transform: translateY(28px); transition: opacity .7s var(--ease), transform .7s var(--ease); }
@@ -959,7 +917,6 @@ html.scrolling-fast .reveal { transition: none; transition-delay: 0s; }
 @media (min-width: 560px) {
   .tb-hide { display: inline; }
   .field-row { grid-template-columns: 1fr 1fr; }
-  .gal-grid { grid-template-columns: repeat(3, 1fr); }
 }
 /* Three package columns only from 1000px: at 820px each card was 230px wide
    and three-word checklist items left one word alone on a line. */
@@ -987,12 +944,8 @@ html.scrolling-fast .reveal { transition: none; transition-delay: 0s; }
   .svc-card.wide { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1.05fr; gap: 2rem; align-items: stretch; }
   .svc-card.wide .svc-foot { max-width: 22rem; }
   .svc-card.wide .svc-corr { align-self: start; }
-  .steps { grid-template-columns: repeat(3, 1fr); }
-  .rev-grid { grid-template-columns: repeat(3, 1fr); }
-  .area-grid { grid-template-columns: repeat(3, 1fr); }
   .ba-track { --ba-per: 2; --ba-gap: 1.8rem; }
   .footer-grid { grid-template-columns: 1.6fr 1fr 1fr 1.2fr; }
-  .gal-grid { grid-template-columns: repeat(4, 1fr); }
 }
 /* Three cards in view: a third of the container is still about a phone's
    card (310 to 330 points). Kept after the 820px block so it wins there. */
