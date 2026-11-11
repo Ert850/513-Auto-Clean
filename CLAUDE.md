@@ -207,6 +207,9 @@ Read this before changing anything. Every rule below came from a real bug or an 
 - **Pinned bars must leave room for what they pin over.** Under 768 px the week bar, day strip and part-of-day heading pinned together left less than one time row on a phone held sideways. `pinWeek()` unpins the week bar and strip when under 150 px would be left (`PIN_ROOM_MIN`). Check short windows (700×400) whenever something new is pinned.
 - **A pinned bar's height can change after it is measured** (a web font wrapping a line at 320 px). Re-measure with a `ResizeObserver`.
 
+## Print (November 11)
+- **Printed QR codes can never change.** `/golf` (golf course booklet) and `/prestige` (Prestige Living) are in print from 2027 for about a year. Keep both addresses served forever, by the 302 in `netlify.toml` or a page of that name. Never a 301: a browser keeps a 301, so a later change never reaches someone who scanned once. `printed-qr.test.ts` guards this and the files' checksums. A new printed code is a new address, made with `marketing/qr/make_qr.py`; never edit a printed one.
+
 ## Verifying UI changes
 - **The in-app browser pane, when hidden, does not run smooth scrolling or the browser's own jump-to-section on page load.** Don't trust scroll measurements from it. Drive headless Chrome over CDP with real mouse events instead (the nav click checker lives in the session scratchpad).
 - **Disable the browser cache, or add a query string, when testing a rebuilt `dist/`.** A cached `index.html` keeps loading the old scripts. Two test runs were wasted on stale pages.

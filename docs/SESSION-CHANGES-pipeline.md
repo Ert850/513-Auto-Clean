@@ -13,6 +13,20 @@ Built overnight, November 10 to 11, for you to evaluate. It combines your 8 answ
   - `web/lib/browser-entry.ts`, `js/pricing.bundle.js` (built), `web/lib/funnel.smoke.test.mjs`.
   - The build also re-stamps `?v=` on every page. Those page changes were left out of the commit; a rebuild after merging restamps them.
 
+## Round 21 (November 11, evening): the owner's answers; printed QR codes
+
+### QR codes for the golf booklet and Prestige Living (`marketing/qr/`)
+- **What:** two codes, for `https://513autoclean.com/golf` and `/prestige`. The owner needs them sent to both companies within two days. Each comes as PDF, SVG and EPS (vector) and 574 px and 2378 px PNGs. The golf piece is a booklet handed out on the course, not a magazine.
+- **Built to never need reprinting:**
+  - The codes hold only an address on our own domain; where it leads is a 302 redirect in `netlify.toml`, changeable at any time.
+  - Highest error correction (H). Black on white with the standard 4-square margin.
+  - The generator is deterministic: the PDF and EPS creation dates are pinned, so a re-run is byte-identical.
+  - SHA-256 of every file is in `marketing/qr/README.md`, with the print rules and what must stay true (the domain renewing; the redirects reaching the live site before hand-out).
+- **New test `printed-qr.test.ts`:** fails if either address stops being served (by a redirect or a page of that name), if a redirect becomes a 301, if the generator's addresses change, or if a file stops matching its checksum. Checked by turning the /golf redirect into a 301: the test failed.
+- **Verified:** every file decodes to its exact address (OpenCV, and zxing, the engine most phone scanner apps use). With zxing both codes also read with a torn corner, a whited-out middle, a scratch, heavy blur, and at 0.33 inch. The EPS files are the same drawing but weren't decode-tested (no EPS renderer on this Mac).
+- **Still true today:** the live site (`main`) has no /golf or /prestige yet, so a scan shows "page not found" until `eNov6` is merged.
+- **To test:** scan each PDF on screen with a phone; it opens 513autoclean.com/golf or /prestige.
+
 ## Round 20 (November 12): header at mid widths, one Continue at checkout
 
 ### Header: Priority+ with a More menu (owner's pick B of three, `docs/mockups/nav-widths-*.png`)
