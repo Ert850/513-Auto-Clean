@@ -1107,18 +1107,6 @@ function promoDiscountCents(promo, serviceCents) {
   const raw = promo.percentBp ? Math.round(serviceCents * promo.percentBp / 1e4) : promo.amountCents ?? 0;
   return Math.max(0, Math.min(raw, serviceCents));
 }
-function promoMessage(rejected) {
-  switch (rejected) {
-    case "expired":
-      return "That code has expired.";
-    case "too_small":
-      return "That code needs a larger booking.";
-    case "empty":
-      return "Enter a code.";
-    default:
-      return "We do not recognise that code.";
-  }
-}
 
 // lib/pricing/mileage.ts
 function mileageFeeCents(oneWayMinutes, r) {
@@ -1129,9 +1117,6 @@ function mileageFeeCents(oneWayMinutes, r) {
   if (t < r.roundDownBelowMin) return Math.floor(raw / step) * step;
   if (t < r.roundNearestBelowMin) return Math.round(raw / step) * step;
   return Math.ceil(raw / step) * step;
-}
-function averageOneWayMinutes(outboundMinutes, returnMinutes) {
-  return (outboundMinutes + returnMinutes) / 2;
 }
 
 // lib/pricing/quote.ts
@@ -2218,113 +2203,6 @@ async function loadWindow(cfg, fromMs, toMs, hours = DEFAULT_HOURS) {
 }
 
 // lib/pricing/cancellation.ts
-function chargeBpForNotice(hoursUntilStart, r) {
-  if (hoursUntilStart >= r.refundFullWindowHours) return 0;
-  if (hoursUntilStart >= r.refundMidWindowHours) return r.cancelMidWindowBp;
-  return r.cancelLateWindowBp;
-}
-function bucketForNotice(hoursUntilStart, r) {
-  if (hoursUntilStart >= r.refundFullWindowHours) return "gte72h";
-  if (hoursUntilStart >= r.refundMidWindowHours) return "24h_to_72h";
-  return "lt24h";
-}
-function computeCancellation(input, r) {
-  const total = Math.max(0, Math.round(input.totalCents));
-  const paid = Math.max(0, Math.round(input.paidCents ?? 0));
-  const settle = (bucket2, fee2, explanation) => ({
-    bucket: bucket2,
-    feeCents: fee2,
-    dueCents: Math.max(0, fee2 - paid),
-    refundCents: Math.max(0, paid - fee2),
-    explanation
-  });
-  if (input.ownerCancelled) {
-    return settle(
-      "owner_cancelled",
-      0,
-      "We cancelled, so there is no charge and anything you paid comes back in full."
-    );
-  }
-  if (input.waived) return settle("waived", 0, "Cancellation fee waived.");
-  if (!Number.isFinite(input.hoursUntilStart)) {
-    return settle("needs_review", 0, "We could not work out the notice on this booking. Someone will check it by hand before anything is charged.");
-  }
-  const bucket = bucketForNotice(input.hoursUntilStart, r);
-  const fee = Math.round(total * chargeBpForNotice(input.hoursUntilStart, r) / 1e4);
-  if (bucket === "gte72h") {
-    return settle(
-      bucket,
-      0,
-      `Cancelled more than ${r.refundFullWindowHours} hours ahead, so there is no charge.`
-    );
-  }
-  if (bucket === "24h_to_72h") {
-    return settle(
-      bucket,
-      fee,
-      `Cancelled inside ${r.refundFullWindowHours} hours, so ${r.cancelMidWindowBp / 100}% of the booking applies. Rescheduling instead puts the same amount toward your new date.`
-    );
-  }
-  return settle(
-    bucket,
-    fee,
-    `Cancelled inside ${r.refundMidWindowHours} hours, so the booking is charged in full. Rescheduling instead puts the whole amount toward your new date.`
-  );
-}
-function computeReschedule(input, r) {
-  const total = Math.max(0, Math.round(input.totalCents));
-  const paid = Math.max(0, Math.round(input.paidCents ?? 0));
-  const priorLate = Math.max(0, Math.floor(input.lateMoves ?? 0));
-  const free = (bucket2, explanation) => ({
-    bucket: bucket2,
-    prepayCents: 0,
-    dueNowCents: 0,
-    creditCents: paid,
-    lateFeeCents: 0,
-    lateFeeBp: 0,
-    creditValidDays: paid > 0 ? r.rescheduleCreditDays : 0,
-    explanation
-  });
-  if (input.ownerInitiated) {
-    return free("owner_cancelled", "We moved it, so there is nothing to pay and nothing changes.");
-  }
-  if (input.waived) return free("waived", "Reschedule charge waived.");
-  if (!Number.isFinite(input.hoursUntilStart)) {
-    return free("needs_review", "We could not work out the notice on this booking. Someone will check it by hand before anything is charged.");
-  }
-  const bucket = bucketForNotice(input.hoursUntilStart, r);
-  if (bucket === "gte72h") {
-    return free(
-      "gte72h",
-      `Moved with more than ${r.refundFullWindowHours} hours notice, so there is nothing to pay.`
-    );
-  }
-  const prepay = Math.round(total * chargeBpForNotice(input.hoursUntilStart, r) / 1e4);
-  if (bucket === "24h_to_72h") {
-    return {
-      bucket,
-      prepayCents: prepay,
-      dueNowCents: Math.max(0, prepay - paid),
-      creditCents: Math.max(prepay, paid),
-      lateFeeCents: 0,
-      lateFeeBp: 0,
-      creditValidDays: r.rescheduleCreditDays,
-      explanation: `Moved inside ${r.refundFullWindowHours} hours, so ${r.cancelMidWindowBp / 100}% is taken now and goes straight onto your new booking. No fee for moving it.`
-    };
-  }
-  const lateFeeBp = r.lateRescheduleFeeBp;
-  const lateFeeCents = Math.round(total * lateFeeBp / 1e4);
-  return {
-    bucket,
-    prepayCents: prepay,
-    dueNowCents: Math.max(0, prepay - paid),
-    creditCents: Math.max(prepay, paid),
-    lateFeeCents,
-    lateFeeBp,
-    creditValidDays: r.rescheduleCreditDays,
-    explanation: `Moved inside ${r.refundMidWindowHours} hours, so the booking is taken in full now and held as credit for ${r.rescheduleCreditDays} days. A ${r.lateRescheduleFeeBp / 100}% late move fee applies` + (priorLate > 0 ? `, the same ${lateFeeBp / 100}% as last time. This is late move number ${priorLate + 1}.` : ".")
-  };
-}
 function cancellationLadder(r) {
   return [
     {
@@ -2566,14 +2444,8 @@ var PROCESSORS = [
 function liveProcessors() {
   return PROCESSORS.filter((p) => !p.capability || isLive(p.capability));
 }
-function dormantProcessors() {
-  return PROCESSORS.filter((p) => p.capability && !isLive(p.capability));
-}
 function isLive(id) {
   return CAPABILITIES.find((c2) => c2.id === id)?.live ?? false;
-}
-function pending() {
-  return CAPABILITIES.filter((c2) => !c2.live);
 }
 var IN_PERSON = "cash, check, card, tap to pay, Venmo, Apple Pay, Cash App or Zelle";
 var GATED_COPY = [
@@ -2808,39 +2680,25 @@ export {
   CAPABILITIES,
   COATING_COVERAGE,
   COATING_EXPLAINER,
-  COATING_TERMS,
   CORRECTION_RULES,
   CORRECTION_TIERS,
   DEFAULT_RULES,
-  GATED_COPY,
   LEGAL,
-  MAINTENANCE_PLAN,
   MAX_BOOKING_CENTS,
   MAX_ONE_WAY_MINUTES,
-  PROCESSORS,
-  PROMOS,
   SEED_CATALOG,
-  VEHICLE_SIZES,
-  WIRE_LIMITS,
   addonIcon,
   addonsFor,
-  averageOneWayMinutes,
   blockFeeAt,
   canDo,
   cancellationLadder,
   componentsOf,
-  computeCancellation,
-  computeReschedule,
   copyFor,
-  dormantProcessors,
   driveTooFar,
   estimateOneWayMinutes,
   findAddon,
   findPackage,
-  findPromo,
   isLive,
-  isSelectable,
-  isUnpriced,
   legalFingerprint,
   liveProcessors,
   loadWindow,
@@ -2848,17 +2706,10 @@ export {
   longDate,
   mergeBusy,
   mileageFeeCents,
-  normalisePhone,
-  normalisePromo,
   packagesFor,
   parseDetailers,
   parseIcsBusy,
-  pending,
   priceFromWire,
-  promoDiscountCents,
-  promoMessage,
-  quote,
-  slotNeedsPriority,
   unavailableReason,
   validateWire,
   vehicleSize,
