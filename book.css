@@ -479,19 +479,27 @@ button.bk-tl-s:hover { border-color: var(--red); box-shadow: 0 0 0 3px var(--red
 }
 .bk-tl-star svg { width: 11px; height: 11px; }
 /* Rows under a block (chosen or pointed at) keep their outline and hide
-   what is in them, so the block shows its price once. */
-.bk-tl-s.under > *, .bk-tl-s.pv > * { visibility: hidden; }
+   what is in them, so the block shows its price once. They fade with the
+   block's glide (.14s) rather than blinking out ahead of it (November 12). */
+.bk-tl-s > * { transition: opacity .14s ease-out; }
+.bk-tl-s.under > *, .bk-tl-s.pv > * { opacity: 0; }
 /* ...except the suggested star, which stays on its row above any block, so
    a block never hides which start we suggest (owner, November 11). */
-.bk-tl-s.under > .bk-tl-star, .bk-tl-s.pv > .bk-tl-star { visibility: visible; position: relative; z-index: 4; }
+.bk-tl-s.under > .bk-tl-star, .bk-tl-s.pv > .bk-tl-star { opacity: 1; position: relative; z-index: 4; }
 .bk-tl.pointing .bk-tl-s.under:not(.pv) > .bk-tl-star { z-index: auto; }
 /* Pointing at another start hides the chosen job, and its rows show again. */
 .bk-tl.pointing .bk-tl-span.mine { visibility: hidden; }
-.bk-tl.pointing .bk-tl-s.under:not(.pv) > * { visibility: visible; }
+.bk-tl.pointing .bk-tl-s.under:not(.pv) > * { opacity: 1; }
 /* Each row carries its price both ways; the first row you can see of each
    stretch says it in words ("+$25 rush fee", "Standard price"). */
-.bk-tl-s .pw-l, .bk-tl-s.lead .pw-s, .bk-wk-item .pw-l, .bk-wk-item.lead .pw-s { display: none; }
-.bk-tl-s.lead .pw-l, .bk-wk-item.lead .pw-l { display: inline; }
+.bk-wk-item .pw-l, .bk-wk-item.lead .pw-s { display: none; }
+.bk-wk-item.lead .pw-l { display: inline; }
+/* On the timeline the two forms share one spot and cross-fade, so the words
+   moving to another row fade rather than jump (owner, November 12). */
+.bk-tl-s .bk-px { display: inline-grid; }
+.bk-tl-s .bk-px > span { grid-area: 1 / 1; white-space: nowrap; transition: opacity .22s ease-out; }
+.bk-tl-s .pw-l, .bk-tl-s.lead .pw-s { opacity: 0; }
+.bk-tl-s.lead .pw-l { opacity: 1; }
 /* The job, start to estimated finish, over the rows it covers. */
 .bk-tl-span { grid-column: 2; position: relative; z-index: 3; pointer-events: none; overflow: hidden; border-radius: 6px; }
 .bk-tl-span > i {
@@ -503,9 +511,14 @@ button.bk-tl-s:hover { border-color: var(--red); box-shadow: 0 0 0 3px var(--red
 .bk-tl-span b { font-family: var(--font-display); font-size: 1.05rem; color: var(--text); }
 .bk-tl-span .bk-px { font-size: .84rem; font-weight: 800; }
 .bk-tl-span .bk-px.fee { background: rgba(240,169,63,.18); padding: .05rem .4rem; border-radius: 4px; }
-/* The pointed-at block glides between starts (previewTl moves it by transform). */
+/* The pointed-at block glides between starts (previewTl moves it by transform);
+   its words dim while it travels and fade up where it settles. */
 .bk-tl-span.preview { transition: transform .14s ease-out; }
-@media (prefers-reduced-motion: reduce) { .bk-tl-span.preview { transition: none; } }
+.bk-tl-span.preview > i > * { transition: opacity .22s ease-out; }
+.bk-tl-span.preview.moving > i > * { opacity: .35; transition-duration: .14s; }
+@media (prefers-reduced-motion: reduce) {
+  .bk-tl-span.preview, .bk-tl-span.preview > i > *, .bk-tl-s > *, .bk-tl-s .bk-px > span { transition: none; }
+}
 .bk-tl-span.preview > i { border-style: dashed; background: linear-gradient(rgba(196,20,20,.05), rgba(196,20,20,.05)), var(--paper-2); }
 .bk-tl-span.preview.solid > i { border-style: solid; background: linear-gradient(rgba(196,20,20,.10), rgba(196,20,20,.10)), var(--paper-2); }
 /* "Earlier times" and "Later times": the folded starts, one tap away. */

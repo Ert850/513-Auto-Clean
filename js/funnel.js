@@ -4272,19 +4272,31 @@
     if (node && node.animate && !reducedMotion()) node.animate([{ opacity: from || 0.25 }, { opacity: 1 }], { duration: ms || 150, easing: 'ease-out' });
   }
   /**
-   * The side card waits until the pointer settles on a start (owner,
-   * November 12: sweeping down the rows rewrote it on every row, a flicker
-   * of fades). The block still follows the pointer at once; the card only
-   * changes for the start the pointer stops on, or straight away on a tap.
+   * Words wait until the pointer settles on a start (owner, November 12:
+   * sweeping down the rows rewrote the card, the block's time and the fee
+   * words on every row, a flicker of fades). The block glides with the
+   * pointer at once, its words dimmed (.moving); once the pointer rests,
+   * the block's time, the fee words on the rows and the card change
+   * together, fading in. A tap changes them straight away.
    */
-  var tlCardTimer = null;
-  var TL_CARD_SETTLE = 160;
-  function settleTlCard(tl, t, now) {
-    clearTimeout(tlCardTimer);
-    if (now) return renderTlCard(tl, t);
-    tlCardTimer = setTimeout(function () {
-      if (tl.isConnected !== false) renderTlCard(tl, t);
-    }, TL_CARD_SETTLE);
+  var tlSettleTimer = null;
+  var TL_SETTLE = 160;
+  function settleTl(tl, t, now) {
+    clearTimeout(tlSettleTimer);
+    var run = function () {
+      if (tl.isConnected === false) return;
+      var pv = tl.querySelector('#bkTlPreview');
+      if (pv && pv.classList.contains('moving')) {
+        if (pv.dataset.ms) pv.innerHTML = tlBlockInner(Number(pv.dataset.ms), Number(tl.dataset.dur));
+        void pv.offsetWidth; // the new words start dimmed, then fade up
+        pv.classList.remove('moving');
+      }
+      markAllLeads();
+      // The card follows the start being pointed at, but not its own button.
+      if (!(t && t.closest('#bkTlCard'))) renderTlCard(tl, t);
+    };
+    if (now) return run();
+    tlSettleTimer = setTimeout(run, TL_SETTLE);
   }
   function renderTlCard(tl, t) {
     var card = tl && tl.querySelector('#bkTlCard');
@@ -4358,9 +4370,10 @@
     pv.style.gridRow = '1 / span ' + span;
     pv.style.transform = 'translateY(' + row * (TL_ROW + TL_GAP) + 'px)';
     if (moved) {
-      pv.innerHTML = tlBlockInner(Number(t.dataset.slot), dur);
       pv.dataset.ms = t.dataset.slot;
-      fadeIn(pv.firstChild);
+      // Appearing: its words now. Moving on: dimmed until it settles.
+      if (pv.hidden || !pv.firstChild) { pv.innerHTML = tlBlockInner(Number(t.dataset.slot), dur); fadeIn(pv.firstChild, 0.55, 220); }
+      else pv.classList.add('moving');
     }
     pv.classList.toggle('solid', Boolean(solid));
     pv.hidden = false;
@@ -4368,17 +4381,14 @@
     // instead of drawing over it (owner's screenshot, November 11: the two
     // overlapped, and the chosen job's top read as a big "Suggested" box).
     tl.classList.toggle('pointing', t.getAttribute('aria-pressed') !== 'true');
-    markAllLeads();
-    // The card follows the start being pointed at, but not its own button.
-    if (!t.closest('#bkTlCard')) settleTlCard(tl, t, solid);
+    settleTl(tl, t, solid);
   }
   function clearTlPreview(tl) {
     tl.querySelectorAll('.pv').forEach(function (c) { c.classList.remove('pv'); });
     var pv = tl.querySelector('#bkTlPreview');
-    if (pv) { pv.hidden = true; delete pv.dataset.ms; }
+    if (pv) { pv.hidden = true; pv.classList.remove('moving'); delete pv.dataset.ms; }
     tl.classList.remove('pointing');
-    markAllLeads();
-    settleTlCard(tl, null, false);
+    settleTl(tl, null, false);
   }
 
   /**
