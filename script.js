@@ -11,13 +11,11 @@
   /* ---------- Header shadow on scroll + mobile bar ---------- */
   var header = document.getElementById('header');
   var mobileBar = document.getElementById('mobileBar');
-  var lastY = 0;
   function onScroll() {
     var y = window.scrollY || window.pageYOffset;
     if (header) header.classList.toggle('scrolled', y > 8);
     // show sticky mobile call bar after leaving the hero
     if (mobileBar) mobileBar.classList.toggle('show', y > 520);
-    lastY = y;
   }
   window.addEventListener('scroll', onScroll, { passive: true });
   onScroll();
@@ -221,52 +219,6 @@
   }
   bindSliders();
   window.ACSliders = { bind: bindSliders };
-
-  /* ---------- Availability calendar (commented out, schedule section removed) ---------- */
-  /*
-  (function () {
-    var el = document.getElementById('schedule-cal');
-    if (!el) return;
-
-    var CAL_ID = '75726fed82aa92a27201386beda7b3a15f550a3a5691e5e6cfc51382f0f0b9cf@group.calendar.google.com';
-    var API_KEY = 'YOUR_GOOGLE_API_KEY';
-
-    function showEmbed() {
-      el.innerHTML = '<iframe title="513 Auto Clean availability" ' +
-        'src="https://calendar.google.com/calendar/u/1/newembed?src=75726fed82aa92a27201386beda7b3a15f550a3a5691e5e6cfc51382f0f0b9cf@group.calendar.google.com&ctz=America/New_York&csspa=1&mode=WEEK" ' +
-        'style="border:0;width:100%;height:600px" frameborder="0" scrolling="no"></iframe>';
-    }
-
-    if (!API_KEY || API_KEY === 'YOUR_GOOGLE_API_KEY' || typeof FullCalendar === 'undefined') {
-      showEmbed();
-      return;
-    }
-
-    try {
-      var cal = new FullCalendar.Calendar(el, {
-        initialView: 'timeGridWeek',
-        headerToolbar: { left: 'prev,next today', center: 'title', right: '' },
-        slotMinTime: '07:00:00',
-        slotMaxTime: '22:00:00',
-        allDaySlot: false,
-        height: 'auto',
-        expandRows: true,
-        nowIndicator: true,
-        businessHours: { daysOfWeek: [0, 1, 2, 3, 4, 5, 6], startTime: '07:00', endTime: '22:00' },
-        googleCalendarApiKey: API_KEY,
-        events: { googleCalendarId: CAL_ID },
-        eventColor: '#e01a1a',
-        eventDisplay: 'block',
-        displayEventTime: false,
-        eventContent: function () { return { html: '<div class="fc-unavail">Unavailable</div>' }; },
-        eventClick: function (info) { info.jsEvent.preventDefault(); }
-      });
-      cal.render();
-    } catch (e) {
-      showEmbed();
-    }
-  })();
-  */
 
   /* ---------- Scroll reveal ----------
      Elements fade up when scrolling at a normal pace. When the page is being

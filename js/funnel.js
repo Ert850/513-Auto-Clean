@@ -46,7 +46,6 @@
       covered: false,
       locationNote: '',
       priority: false,
-      preferredWindows: [],
       slot: null,
       // The time step: our recommended times first; showAll is the whole
       // week calendar behind "See additional times". weekStart is the Sunday
@@ -90,7 +89,6 @@
       // turning up to find a locked gate and no outdoor tap.
       access: { water: null, power: null, parking: '' },
       // Set when the funnel was opened from a shared quote link.
-      fromQuote: false,
       quotedSlot: null,
       slotTaken: false,
       promoCode: '',
@@ -157,13 +155,12 @@
     // WHERE BEFORE TIME (owner, November 10): the times offered depend on the
     // drive there and the weather at that address, so the address comes first.
     // The fee is measured again for the time picked, because traffic matters.
-    { id: 'location', tab: 'Where',    title: 'Where are we detailing?',   auto: false, render: rLoc,     valid: vLoc,     sum: sLoc },
+    { id: 'location', tab: 'Where',    title: 'Where are we detailing?',   auto: false, render: rLoc,     valid: vLoc },
     // Not auto as a step: the calendar view needs Continue. Our recommended
     // times (and the chips in the summary) do move on when tapped.
-    { id: 'time',     tab: 'Time',     title: 'Pick your time',            auto: false, render: rTime,    valid: vTime,    sum: sTime,
-      sub: 'Nothing is charged until the next step. Pick what works for you.' },
-    { id: 'contact',  tab: 'Accept',   title: 'Your details, and what you agree to', auto: false, render: rDetails, valid: vContact, sum: sContact },
-    { id: 'pay',      tab: 'Checkout', title: 'Checkout',                  auto: false, render: rPay,     valid: vPay,     sum: sPay,
+    { id: 'time',     tab: 'Time',     title: 'Pick your time',            auto: false, render: rTime,    valid: vTime },
+    { id: 'contact',  tab: 'Accept',   title: 'Your details, and what you agree to', auto: false, render: rDetails, valid: vContact },
+    { id: 'pay',      tab: 'Checkout', title: 'Checkout',                  auto: false, render: rPay,     valid: vPay,
       sub: 'A few details and you are booked. Nothing is charged today.' }
   ];
 
@@ -206,21 +203,11 @@
     var n = state.vehicles.reduce(function (t, v) { return t + v.addons.length; }, 0);
     return n ? n + ' added' : 'None';
   }
-  function sLoc() { return state.address.city || state.address.zip || ''; }
-  function sTime() {
-    if (!state.slot && isInquiry()) return 'Times requested';
-    return state.slot
-      ? new Date(state.slot).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: TZ }) + ', ' +
-        new Date(state.slot).toLocaleTimeString('en-US', { hour: 'numeric', timeZone: TZ })
-      : '';
-  }
-  function sContact() { return state.contact.name ? state.contact.name.split(' ')[0] : ''; }
   function sPay() { return $(q().totalCents); }
 
   /** "50%", "10%". Basis points are for the engine, not for a customer. */
   function pctOf(bp) { return (bp / 100) + '%'; }
 
-  function ok() { return null; }
   function step() { return STEPS[state.step]; }
   function veh() { return state.vehicles[state.active]; }
 
@@ -1342,7 +1329,7 @@
     return false;
   }
   function placeMsg(p, near, body) {
-    var box = near && (near.closest('.bk-field,.bk-check,.bk-cards,.bk-acc') || near);
+    var box = near && (near.closest('.bk-field,.bk-check,.bk-acc') || near);
     if (!box || !box.parentNode) { body.appendChild(p); return null; }
     var parent = box.parentNode;
     if (box.classList && box.classList.contains('bk-field') &&
@@ -2584,8 +2571,6 @@
     if (payload.pc) state.promoCode = payload.pc;
     if (payload.in) state.interest = payload.in.slice();
     if (payload.nt) state.notes = payload.nt;
-
-    state.fromQuote = true;
   }
 
   /** Copy the link, with a spoken confirmation rather than a silent success. */
@@ -4429,11 +4414,6 @@
     scrollToEl(prev && prev.classList && prev.classList.contains('bk-donerow') ? prev : sec, 8);
   }
 
-  function scrollToSection(id) {
-    var sec = el('bkBody') && el('bkBody').querySelector('[data-sec="' + id + '"]');
-    if (sec) scrollToEl(sec, 8);
-  }
-
   /**
    * Bring an element to the top of the booking form's scroll area. Measured
    * against the scroll area itself: offsetTop counts from the modal, so it
@@ -5682,11 +5662,13 @@
       });
   }
 
+  var PAYPAL_OFF = '<p class="bk-hint">PayPal is not available here yet. ' +
+    'Choose card instead, or carry on and we will send you a PayPal link.</p>';
+
   /** PayPal and Venmo. Stripe does not carry Venmo, so PayPal's SDK does. */
   function mountPayPal(mount) {
     if (!CFG.paypalClientId) {
-      mount.innerHTML = '<p class="bk-hint">PayPal is not available here yet. ' +
-        'Choose card instead, or carry on and we will send you a PayPal link.</p>';
+      mount.innerHTML = PAYPAL_OFF;
       return;
     }
 
@@ -5700,12 +5682,10 @@
       )
         .then(function () {
           if (window.paypal) return mountPayPal(mount);
-          mount.innerHTML = '<p class="bk-hint">PayPal is not available here yet. ' +
-            'Choose card instead, or carry on and we will send you a PayPal link.</p>';
+          mount.innerHTML = PAYPAL_OFF;
         })
         .catch(function () {
-          mount.innerHTML = '<p class="bk-hint">PayPal is not available here yet. ' +
-            'Choose card instead, or carry on and we will send you a PayPal link.</p>';
+          mount.innerHTML = PAYPAL_OFF;
         });
     }
     mount.innerHTML = '<div id="bkPaypalBtns"></div>';
@@ -5750,8 +5730,7 @@
         }
       }).render('#bkPaypalBtns');
     } catch (e) {
-      mount.innerHTML = '<p class="bk-hint">PayPal is not available here yet. ' +
-        'Choose card instead, or carry on and we will send you a PayPal link.</p>';
+      mount.innerHTML = PAYPAL_OFF;
     }
   }
 
@@ -5870,7 +5849,7 @@
 
   function onClick(e) {
     var t = e.target.closest(
-      '[data-size],[data-intent],[data-pkg],[data-addon],[data-clear],[data-win],[data-slot],' +
+      '[data-size],[data-intent],[data-pkg],[data-addon],[data-clear],[data-slot],' +
       '[data-pay],[data-delveh],[data-browsepick],[data-max],[data-sort],[data-pkgfirst],' +
       '[data-kind],[data-paymethod],[data-corr],[data-coating],[data-garage],[data-step],' +
       '[data-prefday],[data-prefpart],[data-interest],[data-wkday],[data-more],[data-steer],[data-flexday],[data-wkfold],[data-ckcont],[data-cksec],[data-access],[data-extrarm],' +
@@ -5879,9 +5858,8 @@
       '#bkAskMode,#bkAskMode2,#bkSlotMode,#bkFlexOpen,#bkPickChange,#bkShowExtras,' +
       '#bkLeaveStay,#bkLeaveKeep,#bkLeaveAsk,#bkLeaveDrop,#bkFresh,' +
       '#bkDoneClose,#bkDoneAsk,#bkDoneCopy,#bkDoneAgain,#bkPrepSend,[data-media],' +
-      '#bkCopyQuote,' +
       '#bkPromoApply,#bkPromoClear,' +
-      '#bkQClear,#bkReset,#bkOther'
+      '#bkQClear,#bkReset'
     );
     if (!t) return;
     var v = veh();
@@ -5965,12 +5943,6 @@
       return go(v.size ? 3 : 0);
     }
 
-    if (t.id === 'bkOther') {
-      root.querySelectorAll('.bk-otherslots').forEach(function (d) { d.hidden = false; });
-      t.remove();
-      return;
-    }
-
     if (t.dataset.size) { v.size = t.dataset.size; return advance(); }
     if (t.dataset.intent) {
       if (t.dataset.intent === 'advice') {
@@ -6038,20 +6010,13 @@
       return render();
     }
 
-    if (t.dataset.win) {
-      var w = t.dataset.win, i = state.preferredWindows.indexOf(w);
-      if (i > -1) state.preferredWindows.splice(i, 1); else state.preferredWindows.push(w);
-      state.slot = null;
-      return render();
-    }
     if (t.dataset.steer) {
-      var steerFrom = state.slot, steerTo = Number(t.dataset.steer), onTime = step().id === 'time';
+      var steerFrom = state.slot, steerTo = Number(t.dataset.steer);
       state.steerUsed = true;
       selectSlot(steerTo, 'steer', { reason: 'steer' });
       track('time_steer_used', { step: step().id, shift_min: Math.round((steerTo - steerFrom) / 60000) });
       renderTotal();
-      if (onTime) return advance();
-      // A later step: check the new time is still free, here, and stay put.
+      // Check the new time is still free, here, and stay put.
       setPick('<span class="bk-pick-txt"><b>Checking that time</b></span>');
       return verifySlot().then(function (free) {
         if (!free) selectSlot(steerFrom);
@@ -6067,8 +6032,7 @@
     }
     if (t.id === 'bkPickChange') {
       track('time_change', { step: step().id });
-      if (onCheckout()) return ckOpenSection('when');
-      return go(timeStepIndex());
+      return ckOpenSection('when');
     }
     if (t.dataset.more) return openMoreTimes(t);
     if (t.id === 'bkFlexOpen') {
@@ -6252,7 +6216,6 @@
       if (inCheckout(want) ? reachNow >= LOC_I : want <= reachNow) return go(want);
       return;
     }
-    if (t.id === 'bkCopyQuote') return copyQuoteLink(t);
     if (t.id === 'bkNext') return advance();
     if (t.id === 'bkBack') return goBack();
     if (t.id === 'bkClose' || t.id === 'bkScrim') return requestClose();
@@ -7503,7 +7466,7 @@
     });
 
     // Any Book Now link opens the funnel in place rather than navigating.
-    document.querySelectorAll('a[href="book.html"], a[href="./book.html"], [data-book], [data-book-browse], [data-book-interest]').forEach(function (a) {
+    document.querySelectorAll('a[href="book.html"], a[href="./book.html"], [data-book-browse], [data-book-interest]').forEach(function (a) {
       a.addEventListener('click', function (e) {
         e.preventDefault();
         open();
@@ -7563,7 +7526,7 @@
       return;
     }
 
-    if (host.dataset.autoOpen === 'true' || location.hash === '#book') open();
+    if (location.hash === '#book') open();
   }
 
   window.ACFunnel = { open: open, close: close };
