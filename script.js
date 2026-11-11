@@ -239,6 +239,44 @@
     window.addEventListener('load', arrive, { once: true });
   }
 
+  /* ---------- Copy a discount code (print landing pages, [data-copy]) ---------- */
+  // "Copy code" becomes "Copied" with a tick for two seconds. Where the
+  // clipboard is unavailable (an old browser, or no permission), the code
+  // itself is selected so a long press or Cmd+C copies it.
+  document.addEventListener('click', function (e) {
+    var b = e.target.closest && e.target.closest('[data-copy]');
+    if (!b) return;
+    var code = b.getAttribute('data-copy');
+    var label = b.querySelector('span');
+    var finish = function (ok) {
+      if (!ok) {
+        var shown = b.parentNode && b.parentNode.querySelector('b');
+        if (shown && window.getSelection) {
+          var r = document.createRange(); r.selectNodeContents(shown);
+          var sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(r);
+        }
+      }
+      b.classList.toggle('copied', ok);
+      if (label) label.textContent = ok ? 'Copied' : 'Selected, copy it';
+      clearTimeout(b.acCopyT);
+      b.acCopyT = setTimeout(function () { b.classList.remove('copied'); if (label) label.textContent = 'Copy code'; }, 2000);
+    };
+    var fallback = function () {
+      var t = document.createElement('textarea');
+      t.value = code; t.setAttribute('readonly', '');
+      t.style.position = 'fixed'; t.style.opacity = '0';
+      document.body.appendChild(t); t.select();
+      var ok = false;
+      try { ok = document.execCommand('copy'); } catch (x) { ok = false; }
+      document.body.removeChild(t);
+      finish(ok);
+    };
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(code).then(function () { finish(true); }, fallback);
+    } else fallback();
+    if (window.AC_TRACK) window.AC_TRACK('promo_copy', { code: code });
+  });
+
   /* ---------- Service tabs ---------- */
   var tabs = document.querySelectorAll('.svc-tab');
   tabs.forEach(function (tab) {
