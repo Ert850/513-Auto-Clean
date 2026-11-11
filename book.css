@@ -175,7 +175,7 @@ body.bk-open { overflow: hidden; }
 /* ---------- add-ons ---------- */
 .bk-addon {
   background: var(--paper-2); border: 2px solid var(--line); border-radius: var(--r-md);
-  padding: .9rem 1rem; margin-bottom: .6rem; transition: border-color .16s;
+  transition: border-color .16s;
 }
 .bk-addon.on { border-color: var(--red); }
 .bk-addon.off { opacity: .72; }
@@ -483,8 +483,8 @@ button.bk-tl-s:hover { border-color: var(--red); box-shadow: 0 0 0 3px var(--red
 .bk-wk-fold:hover { border-color: var(--text-soft); }
 .bk-wk-fold svg { width: 12px; height: 12px; }
 .bk-wk-day em {
-  display: inline-block; font-style: normal; font-size: .58rem; font-weight: 800; letter-spacing: .05em;
-  text-transform: uppercase; color: #7a5209; background: rgba(240,169,63,.16); padding: .05rem .3rem; border-radius: 4px;
+  display: inline-block; font-style: normal; font-weight: 800; letter-spacing: .05em;
+  text-transform: uppercase; color: #7a5209; background: rgba(240,169,63,.16); border-radius: 4px;
 }
 
 /* The seven days over the open one (all widths). */
@@ -725,7 +725,6 @@ button.bk-tl-s:hover { border-color: var(--red); box-shadow: 0 0 0 3px var(--red
 .bk-multiday b { display: block; font-family: var(--font-display); font-size: 1.02rem; }
 .bk-multiday span { display: block; font-size: .84rem; color: rgba(255,255,255,.78); line-height: 1.55; margin-top: .25rem; }
 
-.bk-days { display: grid; gap: .5rem; }
 .bk-day {
   display: block; width: 100%; text-align: left; font: inherit; cursor: pointer;
   background: var(--paper); border: 1.5px solid var(--line); border-radius: var(--r-sm);
@@ -1077,7 +1076,7 @@ button.bk-tl-s:hover { border-color: var(--red); box-shadow: 0 0 0 3px var(--red
 
 /* segmented, clickable step nav */
 .bk-nav {
-  display: flex; gap: .3rem; overflow-x: auto; flex: none;
+  display: flex; overflow-x: auto; flex: none;
   padding: .5rem .7rem; background: var(--paper-2);
   border-bottom: 1px solid var(--line); scrollbar-width: none;
 }
@@ -1108,12 +1107,6 @@ button.bk-tl-s:hover { border-color: var(--red); box-shadow: 0 0 0 3px var(--red
 /* how it works, on a package card */
 .bk-how-pkg { margin: -.2rem 0 .55rem .2rem; }
 .bk-how-pkg summary { font-size: .79rem; }
-
-.bk-travel { background: var(--red-ghost); border-left: 3px solid var(--red); border-radius: 0 var(--r-sm) var(--r-sm) 0; padding: .8rem .95rem; margin-top: .4rem; }
-.bk-travel.free { background: rgba(26,138,63,.1); border-left-color: #1a8a3f; }
-.bk-travel b { display: block; font-family: var(--font-display); font-size: 1.15rem; color: var(--red); }
-.bk-travel.free b { color: #14682f; }
-.bk-travel span { display: block; font-size: .84rem; color: var(--text-soft); line-height: 1.55; margin-top: .2rem; }
 
 .bk-travel { background: var(--red-ghost); border-left: 3px solid var(--red); border-radius: 0 var(--r-sm) var(--r-sm) 0; padding: .8rem .95rem; margin-top: .4rem; }
 .bk-travel.free { background: rgba(26,138,63,.1); border-left-color: #1a8a3f; }
@@ -1350,8 +1343,6 @@ button.bk-tl-s:hover { border-color: var(--red); box-shadow: 0 0 0 3px var(--red
 .bk-extras.empty .bk-hint { color: rgba(255, 255, 255, .7); }
 .bk-extras.empty .bk-extra-veh { color: rgba(255, 255, 255, .9); }
 
-.bk-extra-veh { color: rgba(255, 255, 255, .9); }
-
 /* "How it works" on an extra that has already been chosen. Collapsed, one
    line, and only on what they picked: somebody deciding needs a short list,
    somebody who has decided sometimes wants to know what they bought. */
@@ -1543,8 +1534,7 @@ button.bk-tl-s:hover { border-color: var(--red); box-shadow: 0 0 0 3px var(--red
 .bk-how-panel p { margin-top: 0; }
 
 /* The checkout: one page, section by section. */
-#bookFunnel .bk-ck { padding: 0 0 1rem; margin: 0 0 1rem; border-bottom: 1px solid var(--line); }
-.bk-ck:last-child { border-bottom: 0; margin-bottom: 0; }
+#bookFunnel .bk-ck { padding: 0 0 1rem; margin: 0 0 1rem; }
 .bk-ck .bk-sub { margin-bottom: .7rem; }
 .bk-ck[data-sec="details"] .bk-form { margin: 0; }
 .bk-heard select {
