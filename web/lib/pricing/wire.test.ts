@@ -177,8 +177,8 @@ describe("priceFromWire after validation", () => {
     expect(later.surchargeBp).toBe(0);
   });
 
-  it("Monday to Thursday is not priority, Wednesday is", () => {
-    const r = DEFAULT_RULES.window;
+  it("Monday to Thursday is not priority, Wednesday is (on a 3-day window)", () => {
+    const r = { minLeadDays: 3 };
     expect(slotNeedsPriority(zonedToUtc(2026, 9, 17, 10, 0, 0, TZ), monday, r)).toBe(false);
     expect(slotNeedsPriority(zonedToUtc(2026, 9, 16, 10, 0, 0, TZ), monday, r)).toBe(true);
     // Tick over to Tuesday 12:01am and Thursday becomes priority.

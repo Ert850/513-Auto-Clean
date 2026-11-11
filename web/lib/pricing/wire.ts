@@ -55,6 +55,12 @@ export interface WireCart {
   /** IGNORED on the server. Derived from the payment mode. */
   payInFull?: boolean;
   promoCode?: string | null;
+  /**
+   * Where the visit arrived from, "golf" for 513autoclean.com/golf. Only the
+   * rush fee rules read it (config/rush-fee.json). Anyone can type the
+   * address, so a rule keyed on a source is a courtesy, never a secret.
+   */
+  source?: string | null;
   address?: WireAddress | null;
   /**
    * What the customer settled.
@@ -346,6 +352,12 @@ export function validateWire(body: unknown, opts: ValidateOptions): WireValidati
     promoCode = code || null;
   }
 
+  /* ---- arrival source, for the rush fee rules ---- */
+  let source: string | null = null;
+  if (typeof cart["source"] === "string") {
+    source = cart["source"].trim().toLowerCase().replace(/[^a-z0-9_-]/g, "").slice(0, 40) || null;
+  }
+
   /* ---- address, and the ZIP that tax and travel come from ---- */
   let address: WireAddress | null = null;
   let zip: string | null = null;
@@ -409,6 +421,7 @@ export function validateWire(body: unknown, opts: ValidateOptions): WireValidati
     kind,
     ...(visits !== undefined ? { visits } : {}),
     ...(promoCode ? { promoCode } : {}),
+    ...(source ? { source } : {}),
     ...(address ? { address } : {}),
     payInFull,
   };

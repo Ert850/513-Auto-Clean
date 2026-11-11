@@ -286,7 +286,7 @@
       // fact about the calendar, and the server works it out the same way.
       return {
         startMinutesLocal: P.localMinutesOfDay(state.slot),
-        priorityBooking: P.slotNeedsPriority(state.slot, Date.now(), RULES.window),
+        priorityBooking: P.slotNeedsPriority(state.slot, Date.now(), rushWin()),
         timeOfDayWaived: timeFeeWaived(state.slot, state.detailer),
         blockFeeBp: blockFee(state.slot, state.detailer)
       };
@@ -4006,8 +4006,8 @@
       '<span><i class="bk-wk-key sug">' + STAR + '</i>Suggested</span>' +
       (narrow ? '' : '<span><i class="bk-wk-key no"></i>Not available</span>') +
       '<button type="button" class="bk-wk-feeq" id="bkFeeWhy" aria-expanded="false" aria-controls="bkFeeRules">When is there a fee?</button>' +
-      '<p class="bk-wk-rules" id="bkFeeRules" hidden>Some times cost a little more: early or late starts, and times in the next ' +
-        RULES.window.minLeadDays + ' days. When a time costs more, it says so in gold.</p>' +
+      '<p class="bk-wk-rules" id="bkFeeRules" hidden>Some times cost a little more: ' + rushWords() +
+        '. When a time costs more, it says so in gold.</p>' +
       '</div>' + weatherNote(calc);
 
     if (!week.openCount) {
@@ -4671,7 +4671,29 @@
 
   /** Does this start fall inside the lead window, whatever the box says? */
   function needsPriority(ms) {
-    return P.slotNeedsPriority(ms, Date.now(), RULES.window);
+    return P.slotNeedsPriority(ms, Date.now(), rushWin());
+  }
+
+  /**
+   * How many days carry the rush fee for this booking, from
+   * config/rush-fee.json (owner, November 11): it depends on the packages and
+   * on where the visit came from. The server works it out the same way from
+   * the same file. Asked once per slot while a week is drawn, so it is kept
+   * until the cart, the source or the minute changes.
+   */
+  var rushKey = '', rushVal = null;
+  function rushWin() {
+    var ids = [];
+    state.vehicles.forEach(function (v) { ids = ids.concat(v.packageIds || []); });
+    var key = source() + '|' + ids.join(',') + '|' + Math.floor(Date.now() / 60000);
+    if (key !== rushKey) { rushKey = key; rushVal = P.rushWindow({ source: source(), packageIds: ids }, Date.now()); }
+    return rushVal;
+  }
+
+  /** "early or late starts, and times in the next 2 days", or without the rush when it is off. */
+  function rushWords() {
+    var n = rushWin().minLeadDays;
+    return 'early or late starts' + (n === 1 ? ', and times today' : n > 1 ? ', and times in the next ' + n + ' days' : '');
   }
 
   /**
@@ -5590,6 +5612,9 @@
       slot: state.slot,
       priority: state.priority,
       promoCode: state.promoCode || null,
+      // Only for the rush fee rules (config/rush-fee.json), which the server
+      // applies again itself: "golf" from "golf / print / qr".
+      source: source().split('/')[0].trim().toLowerCase() || null,
       /*
        * THREE KINDS, because there are three situations.
        *
@@ -6787,7 +6812,7 @@
       'WHEN\n  ' + (state.slot ? new Date(state.slot).toLocaleString('en-US', { timeZone: TZ }) : 'not selected') +
       (state.slot && shortNotice(state.slot) ? '\n  SHORT NOTICE: not confirmed until a detailer accepts. Reply to them.' : '') +
       (state.slot && coatingMoves(state.slot, holdMinutes()) ? '\n  COATING: too cold or wet on this date. Do the rest, book the coating for a warmer day.' : '') +
-      (state.priority ? '\n  RUSH, within ' + RULES.window.minLeadDays + ' days' : '') +
+      (state.priority ? '\n  RUSH, within ' + rushWin().minLeadDays + (rushWin().minLeadDays === 1 ? ' day' : ' days') : '') +
       // The days a request asks for (validation, November 11: the email said
       // only "not selected", so nobody could reply with a time).
       (!state.slot && preferenceSummary() ? '\n  ' + preferenceSummary().replace(/^You asked for /, 'ASKED FOR: ') : '') +

@@ -27,6 +27,23 @@ Built overnight, November 10 to 11, for you to evaluate. It combines your 8 answ
 - **Still true today:** the live site (`main`) has no /golf or /prestige yet, so a scan shows "page not found" until `eNov6` is merged.
 - **To test:** scan each PDF on screen with a phone; it opens 513autoclean.com/golf or /prestige.
 
+### The rush fee window is a setting: `config/rush-fee.json` (owner, November 11)
+- **Now:** 2 days, today and tomorrow, for every booking (it was 3). There's an exterior-only rule with the same 2 days, so exterior jobs keep their own setting if the default changes. The owner decided golf booklet readers pay the normal rush fee.
+- **What the file can do:** a default plus rules, first match wins. A rule can match:
+  - the visit's source ("golf", "prestige", from the address it arrived through);
+  - the kind of booking (interior, exterior only, both);
+  - any of a list of packages;
+  - dates, from and until, which never end unless written in.
+  
+  Each rule sets `rushDays` (0 = no rush fee). The file explains itself in its `_read_me`, including the ready-made golf rule.
+- **One decision, two places:**
+  - The browser (`js/funnel.js` `rushWin()`, behind every "is this a rush time?" and the fee key's wording) and the server (`server-entry.ts`, which prices every payment and confirmation) both call `rushWindow()` in `web/lib/pricing/rush.ts`.
+  - The booking now sends its source with the cart (`wire.ts`, cleaned to letters and digits). Anyone can type /golf, so a source rule is a courtesy, never a secret.
+- **Root cause of the old fixed 3:** `DEFAULT_RULES.window.minLeadDays` was hard-coded and read in four places. It now reads the file's default, and a test keeps them equal.
+- **A mistake in the file fails the build and the tests** with a message naming the rule: an unknown kind, condition or package, a negative day count, or a bad date.
+- **Tests:** `rush.test.ts`, 21 tests: the shipped settings, a golf rule on its own settings, matching, dates in Cincinnati time, bad files, and the server pricing the same cart the same way. The date-arithmetic tests in `pricing.test.ts` and `wire.test.ts` now state their 3-day window outright. 553 of 553 pass.
+- **To test:** in the booking form, a time tomorrow shows the rush fee and the day after tomorrow shows the standard price, for interior, exterior and both. "When is there a fee?" reads "times in the next 2 days".
+
 ## Round 20 (November 12): header at mid widths, one Continue at checkout
 
 ### Header: Priority+ with a More menu (owner's pick B of three, `docs/mockups/nav-widths-*.png`)

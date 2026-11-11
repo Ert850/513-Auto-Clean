@@ -672,6 +672,35 @@ function componentsOf(pkg, catalog) {
   return pkg.componentIds.map((id) => catalog.components[id]).filter((c2) => c2 !== void 0);
 }
 
+// ../config/rush-fee.json
+var rush_fee_default = {
+  _read_me: [
+    "The rush fee: +20% on bookings for the next few days. This file decides how many days.",
+    "rushDays counts days from today, today included: 3 = today, tomorrow and the day after; 2 = today and tomorrow; 1 = today only; 0 = no rush fee.",
+    "Rules are checked top to bottom and the FIRST one that matches wins. A booking no rule matches gets defaultRushDays.",
+    "A rule's 'when' can name any of these (leave one out to match everything):",
+    '  sources: where the visit came from, the address it arrived through: "golf" (513autoclean.com/golf), "prestige".',
+    '  kinds: "interior", "exterior" or "both": what the whole booking is. "exterior" means exterior work only.',
+    "  packages: package ids; matches when ANY of them is booked (maintenance-interior, basic-interior, full-interior, showroom-interior, express-exterior, basic-exterior, full-exterior, showroom-exterior).",
+    "  from / until: dates (YYYY-MM-DD, Cincinnati time, both included). Leave them out and the rule never ends on its own.",
+    "The browser and the booking functions both read this file. A change goes live on the next deploy, and a mistake in it fails the build instead of reaching customers.",
+    "The exterior-only rule gives the same 2 days as the default today. It stays so that exterior-only bookings keep their own setting if the default changes again.",
+    'Change log: November 11, 2026, the owner: exterior-only bookings pay the rush fee for today and tomorrow only; then the default went from 3 days to 2 for every booking. The owner decided golf booklet readers pay the normal rush fee; to waive it for them later, add first: {"name": "Golf booklet readers: no rush fee", "when": {"sources": ["golf"]}, "rushDays": 0}.'
+  ],
+  defaultRushDays: 2,
+  rules: [
+    {
+      name: "Exterior-only bookings: rush fee for today and tomorrow only",
+      when: {
+        kinds: [
+          "exterior"
+        ]
+      },
+      rushDays: 2
+    }
+  ]
+};
+
 // lib/pricing/rules.ts
 var DEFAULT_RULES = {
   mileage: {
@@ -700,8 +729,11 @@ var DEFAULT_RULES = {
     maxTotalBp: 3e3
     // 20% each, +30% when both apply
   },
+  // The rush window now comes from config/rush-fee.json (pricing/rush.ts
+  // rushWindow), per booking. This is that file's default, kept here so
+  // nothing that still reads DEFAULT_RULES.window can disagree with it.
   window: {
-    minLeadDays: 3
+    minLeadDays: rush_fee_default.defaultRushDays
   },
   comboDiscountCents: 2500,
   // $25 for interior and exterior together
@@ -877,6 +909,84 @@ function slotNeedsPriority(slotMs, nowMs, r, timeZone = "America/New_York") {
   if (!Number.isFinite(slotMs) || !Number.isFinite(nowMs)) return false;
   const dayIndex2 = (ms) => Math.round(localDayStart(ms, timeZone) / 864e5);
   return dayIndex2(slotMs) < dayIndex2(nowMs) + r.minLeadDays;
+}
+
+// lib/pricing/rush.ts
+var KINDS = ["interior", "exterior", "both"];
+var DATE = /^\d{4}-\d{2}-\d{2}$/;
+function checkRushSettings(input) {
+  const bad = (where, what) => {
+    throw new Error(`config/rush-fee.json: ${where}: ${what}`);
+  };
+  const days = (v, where) => typeof v === "number" && Number.isInteger(v) && v >= 0 && v <= 30 ? v : bad(where, "rushDays must be a whole number from 0 to 30");
+  const list = (v, where) => {
+    if (v === void 0) return void 0;
+    if (!Array.isArray(v) || !v.length || v.some((s) => typeof s !== "string" || !s.trim())) {
+      bad(where, 'must be a list of words, like ["golf"]');
+    }
+    return v.map((s) => s.trim().toLowerCase());
+  };
+  if (!input || typeof input !== "object") bad("the file", "is not a JSON object");
+  const o = input;
+  const defaultRushDays = days(o["defaultRushDays"], "defaultRushDays");
+  if (!Array.isArray(o["rules"])) bad("rules", "must be a list (it can be empty: [])");
+  const rules = o["rules"].map((r, i) => {
+    const rr = r ?? {};
+    const name = typeof rr["name"] === "string" && rr["name"].trim() ? rr["name"].trim() : `rule ${i + 1}`;
+    const w = rr["when"] ?? {};
+    if (typeof w !== "object") bad(name, "'when' must be an object");
+    const known = ["sources", "kinds", "packages", "from", "until"];
+    for (const k of Object.keys(w)) if (!known.includes(k)) bad(name, `unknown condition "${k}" (use ${known.join(", ")})`);
+    const when = {};
+    const sources = list(w["sources"], `${name}, sources`);
+    if (sources) when.sources = sources;
+    const kinds = list(w["kinds"], `${name}, kinds`);
+    if (kinds) {
+      for (const k of kinds) if (!KINDS.includes(k)) bad(name, `kind "${k}" is not one of ${KINDS.join(", ")}`);
+      when.kinds = kinds;
+    }
+    const packages = list(w["packages"], `${name}, packages`);
+    if (packages) {
+      for (const p of packages) if (!findPackage(p)) bad(name, `no package called "${p}"`);
+      when.packages = packages;
+    }
+    for (const k of ["from", "until"]) {
+      if (w[k] === void 0) continue;
+      if (typeof w[k] !== "string" || !DATE.test(w[k])) bad(name, `${k} must be a date like 2027-06-30`);
+      when[k] = w[k];
+    }
+    if (when.from && when.until && when.from > when.until) bad(name, "from is after until");
+    return { name, when, rushDays: days(rr["rushDays"], `${name}, rushDays`) };
+  });
+  return { defaultRushDays, rules };
+}
+var RUSH_SETTINGS = checkRushSettings(rush_fee_default);
+function sourceKey(source) {
+  return String(source ?? "").split("/")[0].trim().toLowerCase();
+}
+function bookingSide(packageIds = []) {
+  let inside = false;
+  let outside = false;
+  for (const id of packageIds) {
+    const c2 = findPackage(id)?.category;
+    if (c2 === "interior") inside = true;
+    if (c2 === "exterior") outside = true;
+  }
+  return inside && outside ? "both" : inside ? "interior" : outside ? "exterior" : null;
+}
+function rushRuleFor(b, nowMs, s = RUSH_SETTINGS, timeZone = "America/New_York") {
+  const { y, mo, d } = localParts(nowMs, timeZone);
+  const today = `${y}-${String(mo).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+  const src = sourceKey(b.source);
+  const ids = b.packageIds ?? [];
+  const side = bookingSide(ids);
+  return s.rules.find(
+    ({ when: w }) => (!w.sources || !!src && w.sources.includes(src)) && (!w.kinds || !!side && w.kinds.includes(side)) && (!w.packages || ids.some((id) => w.packages.includes(id))) && (!w.from || today >= w.from) && (!w.until || today <= w.until)
+  ) ?? null;
+}
+function rushWindow(b, nowMs, s = RUSH_SETTINGS, timeZone = "America/New_York") {
+  const rule = rushRuleFor(b, nowMs, s, timeZone);
+  return { minLeadDays: rule ? rule.rushDays : s.defaultRushDays };
 }
 
 // lib/availability/slots.ts
@@ -1513,6 +1623,10 @@ function validateWire(body, opts) {
     if (code === null) return fail("bad_promo", "That promo code is too long to be one of ours.");
     promoCode = code || null;
   }
+  let source = null;
+  if (typeof cart["source"] === "string") {
+    source = cart["source"].trim().toLowerCase().replace(/[^a-z0-9_-]/g, "").slice(0, 40) || null;
+  }
   let address = null;
   let zip = null;
   const rawAddr = cart["address"];
@@ -1570,6 +1684,7 @@ function validateWire(body, opts) {
     kind,
     ...visits !== void 0 ? { visits } : {},
     ...promoCode ? { promoCode } : {},
+    ...source ? { source } : {},
     ...address ? { address } : {},
     payInFull
   };
@@ -2624,7 +2739,11 @@ function priceFromWire(wire, opts = {}) {
     };
   });
   const nowMs = opts.nowMs ?? Date.now();
-  const priority = wire.slot ? slotNeedsPriority(wire.slot, nowMs, DEFAULT_RULES.window) : false;
+  const rushWin = rushWindow(
+    { source: wire.source ?? null, packageIds: wire.vehicles.flatMap((v) => v.packageIds ?? []) },
+    nowMs
+  );
+  const priority = wire.slot ? slotNeedsPriority(wire.slot, nowMs, rushWin) : false;
   const payInFull = opts.payInFull ?? false;
   const cart = {
     vehicles,

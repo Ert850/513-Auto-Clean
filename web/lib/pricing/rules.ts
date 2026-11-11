@@ -11,6 +11,8 @@
  * Percentages are basis points (bp): 2000 bp = 20%.
  */
 
+import rushFee from "../../../config/rush-fee.json" with { type: "json" };
+
 export interface MileageRules {
   /** One-way minutes that are free. At or under this, the fee is $0. */
   freeMinutes: number;
@@ -159,8 +161,11 @@ export const DEFAULT_RULES: PricingRules = {
     priorityBp: 2000, // +20%
     maxTotalBp: 3000, // 20% each, +30% when both apply
   },
+  // The rush window now comes from config/rush-fee.json (pricing/rush.ts
+  // rushWindow), per booking. This is that file's default, kept here so
+  // nothing that still reads DEFAULT_RULES.window can disagree with it.
   window: {
-    minLeadDays: 3,
+    minLeadDays: rushFee.defaultRushDays,
   },
   comboDiscountCents: 2500, // $25 for interior and exterior together
   comboPerVehicle: true,
