@@ -82,6 +82,12 @@ The 513 Auto Clean jobs calendar goes free/busy only **the minute this branch is
   - the block says the time and "About 2 hrs detailing" (the price is on the card).
 - **To test:** See additional times at 1440, 1024 and 820 wide: point at starts (block and card follow), scroll down (the card stays), press Choose this time (the form moves on).
 
+### Short windows, smoother timeline, slower carousel (owner, November 11)
+- **The phone design is unchanged by the timeline work.** I built the version before it (`4224ae0`) and after it side by side with the live calendars, and ran the same steps at 375, 360, 320 and 700 px wide: opening, scrolling, Earlier times, changing day, picking a time. All 20 screenshots are pixel-identical.
+- **Bug: no room for the times on a short window.** *Root cause:* under 768 px wide, the week bar (60 px), the day strip (81 px) and a part-of-day heading (35 px) were always pinned. On a phone held sideways (700×400, 740×360) that left 18 to 53 px of a 160 to 195 px scrolling area, less than one time row. Now `pinWeek()` measures it on every resize: with under 150 px left, the week bar and the strip scroll away and only the heading stays pinned (`.bk-wk.nopin`). Re-checked: two full rows show at both sizes, where none did; 375×812 and 375×560 stay pinned and unchanged.
+- **Smoother timeline:** the pointed-at block glides between starts (moved by transform, 0.14 s), and the block's and the card's text fade in when the time changes (0.15 s); none of it with reduced motion. *Cause of the jump:* the block was re-placed by grid row and hidden on the way, so it could not move smoothly.
+- **Results carousel: an 8 s cycle** with the same proportions as the 6 s one: each step is 1.333 s. Measured in the browser: 8.0 s between moves.
+
 ### Still open from that validation
 - When the card-on-file switch goes live, its payment box should carry the short-notice line and the "a few quick questions" line too (latent: the switch is off).
 

@@ -200,6 +200,7 @@ Read this before changing anything. Every rule below came from a real bug or an 
 - **At checkout, Back and × live inside `#bkNav`.** Anything that rewrites `#bkNav` (`renderNav`, `done()`) must first move them back into `.bk-head`, or it deletes them: Done lost its × and the next booking crashed (November 11).
 - **A follow-up sends what changed, not what is filled.** Done's setup answers are compared with a snapshot taken when Done opens (`prepBase`); answers given earlier are already in the booking email.
 - **The day timeline shows one job block at a time.** Pointing at a start hides the chosen job (`.bk-tl.pointing`); a second block drawn over the first read as a big "Suggested" box (November 11). The fee in words goes on the first row of each stretch that is not under a block (`markLeads`).
+- **Pinned bars must leave room for what they pin over.** Under 768 px the week bar, day strip and part-of-day heading pinned together left less than one time row on a phone held sideways. `pinWeek()` unpins the week bar and strip when under 150 px would be left (`PIN_ROOM_MIN`). Check short windows (700×400) whenever something new is pinned.
 - **A pinned bar's height can change after it is measured** (a web font wrapping a line at 320 px). Re-measure with a `ResizeObserver`.
 
 ## Verifying UI changes
