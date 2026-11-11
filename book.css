@@ -1822,3 +1822,44 @@ button.bk-wk-c:hover { box-shadow: 0 0 0 2px var(--red-ghost); }
     #bookFunnel .bk-row2 > .bk-field > .bk-err, #bookFunnel .bk-row3 > .bk-field > .bk-err { grid-row: 3; align-self: start; }
   }
 }
+
+/* ---------- Review, option D (owner, November 11) ---------- */
+/* A code and extras: one row each that opens in place. */
+#bookFunnel .bk-revrow { border: 1.5px solid var(--line); background: var(--paper-2); border-radius: var(--r-sm); margin: .55rem 0; }
+#bookFunnel .bk-revrow > summary { list-style: none; cursor: pointer; display: flex; justify-content: space-between; align-items: center; gap: .6rem; padding: .7rem .9rem; font-weight: 700; font-size: .9rem; }
+#bookFunnel .bk-revrow > summary::-webkit-details-marker { display: none; }
+#bookFunnel .bk-revrow > summary em { font-style: normal; color: var(--red); font-weight: 700; font-size: .84rem; }
+#bookFunnel .bk-revrow > summary em::after { content: " +"; }
+#bookFunnel .bk-revrow[open] > summary em::after { content: " \2212"; }
+#bookFunnel .bk-revrow-in { padding: 0 .9rem .9rem; }
+#bookFunnel .bk-revrow-in .bk-extras, #bookFunnel .bk-revrow-in .bk-promo { margin-top: 0; }
+/* The arrival line has its own row under "Your time", right-aligned. */
+#bookFunnel .bk-lines .when-sub td { text-align: right; padding-top: 0; white-space: normal; }
+
+/* "Help us get ready", after booking. */
+#bookFunnel .bk-prep { background: var(--paper-2); border: 1.5px solid var(--line); border-radius: var(--r-md, 14px); padding: .95rem 1rem; margin: 1rem 0 1.2rem; text-align: left; }
+#bookFunnel .bk-prep h4 { margin: 0 0 .15rem; font-family: var(--font-display); font-size: 1.02rem; }
+#bookFunnel .bk-prep-sub { margin: 0 0 .5rem; font-size: .83rem; color: var(--text-soft); }
+#bookFunnel .bk-prep .bk-acc { display: flex; align-items: center; justify-content: space-between; gap: .6rem; border: 0; border-top: 1px solid var(--line); border-radius: 0; padding: .45rem 0; margin: 0; background: none; box-shadow: none; }
+#bookFunnel .bk-prep .bk-acc-q { margin: 0; font-size: .86rem; font-weight: 700; }
+#bookFunnel .bk-prep .bk-acc-opts { display: flex; gap: .3rem; flex: none; }
+#bookFunnel .bk-prep .bk-acc-b { padding: .32rem .62rem; font-size: .8rem; min-height: 0; }
+#bookFunnel .bk-prep .bk-field { margin: .6rem 0 0; }
+#bookFunnel .bk-prep .bk-field label { font-size: .82rem; }
+/* The one red action on the Done screen (owner, November 11). */
+#bookFunnel .bk-prep-send {
+  margin-top: .9rem; border: 0; cursor: pointer; font: inherit; font-weight: 700; font-size: .95rem;
+  background: var(--red); color: #fff; border-radius: 999px; padding: .7rem 1.25rem; min-height: 44px;
+}
+#bookFunnel .bk-prep-send:hover { background: var(--red-deep); }
+#bookFunnel .bk-prep-send:disabled { opacity: .6; cursor: default; }
+
+/* Phone checkout bar: tab names only, so all four fit beside back and close
+   (the summaries are in the folded rows just below). */
+@media (max-width: 559.98px) {
+  #bookFunnel .bk-modal.ck .bk-navgrp-ck .bk-seg-s { display: none; }
+}
+
+/* Weather limits, said under the heading when they removed days. */
+#bookFunnel .bk-recs-weather { margin: -.35rem 0 .7rem; font-size: .82rem; color: var(--text-soft); }
+#bookFunnel .bk-recs-weather b { color: var(--text); }
