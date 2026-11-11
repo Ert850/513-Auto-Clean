@@ -233,7 +233,7 @@ section { padding-block: clamp(40px, 5vw, 72px); position: relative; }
 .mobile-menu {
   position: fixed; inset: 0 0 0 auto; width: min(360px, 86vw); z-index: 200;
   background: var(--ink); color: var(--text-inv);
-  transform: translateX(100%); transition: transform .4s var(--ease);
+  transform: translateX(100%);
   display: flex; flex-direction: column; padding: 2rem 1.75rem; gap: .25rem;
   box-shadow: var(--shadow-lg);
 }
@@ -357,7 +357,7 @@ section { padding-block: clamp(40px, 5vw, 72px); position: relative; }
   transition: color .25s, background .25s, box-shadow .25s; display: inline-flex; align-items: center; gap: .5rem;
 }
 .svc-tab svg { width: 18px; height: 18px; }
-.svc-tab.active { color: var(--ink); background: var(--paper); box-shadow: var(--shadow-sm); }
+.svc-tab.active { box-shadow: var(--shadow-sm); }
 .svc-tab.active { color: #ffffff; background: linear-gradient(135deg, var(--red), var(--red-deep)); }
 
 .svc-panel { display: none; }
@@ -427,7 +427,7 @@ section { padding-block: clamp(40px, 5vw, 72px); position: relative; }
 .addon:hover { border-color: var(--red); transform: translateY(-2px); }
 .addon .ad-ic { width: 36px; height: 36px; border-radius: 10px; background: var(--ink); color: var(--red-bright); display: grid; place-items: center; flex-shrink: 0; }
 .addon .ad-ic svg { width: 19px; height: 19px; }
-.addon .ad-price { margin-top: auto; padding-top: .4rem; }
+.addon .ad-price { padding-top: .4rem; }
 .addon .ad-ast { display: block; font-style: normal; font-size: .72rem; color: var(--text-soft); line-height: 1.45; margin-top: .3rem; }
 .addon b { font-size: .93rem; display: block; line-height: 1.25; }
 .addon span { font-size: .79rem; color: var(--text-soft); line-height: 1.45; display: block; margin-top: .15rem; }
@@ -1358,11 +1358,7 @@ body > #quote { padding-block: clamp(40px, 4.4vw, 64px); }
 @supports (-moz-appearance: none) {
   .rv-card blockquote.open { scrollbar-width: thin; scrollbar-color: var(--text-soft) var(--line); }
 }
-.rv-more {
-  display: block; margin-top: .3rem; padding: 0; font: inherit; font-size: .8rem;
-  font-weight: 700; color: var(--red); background: none; border: 0; cursor: pointer;
-  text-decoration: underline; text-underline-offset: 2px;
-}
+.rv-more { display: block; margin-top: .3rem; text-decoration: underline; text-underline-offset: 2px; }
 .rv-more { border: 0; background: none; color: var(--red); font: inherit; font-size: .85rem; font-weight: 700; cursor: pointer; padding: 0 0 0 .3rem; }
 /* The date and the "read in full" link ran together into "2 days agoRead in
    full". Two items with a separator, not two strings jammed end to end. */
