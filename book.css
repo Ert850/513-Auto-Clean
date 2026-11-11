@@ -427,119 +427,93 @@ body.bk-open { overflow: hidden; }
   text-decoration: underline; text-underline-offset: 3px;
 }
 
-.bk-wk-legend { display: flex; flex-wrap: wrap; gap: .35rem .9rem; margin: 0 0 .7rem; font-size: .78rem; color: var(--text-soft); }
+.bk-wk-legend { display: flex; flex-wrap: wrap; align-items: center; gap: .35rem .9rem; margin: 0 0 .7rem; font-size: .78rem; color: var(--text-soft); }
 .bk-wk-legend span { display: inline-flex; align-items: center; gap: .35rem; }
-/* What the fee key means, as a quiet line under the keys. */
-.bk-wk-rules { flex-basis: 100%; margin: 0; font-size: .74rem; line-height: 1.45; color: var(--text-soft); }
+/* What makes a fee, one tap away (November 11). */
+.bk-wk-feeq {
+  font: inherit; font-size: .78rem; font-weight: 700; color: var(--text-soft); cursor: pointer;
+  background: none; border: 0; padding: .3rem 0; text-decoration: underline; text-underline-offset: 3px;
+}
+.bk-wk-feeq:hover { color: var(--text); }
+.bk-wk-rules { flex-basis: 100%; margin: 0; font-size: .78rem; line-height: 1.45; color: var(--text-soft); }
 .bk-wk-key {
   width: 18px; height: 18px; border-radius: 4px; display: inline-grid; place-items: center; flex: none;
   font-style: normal; font-size: .58rem; font-weight: 800;
 }
 .bk-wk-key svg { width: 12px; height: 12px; }
-.bk-wk-key.ok, .bk-wk-key.fee { background: rgba(26,138,63,.07); border: 1.5px solid rgba(26,138,63,.45); color: #1a8a3f; }
-.bk-wk-key.fee { color: #7a5209; }
 .bk-wk-key.sug { color: var(--ink); }
-.bk-wk-key.no, .bk-wk-c.no {
+.bk-wk-key.no, .bk-tl-s.no {
   background: repeating-linear-gradient(135deg, var(--paper) 0 4px, var(--line) 4px 6px);
   border: 1px solid var(--line);
 }
-.bk-wk-how { margin: 0 0 .5rem; font-size: .78rem; color: var(--text-soft); }
 .bk-wk-weather { margin: 0 0 .7rem; font-size: .8rem; line-height: 1.5; color: var(--text-soft); background: var(--paper); border-radius: var(--r-sm); padding: .5rem .7rem; }
 .bk-wk-weather b { color: var(--text); }
 
-/* Desktop grid: Early/Late labels, a time column, seven days. Every item is
-   placed by row and column, so labels and job blocks can span rows. Row
-   height lives in funnel.js too (ROW_PX, GAP_PX): change both together. */
-.bk-wk-grid { display: grid; grid-template-columns: 1.2rem 2.55rem repeat(7, minmax(0, 1fr)); gap: 3px; }
-.bk-wk-corner, .bk-wk-dh { position: sticky; top: 0; z-index: 4; background: var(--paper); }
-.bk-wk-headbg { position: sticky; top: 0; z-index: 3; background: var(--paper); box-shadow: 0 -14px 0 var(--paper), 0 3px 0 var(--paper); }
-.bk-wk-t { font-size: .8rem; font-weight: 700; color: var(--text-soft); text-align: right; padding-right: .25rem; align-self: center; white-space: nowrap; }
-.bk-wk-dh { text-align: center; padding: .15rem 0 .3rem; line-height: 1.15; }
-.bk-wk-dh b { display: block; font-size: .72rem; font-weight: 700; color: var(--text-soft); text-transform: uppercase; letter-spacing: .04em; }
-.bk-wk-dh span { display: block; font-family: var(--font-display); font-size: 1.05rem; }
-.bk-wk-dh em, .bk-wk-day em, .bk-wk-zone em {
-  display: inline-block; font-style: normal; font-size: .58rem; font-weight: 800; letter-spacing: .05em;
-  text-transform: uppercase; color: #7a5209; background: rgba(240,169,63,.16); padding: .05rem .3rem; border-radius: 4px;
+/* A time's price, said once per stretch (owner, November 11). "Standard
+   price" is green (owner's call, an exception to "a good answer is ink");
+   a fee is the gold of the Rush tag. */
+.bk-px { font-size: .8rem; font-weight: 700; }
+.bk-px.std { color: #1a8a3f; }
+.bk-px.fee { color: #7a5209; }
+
+/* Wide screens: one day as a timeline, every half hour a row (option C,
+   November 11). Rows are white like the recommended-time cards; taken
+   times are grey hatched. Row height lives in funnel.js too (TL_ROW,
+   TL_GAP): change both together. */
+.bk-tl-day { margin: 0 0 .5rem; font-family: var(--font-display); font-size: 1.02rem; }
+.bk-tl { display: grid; grid-template-columns: 3.6rem minmax(0, 1fr); gap: 3px 0; }
+.bk-tl-t { grid-column: 1; align-self: center; text-align: right; padding-right: .6rem; font-size: .8rem; font-weight: 700; color: var(--text-soft); white-space: nowrap; }
+.bk-tl-t.half { font-size: .72rem; font-weight: 600; opacity: .75; }
+/* Rows past the last start shown: only room for that job's block to finish
+   in (no box, not "not available"). */
+.bk-tl-t.tail { opacity: .4; }
+.bk-tl-s {
+  grid-column: 2; display: flex; align-items: center; gap: .5rem; min-width: 0; padding: 0 .75rem;
+  border-radius: 6px; font: inherit; text-align: left;
 }
-.bk-wk-dh.past > * { opacity: .45; }  /* the text, not the bar's background */
-/* Early and Late run up the side, read bottom to top like a spine. */
-.bk-wk-zone { display: flex; align-items: center; justify-content: center; }
-.bk-wk-zone em { writing-mode: vertical-rl; transform: rotate(180deg); padding: .35rem .05rem; }
-.bk-wk-c {
-  position: relative; height: 100%; border-radius: 6px; display: grid; place-items: center;
-  font: inherit; font-size: .7rem; font-weight: 700; padding: 0;
+button.bk-tl-s {
+  cursor: pointer; background: var(--paper-2); border: 1.5px solid var(--line); color: var(--text);
+  transition: border-color .14s, box-shadow .14s;
 }
-button.bk-wk-c {
-  cursor: pointer; transition: box-shadow .14s;
-  background: rgba(26,138,63,.07); border: 1.5px solid rgba(26,138,63,.45); color: #1a8a3f;
+button.bk-tl-s:hover { border-color: var(--red); box-shadow: 0 0 0 3px var(--red-ghost); }
+.bk-tl-star {
+  margin-left: auto; display: inline-flex; align-items: center; gap: .25rem;
+  font-style: normal; font-size: .72rem; font-weight: 800; color: var(--ink);
 }
-/* A fee reads at a glance (owner, November 10): bold, in the gold of the
-   Rush, Early and Late tags. No gold ground (tried, owner: "looks weird").
-   The box stays green-edged: the time is as bookable as any other. */
-.bk-wk-c.fee { color: #7a5209; }
-.bk-wk-c.fee i { font-weight: 800; }
-.bk-wk-c i { font-style: normal; }
-.bk-wk-c svg { width: 14px; height: 14px; }
-.bk-wk-star { position: absolute; top: 2px; right: 3px; line-height: 0; color: var(--ink); }
-.bk-wk-star svg { width: 10px; height: 10px; }
-button.bk-wk-c:hover { box-shadow: 0 0 0 2px var(--red-ghost); }
-/* The chosen job, start to estimated end, drawn over the cells it covers. */
-.bk-wk-span { position: relative; z-index: 3; pointer-events: none; overflow: hidden; border-radius: 6px; }
-.bk-wk-span > i {
-  position: absolute; left: 0; right: 0; overflow: hidden; font-style: normal;
-  display: flex; flex-direction: column; justify-content: space-between;
-  /* Solid, so the hourly cells (and their per-hour fees) do not show through. */
+.bk-tl-star svg { width: 11px; height: 11px; }
+/* Rows under a block (chosen or pointed at) keep their outline and hide
+   what is in them, so the block shows its price once. */
+.bk-tl-s.under > *, .bk-tl-s.pv > * { visibility: hidden; }
+/* The job, start to estimated finish, over the rows it covers. */
+.bk-tl-span { grid-column: 2; position: relative; z-index: 3; pointer-events: none; overflow: hidden; border-radius: 6px; }
+.bk-tl-span > i {
+  position: absolute; top: 0; left: 0; right: 0; font-style: normal;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .15rem;
   border: 2px solid var(--red); border-radius: 6px;
   background: linear-gradient(rgba(196,20,20,.10), rgba(196,20,20,.10)), var(--paper-2);
 }
-/* Lines never shrink: if they do not fit, the block overflows, fitSpan()
-   sees it and drops the note (then the fee). Shrinking lines cut "6am" off
-   instead, and the overflow was never seen (November 10). */
-.bk-wk-span > i > * { flex-shrink: 0; }
-.bk-wk-span-fee { display: flex; flex-direction: column; align-items: center; gap: .1rem; padding: 0 .2rem; min-width: 0; }
-.bk-wk-span-fee em {
-  font-style: normal; font-size: .72rem; font-weight: 800; color: #1a8a3f;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;
+.bk-tl-span b { font-family: var(--font-display); font-size: 1.05rem; color: var(--text); }
+.bk-tl-span .bk-px { font-size: .84rem; font-weight: 800; }
+.bk-tl-span .bk-px.fee { background: rgba(240,169,63,.18); padding: .05rem .4rem; border-radius: 4px; }
+/* The star exactly where the start's row has it: right side, middle of the
+   first row (32px inside the 2px border = the 36px row). */
+.bk-tl-span .bk-tl-star { position: absolute; top: 0; right: calc(.75rem - .5px); height: 32px; }
+.bk-tl-span.preview > i { border-style: dashed; background: linear-gradient(rgba(196,20,20,.05), rgba(196,20,20,.05)), var(--paper-2); }
+.bk-tl-span.preview.solid > i { border-style: solid; background: linear-gradient(rgba(196,20,20,.10), rgba(196,20,20,.10)), var(--paper-2); }
+/* "Earlier times" and "Later times": the folded starts, one tap away. */
+.bk-wk-fold {
+  display: flex; align-items: center; gap: .3rem; width: max-content; margin: .3rem auto .5rem;
+  font: inherit; font-size: .76rem; font-weight: 700; color: var(--text); cursor: pointer;
+  background: var(--paper-2); border: 1px solid var(--line); border-radius: 999px; padding: .3rem .8rem;
 }
-/* A fee in the Rush tag's gold, with a quiet note of what it is. */
-.bk-wk-span-fee.paid em { color: #7a5209; background: rgba(240,169,63,.18); padding: .05rem .35rem; border-radius: 4px; }
-.bk-wk-span-fee i {
-  /* Two short lines at most, centred, rather than cut off with an ellipsis. */
-  font-style: normal; font-size: .58rem; font-weight: 600; line-height: 1.2; color: var(--text-soft);
-  text-align: center; max-width: 100%; overflow: hidden;
-  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+.bk-wk-fold:hover { border-color: var(--text-soft); }
+.bk-wk-fold svg { width: 12px; height: 12px; }
+.bk-wk-day em {
+  display: inline-block; font-style: normal; font-size: .58rem; font-weight: 800; letter-spacing: .05em;
+  text-transform: uppercase; color: #7a5209; background: rgba(240,169,63,.16); padding: .05rem .3rem; border-radius: 4px;
 }
-.bk-wk-span.short .bk-wk-span-fee, .bk-wk-span.mid .bk-wk-span-fee i { display: none; }
-/* Narrower windows, narrower columns: one step smaller. */
-@media (max-width: 760px) {
-  .bk-wk-span b, .bk-wk-span small { font-size: .56rem; padding-left: .2rem; padding-right: .2rem; }
-  .bk-wk-span-fee em { font-size: .64rem; padding: .05rem .25rem; }
-  .bk-wk-span-fee i { font-size: .54rem; }
-}
-/* Where a fee starts or stops: under the early hours, above the late ones,
-   after the last rush day. The Rush and Early/Late tags' gold, dashed. */
-.bk-wk-line { pointer-events: none; z-index: 2; }
-.bk-wk-line { opacity: .75; }
-.bk-wk-line.h { align-self: start; height: 1.5px; margin-top: -2.25px; background: repeating-linear-gradient(90deg, var(--amber) 0 4px, transparent 4px 8px); }
-.bk-wk-line.v { justify-self: end; width: 1.5px; margin-right: -2.25px; background: repeating-linear-gradient(180deg, var(--amber) 0 4px, transparent 4px 8px); }
-/* Cells under a block (chosen or previewed) keep their outline and hide what
-   is in them, so a half-covered price never peeks out above or below. */
-.bk-wk-c.under > *, .bk-wk-c.pvunder > * { visibility: hidden; }
-/* A suggested start keeps its star, on the block's time bar. */
-.bk-wk-span-star { float: right; line-height: 0; margin-top: .1rem; color: #fff; }
-.bk-wk-span-star svg { width: 10px; height: 10px; }
-.bk-wk-span b {
-  display: block; background: var(--red); color: #fff; font-size: .62rem; font-weight: 800;
-  padding: .12rem .3rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
-.bk-wk-span small {
-  display: block; padding: 0 .3rem .1rem; font-size: .62rem; font-weight: 800; color: var(--red-deep);
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
-.bk-wk-span.preview > i { border-style: dashed; background: linear-gradient(rgba(196,20,20,.05), rgba(196,20,20,.05)), var(--paper-2); }
-.bk-wk-span.preview b { background: rgba(196,20,20,.8); }
 
-/* Phones: a strip of days and the open hours of one of them. */
+/* The seven days over the open one (all widths). */
 .bk-wk-strip { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; margin: 0 0 .8rem; }
 .bk-wk-day {
   font: inherit; cursor: pointer; text-align: center; padding: .4rem 0 .35rem; min-height: 64px;
@@ -551,20 +525,36 @@ button.bk-wk-c:hover { box-shadow: 0 0 0 2px var(--red-ghost); }
 .bk-wk-day.on { border-color: var(--red); box-shadow: 0 0 0 3px var(--red-ghost); }
 .bk-wk-day.past > * { opacity: .45; }
 .bk-wk-day em { font-size: .5rem; padding: .02rem .2rem; }
-.bk-wk-bar { display: block; width: 70%; height: 4px; border-radius: 2px; }
-.bk-wk-bar.ok { background: #1a8a3f; }
-.bk-wk-bar.fee { background: rgba(26,138,63,.4); }
+.bk-wk-bar { display: block; width: 70%; height: 4px; border-radius: 2px; background: var(--line); overflow: hidden; }
+/* Filled to how much of the day is still open (November 11). */
+.bk-wk-bar > i { display: block; height: 100%; border-radius: 2px; }
+.bk-wk-bar > i.ok { background: #1a8a3f; }
+.bk-wk-bar > i.fee { background: #f0a93f; }
 .bk-wk-bar.no { background: repeating-linear-gradient(135deg, var(--paper) 0 3px, var(--line) 3px 5px); }
-.bk-wk-band { display: flex; align-items: center; gap: .4rem; margin: .7rem 0 .35rem; font-size: .76rem; font-weight: 800; color: var(--text-soft); text-transform: uppercase; letter-spacing: .05em; }
-.bk-wk-list .bk-wk-band:first-child { margin-top: 0; }
+.bk-wk-band { display: flex; align-items: center; justify-content: space-between; gap: .4rem; margin: .7rem 0 .35rem; font-size: .76rem; font-weight: 800; color: var(--text-soft); text-transform: uppercase; letter-spacing: .05em; }
+.bk-wk-list > .bk-wk-sec:first-child .bk-wk-band { margin-top: 0; }
+.bk-wk-band .bk-px { text-transform: none; letter-spacing: 0; font-size: .78rem; }
+
+/* Phones (option B, November 11): the week bar and the day strip stay
+   pinned while the times scroll, and each part-of-day heading stays pinned
+   under them while any of its times are on screen (sticky inside its own
+   section, so it leaves with it). pinWeek() measures --wk-h and --wk-strip. */
+.bk-wk.narrow .bk-wk-h, .bk-wk.narrow .bk-wk-strip, .bk-wk.narrow .bk-wk-band {
+  position: sticky; z-index: 6; background: var(--paper);
+  margin-left: -1.1rem; margin-right: -1.1rem; padding-left: 1.1rem; padding-right: 1.1rem;
+}
+.bk-wk.narrow .bk-wk-h { top: 0; margin-bottom: 0; padding-top: .45rem; padding-bottom: .55rem; }
+.bk-wk.narrow .bk-wk-strip { top: var(--wk-h, 0px); margin-bottom: 0; padding-bottom: .6rem; }
+.bk-wk.narrow .bk-wk-band { top: calc(var(--wk-h, 0px) + var(--wk-strip, 0px)); z-index: 5; margin-top: 0; margin-bottom: 0; padding-top: .55rem; padding-bottom: .4rem; }
 .bk-wk-item {
   width: 100%; min-height: 48px; display: flex; align-items: center; gap: .7rem; margin-bottom: .35rem;
   font: inherit; text-align: left; cursor: pointer; padding: .5rem .8rem;
-  background: rgba(26,138,63,.06); border: 1.5px solid rgba(26,138,63,.45); border-radius: var(--r-sm); color: var(--text);
+  background: var(--paper-2); border: 1.5px solid var(--line); border-radius: var(--r-sm); color: var(--text);
 }
+.bk-wk-item:hover { border-color: var(--red); }
 .bk-wk-item b { font-family: var(--font-display); font-size: .98rem; white-space: nowrap; }
-.bk-wk-item span { flex: 1; font-size: .78rem; font-weight: 600; color: var(--text-soft); }
-.bk-wk-item span.fee, .bk-pick-price.fee, .bk-more-t .fee { color: #7a5209; font-weight: 700; font-style: normal; }
+.bk-wk-item .bk-px { flex: 1; font-size: .78rem; }
+.bk-pick-price.fee, .bk-more-t .fee { color: #7a5209; font-weight: 700; font-style: normal; }
 .bk-wk-item em { display: inline-flex; align-items: center; gap: .25rem; font-style: normal; font-size: .72rem; font-weight: 800; color: var(--ink); }
 .bk-wk-item em svg { width: 11px; height: 11px; }
 .bk-wk-item.on { border: 2px solid var(--red); background: var(--red-ghost); box-shadow: 0 0 0 3px var(--red-ghost); }
@@ -1686,23 +1676,6 @@ button.bk-wk-c:hover { box-shadow: 0 0 0 2px var(--red-ghost); }
   font: inherit; font-size: .82rem; padding: .35rem .5rem; color: var(--text);
   border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--paper-2);
 }
-
-/* The calendar grid in its own frame, opening on the regular hours (owner,
-   November 10). The day names stay pinned inside it; the markers say which
-   way the early and late hours are. */
-.bk-wk-frame { position: relative; }
-.bk-wk-scroll { overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable; }
-.bk-wk-scroll::-webkit-scrollbar { width: 8px; }
-.bk-wk-scroll::-webkit-scrollbar-thumb { background: var(--line); border-radius: 8px; }
-.bk-wk-edge {
-  display: flex; align-items: center; gap: .3rem; width: max-content; margin: .35rem auto;
-  font: inherit; font-size: .74rem; font-weight: 700; color: var(--text-soft); cursor: pointer;
-  background: var(--paper-2); border: 1px solid var(--line); border-radius: 999px; padding: .2rem .7rem;
-  transition: opacity .2s;
-}
-.bk-wk-edge:hover { color: var(--text); border-color: var(--text-soft); }
-.bk-wk-edge svg { width: 12px; height: 12px; }
-.bk-wk-edge.off { opacity: 0; pointer-events: none; }
 
 /* How it works on a package: what is included as a small heading, then the
    rest of the note under it (round 16). */
