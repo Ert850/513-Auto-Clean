@@ -1031,11 +1031,6 @@ button.bk-tl-s:hover { border-color: var(--red); box-shadow: 0 0 0 3px var(--red
   color: var(--text-soft); border: 1px solid var(--line);
   padding: .12rem .38rem; border-radius: 5px; vertical-align: 2px;
 }
-.bk-otherslots { margin-top: 1rem; }
-.bk-otherslots h4 {
-  margin: 0 0 .45rem; font-size: .8rem; font-weight: 800; letter-spacing: .05em;
-  text-transform: uppercase; color: var(--text-soft);
-}
 
 /* mechanism explainer, collapsed so it informs without burying the price */
 .bk-how { margin: 0 0 .6rem; }
