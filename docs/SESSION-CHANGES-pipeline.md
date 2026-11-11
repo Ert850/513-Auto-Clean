@@ -13,6 +13,22 @@ Built overnight, November 10 to 11, for you to evaluate. It combines your 8 answ
   - `web/lib/browser-entry.ts`, `js/pricing.bundle.js` (built), `web/lib/funnel.smoke.test.mjs`.
   - The build also re-stamps `?v=` on every page. Those page changes were left out of the commit; a rebuild after merging restamps them.
 
+## Round 18 (November 11): Review as option D, setup questions after booking
+
+### What changed
+- **Review and book, option D (owner).** The review is the price table, the time, two rows that open in place ("Have a promo code?" and "Add an extra"), one "Nothing to pay today" box, and Confirm: under one phone screen (604 px at 375, against about 3 screens before). The duplicate "Pay after the detail" card is gone when there is nothing to choose. An opened row stays open while extras or a code change (`state.revOpen`).
+- **"Help us get ready", after booking (owner).** The Done screen asks the outdoor tap, outlet, parking, vehicle and notes questions in one card, with a red **Send to your detailer** button (owner's colour). The answers go to the owner as a "BOOKING FOLLOW-UP" email through Web3Forms, as in round 1; if the screen closes with anything answered, they are sent quietly (`sendPrep(true)` in `close()`). Answering a question on the Done screen no longer scrolls the page.
+- **Price table.** The arrival line has its own full-width row under "Your time". *Root cause of "Basic / Interior" wrapping:* the arrival line sat in the price column with `white-space: nowrap`, so that column took the room the labels needed.
+- **Phone checkout bar.** Tab names only, so all four fit between back and close. *Root cause of the clipped "CONTACT":* the sub-labels ("Cincinnati", "Nov 13, 6pm", "$134.75") made the bar wider than a phone, and it scrolled under the back arrow.
+- **Weather, said at the top.** When the forecast removes days, one line under "Our recommended times": "Cold weather limits exterior times to about the next week." The full note stays at the foot. This explains why a cold-weather exterior job can show only "Soonest" and "Also open": every day left is inside the 3-day rush window, so there is no "In 3 days" or "Weekend" day to offer.
+
+### What to test
+- Review on a phone: under one screen; open "Add an extra", add one, the row stays open and the total changes; apply a code in its row.
+- Book: the Done screen shows "Help us get ready"; answer and press Send (a follow-up email arrives); answer and just close (it is still sent); answer nothing and close (nothing is sent).
+
+### Flagged for future review (owner, November 11)
+- **Exterior bookings almost always pay the rush fee in cold months.** The weather rules leave exterior times only inside the forecast (about a week), and the rush window is 3 days, so in winter most exterior and combined jobs can only be booked with the rush fee. Consider a rush-fee bypass for exterior work, for example no rush fee for exterior bookings more than 1 day out, or no rush fee when the weather is what limits the dates.
+
 ## Round 17 (November 11): fees from the calendar, homes per detailer, the arrival hour
 
 ### What changed

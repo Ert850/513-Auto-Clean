@@ -122,6 +122,8 @@
       // be dropped (slotStillFits). Shown at the top of Time.
       slotDur: 0,
       whenNote: '',
+      // Review rows opened by the customer (revRow).
+      revOpen: {},
       sending: false,
       done: false,
       browse: false,
@@ -3434,6 +3436,23 @@
     return '<p class="bk-wk-weather">' + html + '</p>';
   }
 
+  /**
+   * One line under "Our recommended times" when the weather removed days
+   * (owner, November 11: with only two cold-weather exterior days, both in
+   * the rush window, "In 3 days" and "Weekend" could not appear, and the
+   * reason sat at the foot of the page). The full note stays below.
+   */
+  function weatherLine(calc) {
+    var keys = Object.keys(calc.weatherReasons || {});
+    if (!keys.length) return '';
+    var kinds = [];
+    keys.forEach(function (k) { var kind = k.split(':')[0]; if (kinds.indexOf(kind) < 0) kinds.push(kind); });
+    var what = kinds.map(function (k) { return k === 'correction' ? 'paint correction' : k; }).join(' and ');
+    var cold = keys.some(function (k) { return /:(cold|season)$/.test(k); });
+    return '<p class="bk-recs-weather"><b>' + (cold ? 'Cold weather' : 'The forecast') + '</b> ' +
+      (cold ? 'limits ' + esc(what) + ' times to about the next week.' : 'removes some ' + esc(what) + ' times.') + '</p>';
+  }
+
   /** "Coating moves to a warmer day", when this start suits all but the coating. */
   function coatingNote(ms, dur) {
     return coatingMoves(ms, dur)
@@ -3542,7 +3561,7 @@
         'See additional times for later dates, or tell us when suits.</p>';
     } else {
       html += '<p class="bk-recs-sub">Tap a time to pick it. We arrive within its first hour' +
-        (dur ? ', and the detail takes about ' + esc(fmtDur(dur)) : '') + '.</p>';
+        (dur ? ', and the detail takes about ' + esc(fmtDur(dur)) : '') + '.</p>' + weatherLine(calc);
     }
     picks.forEach(function (pk, i) {
       var ms = pk.ms;
@@ -4536,7 +4555,7 @@
     };
     return '<div class="bk-acc' + (v === null ? '' : ' answered') + '" data-optional>' +
       '<p class="bk-acc-q">' + label + '</p>' +
-      '<p class="bk-acc-h">' + help + '</p>' +
+      (help ? '<p class="bk-acc-h">' + help + '</p>' : '') +
       '<div class="bk-acc-opts" role="group" aria-label="' + esc(label) + '">' + opt('yes', 'Yes') + opt('no', 'No') + opt('unsure', 'Not sure') + '</div>' +
       '</div>';
   }
@@ -4656,6 +4675,18 @@
       '</div>';
   }
 
+  /**
+   * One row on the review that opens in place (owner, November 11, option
+   * D). Stays open across re-renders once opened, so adding an extra or
+   * applying a code does not snap it shut.
+   */
+  function revRow(id, label, cta, inner) {
+    var open = Boolean(state.revOpen && state.revOpen[id]);
+    return '<details class="bk-revrow" data-revrow="' + id + '"' + (open ? ' open' : '') + '>' +
+      '<summary><span>' + esc(label) + '</span><em>' + esc(cta) + '</em></summary>' +
+      '<div class="bk-revrow-in">' + inner + '</div></details>';
+  }
+
   /** The one free-text box on the Confirm screen. */
   function notesBlock() {
     // Make and model, per vehicle. It used to sit on the Vehicles screen,
@@ -4690,30 +4721,81 @@
       '</div>';
   }
 
-  /**
-   * Getting set up on the day, on the Confirm screen, before the booking is
-   * sent (owner, November 10). Worded as ordinary questions, so people answer
-   * them, but a booking never fails for want of one: we bring our own water
-   * and power either way.
+
+  /*
+   * "HELP US GET READY", AFTER BOOKING (owner, November 11, option D).
+   *
+   * The setup questions change neither the price nor the time, so they come
+   * once the booking is in: the review stays one screen, and people answer
+   * most readily right after committing. The same pattern ran here once
+   * before (round 1). The answers go to the owner as a short follow-up
+   * email, by the button or quietly when the Done screen closes with
+   * anything answered.
    */
-  function accessBlock() {
-    return '<div class="bk-accbox">' +
-      // Optional again (owner, November 10), as on the original pipeline: it
-      // never blocked a booking, and now it says so.
-      '<h4>Getting set up on the day <i class="bk-opt">Optional</i></h4>' +
-      '<p class="bk-hint"><b>None of this is required, and no answer changes your price.</b> ' +
-      'We bring our own water and power, so the detail goes ahead either way. These just tell us what ' +
-      'to load for your driveway. Skip any you are not sure about.</p>' +
-      askAccess('water', 'Is there an outdoor tap we could use?',
-        'Saves filling the tank, and it is the one that matters most for an exterior.') +
-      askAccess('power', 'Is there an outdoor outlet we could use?',
-        'This helps keep our battery charged for the next details, and is helpful for longer more extensive ' +
-        'details. We do not use a generator to be more environmentally friendly.') +
+  var prepSent = false;
+
+  function prepBlock() {
+    prepSent = false;
+    return '<div class="bk-prep" id="bkPrep">' +
+      '<h4>Help us get ready</h4>' +
+      '<p class="bk-prep-sub">Optional, about a minute. No answer changes your price.</p>' +
+      askAccess('water', 'Is there an outdoor tap we could use?', '') +
+      askAccess('power', 'Is there an outdoor outlet we could use?', '') +
       '<div class="bk-field"><label for="bkParking">Where should we park, and how do we reach the vehicle? <i>(optional)</i></label>' +
-      '<textarea id="bkParking" data-note="parking" rows="2" maxlength="300" ' +
+      '<textarea id="bkParking" data-note="parking" rows="2" maxlength="300" data-optional ' +
       'placeholder="e.g. driveway on the left, gate code 4821, car is usually out front">' +
       esc(state.access.parking) + '</textarea></div>' +
+      notesBlock() +
+      '<button type="button" class="bk-prep-send" id="bkPrepSend">Send to your detailer</button>' +
+      '<p class="bk-msg" id="bkPrepMsg" role="status" aria-live="polite"></p>' +
       '</div>';
+  }
+
+  function prepAnswered() {
+    return Boolean(state.access.water || state.access.power || String(state.access.parking || '').trim() ||
+      String(state.notes || '').trim() || state.vehicles.some(function (v) { return String(v.label || '').trim(); }));
+  }
+
+  /** The follow-up email. `quiet` when sent on close, where nobody is watching. */
+  function sendPrep(quiet) {
+    if (prepSent || !state.done || state.advice || !prepAnswered()) return;
+    prepSent = true;
+    var msg = root.querySelector('#bkPrepMsg');
+    var btn = root.querySelector('#bkPrepSend');
+    if (btn) btn.disabled = true;
+    var fd = new FormData();
+    fd.append('access_key', WEB3FORMS_KEY);
+    fd.append('subject', 'BOOKING FOLLOW-UP, ' + (detailerName() ? detailerName() + ', ' : '') + state.contact.name +
+      (state.slot ? ', ' + new Date(state.slot).toLocaleString('en-US', { timeZone: TZ }) : ''));
+    fd.append('from_name', '513 Auto Clean Booking');
+    fd.append('name', state.contact.name);
+    fd.append('phone', state.contact.phone);
+    if (state.contact.email) fd.append('email', state.contact.email);
+    fd.append('message',
+      'Answers given right after booking ("Help us get ready").\n\n' +
+      'WHO\n  ' + state.contact.name + '\n  ' + state.contact.phone + '\n\n' +
+      'ACCESS\n  Water: ' + (state.access.water || 'not answered') +
+      '\n  Power: ' + (state.access.power || 'not answered') +
+      (String(state.access.parking || '').trim() ? '\n  Parking: ' + state.access.parking : '') + '\n\n' +
+      state.vehicles.map(function (v, i) { return String(v.label || '').trim() ? 'VEHICLE' + (state.vehicles.length > 1 ? ' ' + (i + 1) : '') + '\n  ' + v.label + '\n\n' : ''; }).join('') +
+      (String(state.notes || '').trim() ? 'NOTES\n  ' + state.notes + '\n' : ''));
+    fetch('https://api.web3forms.com/submit', { method: 'POST', body: fd, headers: { Accept: 'application/json' } })
+      .then(function (r) { return r.json().then(function (j) { return r.ok && j.success; }); })
+      .then(function (ok) {
+        if (!ok) throw new Error('not sent');
+        track('booking_followup', { water: Boolean(state.access.water), power: Boolean(state.access.power) });
+        if (quiet) return;
+        var box = root.querySelector('#bkPrep');
+        if (box) box.innerHTML = '<h4>Thanks, that is with your detailer</h4><p class="bk-prep-sub">It is attached to your booking.</p>';
+      })
+      .catch(function () {
+        prepSent = false;
+        if (btn) btn.disabled = false;
+        if (!quiet && msg) {
+          msg.className = 'bk-msg err';
+          msg.textContent = 'That did not send. Try again, or just tell us on the day.';
+        }
+      });
   }
 
   /* ---- what actually happens next, as of today ---- */
@@ -4951,21 +5033,15 @@
         '</div>';
     }
 
-    if (!state.advice) html += promoBox(quote);
+    // Option D (owner, November 11): the review is the price, the time and
+    // Confirm. A code and extras are one row each that opens in place; the
+    // setup questions come after booking, on the Done screen (prepBlock).
+    if (!state.advice) html += revRow('promo', quote.promoCode ? 'Promo code: ' + quote.promoCode : 'Have a promo code?', '', promoBox(quote, true, true));
 
     if (state.advice) {
       // Nothing priced, so there is nothing to choose between.
     } else if (!canPayNow()) {
-      html += '<div class="bk-payopts">' +
-        '<div class="bk-pay on static">' +
-          '<b>Pay after the detail</b>' +
-          '<span>' + (ask
-            ? 'Nothing is charged until the time is agreed and the work is done.'
-            : 'Pay in full once the detail is finished, by ' + IN_PERSON + '. Nothing is taken beforehand.') +
-          '</span>' +
-          '<i>' + $(laterTotal) + '</i>' +
-        '</div>' +
-        '</div>';
+      // Nothing to choose: "Nothing to pay today" below says it once.
     } else {
       html += '<div class="bk-payopts">' +
         '<button type="button" class="bk-pay' + (!now ? ' on' : '') + '" data-pay="later">' +
@@ -4993,9 +5069,8 @@
         esc(state.notes) + '</textarea></div>' +
         '</div>';
     } else {
-      html += extrasBlock();
-      html += accessBlock();
-      html += notesBlock();
+      var added = state.vehicles.reduce(function (n, v) { return n + v.addons.length; }, 0);
+      html += revRow('extras', added ? 'Your extras: ' + added + ' added' : 'Add an extra', added ? 'Change' : 'See all', extrasBlock());
     }
 
     /*
@@ -5031,8 +5106,7 @@
             // With it live, the time was taken when they picked it, and
             // promising a confirmation nobody is going to send leaves them
             // waiting on an email that is never coming.
-            : 'You pay in full once the detail is finished, by ' + IN_PERSON + '. ' +
-              'Nothing is taken beforehand. ' +
+            : 'You pay once the detail is finished. Nothing is taken beforehand. ' +
               (state.slot && !isInquiry() && shortNotice(state.slot)
                 // Owner, November 10: an hour's notice is fine, as long as
                 // nobody thinks a short-notice time is settled before we say so.
@@ -5040,7 +5114,8 @@
                   'We reply as fast as we can, and nothing is charged either way.'
                 : P.isLive('liveCalendar') && state.slot && !isInquiry()
                 ? 'Send it and the time is yours.'
-                : 'Send your booking and we will confirm it, usually within a few hours.')) +
+                : 'Send your booking and we will confirm it, usually within a few hours.') +
+              ' After you book, a few quick questions help us get ready.') +
         '</p></div>';
     } else {
       html += '<div class="bk-cardbox">' +
@@ -5539,9 +5614,12 @@
         '</i></td><td>' + $(quote.travelCents) + '</td></tr>';
     var tax = quote.taxIsEstimate ? '<tr class="pending"><td>Sales tax</td><td>added at confirmation</td></tr>' : '';
     var when = state.slot
+      // The arrival line on a row of its own, across both columns: inside the
+      // price column it squeezed the labels ("Basic / Interior").
       ? '<tr class="when"><td>Your time</td><td>' +
-        esc(tzDay(state.slot, { weekday: 'short', month: 'short', day: 'numeric' })) +
-        '<i class="bk-arrive">Arrive ' + esc(arrivalWindow(state.slot)) + ' · about ' + esc(fmtDur(holdMinutes())) + ' detailing</i></td></tr>'
+        esc(tzDay(state.slot, { weekday: 'short', month: 'short', day: 'numeric' })) + '</td></tr>' +
+        '<tr class="when-sub"><td colspan="2"><i class="bk-arrive">Arrive ' + esc(arrivalWindow(state.slot)) +
+        ' · about ' + esc(fmtDur(holdMinutes())) + ' detailing</i></td></tr>'
       : '';
 
     // Every discount, against what the same booking would cost with none of
@@ -5570,7 +5648,7 @@
       '#bkAddVeh,#bkNext,#bkBack,#bkClose,#bkScrim,#bkBrowse,#bkBrowseBack,' +
       '#bkAskMode,#bkAskMode2,#bkSlotMode,#bkFlexOpen,#bkPickChange,#bkShowExtras,' +
       '#bkLeaveStay,#bkLeaveKeep,#bkLeaveAsk,#bkLeaveDrop,#bkFresh,' +
-      '#bkDoneClose,#bkDoneAsk,#bkDoneCopy,#bkDoneAgain,[data-media],' +
+      '#bkDoneClose,#bkDoneAsk,#bkDoneCopy,#bkDoneAgain,#bkPrepSend,[data-media],' +
       '#bkCopyQuote,' +
       '#bkPromoApply,#bkPromoClear,' +
       '#bkQClear,#bkReset,#bkOther'
@@ -5833,6 +5911,8 @@
        * page is the answer: the optional boxes if they want them, and the
        * button if they do not.
        */
+      // On the Done screen, stay put: nothing below needs walking to.
+      if (state.done) return;
       if (!focusNext(accGroup)) showTail();
       return;
     }
@@ -5930,6 +6010,7 @@
       focusNext(mediaGroup);
       return;
     }
+    if (t.id === 'bkPrepSend') return sendPrep(false);
     if (t.id === 'bkDoneAsk') return amendBooking();
     if (t.id === 'bkDoneCopy') return copyQuoteLink(t);
     if (t.id === 'bkDoneAgain') {
@@ -6480,6 +6561,8 @@
               '</b>' : '') + '. Your total is <b>' + $(quote.totalCents) + '</b> before travel.') +
       '</p>' +
 
+      (state.advice ? '' : prepBlock()) +
+
       '<h4 class="bk-done-h">What you sent us</h4>' +
       receiptRows(quote) +
 
@@ -6922,6 +7005,8 @@
   function close() {
     if (!host) return;
     if (!host.hidden) captureUnfinished('closed');
+    // Answers given after booking still reach us if the screen just closes.
+    if (state.done) sendPrep(true);
     state.leaving = false;
     renderLeave();
     host.hidden = true;
@@ -6942,6 +7027,14 @@
       if (sum && sum.parentNode && sum.parentNode.querySelector && sum.parentNode.querySelector('.bk-how-body')) {
         e.preventDefault(); toggleHow(sum.parentNode, null);
       } else if (btn && btn.dataset && btn.dataset.howfor) { e.preventDefault(); toggleHow(null, btn); }
+    });
+    // A review row remembers it was opened (revRow).
+    host.addEventListener('click', function (e) {
+      var sum = e.target.closest && e.target.closest('[data-revrow] > summary');
+      if (!sum) return;
+      var d = sum.parentNode;
+      state.revOpen = state.revOpen || {};
+      state.revOpen[d.getAttribute('data-revrow')] = !d.open;
     });
     // Leaving the page from the checkout counts as leaving it unfinished.
     window.addEventListener('pagehide', function () { if (host && !host.hidden) captureUnfinished('left_page'); });

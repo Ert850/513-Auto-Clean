@@ -328,12 +328,14 @@ describe("the booking funnel opens", () => {
 
     expect(body.length, "the confirm step rendered nothing").toBeGreaterThan(200);
     expect(body, "the promo field should be on the confirm step").toContain("bkPromo");
-    // Water, power and parking are asked before sending. None of them blocks
-    // a booking, and (owner, November 10, round 14) the section says so again,
-    // as on the original pipeline.
-    expect(body, "the setup questions should be on the confirm step").toContain("data-access");
-    expect(body, "and labelled optional").toContain('Getting set up on the day <i class="bk-opt">Optional</i>');
-    expect(body, "the one free-text box stays").toContain("bkNotes");
+    // Option D (owner, November 11): the review is the price, the time and
+    // Confirm. A code and extras are one row each; water, power, parking and
+    // notes are asked after booking, on the Done screen ("Help us get ready").
+    expect(body, "a code is one row that opens in place").toContain('data-revrow="promo"');
+    expect(body, "so are extras").toContain('data-revrow="extras"');
+    expect(body, "the setup questions moved to after booking").not.toContain("data-access");
+    expect(body, "and so did the notes").not.toContain("bkNotes");
+    expect(body, "and the review says they are coming").toContain("a few quick questions help us get ready");
 
     // NO STRIPE KEY, SO NO CARD STEP AT ALL. This screen used to ask for a
     // card authorization, then load a form that announced online payment was
@@ -728,22 +730,18 @@ describe("the booking funnel opens", () => {
     }
   });
 
-  it("only one free-text box, and it is on the confirm screen", () => {
-    const P = env.window.ACPricing;
-    const url = P.quoteUrl(
-      {
-        v: 1,
-        ts: Math.floor(Date.now() / 1000),
-        vs: [{ z: "small", i: "interior", p: ["basic-interior"] }],
-        ad: ["1 Main St", "Cincinnati", "OH", "45220"],
-        ct: ["Ada", "5135551212", ""],
-        sl: Date.now() + 6 * 86_400_000,
-      },
-      "https://513autoclean.com/",
-    );
-    const body = agreeToReview(loadFunnel(url.slice(url.indexOf("#"))));
-    expect(body, "the notes box belongs with the other day-of questions").toContain("bkNotes");
-    expect(body).toContain("Anything else we should know");
+  it("the setup questions and the notes box are asked after booking (option D)", () => {
+    // Option D (owner, November 11): on the Done screen, as "Help us get
+    // ready", with one red button that emails the answers.
+    const all = fs.readFileSync(path.join(ROOT, "js/funnel.js"), "utf8");
+    const at = (name, len) => all.slice(all.indexOf("function " + name + "("), all.indexOf("function " + name + "(") + len);
+    const src = at("prepBlock", 3000);
+    expect(src).toContain("askAccess('water'");
+    expect(src).toContain("askAccess('power'");
+    expect(src).toContain("bkParking");
+    expect(src).toContain("notesBlock()");
+    expect(src).toContain("Send to your detailer");
+    expect(at("close", 1200), "answers still reach us when the screen just closes").toContain("sendPrep(true)");
   });
 
   it("every optional field is flagged, so nothing jumps back to one", () => {
