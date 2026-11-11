@@ -5530,11 +5530,13 @@
       });
   }
 
+  var PAYPAL_OFF = '<p class="bk-hint">PayPal is not available here yet. ' +
+    'Choose card instead, or carry on and we will send you a PayPal link.</p>';
+
   /** PayPal and Venmo. Stripe does not carry Venmo, so PayPal's SDK does. */
   function mountPayPal(mount) {
     if (!CFG.paypalClientId) {
-      mount.innerHTML = '<p class="bk-hint">PayPal is not available here yet. ' +
-        'Choose card instead, or carry on and we will send you a PayPal link.</p>';
+      mount.innerHTML = PAYPAL_OFF;
       return;
     }
 
@@ -5548,12 +5550,10 @@
       )
         .then(function () {
           if (window.paypal) return mountPayPal(mount);
-          mount.innerHTML = '<p class="bk-hint">PayPal is not available here yet. ' +
-            'Choose card instead, or carry on and we will send you a PayPal link.</p>';
+          mount.innerHTML = PAYPAL_OFF;
         })
         .catch(function () {
-          mount.innerHTML = '<p class="bk-hint">PayPal is not available here yet. ' +
-            'Choose card instead, or carry on and we will send you a PayPal link.</p>';
+          mount.innerHTML = PAYPAL_OFF;
         });
     }
     mount.innerHTML = '<div id="bkPaypalBtns"></div>';
@@ -5598,8 +5598,7 @@
         }
       }).render('#bkPaypalBtns');
     } catch (e) {
-      mount.innerHTML = '<p class="bk-hint">PayPal is not available here yet. ' +
-        'Choose card instead, or carry on and we will send you a PayPal link.</p>';
+      mount.innerHTML = PAYPAL_OFF;
     }
   }
 
