@@ -913,7 +913,13 @@ function slotNeedsPriority(slotMs, nowMs, r, timeZone = "America/New_York") {
 
 // lib/pricing/rush.ts
 var KINDS = ["interior", "exterior", "both"];
-var DATE = /^\d{4}-\d{2}-\d{2}$/;
+var SOURCE = /^[a-z0-9_-]{1,40}$/;
+function isRealDate(v) {
+  if (typeof v !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(v)) return false;
+  const [y, m, d] = v.split("-").map(Number);
+  const t = new Date(Date.UTC(y, m - 1, d));
+  return t.getUTCFullYear() === y && t.getUTCMonth() === m - 1 && t.getUTCDate() === d;
+}
 function checkRushSettings(input) {
   const bad = (where, what) => {
     throw new Error(`config/rush-fee.json: ${where}: ${what}`);
@@ -926,20 +932,31 @@ function checkRushSettings(input) {
     }
     return v.map((s) => s.trim().toLowerCase());
   };
-  if (!input || typeof input !== "object") bad("the file", "is not a JSON object");
+  if (!input || typeof input !== "object" || Array.isArray(input)) bad("the file", "is not a JSON object");
   const o = input;
+  for (const k of Object.keys(o)) {
+    if (!["_read_me", "defaultRushDays", "rules"].includes(k)) bad("the file", `unknown key "${k}" (use defaultRushDays, rules)`);
+  }
   const defaultRushDays = days(o["defaultRushDays"], "defaultRushDays");
   if (!Array.isArray(o["rules"])) bad("rules", "must be a list (it can be empty: [])");
   const rules = o["rules"].map((r, i) => {
-    const rr = r ?? {};
+    if (!r || typeof r !== "object" || Array.isArray(r)) bad(`rule ${i + 1}`, "must be an object");
+    const rr = r;
     const name = typeof rr["name"] === "string" && rr["name"].trim() ? rr["name"].trim() : `rule ${i + 1}`;
-    const w = rr["when"] ?? {};
-    if (typeof w !== "object") bad(name, "'when' must be an object");
+    for (const k of Object.keys(rr)) {
+      if (!["name", "when", "rushDays", "note"].includes(k)) bad(name, `unknown key "${k}" (use name, when, rushDays, note)`);
+    }
+    const w = rr["when"];
+    if (!w || typeof w !== "object" || Array.isArray(w)) bad(name, "needs a 'when' object with at least one condition");
+    if (!Object.keys(w).length) bad(name, "'when' has no conditions; for every booking, change defaultRushDays instead");
     const known = ["sources", "kinds", "packages", "from", "until"];
     for (const k of Object.keys(w)) if (!known.includes(k)) bad(name, `unknown condition "${k}" (use ${known.join(", ")})`);
     const when = {};
     const sources = list(w["sources"], `${name}, sources`);
-    if (sources) when.sources = sources;
+    if (sources) {
+      for (const src of sources) if (!SOURCE.test(src)) bad(name, `source "${src}": lower case letters, digits, - and _ only, at most 40`);
+      when.sources = sources;
+    }
     const kinds = list(w["kinds"], `${name}, kinds`);
     if (kinds) {
       for (const k of kinds) if (!KINDS.includes(k)) bad(name, `kind "${k}" is not one of ${KINDS.join(", ")}`);
@@ -952,7 +969,7 @@ function checkRushSettings(input) {
     }
     for (const k of ["from", "until"]) {
       if (w[k] === void 0) continue;
-      if (typeof w[k] !== "string" || !DATE.test(w[k])) bad(name, `${k} must be a date like 2027-06-30`);
+      if (!isRealDate(w[k])) bad(name, `${k} must be a real date like 2027-06-30`);
       when[k] = w[k];
     }
     if (when.from && when.until && when.from > when.until) bad(name, "from is after until");
@@ -962,7 +979,7 @@ function checkRushSettings(input) {
 }
 var RUSH_SETTINGS = checkRushSettings(rush_fee_default);
 function sourceKey(source) {
-  return String(source ?? "").split("/")[0].trim().toLowerCase();
+  return String(source ?? "").split("/")[0].trim().toLowerCase().replace(/[^a-z0-9_-]/g, "").slice(0, 40);
 }
 function bookingSide(packageIds = []) {
   let inside = false;
@@ -1222,7 +1239,9 @@ function checkPromoCodes(input) {
   const bad = (where, what) => {
     throw new Error(`config/promo-codes.json: ${where}: ${what}`);
   };
-  const codes = input?.codes;
+  if (!input || typeof input !== "object" || Array.isArray(input)) bad("the file", "is not a JSON object");
+  for (const k of Object.keys(input)) if (!["_read_me", "codes"].includes(k)) bad("the file", `unknown key "${k}" (use codes)`);
+  const codes = input.codes;
   if (!Array.isArray(codes)) bad("codes", "must be a list");
   const seen = /* @__PURE__ */ new Set();
   const known = ["code", "label", "percentOff", "dollarsOff", "active", "until", "minServiceDollars", "blurb", "note"];
@@ -1242,7 +1261,7 @@ function checkPromoCodes(input) {
     if (pct !== void 0 && (typeof pct !== "number" || !(pct > 0 && pct <= 100))) bad(where, "percentOff must be more than 0 and at most 100");
     if (usd !== void 0 && (typeof usd !== "number" || !(usd > 0))) bad(where, "dollarsOff must be more than 0");
     const until = o["until"];
-    if (until !== void 0 && (typeof until !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(until))) bad(where, "until must be a date like 2027-06-30");
+    if (until !== void 0 && !isRealDate(until)) bad(where, "until must be a real date like 2027-06-30");
     const min = o["minServiceDollars"];
     if (min !== void 0 && (typeof min !== "number" || min < 0)) bad(where, "minServiceDollars must be 0 or more");
     return {
@@ -1689,9 +1708,7 @@ function validateWire(body, opts) {
     promoCode = code || null;
   }
   let source = null;
-  if (typeof cart["source"] === "string") {
-    source = cart["source"].trim().toLowerCase().replace(/[^a-z0-9_-]/g, "").slice(0, 40) || null;
-  }
+  if (typeof cart["source"] === "string") source = sourceKey(cart["source"]) || null;
   let address = null;
   let zip = null;
   const rawAddr = cart["address"];

@@ -19,6 +19,7 @@
 import { findAddon, findCoatingTerm, findCorrectionTier, isSelectable } from "../catalog/addons.js";
 import { findPackage, vehicleSize } from "../catalog/seed.js";
 import { MAX_ONE_WAY_MINUTES } from "../travel/zipRanges.js";
+import { sourceKey } from "./rush.js";
 
 /* ---------------- shapes ---------------- */
 
@@ -354,9 +355,7 @@ export function validateWire(body: unknown, opts: ValidateOptions): WireValidati
 
   /* ---- arrival source, for the rush fee rules ---- */
   let source: string | null = null;
-  if (typeof cart["source"] === "string") {
-    source = cart["source"].trim().toLowerCase().replace(/[^a-z0-9_-]/g, "").slice(0, 40) || null;
-  }
+  if (typeof cart["source"] === "string") source = sourceKey(cart["source"]) || null;
 
   /* ---- address, and the ZIP that tax and travel come from ---- */
   let address: WireAddress | null = null;

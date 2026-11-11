@@ -73,6 +73,12 @@ if (/\{\{[A-Z0-9_]+\}\}/.test(out)) {
 // build. JSON is valid JavaScript, and the ids and version names are limited
 // to letters, digits and dashes, so nothing in it can end the statement.
 const experiments = experimentsForPage();
+
+// The rush fee and discount code files are checked when the pricing code
+// loads. esbuild bundles them without running anything, so load the server
+// bundle here: a mistake in config/rush-fee.json or config/promo-codes.json
+// stops the build instead of shipping a booking function that throws.
+await import("../../netlify/functions/_pricing.mjs");
 const outWithTests = out + "\nwindow.AC_EXPERIMENTS = " + JSON.stringify(experiments) + ";\n";
 
 fs.writeFileSync(OUT, outWithTests);

@@ -17,12 +17,15 @@ export function checkExperiments(input) {
   const bad = (where, what) => {
     throw new Error(`config/experiments.json: ${where}: ${what}`);
   };
-  const list = input?.experiments;
+  if (!input || typeof input !== "object" || Array.isArray(input)) bad("the file", "is not a JSON object");
+  for (const k of Object.keys(input)) if (!["_read_me", "experiments"].includes(k)) bad("the file", `unknown key "${k}" (use experiments)`);
+  const list = input.experiments;
   if (!Array.isArray(list)) bad("experiments", "must be a list (it can be empty: [])");
   const known = ["id", "name", "status", "sources", "versions", "winner", "note"];
   const ids = new Set();
   return list.map((x, i) => {
-    const id = x?.id;
+    if (!x || typeof x !== "object" || Array.isArray(x)) bad(`test ${i + 1}`, "must be an object");
+    const id = x.id;
     const where = typeof id === "string" ? id : `test ${i + 1}`;
     if (typeof id !== "string" || !/^[a-z0-9][a-z0-9-]{0,29}$/.test(id)) {
       bad(where, "id must be lower case letters, digits and dashes, at most 30");

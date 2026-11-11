@@ -110,6 +110,15 @@ describe("a mistake in the file fails loudly", () => {
     ["unknown condition", { defaultRushDays: 3, rules: [{ name: "x", when: { source: ["golf"] }, rushDays: 1 }] }],
     ["bad date", { defaultRushDays: 3, rules: [{ name: "x", when: { until: "June 30" }, rushDays: 1 }] }],
     ["from after until", { defaultRushDays: 3, rules: [{ name: "x", when: { from: "2027-02-01", until: "2027-01-01" }, rushDays: 1 }] }],
+    // From the bug hunt (November 11): each of these used to pass the build.
+    ["a misspelt 'when' (it matched every booking)", { defaultRushDays: 2, rules: [{ name: "golf", When: { sources: ["golf"] }, rushDays: 0 }] }],
+    ["a rule with no conditions", { defaultRushDays: 2, rules: [{ name: "x", when: {}, rushDays: 0 }] }],
+    ["a rule with 'when' null", { defaultRushDays: 2, rules: [{ name: "x", when: null, rushDays: 0 }] }],
+    ["a duplicate key with another case", { defaultRushDays: 2, rules: [{ name: "x", when: { kinds: ["exterior"] }, rushDays: 1, rushdays: 0 }] }],
+    ["a misspelt top-level key", { defaultRushDays: 2, rules: [], defaultRushdays: 0 }],
+    ["an impossible date", { defaultRushDays: 2, rules: [{ name: "x", when: { until: "2027-13-45" }, rushDays: 1 }] }],
+    ["a source the server could never match", { defaultRushDays: 2, rules: [{ name: "x", when: { sources: ["golf course"] }, rushDays: 0 }] }],
+    ["a source with a slash", { defaultRushDays: 2, rules: [{ name: "x", when: { sources: ["golf/print"] }, rushDays: 0 }] }],
   ];
   for (const [what, input] of bad) {
     it(what, () => expect(() => checkRushSettings(input)).toThrow(/config\/rush-fee\.json/));
@@ -136,6 +145,17 @@ describe("the server prices the rush the same way", () => {
 
   it("a golf visit tomorrow pays the rush like anyone", () => {
     expect(priceFromWire(cart(INT, at(1), "golf"), { nowMs: NOW }).priority).toBe(true);
+  });
+
+  it("the browser and the server reduce a source the same way", () => {
+    // The browser passes AC_SOURCE() ("golf / print / qr") to rushWindow; the
+    // wire gets its first part and cleans it again. Both must land on one key.
+    for (const raw of ["golf / print / qr", "Golf", "gol.f / x", "go lf", "golf course / print", "x".repeat(60)]) {
+      const browser = sourceKey(raw);
+      const sent = raw.split("/")[0]!.trim().toLowerCase();
+      const v = validateWire({ cart: { ...cart(INT, at(5)), source: sent }, contact: { name: "T", phone: "5135550100" } }, { requireAddress: true, nowMs: NOW });
+      expect(v.ok && (v.booking.cart.source ?? ""), raw).toBe(browser);
+    }
   });
 
   it("the wire keeps a clean source and drops junk", () => {

@@ -45,7 +45,15 @@ export interface RushBooking {
 }
 
 const KINDS: BookingSide[] = ["interior", "exterior", "both"];
-const DATE = /^\d{4}-\d{2}-\d{2}$/;
+const SOURCE = /^[a-z0-9_-]{1,40}$/;
+
+/** A real calendar date, YYYY-MM-DD: 2027-13-45 is refused, not just odd-looking. */
+export function isRealDate(v: unknown): v is string {
+  if (typeof v !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(v)) return false;
+  const [y, m, d] = v.split("-").map(Number);
+  const t = new Date(Date.UTC(y!, m! - 1, d!));
+  return t.getUTCFullYear() === y && t.getUTCMonth() === m! - 1 && t.getUTCDate() === d;
+}
 
 /** Throws with a message that names the rule and the field. */
 export function checkRushSettings(input: unknown): RushSettings {
@@ -63,20 +71,36 @@ export function checkRushSettings(input: unknown): RushSettings {
     }
     return (v as string[]).map((s) => s.trim().toLowerCase());
   };
-  if (!input || typeof input !== "object") bad("the file", "is not a JSON object");
+  if (!input || typeof input !== "object" || Array.isArray(input)) bad("the file", "is not a JSON object");
   const o = input as Record<string, unknown>;
+  // A misspelt key is silently ignored by JSON, so every key is checked.
+  for (const k of Object.keys(o)) {
+    if (!["_read_me", "defaultRushDays", "rules"].includes(k)) bad("the file", `unknown key "${k}" (use defaultRushDays, rules)`);
+  }
   const defaultRushDays = days(o["defaultRushDays"], "defaultRushDays");
   if (!Array.isArray(o["rules"])) bad("rules", "must be a list (it can be empty: [])");
   const rules = (o["rules"] as unknown[]).map((r, i): RushRule => {
-    const rr = (r ?? {}) as Record<string, unknown>;
+    if (!r || typeof r !== "object" || Array.isArray(r)) bad(`rule ${i + 1}`, "must be an object");
+    const rr = r as Record<string, unknown>;
     const name = typeof rr["name"] === "string" && rr["name"].trim() ? rr["name"].trim() : `rule ${i + 1}`;
-    const w = (rr["when"] ?? {}) as Record<string, unknown>;
-    if (typeof w !== "object") bad(name, "'when' must be an object");
+    for (const k of Object.keys(rr)) {
+      if (!["name", "when", "rushDays", "note"].includes(k)) bad(name, `unknown key "${k}" (use name, when, rushDays, note)`);
+    }
+    // A rule with no conditions would match every booking: a misspelt "when"
+    // must not quietly change the price of everything.
+    const w = rr["when"] as Record<string, unknown>;
+    if (!w || typeof w !== "object" || Array.isArray(w)) bad(name, "needs a 'when' object with at least one condition");
+    if (!Object.keys(w).length) bad(name, "'when' has no conditions; for every booking, change defaultRushDays instead");
     const known = ["sources", "kinds", "packages", "from", "until"];
     for (const k of Object.keys(w)) if (!known.includes(k)) bad(name, `unknown condition "${k}" (use ${known.join(", ")})`);
     const when: RushWhen = {};
     const sources = list(w["sources"], `${name}, sources`);
-    if (sources) when.sources = sources;
+    if (sources) {
+      // The same alphabet the browser and the server reduce a source to
+      // (sourceKey), or a rule could match on one side and not the other.
+      for (const src of sources) if (!SOURCE.test(src)) bad(name, `source "${src}": lower case letters, digits, - and _ only, at most 40`);
+      when.sources = sources;
+    }
     const kinds = list(w["kinds"], `${name}, kinds`);
     if (kinds) {
       for (const k of kinds) if (!KINDS.includes(k as BookingSide)) bad(name, `kind "${k}" is not one of ${KINDS.join(", ")}`);
@@ -89,7 +113,7 @@ export function checkRushSettings(input: unknown): RushSettings {
     }
     for (const k of ["from", "until"] as const) {
       if (w[k] === undefined) continue;
-      if (typeof w[k] !== "string" || !DATE.test(w[k] as string)) bad(name, `${k} must be a date like 2027-06-30`);
+      if (!isRealDate(w[k])) bad(name, `${k} must be a real date like 2027-06-30`);
       when[k] = w[k] as string;
     }
     if (when.from && when.until && when.from > when.until) bad(name, "from is after until");
@@ -100,9 +124,13 @@ export function checkRushSettings(input: unknown): RushSettings {
 
 export const RUSH_SETTINGS: RushSettings = checkRushSettings(raw);
 
-/** "golf" from "golf / print / qr"; lower case, nothing else. */
-export function sourceKey(source: string | null | undefined): string {
-  return String(source ?? "").split("/")[0]!.trim().toLowerCase();
+/**
+ * "golf" from "golf / print / qr": the first part, lower case, letters,
+ * digits, - and _ only, at most 40. The browser and the server (wire.ts) both
+ * reduce a source with this, so a rule matches on both sides or neither.
+ */
+export function sourceKey(source: unknown): string {
+  return String(source ?? "").split("/")[0]!.trim().toLowerCase().replace(/[^a-z0-9_-]/g, "").slice(0, 40);
 }
 
 /** Interior, exterior or both, from the packages booked; null with none. */
