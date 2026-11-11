@@ -155,13 +155,12 @@
     // WHERE BEFORE TIME (owner, November 10): the times offered depend on the
     // drive there and the weather at that address, so the address comes first.
     // The fee is measured again for the time picked, because traffic matters.
-    { id: 'location', tab: 'Where',    title: 'Where are we detailing?',   auto: false, render: rLoc,     valid: vLoc,     sum: sLoc },
+    { id: 'location', tab: 'Where',    title: 'Where are we detailing?',   auto: false, render: rLoc,     valid: vLoc },
     // Not auto as a step: the calendar view needs Continue. Our recommended
     // times (and the chips in the summary) do move on when tapped.
-    { id: 'time',     tab: 'Time',     title: 'Pick your time',            auto: false, render: rTime,    valid: vTime,    sum: sTime,
-      sub: 'Nothing is charged until the next step. Pick what works for you.' },
-    { id: 'contact',  tab: 'Accept',   title: 'Your details, and what you agree to', auto: false, render: rDetails, valid: vContact, sum: sContact },
-    { id: 'pay',      tab: 'Checkout', title: 'Checkout',                  auto: false, render: rPay,     valid: vPay,     sum: sPay,
+    { id: 'time',     tab: 'Time',     title: 'Pick your time',            auto: false, render: rTime,    valid: vTime },
+    { id: 'contact',  tab: 'Accept',   title: 'Your details, and what you agree to', auto: false, render: rDetails, valid: vContact },
+    { id: 'pay',      tab: 'Checkout', title: 'Checkout',                  auto: false, render: rPay,     valid: vPay,
       sub: 'A few details and you are booked. Nothing is charged today.' }
   ];
 
@@ -204,15 +203,6 @@
     var n = state.vehicles.reduce(function (t, v) { return t + v.addons.length; }, 0);
     return n ? n + ' added' : 'None';
   }
-  function sLoc() { return state.address.city || state.address.zip || ''; }
-  function sTime() {
-    if (!state.slot && isInquiry()) return 'Times requested';
-    return state.slot
-      ? new Date(state.slot).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: TZ }) + ', ' +
-        new Date(state.slot).toLocaleTimeString('en-US', { hour: 'numeric', timeZone: TZ })
-      : '';
-  }
-  function sContact() { return state.contact.name ? state.contact.name.split(' ')[0] : ''; }
   function sPay() { return $(q().totalCents); }
 
   /** "50%", "10%". Basis points are for the engine, not for a customer. */
