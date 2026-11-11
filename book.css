@@ -484,6 +484,10 @@ button.bk-tl-s:hover { border-color: var(--red); box-shadow: 0 0 0 3px var(--red
 /* Rows under a block (chosen or pointed at) keep their outline and hide
    what is in them, so the block shows its price once. */
 .bk-tl-s.under > *, .bk-tl-s.pv > * { visibility: hidden; }
+/* ...except the suggested star, which stays on its row above any block, so
+   a block never hides which start we suggest (owner, November 11). */
+.bk-tl-s.under > .bk-tl-star, .bk-tl-s.pv > .bk-tl-star { visibility: visible; position: relative; z-index: 4; }
+.bk-tl.pointing .bk-tl-s.under:not(.pv) > .bk-tl-star { z-index: auto; }
 /* Pointing at another start hides the chosen job, and its rows show again. */
 .bk-tl.pointing .bk-tl-span.mine { visibility: hidden; }
 .bk-tl.pointing .bk-tl-s.under:not(.pv) > * { visibility: visible; }
