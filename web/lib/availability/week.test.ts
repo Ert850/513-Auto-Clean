@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { zonedToUtc } from "../time/zone.js";
-import { addWeeks, buildWeek, dayOpenShare, daySuggestions, lastRowForSlots, STARTS_PER_DAY, stretchStarts, recommendBestDays, TIME_RECOMMENDATION_RULES, weekStartOf } from "./week.js";
+import { addWeeks, buildWeek, dayOpenShare, daySuggestions, lastRowForSlots, STARTS_PER_DAY, stretchStarts, timelineRange, recommendBestDays, TIME_RECOMMENDATION_RULES, weekStartOf } from "./week.js";
 
 const TZ = "America/New_York";
 const at = (mo: number, d: number, h: number, mi = 0) => zonedToUtc(2026, mo, d, h, mi, 0, TZ);
@@ -203,5 +203,33 @@ describe("stretchStarts (say the price once, November 11)", () => {
   it("starts a stretch on the first row shown", () => {
     expect(stretchStarts(["+$25"])).toEqual([true]);
     expect(stretchStarts([])).toEqual([]);
+  });
+});
+
+describe("timelineRange (no dead grey rows, November 11)", () => {
+  const REG = { from: 600, to: 1080 };
+  const shut = { early: false, late: false };
+  const h = (x: number) => x * 60;
+
+  it("starts at the first time, not at 10am", () => {
+    expect(timelineRange([h(13), h(14)], 120, shut, REG)).toEqual({ from: h(13), last: h(14), to: h(16) });
+  });
+  it("ends where the last job ends, not at 6pm", () => {
+    expect(timelineRange([h(10), h(11)], 60, shut, REG)).toEqual({ from: h(10), last: h(11), to: h(12) });
+  });
+  it("keeps the rows a late-finishing job runs into, as its tail", () => {
+    // Late starts folded: 6, 6:30 and 7pm sit in the tail but are not offered there.
+    expect(timelineRange([h(17) + 30, h(18), h(19)], 120, shut, REG)).toEqual({ from: h(17) + 30, last: h(17) + 30, to: h(19) + 30 });
+  });
+  it("keeps a gap enclosed by times", () => {
+    expect(timelineRange([h(10), h(15)], 60, shut, REG)).toEqual({ from: h(10), last: h(15), to: h(16) });
+  });
+  it("leaves folded early and late starts out until they are opened", () => {
+    expect(timelineRange([h(8), h(12), h(21)], 60, shut, REG)).toEqual({ from: h(12), last: h(12), to: h(13) });
+    expect(timelineRange([h(8), h(12), h(21)], 60, { early: true, late: true }, REG)).toEqual({ from: h(8), last: h(21), to: h(22) });
+  });
+  it("stops at midnight, and is null with nothing in view", () => {
+    expect(timelineRange([h(22)], 180, { early: false, late: true }, REG)).toEqual({ from: h(22), last: h(22), to: h(24) });
+    expect(timelineRange([h(8)], 60, shut, REG)).toBeNull();
   });
 });

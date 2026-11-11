@@ -9,11 +9,11 @@ Built November 11 from the owner's picks of rendered mockups (`docs/mockups/cale
 - **Every open time** was a green box with a tick or "Standard price", so a whole day read as one block of green.
 
 ## What changed
-- **Wide screens (laptop, desktop, tablet), option C:** a strip of the seven days, then the open day as a timeline, one row per half hour.
+- **Tablets and up (window 768 px or wider), option C:** a strip of the seven days, then the open day as a timeline, one row per half hour.
   - Pointing at a start draws the whole job over the rows it covers: "10am to 12pm", the price once in the middle, and the star where the row has it. The rows under it hide their contents.
   - A click or tap shows the block solid for 0.45 s, then moves on to the next section (no delay with reduced motion). A touch screen sees the whole job too.
   - Half-hour starts are their own rows, so touch screens can reach them (the old grid needed a mouse for the bottom half of a box).
-- **Phones, option B:** the week bar and the day strip stay pinned while the times scroll. Each part-of-day heading ("Midday", "Afternoon") stays pinned under them while any of its times are on screen, then gives way to the next.
+- **Phones (window under 768 px), option B:** the week bar and the day strip stay pinned while the times scroll. Each part-of-day heading ("Midday", "Afternoon") stays pinned under them while any of its times are on screen, then gives way to the next.
 - **Both:**
   - They open on 10am to 6pm. "Earlier times, 6am to 9:30am" and "Later times, …" open the rest. They open by themselves when the chosen time is there, or when the day has nothing in the regular hours.
   - A day with only evening times left starts at its first time, not under a column of grey rows.
@@ -54,6 +54,19 @@ Built November 11 from the owner's picks of rendered mockups (`docs/mockups/cale
 - Phone: scroll a day and watch the headings stay pinned; tap a time.
 - Tablet (touch, wide): tap a half-hour row; the block shows briefly, then the form moves on.
 
+## Follow-up (November 11): the phone design on every phone, no dead grey rows
+- **Which design where.** Phones (window under 768 px wide) get the day list (B), tablets and up the timeline (C). *Root cause:* the switch was the old grid's 520 px line on the form's width, so 540 and 600 px phones got the laptop design. It is now decided by the window (`phoneView()`).
+  - Checked at 320, 375, 414, 540, 600 and 767 (all B) and at 768 and 820 (C): white rows, no ticks, "Standard price" green and said once, strip and headings pinned on B. No sideways scroll and no console errors at any width.
+- **No dead grey rows.** The timeline used to fill 10am to 6pm whatever the day had. Now (`timelineRange`, 6 tests):
+  - it starts at the day's first time shown and ends where the last one's job finishes;
+  - grey hatching appears only for a gap between two times;
+  - the rows after the last start are that job's tail: no box and a faded hour, so its block never runs off the bottom, and they never read as "not available".
+  - *Bug found on the way:* offering the late times that fall in that tail grew the rows again, until "Later times" never folded. Tail rows are never offered as times now.
+  - Checked on the live calendar: Wednesday, Friday and Saturday run 10am to 7pm, 16 times plus 3 tail rows, and pointing at 5:30pm draws "5:30pm to 7:30pm" ending exactly on the last row. Today runs 8:30 to 11:30pm with 4 times and 3 tail rows, and no grey rows anywhere.
+- **Pinned bars at 320 px.** *Root cause:* the time-zone line wraps only once the web font loads, after the bars were measured, so the day strip pinned a few pixels too high and the list showed through. A `ResizeObserver` re-measures now.
+- **Tests:** 517 of 517 (Eastern time).
+
 ## Not done
 - **Keyboard:** Tab reaches each row, but nothing draws the block on keyboard focus. The aria-label reads the full span and price.
 - **On a phone at the very end of the list,** the pinned "Go to a date" bar sits about 45 px above the price bar instead of on it. This happened before this change too (the checkout section's bottom padding).
+- **Seen at 320 px, outside this change:** in the checkout top bar the back button overlaps "Contact", and "Tell us when suits" wraps under "Go to".

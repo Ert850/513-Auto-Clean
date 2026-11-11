@@ -2622,6 +2622,16 @@
   var TZ = 'America/New_York';
   /** Which layout the calendar was last drawn in: true for the phone list. */
   var paintedNarrow = null;
+  /**
+   * Phones get the day list (option B), everything from a tablet up the day
+   * timeline (option C), owner's picks, November 11. Decided by the window,
+   * not the form: the form is 680 px at most on any big screen, so its width
+   * cannot tell a big phone from a laptop. 768 is a tablet held upright.
+   */
+  var PHONE_MAX = 767.98;
+  function phoneView() {
+    return Boolean(window.matchMedia && window.matchMedia('(max-width: ' + PHONE_MAX + 'px)').matches);
+  }
   /** A tap on the day timeline is showing its block before the form moves on. */
   var tlPicking = false;
   /** "See additional times" was just pressed: the calendar comes to the top once painted. */
@@ -3795,7 +3805,7 @@
     var first = week.days[0], last = week.days[6];
     var title = tzDay(first.dayStart + DAY / 2, { month: 'short', day: 'numeric' }) + ' to ' +
       (first.mo === last.mo ? last.d : tzDay(last.dayStart + DAY / 2, { month: 'short', day: 'numeric' }));
-    var narrow = (el('bkBody') || box).clientWidth < 520;
+    var narrow = phoneView();
     paintedNarrow = narrow;
 
     var html = '<div class="bk-wk' + (narrow ? ' narrow' : '') + '">' + unconfiguredNote(calc) +
@@ -4049,25 +4059,19 @@
     var byMin = {};
     starts.forEach(function (s) { byMin[localMin(s.ms)] = s; });
 
-    // From 10am, or the first early start; down to the end of the last job
-    // shown, so a block never runs off the bottom (a 5:30pm start for two
-    // hours keeps the rows to 7:30pm).
-    // A day with nothing in the regular hours starts at its first time, not
-    // under a column of grey daytime rows (today, with only the evening left).
-    var reg = starts.some(function (s) { var m = localMin(s.ms); return m >= REG_FROM && m < REG_TO; });
-    var from = reg ? REG_FROM : localMin(starts[0].ms), end = reg ? REG_TO : from;
-    starts.forEach(function (s) {
-      var m = localMin(s.ms);
-      if (m < REG_FROM && !folds.early) return;
-      if (m < REG_FROM) from = Math.min(from, m);
-      if (m >= REG_TO && !folds.late) return;
-      end = Math.max(end, m + dur);
-    });
-    var to = Math.min(Math.ceil(end / 30) * 30, rows[rows.length - 1] + 60);
+    // Rows from the first time shown to the end of the last job that can
+    // start in them: a grey row only between two times, or under a job's
+    // tail (owner, November 11: no dead rows).
+    var range = P.timelineRange(starts.map(function (s) { return localMin(s.ms); }), dur, folds,
+      { from: REG_FROM, to: REG_TO }, rows[rows.length - 1] + 60);
+    if (!range) range = { from: localMin(starts[0].ms), last: localMin(starts[0].ms), to: localMin(starts[0].ms) + 30 };
     var shown = [];
-    for (var m = Math.floor(from / 30) * 30; m < to; m += 30) shown.push(m);
-    var hidEarly = starts.filter(function (s) { return localMin(s.ms) < shown[0]; });
-    var hidLate = starts.filter(function (s) { return localMin(s.ms) >= to; });
+    for (var m = range.from; m < range.to; m += 30) shown.push(m);
+    var hidEarly = folds.early ? [] : starts.filter(function (s) { return localMin(s.ms) < REG_FROM; });
+    var hidLate = folds.late ? [] : starts.filter(function (s) { return localMin(s.ms) >= REG_TO; });
+    // Rows after the last start shown are only the tail of its job.
+    byMin = {};
+    starts.forEach(function (s) { var x = localMin(s.ms); if (x >= range.from && x <= range.last) byMin[x] = s; });
 
     var first = P.stretchStarts(shown.map(function (x) { return byMin[x] ? priceWords(byMin[x].ms) : null; }));
     var mine = -1;
@@ -4080,7 +4084,12 @@
     shown.forEach(function (x, i) {
       var s = byMin[x];
       var under = mine > -1 && i >= mine && i < mine + cover ? ' under' : '';
-      html += '<span class="bk-tl-t' + (x % 60 ? ' half' : '') + '" style="grid-row:' + (i + 1) + '">' + endLabel(x) + '</span>';
+      var tail = x > range.last;
+      html += '<span class="bk-tl-t' + (x % 60 ? ' half' : '') + (tail ? ' tail' : '') + '" style="grid-row:' + (i + 1) + '">' + endLabel(x) + '</span>';
+      if (tail) {
+        html += '<span class="bk-tl-s tail' + under + '" style="grid-row:' + (i + 1) + '" data-row="' + i + '" aria-hidden="true"></span>';
+        return;
+      }
       if (!s) {
         html += '<span class="bk-tl-s no' + under + '" style="grid-row:' + (i + 1) + '" data-row="' + i + '" aria-hidden="true"></span>';
         return;
@@ -4142,13 +4151,26 @@
    * pinned while the times scroll (owner, November 11). The heading's pin
    * sits under the other two, so their heights are measured, not guessed.
    */
+  var pinWatch = null;
   function pinWeek() {
     var wk = root.querySelector('.bk-wk.narrow');
     var h = wk && wk.querySelector('.bk-wk-h');
     var st = wk && wk.querySelector('.bk-wk-strip');
     if (!h || !st || !h.getBoundingClientRect) return;
-    wk.style.setProperty('--wk-h', Math.round(h.getBoundingClientRect().height) + 'px');
-    wk.style.setProperty('--wk-strip', Math.round(st.getBoundingClientRect().height) + 'px');
+    var set = function () {
+      wk.style.setProperty('--wk-h', Math.round(h.getBoundingClientRect().height) + 'px');
+      wk.style.setProperty('--wk-strip', Math.round(st.getBoundingClientRect().height) + 'px');
+    };
+    set();
+    // Measured again whenever either bar changes size: at 320 px the time
+    // zone line wraps only once the web font arrives, and the strip pinned
+    // under a bar that had since grown, with the list showing through.
+    if (pinWatch) pinWatch.disconnect();
+    if (window.ResizeObserver) {
+      pinWatch = new ResizeObserver(set);
+      pinWatch.observe(h);
+      pinWatch.observe(st);
+    }
   }
 
   /** Room under the box for the "Change to suggested?" tab, while it shows. */
@@ -6974,7 +6996,7 @@
     window.addEventListener('resize', function () {
       if (!host.hidden && paintedNarrow) pinWeek();
       if (host.hidden || state.done || !onCheckout() || !lastPaint || paintedNarrow === null) return;
-      if ((el('bkBody').clientWidth < 520) !== paintedNarrow) repaintSlots();
+      if (phoneView() !== paintedNarrow) repaintSlots();
     });
     host.addEventListener('input', onInput);
 

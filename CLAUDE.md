@@ -191,7 +191,9 @@ Read this before changing anything. Every rule below came from a real bug or an 
 ## Booking form time picker (rebuilt November 11)
 - **No `<section>` inside the booking form.** `styles.css` gives every `section` 40 to 72 px of padding, so wrapping the phone list's part-of-day groups in `<section>` opened 40 and 80 px gaps. Use a `div` (with `role="group"` where it groups).
 - **A heading that stays pinned while its items show is `position: sticky` inside a wrapper holding only its group.** It leaves with the wrapper. When other bars are pinned above it, measure their heights (`pinWeek()` sets `--wk-h`, `--wk-strip`); never guess them.
-- **Wide screens show one day as half-hour rows; phones show the day's list** (owner's picks C and B). Both open on 10am to 6pm, with "Earlier times" and "Later times" folds. The rows reach the end of the last job shown, so a hovered or chosen block never runs off the bottom.
+- **Phones (window under 768 px) show the day's list; tablets and up show one day as half-hour rows** (owner's picks B and C). Decide by the window (`phoneView()`), not the form: the form is at most 680 px on any big screen, so its width can't tell a big phone from a laptop, and a 520 px form-width line sent 540 to 600 px phones the laptop design.
+- **No dead grey rows on the timeline** (owner, November 11). Rows run from the first time shown to the end of the last one's job (`timelineRange`). Grey hatching is only a gap between two times. The rows after the last start are that job's tail, drawn empty with a faded hour, never as times: offering the late times that fall in a tail grew the rows again, until "Later times" never folded.
+- **A pinned bar's height can change after it is measured** (a web font wrapping a line at 320 px). Re-measure with a `ResizeObserver`.
 
 ## Verifying UI changes
 - **The in-app browser pane, when hidden, does not run smooth scrolling or the browser's own jump-to-section on page load.** Don't trust scroll measurements from it. Drive headless Chrome over CDP with real mouse events instead (the nav click checker lives in the session scratchpad).
