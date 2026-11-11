@@ -41,8 +41,14 @@ The 513 Auto Clean jobs calendar goes free/busy only **the minute this branch is
 7. **Closing while Confirm was sending** sent an "unfinished booking" capture and hid the Done screen. Close waits for the send (up to 20 seconds), and nothing is captured mid-send.
 8. Smaller: "Water: not sure" (not "unsure"); Help me decide's email has no "$0 total"; the abandoned-checkout phone check matches the server's (no area code starts with 0 or 1); the Yes / No / Not sure buttons are 44 px; Done has no empty footer strip on phones.
 
-### Still open from that validation (needs a decision)
-- **The follow-up answers reach the owner's inbox, not the detailer's calendar.** Kris never sees them unless they are forwarded. Writing them onto the calendar event (found by its booking key) is a small server function; it is a new public endpoint, so it is left for your go-ahead. The button still says "Send to your detailer" (your label); with this gap it is only true for the owner's own jobs.
+### The setup answers now reach the detailer (your go-ahead, November 11)
+- **New function `booking-followup`** (`/api/booking-followup`). When someone answers "Help us get ready" for a booked time, the answers are also written onto that booking's calendar event, on whichever calendar it went to (Kris's jobs land on 513 Kris Bookings), under "AFTER BOOKING (Help us get ready)". Sending again replaces that part; it never repeats.
+- **Why it can't be misused:** it only finds an event this site wrote, by the booking's own key, and only if the phone number matches the one the booking was made with (now kept privately on the event). It only works within 3 days of the booking, only touches its own section, gives the same answer for every miss, and is rate limited. It sends no email.
+- The owner's follow-up email still goes as before. The thank-you says "Thanks, it is on your booking / Your detailer sees it with the job" when the calendar took it, otherwise "Thanks, we have it". A request (no detailer yet) shows "Send to us" instead of "Send to your detailer".
+- **To test on a deploy preview:** book a time, answer on Done, press Send, then open the job on its calendar: the answers are at the bottom. Needs the Google sign-in values, which are set.
+- Tests: `web/lib/booking-followup.test.ts` (5), and the function is in the hostile-input smoke test.
+
+### Still open from that validation
 - When the card-on-file switch goes live, its payment box should carry the short-notice line and the "a few quick questions" line too (latent: the switch is off).
 
 ### Checked

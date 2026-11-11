@@ -52,7 +52,7 @@
 
 *Recommended:* ends 6 weeks after the issue lands, first detail only, one code per booking, and still works with the multi-vehicle saving.
 
-**6. Should the magazine offer skip the rush fee?** (New.) In cold months, exterior and combined jobs can usually only be booked within the next week, which mostly falls inside the 3-day rush window. So readers who want an exterior detail would pay the 20% rush fee on top of the offer.
+**6. Should the magazine offer skip the rush fee?** In cold months, most exterior and combined jobs can only be booked inside the 3-day rush window (question 18 explains why). So readers who want an exterior detail would pay the 20% rush fee on top of the offer. If you pick an answer to question 18 that fixes it for everyone, this one is answered too.
 - [ ] Keep the rush fee as it is
 - [ ] No rush fee on exterior bookings more than 1 day out (for everyone)
 - [ ] No rush fee when the weather is what limits the dates
@@ -99,6 +99,19 @@
 - Prestige Living ad: $________
 
 ---
+
+## Flagged for your review: the rush fee on exterior jobs
+
+**18. Our booking rules make most exterior and combined jobs pay the rush fee in cold months, without anyone meaning them to.** (Flagged November 11.)
+- **Why it happens:** an exterior detail needs dry, warm enough weather, so the form only offers exterior times inside the weather forecast, about a week ahead, and only on days that pass. The rush fee (+20%) applies to any booking within 3 days. In winter the passing days are often the next few, so the customer's only exterior times carry the fee. They pay 20% more for a limit set by the weather, not because they asked to be fitted in.
+- **Who it hits:** every Full Exterior and every interior-and-exterior combination, including magazine readers using an offer code (question 6).
+- **Options:**
+  - [ ] Keep it as it is
+  - [ ] No rush fee on exterior bookings more than 1 day out (for everyone)
+  - [ ] No rush fee when the weather is what limits the dates
+  - [ ] Other: ________
+
+*Recommended:* no rush fee on exterior bookings more than 1 day out. It's simple to explain, fair to every customer, and still charges for genuine next-day fitting in.
 
 ## Other decisions waiting on you (short)
 
