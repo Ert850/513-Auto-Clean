@@ -81,7 +81,12 @@ Built overnight, November 10 to 11, for you to evaluate. It combines your 8 answ
 - **Also confirmed in Netlify:** `GOOGLE_BUSY_ONLY_CALENDAR_IDS` is set (the review's top condition), and `DETAILERS` is set. The owner confirmed Kris goes live with the new site.
 - **`check-live.mjs`:** read keys only in single quotes, but the published `config.js` is minified with double quotes, so every live key read "not set". It now matches either quote, and also checks GA4 and Clarity.
 
-### Draft print landing pages: `lp-golf.html`, `lp-prestige.html` (for the owner's approval)
+### Print landing pages approved; /golf and /prestige now lead to them (owner, November 11)
+- **Redirects:** `/golf` goes to `lp-golf.html` and `/prestige` to `lp-prestige.html`, still 302 and still tagged (`utm_source`, `utm_medium=print`, `utm_campaign=qr`). `printed-qr.test.ts` passes.
+- **Book Now is red** (`btn-primary`) on both pages (owner: standard, and it stands out), matching the header and the phone bar. "Read the reviews" and "Ask a Question" stay ghost buttons.
+- **To test on the deploy preview:** `/golf` and `/prestige` answer 302 and open their pages; a booking made from there names the source in its email.
+
+### Draft print landing pages: `lp-golf.html`, `lp-prestige.html`
 - **What:** the owner's brief: lead with the story (a UC student's business, five-star reviews), then three options (interior, exterior, paint correction with protection, shown as coming soon).
   - Golf: "Get your car detailed while you play", at home, at the office, or at the course (the owner says the club car park is fine until told otherwise).
   - Prestige Living: "A showroom finish, at your door", with steam treatment and ceramic coating mentioned.
