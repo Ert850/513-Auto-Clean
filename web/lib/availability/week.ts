@@ -91,6 +91,56 @@ export function lastRowForSlots(slots: number[], durationMin: number, timeZone =
   return Math.min(Math.max(LAST_START_ROW_MIN, endRow), 24 * HOUR - HOUR);
 }
 
+/**
+ * How much of a day is open, 0 to 1: its starts against every half-hour start
+ * the booking window allows (6am to 10pm, 33). The day strip's bar fills to
+ * this (owner, November 11: the bar shows relative availability), so a day
+ * with only an evening slot left reads as nearly full and a free day as open.
+ */
+export const STARTS_PER_DAY =
+  (DEFAULT_BOOKING_WINDOW.latestStartMin - DEFAULT_BOOKING_WINDOW.earliestStartMin) / 30 + 1;
+
+export function dayOpenShare(day: WeekDay): number {
+  const open = day.cells.reduce((n, c) => n + c.starts.length, 0);
+  return Math.min(1, open / STARTS_PER_DAY);
+}
+
+/**
+ * Which times open a stretch of the same price (owner, November 11: say
+ * "Standard price" or "+$25 rush fee" once, not on every row). `keys` is each
+ * row's price in order, null for a row that can't be booked; a booked-out row
+ * ends the stretch, so the price is said again after a gap.
+ */
+export function stretchStarts(keys: (string | null)[]): boolean[] {
+  return keys.map((k, i) => k !== null && (i === 0 || keys[i - 1] !== k));
+}
+
+/**
+ * The half-hour rows the day timeline draws (owner, November 11: no dead
+ * grey rows). From the first time shown to the end of the last one's job.
+ * Rows after `last` (the last start shown) are only the tail of that job,
+ * so its block never runs off the bottom (a 5:30pm start for two hours
+ * keeps rows to 7:30pm); they are drawn empty, not as times. A grey "not
+ * available" row is only ever a gap between two times. Starts outside the
+ * regular hours count only when their side is unfolded. Minutes past
+ * midnight; null when nothing is in view.
+ */
+export function timelineRange(
+  startMins: number[],
+  durationMin: number,
+  show: { early: boolean; late: boolean },
+  regular: { from: number; to: number },
+  capMin = 24 * 60,
+): { from: number; last: number; to: number } | null {
+  const inView = (m: number) => (m >= regular.from || show.early) && (m < regular.to || show.late);
+  const vis = startMins.filter(inView).sort((a, b) => a - b);
+  if (!vis.length) return null;
+  const from = Math.floor(vis[0]! / 30) * 30;
+  const last = vis[vis.length - 1]!;
+  const to = Math.max(...vis.map((m) => m + durationMin));
+  return { from, last, to: Math.min(Math.ceil(to / 30) * 30, capMin) };
+}
+
 export function buildWeek(req: {
   /** Valid starts from computeSlots(), any range; only this week's are used. */
   slots: number[];
