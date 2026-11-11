@@ -93,7 +93,8 @@
      From 1040 to 1089 px the header was wider than the window and Book Now
      ran off the right edge. Now, when the links do not fit, Contact Us shows
      its icon only, then links move from the end, in the same order, into
-     More. Book Now and Contact stay on screen at every width from 720 px. */
+     More. When fewer than three links would be left, the menu button and the
+     bottom bar take over, as on phones (html.nav-burger). */
   var navEl = document.querySelector('.header .nav');
   var navLinks = navEl && navEl.querySelector('.nav-links');
   var navMore = document.getElementById('navMore');
@@ -107,8 +108,14 @@
       if (refocus) navMoreBtn.focus();
     };
     var ppOver = function () { return navLinks.scrollWidth > navLinks.clientWidth + 1; };
+    // Results, Services and Meet the Team are the least the bar shows; with
+    // fewer, it switches to the menu button (owner, November 12: two links
+    // and More looked odd).
+    var PP_MIN = 3;
+    var html = document.documentElement;
     var ppFit = function () {
       ppShut(false);
+      html.classList.remove('nav-burger');
       navEl.classList.remove('pp-tight');
       navMore.hidden = true;
       ppLinks.forEach(function (a) { a.classList.remove('pp-off'); });
@@ -121,6 +128,13 @@
         n--;
         ppLinks[n].classList.add('pp-off');
         navMore.hidden = false;
+      }
+      if (n < PP_MIN) {
+        ppLinks.forEach(function (a) { a.classList.remove('pp-off'); });
+        navMore.hidden = true;
+        navEl.classList.remove('pp-tight');
+        html.classList.add('nav-burger');
+        return;
       }
       ppLinks.slice(n).forEach(function (a) {
         var c = document.createElement('a');
