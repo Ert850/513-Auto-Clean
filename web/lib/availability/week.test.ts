@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { zonedToUtc } from "../time/zone.js";
-import { addWeeks, buildWeek, daySuggestions, lastRowForSlots, recommendBestDays, TIME_RECOMMENDATION_RULES, weekStartOf } from "./week.js";
+import { addWeeks, buildWeek, dayOpenShare, daySuggestions, lastRowForSlots, STARTS_PER_DAY, stretchStarts, recommendBestDays, TIME_RECOMMENDATION_RULES, weekStartOf } from "./week.js";
 
 const TZ = "America/New_York";
 const at = (mo: number, d: number, h: number, mi = 0) => zonedToUtc(2026, mo, d, h, mi, 0, TZ);
@@ -174,5 +174,34 @@ describe("lastRowForSlots", () => {
 
   it("never draws past midnight", () => {
     expect(lastRowForSlots([at(11, 17, 20)], 900)).toBe(23 * 60);
+  });
+});
+
+describe("dayOpenShare (the day strip's bar, November 11)", () => {
+  const cell = (n: number) => ({ hourMin: 600, starts: Array.from({ length: n }, (_, i) => i + 1), pick: n ? 1 : null, premium: false, suggested: false });
+  const day = (...counts: number[]) => ({ dayStart: 0, weekday: 1, y: 2026, mo: 11, d: 13, rush: false, past: false, cells: counts.map(cell) });
+
+  it("counts every half-hour start the window allows, 6am to 10pm", () => {
+    expect(STARTS_PER_DAY).toBe(33);
+  });
+  it("is 0 for a day with nothing open and 1 for a day with every start", () => {
+    expect(dayOpenShare(day(0, 0))).toBe(0);
+    expect(dayOpenShare(day(...Array(16).fill(2), 1))).toBe(1);
+  });
+  it("is the share of starts left", () => {
+    expect(dayOpenShare(day(2, 1))).toBeCloseTo(3 / 33);
+  });
+});
+
+describe("stretchStarts (say the price once, November 11)", () => {
+  it("marks the first row of each run of the same price", () => {
+    expect(stretchStarts(["std", "std", "+$25", "+$25", "std"])).toEqual([true, false, true, false, true]);
+  });
+  it("says the price again after a time that can't be booked", () => {
+    expect(stretchStarts(["std", null, "std"])).toEqual([true, false, true]);
+  });
+  it("starts a stretch on the first row shown", () => {
+    expect(stretchStarts(["+$25"])).toEqual([true]);
+    expect(stretchStarts([])).toEqual([]);
   });
 });

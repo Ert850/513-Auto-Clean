@@ -186,6 +186,13 @@ Read this before changing anything. Every rule below came from a real bug or an 
   - Don't change it back to one hue. Any other ordered scale: one hue, light to dark, checked with the dataviz validator (`validate_palette.js --ordinal`).
 - **A legend key is drawn exactly like the mark it explains.** Travel fee colors live only in `BANDS` in `js/travel.js`; map dots are solid (`fillOpacity: 1`) and every key or dot in the page uses `.tmap-key i, .sg-dot, .fee-dot` (18px, 2px white ring = Leaflet radius 8, weight 2).
 
+- **The time picker's "Standard price" is green (owner, November 11)**, a second exception to "a good answer is ink". Times themselves are white rows like the recommended-time cards, with no ticks and no green fill. A fee is gold. The price is said once per stretch of the same price (`stretchStarts` in `week.ts`), not on every row.
+
+## Booking form time picker (rebuilt November 11)
+- **No `<section>` inside the booking form.** `styles.css` gives every `section` 40 to 72 px of padding, so wrapping the phone list's part-of-day groups in `<section>` opened 40 and 80 px gaps. Use a `div` (with `role="group"` where it groups).
+- **A heading that stays pinned while its items show is `position: sticky` inside a wrapper holding only its group.** It leaves with the wrapper. When other bars are pinned above it, measure their heights (`pinWeek()` sets `--wk-h`, `--wk-strip`); never guess them.
+- **Wide screens show one day as half-hour rows; phones show the day's list** (owner's picks C and B). Both open on 10am to 6pm, with "Earlier times" and "Later times" folds. The rows reach the end of the last job shown, so a hovered or chosen block never runs off the bottom.
+
 ## Verifying UI changes
 - **The in-app browser pane, when hidden, does not run smooth scrolling or the browser's own jump-to-section on page load.** Don't trust scroll measurements from it. Drive headless Chrome over CDP with real mouse events instead (the nav click checker lives in the session scratchpad).
 - **Disable the browser cache, or add a query string, when testing a rebuilt `dist/`.** A cached `index.html` keeps loading the old scripts. Two test runs were wasted on stale pages.

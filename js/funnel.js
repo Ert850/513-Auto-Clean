@@ -54,6 +54,9 @@
       showAll: false,
       weekStart: 0,
       weekDay: -1,
+      // The early and late starts, opened from their folds.
+      wkEarly: false,
+      wkLate: false,
       weekTouched: false,
       // Who the chosen time is booked with: a DETAILERS id, or 'owner'.
       detailer: 'owner',
@@ -2619,6 +2622,10 @@
   var TZ = 'America/New_York';
   /** Which layout the calendar was last drawn in: true for the phone list. */
   var paintedNarrow = null;
+  /** A tap on the day timeline is showing its block before the form moves on. */
+  var tlPicking = false;
+  /** "See additional times" was just pressed: the calendar comes to the top once painted. */
+  var wkScrollUp = false;
   /** The last slot calculation: starts, who takes each, busy time, weather. */
   var lastCalc = null;
 
@@ -3791,7 +3798,7 @@
     var narrow = (el('bkBody') || box).clientWidth < 520;
     paintedNarrow = narrow;
 
-    var html = '<div class="bk-wk">' + unconfiguredNote(calc) +
+    var html = '<div class="bk-wk' + (narrow ? ' narrow' : '') + '">' + unconfiguredNote(calc) +
       '<button type="button" class="bk-wk-more bk-wk-recs" id="bkShowRecs">' + CHEV_L + 'Back to recommended times</button>';
 
     // The time zone under the dates it applies to (was a paragraph under the
@@ -3804,14 +3811,16 @@
       '<button type="button" class="bk-wk-arrow" id="bkWkNext" aria-label="Next week"' + (canNext ? '' : ' disabled') + '>' + CHEV_R + '</button>' +
       '</div></div>';
 
+    // One short key (owner, November 11: no ticks, no green boxes; a time
+    // says its own price). What makes a fee is one tap away, not a paragraph.
+    // The fee hours come from each calendar's OPEN blocks now, so the note
+    // names the kinds of time, not fixed hours.
     html += '<div class="bk-wk-legend">' +
-      '<span><i class="bk-wk-key ok">' + TICK + '</i>Standard price</span>' +
-      '<span><i class="bk-wk-key fee">+$</i>Small fee: early, late or rush</span>' +
       '<span><i class="bk-wk-key sug">' + STAR + '</i>Suggested</span>' +
-      '<span><i class="bk-wk-key no"></i>Unavailable</span>' +
-      // What the fee key means, right beside it rather than under the grid.
-      '<p class="bk-wk-rules">Early is before 10am and late is 6pm or later; rush is within ' +
-        RULES.window.minLeadDays + ' days. Early or late plus rush is ' + (RULES.surcharge.maxTotalBp / 100) + '% in total.</p>' +
+      (narrow ? '' : '<span><i class="bk-wk-key no"></i>Not available</span>') +
+      '<button type="button" class="bk-wk-feeq" id="bkFeeWhy" aria-expanded="false" aria-controls="bkFeeRules">When is there a fee?</button>' +
+      '<p class="bk-wk-rules" id="bkFeeRules" hidden>Some times cost a little more: early or late starts, and times in the next ' +
+        RULES.window.minLeadDays + ' days. When a time costs more, it says so in gold.</p>' +
       '</div>' + weatherNote(calc);
 
     if (!week.openCount) {
@@ -3831,21 +3840,12 @@
         '</b>. <button type="button" class="bk-wk-more" id="bkWkBack">Show that week</button></p>';
     }
 
-    // The grid's boxes are start times; the block drawn on choosing one is the
-    // job. Said once, plainly, above the grid (the phone list shows ranges).
-    if (!narrow) {
-      html += '<p class="bk-wk-how">' + (FINE_POINTER
-        ? 'Click a time to pick it. The top half of a box starts on the hour, the bottom half at half past.'
-        : 'Tap a time to pick it.') + '</p>';
-    }
-    // The grid scrolls inside its own frame, opening on the regular hours
-    // (owner, November 10): early hours above, late below, with a marker on
-    // whichever side has more.
-    html += narrow ? weekList(week, dur)
-      : '<div class="bk-wk-frame">' +
-        '<button type="button" class="bk-wk-edge up" data-wkedge="-1">' + CHEV_UP + 'Earlier times</button>' +
-        '<div class="bk-wk-scroll" id="bkWkScroll">' + weekGrid(week, dur) + '</div>' +
-        '<button type="button" class="bk-wk-edge down" data-wkedge="1">' + CHEV_DN + 'Later times</button></div>';
+    // A strip of the seven days, then the open day: a timeline on wide
+    // screens (option C), a list on phones (option B). Owner's picks,
+    // November 11. Both open on the regular hours, with the early and late
+    // ones a tap away.
+    var sel = pickDay(week);
+    html += dayStrip(week, sel) + (narrow ? dayList(week.days[sel], dur) : dayTimeline(week.days[sel], week.rows, dur));
 
     // Go to a date, and the way out, in one bar pinned to the bottom of the
     // window, like the one under our recommended times.
@@ -3854,334 +3854,301 @@
       '<button type="button" class="bk-askwhen-link" id="bkAskMode2"><span class="bk-long">None of these work? Tell us when does</span><span class="bk-short">Tell us when suits</span></button>' + '</div>';
 
     box.innerHTML = html + '</div>';
-    if (!narrow) frameWeek();
+    if (narrow) pinWeek();
+    if (wkScrollUp) {
+      wkScrollUp = false;
+      var wkTop = box.querySelector('.bk-wk'), scr = el('bkScroll');
+      if (wkTop && scr && wkTop.getBoundingClientRect) scr.scrollTop += wkTop.getBoundingClientRect().top - scr.getBoundingClientRect().top - 8;
+    }
     updateCue();
-    box.querySelectorAll('.bk-wk-span:not(.preview)').forEach(fitSpan);
     renderNav();
     renderTotal();
   }
 
-  /** Label for a cell, read out in full by a screen reader. */
-  function cellLabel(day, cell, dur) {
+  /** A start, read out in full by a screen reader. */
+  function startLabel(day, ms, dur, suggested) {
     var name = tzDay(day.dayStart + DAY / 2, { weekday: 'long', month: 'long', day: 'numeric' });
-    if (cell.pick === null) return name + ', ' + endLabel(cell.hourMin) + ', unavailable';
-    var fee = feeText(cell.pick);
-    return name + ', ' + spanLabel(cell.pick, dur) + ', ' +
-      (fee ? fee + ' ' + feeWhy(cell.pick) : 'standard price') +
-      (cell.suggested ? ', suggested' : '');
+    return name + ', ' + spanLabel(ms, dur) + ', ' + priceWords(ms).toLowerCase() + (suggested ? ', suggested' : '');
   }
 
-  /** A mouse or trackpad, where pointing at half a box is practical. */
-  var FINE_POINTER = Boolean(window.matchMedia && window.matchMedia('(hover: hover) and (pointer: fine)').matches);
+  /** "Standard price" or "+$25 rush fee": the price in words, said once per stretch. */
+  function priceWords(ms) {
+    var fee = feeText(ms);
+    return fee ? fee + ' ' + feeWhy(ms) : 'Standard price';
+  }
 
-  /**
-   * Half-hour starts on the week grid (owner, November 10: "add half-hours
-   * back"; the original pipeline offered every start). A box is an hour; with
-   * a mouse its top half is the start on the hour and its bottom half the
-   * start at half past, and the hover block shows which. Touch keeps one
-   * start per box (the halves are too small to tap), and the phone list
-   * and "More times" offer every half hour as their own buttons.
-   */
-  function halfStart(cell, clientY) {
-    var starts = (cell.dataset.starts || '').split(',').map(Number).filter(Boolean);
-    if (starts.length < 2) return Number(cell.dataset.pick);
-    var r = cell.getBoundingClientRect();
-    var bottom = clientY - r.top > r.height / 2;
-    var on = starts.filter(function (ms) { return (localMin(ms) % 60 >= 30) === bottom; })[0];
-    return on || Number(cell.dataset.pick);
+  /** The price as a row shows it: in words at the start of a stretch, else "+$25" or nothing. */
+  function priceTag(ms, words) {
+    var fee = feeText(ms);
+    var text = words ? priceWords(ms) : fee;
+    return '<span class="bk-px' + (fee ? ' fee' : ' std') + '">' + esc(text) + '</span>';
   }
 
   function cellHas(cell, ms) {
     return Boolean(ms) && cell.starts.some(function (s) { return sameMinute(s, ms); });
   }
 
-  /** Each hour row is this tall, plus the gap under it (book.css .bk-wk-grid). */
-  var ROW_PX = 30, GAP_PX = 3;
+  /** Every start of a day, in order, and whether it is one of our suggestions. */
+  function dayStarts(day) {
+    var out = [];
+    day.cells.forEach(function (c) {
+      c.starts.forEach(function (ms) { out.push({ ms: ms, sug: c.suggested && sameMinute(c.pick, ms) }); });
+    });
+    return out;
+  }
 
   var CHEV_UP = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 15l6-6 6 6"/></svg>';
   var CHEV_DN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>';
-  /** The regular hours the grid opens on: 10am to the 6pm row. */
-  var FRAME_FROM_MIN = 10 * 60, FRAME_ROWS = 9;
+
+  /** The regular hours a day opens on (owner, November 10): starts from 10am to before 6pm. */
+  var REG_FROM = 10 * 60, REG_TO = 18 * 60;
 
   /**
-   * Size the grid's frame to the regular hours and open it there, or on the
-   * chosen time if that is early or late. The markers show which way more is.
+   * Whether the early and late starts are shown. Folded behind "Earlier
+   * times" and "Later times" until asked for, unless the chosen time is
+   * there, or the day has nothing in the regular hours to open on.
    */
-  function frameWeek() {
-    // Cosmetic: a failure here must never cost the calendar (paintSlots falls
-    // back to "tell us when suits" on any throw).
-    try { frameWeekInner(); } catch (e) { if (window.console) console.warn('[513] calendar frame', e); }
-  }
-  function frameWeekInner() {
-    var sc = el('bkWkScroll');
-    var grid = sc && sc.querySelector && sc.querySelector('.bk-wk-grid');
-    if (!sc || !grid || !grid.getBoundingClientRect) return;
-    var head = grid.querySelector('.bk-wk-dh');
-    var headH = head ? head.getBoundingClientRect().height : 0;
-    var hourPx = ROW_PX + GAP_PX;
-    sc.style.maxHeight = Math.round(headH + FRAME_ROWS * hourPx + GAP_PX) + 'px';
-    var rowAt = function (min) { return Math.max(0, Math.round((min - P.FIRST_ROW_MIN) / 60) * hourPx); };
-    var target = rowAt(FRAME_FROM_MIN);
-    var chosen = sc.querySelector('.bk-wk-span:not(.preview)');
-    if (chosen && state.slot) {
-      var m = localMin(state.slot);
-      if (m < FRAME_FROM_MIN || m >= FRAME_FROM_MIN + FRAME_ROWS * 60) target = rowAt(Math.floor(m / 60) * 60 - 60);
-    }
-    sc.scrollTop = target;
-    var edges = function () {
-      var up = sc.parentNode.querySelector('.bk-wk-edge.up');
-      var down = sc.parentNode.querySelector('.bk-wk-edge.down');
-      // Faded rather than removed, so the page never shifts as they appear.
-      if (up) up.classList.toggle('off', sc.scrollTop < 4);
-      if (down) down.classList.toggle('off', sc.scrollTop + sc.clientHeight >= sc.scrollHeight - 4);
-    };
-    edges();
-    sc.addEventListener('scroll', edges, { passive: true });
-  }
-
-  /**
-   * Where a job's block sits in the grid: its day's column, from its start
-   * to its estimated end, to the minute. A 10:30 start for two hours begins
-   * halfway down the 10am row and ends halfway down the 12pm row.
-   */
-  function spanGeom(ms, col, dur, rows, suggested) {
-    var start = localMin(ms);
-    var r0 = Math.floor(start / 60) - P.FIRST_ROW_MIN / 60;
-    var rEnd = Math.min(rows, Math.ceil((start + dur) / 60) - P.FIRST_ROW_MIN / 60);
-    var hourPx = ROW_PX + GAP_PX;
+  function foldsOpen(starts) {
+    var reg = starts.some(function (s) { var m = localMin(s.ms); return m >= REG_FROM && m < REG_TO; });
+    var mine = state.slot && starts.some(function (s) { return sameMinute(s.ms, state.slot); });
+    var at = mine ? localMin(state.slot) : -1;
     return {
-      // The rows the block touches, even partly: their cells hide their
-      // contents, so a half-covered "+$43" never peeks out above or below.
-      r0: r0,
-      rEnd: Math.max(rEnd, r0 + 1),
-      area: (r0 + 2) + ' / ' + (col + 3) + ' / ' + (Math.max(rEnd, r0 + 1) + 2) + ' / ' + (col + 4),
-      // One of our suggested starts keeps its star, on the block's time bar.
-      star: Boolean(suggested),
-      top: Math.round((start % 60) / 60 * hourPx),
-      height: Math.round(dur / 60 * hourPx - GAP_PX),
-      start: tzTime(ms),
-      end: 'to ' + endLabel(start + dur),
-      // The fee ONCE, for the whole job. The cells under the block are
-      // hidden: a "+$25" in every hour it covered read as $25 an hour.
-      fee: feeText(ms) || 'Standard',
-      paid: Boolean(surchargeBp(ms)),
-      why: feeNote(ms),
+      early: state.wkEarly || !reg || (mine && at < REG_FROM),
+      late: state.wkLate || !reg || (mine && at >= REG_TO),
     };
   }
 
-  function spanInner(g) {
-    return '<b>' + esc(g.start) + (g.star ? '<span class="bk-wk-span-star" title="Suggested">' + STAR + '</span>' : '') + '</b>' +
-      '<span class="bk-wk-span-fee' + (g.paid ? ' paid' : '') + '"><em>' + esc(g.fee) + '</em>' +
-        (g.why ? '<i>' + esc(g.why) + '</i>' : '') + '</span>' +
-      '<small>' + esc(g.end) + '</small>';
+  /** "Earlier times, 6am to 9:30am": opens the folded starts. */
+  function foldButton(side, list) {
+    var a = tzTime(list[0].ms), b = tzTime(list[list.length - 1].ms);
+    return '<button type="button" class="bk-wk-fold" data-wkfold="' + side + '">' + (side === 'early' ? CHEV_UP : CHEV_DN) +
+      (side === 'early' ? 'Earlier times, ' : 'Later times, ') + (list.length > 1 ? a + ' to ' + b : a) + '</button>';
   }
 
-  /** "Late start fee +$25": the fee's one name, in dollars (owner's approval, November 10). */
-  function feeNote(ms) {
-    if (!surchargeBp(ms)) return '';
-    var why = feeWhy(ms);
-    return why.charAt(0).toUpperCase() + why.slice(1) + ' ' + feeText(ms);
-  }
-
-  /**
-   * Desktop and tablet: seven columns, one row per start hour, 6am to 10pm.
-   *
-   * THE WHOLE JOB IS DRAWN, NOT JUST ITS START. A cell is where a job can
-   * begin; picking one used to mark that one cell, so a four hour detail
-   * looked like a one hour slot. Now the chosen time is a block from its
-   * start to its estimated end, labelled with both, the way a calendar app
-   * draws an event, and hovering a start previews the same block.
-   */
-  function weekGrid(week, dur) {
-    var rows = week.rows.length;
-    var html = '<div class="bk-wk-grid" role="group" aria-labelledby="bkWkTitle" data-dur="' + dur +
-      '" data-rows="' + rows + '" style="grid-template-rows:auto repeat(' + rows + ', ' + ROW_PX + 'px)">' +
-      // One solid strip behind the whole day bar, gaps included, so nothing
-      // scrolling underneath shows between the day names.
-      '<span class="bk-wk-headbg" aria-hidden="true" style="grid-area:1 / 1 / 2 / 10"></span>' +
-      '<span class="bk-wk-corner" style="grid-area:1 / 1 / 2 / 3"></span>';
-    week.days.forEach(function (day, i) {
-      html += '<span class="bk-wk-dh' + (day.past ? ' past' : '') + (day.rush ? ' rush' : '') +
-        '" role="columnheader" style="grid-area:1 / ' + (i + 3) + '">' +
-        '<b>' + tzDay(day.dayStart + DAY / 2, { weekday: 'short' }) + '</b><span>' + day.d + '</span>' +
-        (day.rush ? '<em>Rush</em>' : '') + '</span>';
-    });
-
-    // Early and late, labelled up the side the way Rush is labelled across
-    // the top, so the fee hours are named before anyone reads a price.
-    var zone = function (label, test) {
-      var idx = week.rows.map(function (h, r) { return test(h) ? r : -1; }).filter(function (r) { return r > -1; });
-      if (!idx.length) return '';
-      return '<span class="bk-wk-zone" style="grid-area:' + (idx[0] + 2) + ' / 1 / ' + (idx[idx.length - 1] + 3) + ' / 2">' +
-        '<em>' + label + '</em></span>';
-    };
-    html += zone('Early', function (h) { return h < 10 * 60; }) + zone('Late', function (h) { return h >= 18 * 60; });
-
-    // Where the chosen job sits, if it is in this week, before the cells are
-    // drawn: the cells under it hide their contents.
-    var sel = null;
-    week.days.forEach(function (day, i) {
-      if (!state.slot || state.slot < day.dayStart || state.slot >= day.dayStart + DAY) return;
-      var home = day.cells.filter(function (c) { return cellHas(c, state.slot); })[0];
-      sel = { col: i, g: spanGeom(state.slot, i, dur, rows, home && home.suggested && sameMinute(home.pick, state.slot)) };
-    });
-
-    week.rows.forEach(function (h, r) {
-      html += '<span class="bk-wk-t" role="rowheader" style="grid-area:' + (r + 2) + ' / 2">' + endLabel(h) + '</span>';
-      week.days.forEach(function (day, i) {
-        var cell = day.cells[r];
-        var at = 'grid-area:' + (r + 2) + ' / ' + (i + 3);
-        var under = sel && sel.col === i && r >= sel.g.r0 && r < sel.g.rEnd ? ' under' : '';
-        var where = '" data-col="' + i + '" data-row="' + r;
-        if (cell.pick === null) {
-          html += '<span class="bk-wk-c no' + under + '" aria-hidden="true" style="' + at + where + '"></span>';
-          return;
-        }
-        var fee = feeText(cell.pick);
-        var on = cellHas(cell, state.slot);
-        // No "selected" look on the box itself: the block drawn over it is the
-        // selection. A half-past start's block begins halfway down its box, and
-        // the box's red outline showed above it as an empty red band
-        // (owner's screenshot after Back, November 10).
-        html += '<button type="button" class="bk-wk-c ' + (fee ? 'fee' : 'ok') + under +
-          '" aria-pressed="' + on + '" style="' + at + where +
-          (cell.suggested ? '" data-sug="' + cell.pick : '') +
-          // Every start in this hour: with a mouse, the bottom half of the box
-          // books the half past (halfStart). data-pick is what a tap or the
-          // keyboard books.
-          (cell.starts.length > 1 ? '" data-starts="' + cell.starts.join(',') : '') +
-          '" data-pick="' + (on ? state.slot : cell.pick) +
-          '" data-slot="' + (on ? state.slot : cell.pick) + '" aria-label="' + esc(cellLabel(day, cell, dur)) + '">' +
-          (fee ? '<i>' + esc(fee) + '</i>' : TICK) +
-          (cell.suggested ? '<b class="bk-wk-star">' + STAR + '</b>' : '') +
-          '</button>';
-      });
-    });
-
-    // Gold dashed lines where a fee starts or stops: where the early hours
-    // end (10am), where the late ones begin (6pm), and after the last rush day.
-    [10 * 60, 18 * 60].forEach(function (h) {
-      var r = week.rows.indexOf(h);
-      if (r > 0) html += '<span class="bk-wk-line h" aria-hidden="true" style="grid-area:' + (r + 2) + ' / 1 / ' + (r + 3) + ' / 10"></span>';
-    });
-    var lastRush = -1;
-    week.days.forEach(function (day, i) { if (day.rush) lastRush = i; });
-    if (lastRush > -1 && lastRush < 6) {
-      html += '<span class="bk-wk-line v" aria-hidden="true" style="grid-area:2 / ' + (lastRush + 3) + ' / ' + (rows + 2) + ' / ' + (lastRush + 4) + '"></span>';
-    }
-
-    // The chosen job, start to finish.
-    if (sel) {
-      html += '<div class="bk-wk-span" aria-hidden="true" style="grid-area:' + sel.g.area + '">' +
-        '<i style="top:' + sel.g.top + 'px;height:' + sel.g.height + 'px">' + spanInner(sel.g) + '</i></div>';
-    }
-    // And one for previewing on hover, placed by the mouseover handler.
-    html += '<div class="bk-wk-span preview" id="bkWkPreview" aria-hidden="true" hidden><i></i></div>';
-    return html + '</div>';
-  }
-
-  /**
-   * Fit a job block's text to the block, by measuring rather than guessing a
-   * height: the note goes first, then the fee, so nothing is ever cut off
-   * mid-word whatever the job length, column width or font.
-   */
-  function fitSpan(span) {
-    var box = span && span.querySelector(':scope > i');
-    if (!box) return;
-    span.classList.remove('mid', 'short');
-    if (box.scrollHeight > box.clientHeight + 1) span.classList.add('mid');
-    if (box.scrollHeight > box.clientHeight + 1) span.classList.add('short');
-  }
-
-  function clearPreviewUnder(grid) {
-    grid.querySelectorAll('.pvunder').forEach(function (c) { c.classList.remove('pvunder'); });
-  }
-
-  /** Hovering a start shows the block that time would book. */
-  function previewSpan(t) {
-    var grid = t && t.closest('.bk-wk-grid');
-    var pv = grid && grid.querySelector('#bkWkPreview');
-    if (!pv) return;
-    var ms = Number(t.dataset.slot);
-    var col = Number(t.dataset.col);
-    var g = spanGeom(ms, col, Number(grid.dataset.dur), Number(grid.dataset.rows), t.dataset.sug && sameMinute(Number(t.dataset.sug), ms));
-    // The cells under the preview hide their contents too, and only those.
-    clearPreviewUnder(grid);
-    grid.querySelectorAll('.bk-wk-c[data-col="' + col + '"]').forEach(function (c) {
-      var r = Number(c.dataset.row);
-      if (r >= g.r0 && r < g.rEnd) c.classList.add('pvunder');
-    });
-    pv.style.gridArea = g.area;
-    var inner = pv.querySelector('i');
-    inner.style.top = g.top + 'px';
-    inner.style.height = g.height + 'px';
-    inner.innerHTML = spanInner(g);
-    pv.hidden = false;
-    fitSpan(pv);
-  }
-
-  /** Phones: a strip of seven days, then the open hours of the chosen one. */
-  function weekList(week, dur) {
+  /** The day open in the strip: the one picked, else the chosen time's, else the first with times. */
+  function pickDay(week) {
     var sel = state.weekDay;
-    if (sel < 0 || sel > 6) {
-      sel = -1;
-      week.days.forEach(function (day, i) {
-        if (sel < 0 && day.cells.some(function (c) { return cellHas(c, state.slot); })) sel = i;
-      });
-      if (sel < 0) week.days.forEach(function (day, i) {
-        if (sel < 0 && day.cells.some(function (c) { return c.pick !== null; })) sel = i;
-      });
-      if (sel < 0) week.days.forEach(function (day, i) { if (sel < 0 && !day.past) sel = i; });
-      if (sel < 0) sel = 0;
-    }
+    if (sel >= 0 && sel <= 6) return sel;
+    sel = -1;
+    week.days.forEach(function (day, i) {
+      if (sel < 0 && day.cells.some(function (c) { return cellHas(c, state.slot); })) sel = i;
+    });
+    if (sel < 0) week.days.forEach(function (day, i) {
+      if (sel < 0 && day.cells.some(function (c) { return c.pick !== null; })) sel = i;
+    });
+    if (sel < 0) week.days.forEach(function (day, i) { if (sel < 0 && !day.past) sel = i; });
+    return sel < 0 ? 0 : sel;
+  }
 
+  /**
+   * Seven days. The bar under each date fills to how much of that day is
+   * still open (owner, November 11): green when it has standard-price times,
+   * gold when every time left has a fee, hatched when nothing is open.
+   */
+  function dayStrip(week, sel) {
     var html = '<div class="bk-wk-strip" role="tablist" aria-labelledby="bkWkTitle">';
     week.days.forEach(function (day, i) {
-      var open = day.cells.filter(function (c) { return c.pick !== null; });
-      var std = open.some(function (c) { return !surchargeBp(c.pick); });
+      var starts = dayStarts(day);
+      var std = starts.some(function (s) { return !surchargeBp(s.ms); });
+      var fill = Math.max(12, Math.round(P.dayOpenShare(day) * 100));
+      var name = tzDay(day.dayStart + DAY / 2, { weekday: 'long', month: 'long', day: 'numeric' });
       html += '<button type="button" class="bk-wk-day' + (i === sel ? ' on' : '') + (day.past ? ' past' : '') +
-        '" role="tab" aria-selected="' + (i === sel) + '" data-wkday="' + i + '">' +
+        '" role="tab" aria-selected="' + (i === sel) + '" data-wkday="' + i + '" aria-label="' +
+        esc(name + ', ' + (starts.length ? starts.length + (starts.length === 1 ? ' time' : ' times') + ' open' : 'nothing open')) + '">' +
         '<b>' + tzDay(day.dayStart + DAY / 2, { weekday: 'short' }) + '</b><span>' + day.d + '</span>' +
-        '<i class="bk-wk-bar ' + (std ? 'ok' : open.length ? 'fee' : 'no') + '"></i>' +
+        '<i class="bk-wk-bar' + (starts.length ? '' : ' no') + '" aria-hidden="true">' +
+          (starts.length ? '<i class="' + (std ? 'ok' : 'fee') + '" style="width:' + fill + '%"></i>' : '') + '</i>' +
         (day.rush ? '<em>Rush</em>' : '') +
         '</button>';
     });
-    html += '</div>';
+    return html + '</div>';
+  }
 
-    var day = week.days[sel];
-    var open = day.cells.filter(function (c) { return c.pick !== null; });
-    if (!open.length) {
+  /**
+   * Phones: the open day's times under part-of-day headings, each heading
+   * pinned while its times are on screen (owner, November 11). A price the
+   * whole part of the day shares is said once, in its heading; otherwise once
+   * at the start of each stretch.
+   */
+  function dayList(day, dur) {
+    var cells = day.cells.filter(function (c) { return c.pick !== null; });
+    if (!cells.length) {
+      return '<p class="bk-wk-none">Nothing open on ' +
+        esc(tzDay(day.dayStart + DAY / 2, { weekday: 'long' })) + '. Try another day.</p>';
+    }
+    var folds = foldsOpen(dayStarts(day));
+    var early = cells.filter(function (c) { return c.hourMin < REG_FROM; });
+    var late = cells.filter(function (c) { return c.hourMin >= REG_TO; });
+    var startsOf = function (list) {
+      var out = [];
+      list.forEach(function (c) { c.starts.forEach(function (ms) { out.push({ ms: ms }); }); });
+      return out;
+    };
+
+    var shown = cells.filter(function (c) {
+      return (c.hourMin >= REG_FROM || folds.early) && (c.hourMin < REG_TO || folds.late);
+    });
+    var groups = [];
+    shown.forEach(function (c) {
+      var band = P.bandOf(c.hourMin);
+      var id = band ? band.id : '';
+      if (!groups.length || groups[groups.length - 1].id !== id) groups.push({ id: id, label: band ? band.label : '', cells: [] });
+      groups[groups.length - 1].cells.push(c);
+    });
+
+    var html = '<div class="bk-wk-list">' + (early.length && !folds.early ? foldButton('early', startsOf(early)) : '');
+    groups.forEach(function (g) {
+      var rows = g.cells.map(function (c) {
+        var on = cellHas(c, state.slot);
+        return { cell: c, on: on, ms: on ? state.slot : c.pick };
+      });
+      var keys = rows.map(function (r) { return priceWords(r.ms); });
+      var same = keys.every(function (k) { return k === keys[0]; });
+      var first = P.stretchStarts(keys);
+      // A div, not a section: the site's section padding would open gaps.
+      html += '<div class="bk-wk-sec" role="group" aria-label="' + esc(g.label) + '"><h5 class="bk-wk-band">' + esc(g.label) +
+        (same ? priceTag(rows[0].ms, true) : '') + '</h5>';
+      rows.forEach(function (r, i) {
+        var c = r.cell;
+        var sug = c.suggested && sameMinute(r.ms, c.pick);
+        // The other start in this hour (half past, or on the hour), one tap too.
+        var alts = c.starts.filter(function (x) { return !sameMinute(x, r.ms); });
+        html += '<div class="bk-wk-row"><button type="button" class="bk-wk-item' + (r.on ? ' on' : '') +
+          '" data-slot="' + r.ms + '" aria-pressed="' + r.on + '" aria-label="' + esc(startLabel(day, r.ms, dur, sug)) + '">' +
+          '<b>' + esc(spanLabel(r.ms, dur)) + '</b>' + priceTag(r.ms, !same && first[i]) +
+          (sug ? '<em>' + STAR + 'Suggested</em>' : '') +
+          '</button>' +
+          alts.map(function (x) {
+            return '<button type="button" class="bk-wk-alt" data-slot="' + x + '" aria-label="' +
+              esc('Start at ' + spanLabel(x, dur) + ', ' + priceWords(x).toLowerCase()) + '">' +
+              '<i>or</i>' + esc(tzTime(x)) + '</button>';
+          }).join('') + '</div>';
+      });
+      html += '</div>';
+    });
+    return html + (late.length && !folds.late ? foldButton('late', startsOf(late)) : '') + '</div>';
+  }
+
+  /** Each half-hour row of the day timeline is this tall, plus the gap under it (book.css .bk-tl). */
+  var TL_ROW = 36, TL_GAP = 3;
+
+  /**
+   * Laptops, desktops and tablets: one day as a timeline, every half hour
+   * its own row (owner's pick, option C, November 11). Pointing at a start,
+   * or tapping it, draws the whole job over the rows it covers, start to
+   * estimated finish, with its price once.
+   */
+  function dayTimeline(day, rows, dur) {
+    var html = '<h5 class="bk-tl-day">' + esc(tzDay(day.dayStart + DAY / 2, { weekday: 'long', month: 'long', day: 'numeric' })) + '</h5>';
+    var starts = dayStarts(day);
+    if (!starts.length) {
       return html + '<p class="bk-wk-none">Nothing open on ' +
         esc(tzDay(day.dayStart + DAY / 2, { weekday: 'long' })) + '. Try another day.</p>';
     }
+    var folds = foldsOpen(starts);
+    var byMin = {};
+    starts.forEach(function (s) { byMin[localMin(s.ms)] = s; });
 
-    html += '<div class="bk-wk-list">';
-    var lastBand = '';
-    open.forEach(function (cell) {
-      var band = P.bandOf(cell.hourMin);
-      if (band && band.id !== lastBand) {
-        lastBand = band.id;
-        // "Early Morning" and "Late Evening" already say it; no second tag.
-        html += '<h5 class="bk-wk-band">' + esc(band.label) + '</h5>';
-      }
-      var on = cellHas(cell, state.slot);
-      var ms = on ? state.slot : cell.pick;
-      var fee = feeText(ms);
-      // The other start in this hour (half past, or on the hour), one tap too.
-      var alts = cell.starts.filter(function (x) { return !sameMinute(x, ms); });
-      html += '<div class="bk-wk-row"><button type="button" class="bk-wk-item' + (on ? ' on' : '') +
-        '" data-slot="' + ms + '" aria-pressed="' + on + '">' +
-        '<b>' + esc(spanLabel(ms, dur)) + '</b>' +
-        '<span' + (fee ? ' class="fee"' : '') + '>' + (fee ? esc(fee + ' ' + feeWhy(ms)) : 'Standard price') + '</span>' +
-        (cell.suggested && sameMinute(ms, cell.pick) ? '<em>' + STAR + 'Suggested</em>' : '') +
-        '</button>' +
-        alts.map(function (x) {
-          return '<button type="button" class="bk-wk-alt" data-slot="' + x + '" aria-label="' +
-            esc('Start at ' + spanLabel(x, dur) + (feeText(x) ? ', ' + feeText(x) + ' ' + feeWhy(x) : ', standard price')) + '">' +
-            '<i>or</i>' + esc(tzTime(x)) + '</button>';
-        }).join('') + '</div>';
+    // From 10am, or the first early start; down to the end of the last job
+    // shown, so a block never runs off the bottom (a 5:30pm start for two
+    // hours keeps the rows to 7:30pm).
+    // A day with nothing in the regular hours starts at its first time, not
+    // under a column of grey daytime rows (today, with only the evening left).
+    var reg = starts.some(function (s) { var m = localMin(s.ms); return m >= REG_FROM && m < REG_TO; });
+    var from = reg ? REG_FROM : localMin(starts[0].ms), end = reg ? REG_TO : from;
+    starts.forEach(function (s) {
+      var m = localMin(s.ms);
+      if (m < REG_FROM && !folds.early) return;
+      if (m < REG_FROM) from = Math.min(from, m);
+      if (m >= REG_TO && !folds.late) return;
+      end = Math.max(end, m + dur);
     });
-    return html + '</div>';
+    var to = Math.min(Math.ceil(end / 30) * 30, rows[rows.length - 1] + 60);
+    var shown = [];
+    for (var m = Math.floor(from / 30) * 30; m < to; m += 30) shown.push(m);
+    var hidEarly = starts.filter(function (s) { return localMin(s.ms) < shown[0]; });
+    var hidLate = starts.filter(function (s) { return localMin(s.ms) >= to; });
+
+    var first = P.stretchStarts(shown.map(function (x) { return byMin[x] ? priceWords(byMin[x].ms) : null; }));
+    var mine = -1;
+    shown.forEach(function (x, i) { if (byMin[x] && sameMinute(byMin[x].ms, state.slot)) mine = i; });
+    var cover = mine > -1 ? Math.ceil(dur / 30) : 0;
+
+    html += hidEarly.length ? foldButton('early', hidEarly) : '';
+    html += '<div class="bk-tl" data-dur="' + dur + '" data-rows="' + shown.length +
+      '" style="grid-template-rows:repeat(' + shown.length + ', ' + TL_ROW + 'px)">';
+    shown.forEach(function (x, i) {
+      var s = byMin[x];
+      var under = mine > -1 && i >= mine && i < mine + cover ? ' under' : '';
+      html += '<span class="bk-tl-t' + (x % 60 ? ' half' : '') + '" style="grid-row:' + (i + 1) + '">' + endLabel(x) + '</span>';
+      if (!s) {
+        html += '<span class="bk-tl-s no' + under + '" style="grid-row:' + (i + 1) + '" data-row="' + i + '" aria-hidden="true"></span>';
+        return;
+      }
+      var on = i === mine;
+      html += '<button type="button" class="bk-tl-s ' + (feeText(s.ms) ? 'fee' : 'std') + under +
+        '" style="grid-row:' + (i + 1) + '" data-slot="' + s.ms + '" data-row="' + i + '"' + (s.sug ? ' data-sug="1"' : '') +
+        ' aria-pressed="' + on + '" aria-label="' + esc(startLabel(day, s.ms, dur, s.sug)) + '">' +
+        priceTag(s.ms, first[i]) + (s.sug ? '<em class="bk-tl-star">' + STAR + 'Suggested</em>' : '') + '</button>';
+    });
+    // The chosen job, start to finish, and one for pointing at a start.
+    if (mine > -1) html += tlBlock(byMin[shown[mine]].ms, mine, shown.length, dur, byMin[shown[mine]].sug, '');
+    html += '<div class="bk-tl-span preview" id="bkTlPreview" aria-hidden="true" hidden></div>';
+    html += '</div>';
+    return html + (hidLate.length ? foldButton('late', hidLate) : '');
+  }
+
+  /**
+   * The job's block: it spans the rows the job touches, and its box is as
+   * tall as the job to the minute. The price is said once, in the middle;
+   * a suggested start keeps its star where the row has it.
+   */
+  function tlBlock(ms, row, rows, dur, sug, cls) {
+    var span = Math.max(1, Math.min(rows - row, Math.ceil(dur / 30)));
+    return '<div class="bk-tl-span' + (cls ? ' ' + cls : '') + '" aria-hidden="true" style="grid-row:' + (row + 1) + ' / span ' + span + '">' +
+      tlBlockInner(ms, dur, sug) + '</div>';
+  }
+  function tlBlockInner(ms, dur, sug) {
+    var h = Math.round(dur / 30 * (TL_ROW + TL_GAP) - TL_GAP);
+    return '<i style="height:' + h + 'px"><b>' + esc(spanLabel(ms, dur)) + '</b>' + priceTag(ms, true) +
+      (sug ? '<em class="bk-tl-star">' + STAR + 'Suggested</em>' : '') + '</i>';
+  }
+
+  /** Pointing at (or tapping) a start draws the block it would book. */
+  function previewTl(t, solid) {
+    var tl = t && t.closest && t.closest('.bk-tl');
+    var pv = tl && tl.querySelector('#bkTlPreview');
+    if (!pv) return;
+    var row = Number(t.dataset.row), rows = Number(tl.dataset.rows), dur = Number(tl.dataset.dur);
+    var span = Math.max(1, Math.min(rows - row, Math.ceil(dur / 30)));
+    clearTlPreview(tl);
+    tl.querySelectorAll('.bk-tl-s').forEach(function (c) {
+      var r = Number(c.dataset.row);
+      if (r >= row && r < row + span) c.classList.add('pv');
+    });
+    pv.style.gridRow = (row + 1) + ' / span ' + span;
+    pv.innerHTML = tlBlockInner(Number(t.dataset.slot), dur, Boolean(t.dataset.sug));
+    pv.classList.toggle('solid', Boolean(solid));
+    pv.hidden = false;
+  }
+  function clearTlPreview(tl) {
+    tl.querySelectorAll('.pv').forEach(function (c) { c.classList.remove('pv'); });
+    var pv = tl.querySelector('#bkTlPreview');
+    if (pv) pv.hidden = true;
+  }
+
+  /**
+   * Phones: the week bar, the day strip and each part-of-day heading stay
+   * pinned while the times scroll (owner, November 11). The heading's pin
+   * sits under the other two, so their heights are measured, not guessed.
+   */
+  function pinWeek() {
+    var wk = root.querySelector('.bk-wk.narrow');
+    var h = wk && wk.querySelector('.bk-wk-h');
+    var st = wk && wk.querySelector('.bk-wk-strip');
+    if (!h || !st || !h.getBoundingClientRect) return;
+    wk.style.setProperty('--wk-h', Math.round(h.getBoundingClientRect().height) + 'px');
+    wk.style.setProperty('--wk-strip', Math.round(st.getBoundingClientRect().height) + 'px');
   }
 
   /** Room under the box for the "Change to suggested?" tab, while it shows. */
@@ -5523,8 +5490,8 @@
       '[data-size],[data-intent],[data-pkg],[data-addon],[data-clear],[data-win],[data-slot],' +
       '[data-pay],[data-delveh],[data-browsepick],[data-max],[data-sort],[data-pkgfirst],' +
       '[data-kind],[data-paymethod],[data-corr],[data-coating],[data-garage],[data-step],' +
-      '[data-prefday],[data-prefpart],[data-interest],[data-wkday],[data-more],[data-steer],[data-flexday],[data-wkedge],[data-ckcont],[data-cksec],[data-access],[data-extrarm],' +
-      '#bkWkPrev,#bkWkNext,#bkWkNext2,#bkWkToday,#bkWkBack,#bkShowAll,#bkShowRecs,' +
+      '[data-prefday],[data-prefpart],[data-interest],[data-wkday],[data-more],[data-steer],[data-flexday],[data-wkfold],[data-ckcont],[data-cksec],[data-access],[data-extrarm],' +
+      '#bkWkPrev,#bkWkNext,#bkWkNext2,#bkWkToday,#bkWkBack,#bkShowAll,#bkShowRecs,#bkFeeWhy,' +
       '#bkAddVeh,#bkNext,#bkBack,#bkClose,#bkScrim,#bkBrowse,#bkBrowseBack,' +
       '#bkAskMode,#bkAskMode2,#bkSlotMode,#bkFlexOpen,#bkPickChange,#bkShowExtras,' +
       '#bkLeaveStay,#bkLeaveKeep,#bkLeaveAsk,#bkLeaveDrop,#bkFresh,' +
@@ -5734,6 +5701,7 @@
       return timeChosen();
     }
     if (t.dataset.slot) {
+      if (tlPicking) return;
       selectSlot(Number(t.dataset.slot), t.dataset.via || 'calendar',
         t.dataset.rank ? { rank: Number(t.dataset.rank), reason: t.dataset.reason } : null);
       renderTotal();
@@ -5742,6 +5710,15 @@
       // the week (its hover block already showed the whole detail, start to
       // finish). The time is chosen and checked, and the next step opens.
       // Coming back shows it as the block and in the bottom bar.
+      // On the day timeline, the whole job shows as a solid block for a
+      // moment first, so a tap (no pointing on a touch screen) sees its
+      // start and finish too before the form moves on (November 11).
+      if (t.closest('.bk-tl')) {
+        tlPicking = true;
+        previewTl(t, true);
+        setTimeout(function () { tlPicking = false; timeChosen(); }, reducedMotion() ? 0 : 450);
+        return;
+      }
       if (t.dataset.go || t.closest('.bk-wk')) return timeChosen();
       // The multi-day list: mark the choice in place.
       root.querySelectorAll('[data-slot]').forEach(function (b) {
@@ -5762,6 +5739,10 @@
       if (t.id === 'bkShowAll') track('time_view_all', {});
       state.showAll = t.id === 'bkShowAll';
       state.weekDay = -1;
+      state.wkEarly = state.wkLate = false;
+      // Opening the calendar brings it to the top of the window (Contact and
+      // Address above it scroll away); going back leaves the page alone.
+      wkScrollUp = t.id === 'bkShowAll';
       state.weekTouched = false;
       autoSkips = 0;
       // The calendar opens on the week of the time already chosen, if any.
@@ -5823,12 +5804,16 @@
     }
     if (t.dataset.ckcont) return ckAdvance(t.dataset.ckcont);
     if (t.dataset.cksec) return ckOpenSection(t.dataset.cksec);
-    if (t.dataset.wkedge) {
-      var wsc = el('bkWkScroll');
-      if (wsc) {
-        var by = Number(t.dataset.wkedge) * 4 * (ROW_PX + GAP_PX);
-        try { wsc.scrollBy({ top: by, behavior: reducedMotion() ? 'auto' : 'smooth' }); } catch (e) { wsc.scrollTop += by; }
-      }
+    if (t.dataset.wkfold) {
+      if (t.dataset.wkfold === 'early') state.wkEarly = true;
+      else state.wkLate = true;
+      return repaintSlots();
+    }
+    if (t.id === 'bkFeeWhy') {
+      // In place: a redraw would move the page under the reader.
+      var rules = el('bkFeeRules');
+      if (rules) rules.hidden = !rules.hidden;
+      t.setAttribute('aria-expanded', String(Boolean(rules && !rules.hidden)));
       return;
     }
     if (t.id === 'bkShowExtras') {
@@ -6954,29 +6939,15 @@
     window.addEventListener('resize', updateCue);
     if (window.ResizeObserver) new ResizeObserver(updateCue).observe(el('bkBody'));
 
-    // Hovering a start in the week grid previews the whole job it would book.
+    // Pointing at a start on the day timeline draws the whole job it would book.
     host.addEventListener('mouseover', function (e) {
-      var t = e.target.closest && e.target.closest('.bk-wk-grid [data-slot]');
-      if (t) previewSpan(t);
-    });
-    host.addEventListener('mousemove', function (e) {
-      if (!FINE_POINTER) return;
-      var t = e.target.closest && e.target.closest('.bk-wk-grid [data-starts]');
-      if (!t) return;
-      var ms = halfStart(t, e.clientY);
-      if (Number(t.dataset.slot) === ms) return;
-      t.dataset.slot = String(ms);
-      previewSpan(t);
+      var t = e.target.closest && e.target.closest('.bk-tl [data-slot]');
+      if (t && !tlPicking) previewTl(t);
     });
     host.addEventListener('mouseout', function (e) {
-      // A box goes back to its default start for a tap or the keyboard.
-      var cell = e.target.closest && e.target.closest('.bk-wk-grid [data-pick]');
-      if (cell && !(e.relatedTarget && cell.contains(e.relatedTarget))) cell.dataset.slot = cell.dataset.pick;
-      var grid = e.target.closest && e.target.closest('.bk-wk-grid');
-      if (!grid || (e.relatedTarget && grid.contains(e.relatedTarget) && e.relatedTarget.closest('[data-slot]'))) return;
-      var pv = grid.querySelector('#bkWkPreview');
-      if (pv) pv.hidden = true;
-      clearPreviewUnder(grid);
+      var tl = e.target.closest && e.target.closest('.bk-tl');
+      if (!tl || tlPicking || (e.relatedTarget && tl.contains(e.relatedTarget))) return;
+      clearTlPreview(tl);
     });
 
     // Phone and ZIP are checked as they are left, with the same rules Continue
@@ -7001,7 +6972,7 @@
     // phones. Turning a tablet or resizing a window across that line redraws
     // it from what is already loaded.
     window.addEventListener('resize', function () {
-      if (!host.hidden) root.querySelectorAll('.bk-wk-span').forEach(fitSpan);
+      if (!host.hidden && paintedNarrow) pinWeek();
       if (host.hidden || state.done || !onCheckout() || !lastPaint || paintedNarrow === null) return;
       if ((el('bkBody').clientWidth < 520) !== paintedNarrow) repaintSlots();
     });
