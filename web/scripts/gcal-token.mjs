@@ -54,7 +54,11 @@ Before starting, in the Google Cloud console for the 513 Auto Clean project:
      strangers.
 
   3. Credentials, Create credentials, OAuth client ID.
-       Application type: DESKTOP APP.
+       Application type: WEB APPLICATION. The refresh token is kept and
+       used by a server (Netlify), which can keep the secret, so this is
+       a confidential "web server" client in Google's terms.
+       Authorized redirect URIs: http://localhost:${PORT}/callback
+       (exactly; localhost is allowed over plain http).
        Copy the client ID and client secret.
 `);
 
