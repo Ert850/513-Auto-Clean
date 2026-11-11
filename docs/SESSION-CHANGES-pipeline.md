@@ -67,6 +67,14 @@ Built overnight, November 10 to 11, for you to evaluate. It combines your 8 answ
 - **Tests:** `experiments.test.ts`, 17 tests. They run the real `analytics.js` in a sandbox: weights, stickiness, the source rule, off/ended/unknown tests, element switching, nothing reaching GA before Accept, and storage blocked. 582 of 582 pass.
 - **To test:** with a test set to running, open /?utm_source=golf: `localStorage['ac-exp']` holds a version and only that version's element shows. A booking email carries "A/B TESTS".
 
+### Links to the old one-page home page lead to the right page (found by the production-readiness review)
+- **Bug:** the live site is one page, so the Google Business Profile, ads and bookmarks may link to `/#faq`, `/#reviews`, `/#inquiry` and so on. On the new site those sections are pages of their own, so such a link opened the top of the home page.
+- **Fix (`script.js`, home page only):** an old section id with no element on the page leads to its new page.
+  - `#about` and `#team`: About; `#reviews`: About's reviews; `#areas` and `#travel`: Range & Travel; `#faq`: FAQ; `#inquiry`: Contact.
+  - `#schedule` (the old booking section) opens the booking form.
+  - A query string, such as a golf tag, is kept.
+- **Verified in headless Chrome:** all 8 old links land right. Real anchors (`#gallery`, `about.html#reviews`) are untouched.
+
 ### No OPEN events means no bookings (owner's answer to question 13)
 - **Before:** a calendar read with no OPEN event in the window fell back to "business hours", 5am to 1am every day, minus its events. So a detailer who deleted their OPEN events for a holiday was offered every hour of it.
 - **Now:** that mode (`noOpen`, was `blacklist`) offers nothing: "if it doesn't say open, you can't book."

@@ -214,7 +214,22 @@
   // then visibly slid thousands of pixels down to the section, which read as
   // the page repositioning itself. Held again once everything has loaded
   // (images, fonts), unless the visitor has already started moving around.
-  if (location.hash.length > 1) {
+  // Links to sections of the old one-page home page (the Google Business
+  // Profile, old ads, bookmarks) now go to the page each section became,
+  // instead of the top of the home page. #schedule was the booking section.
+  var MOVED = { about: 'about.html', team: 'about.html', reviews: 'about.html#reviews',
+    areas: 'service-area.html', travel: 'service-area.html', faq: 'faq.html', inquiry: 'contact.html' };
+  var oldId = location.hash.slice(1);
+  var onHome = /(^\/$|\/index\.html$)/.test(location.pathname);
+  if (onHome && oldId && !document.getElementById(oldId) && (MOVED[oldId] || oldId === 'schedule')) {
+    if (oldId === 'schedule') {
+      history.replaceState(null, '', location.pathname + location.search + '#book');
+      if (window.ACFunnel) window.ACFunnel.open();
+    } else {
+      var to = MOVED[oldId].split('#');
+      location.replace(to[0] + location.search + (to[1] ? '#' + to[1] : ''));
+    }
+  } else if (location.hash.length > 1) {
     var touched = false;
     ['wheel', 'touchmove', 'keydown', 'pointerdown'].forEach(function (ev) {
       window.addEventListener(ev, function () { touched = true; }, { passive: true, once: true });
