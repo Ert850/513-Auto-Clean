@@ -1539,6 +1539,8 @@ button.bk-tl-s:hover { border-color: var(--red); box-shadow: 0 0 0 3px var(--red
   background: var(--paper); border: 1px solid var(--line); border-radius: 999px; padding: .12rem .55rem;
 }
 .bk-pic-price.none { font-weight: 600; color: var(--text-soft); }
+/* Exterior paused by the cold (owner, November 11): "From Feb 24". Grey, not gold: gold is a fee. */
+.bk-pic-price.bk-pic-cold { font-weight: 700; color: var(--text-soft); }
 .bk-askrow {
   width: 100%; display: flex; align-items: center; gap: .7rem; margin-top: .55rem;
   font: inherit; text-align: left; cursor: pointer; color: var(--text);

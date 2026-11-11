@@ -16,9 +16,14 @@
       "id": "golf-code",
       "name": "Golf page: show the GOLF10 code, or only the student story",
       "status": "off",
-      "sources": ["golf"],
-      "versions": { "no-code": 50, "code": 50 },
-      "note": "Owner, November 11, 2026: a discount may not be needed because the story sells. Turn on when the golf page exists and GOLF10 is active in config/promo-codes.json."
+      "sources": [
+        "golf"
+      ],
+      "versions": {
+        "no-code": 50,
+        "code": 50
+      },
+      "note": "Owner, November 11, 2026: a discount may not be needed because the story sells. Start the week the golf booklets reach golfers (spring into summer 2027): the checklist is in docs/AB-TESTING.md, 'When to start the golf code test'."
     }
   ]
 }
