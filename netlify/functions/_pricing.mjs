@@ -33,21 +33,24 @@ var ADDONS = [
     scope: "interior",
     icon: "droplet",
     description: "Two levels. Pick the one that matches what you are dealing with.",
-    note: "A stain is either sitting on the fibers or has soaked into them. Treatment breaks the bond so it can be agitated loose and wiped away, which handles anything on the surface. Removal goes further: heat and moisture pull what has soaked in back up out of the padding, and an extractor takes it away rather than pushing it deeper. That is why the deeper option costs more time, not just more product.",
+    note: "A stain is either sitting on the fibers or has soaked into them. Treatment breaks the bond so it can be agitated loose and wiped away, which deals with what is on the surface. The deep treatment goes further: heat and moisture draw what has soaked in back up out of the padding, and an extractor takes it away rather than pushing it deeper. That is why the deeper option costs more time, not just more product. How much of a stain lifts depends on what it is, how long it has set and the fabric, so we never promise it all comes out.",
     tiers: [
       {
         id: "minor",
-        label: "Minor to moderate treatment",
+        label: "Surface stain treatment",
         priceCents: 5e3,
         durationMin: 60,
-        description: "Treatment, scrubbing and wipe reduction. Removes 70 to 90% of the stain."
+        // No removal promises (Elijah, team brief 7.1, November 11): it said
+        // "Removes 70 to 90% of the stain".
+        description: "Treatment, scrubbing and wiping, to lift as much of the stain as the fabric allows."
       },
       {
         id: "major",
-        label: "Moderate to major removal",
+        label: "Deep stain treatment",
         priceCents: 1e4,
         durationMin: 120,
-        description: "Treatment, scrubbing, upholstery extraction, 250 degree steaming and wipe removal. Removes 90 to 100% of the stain."
+        // It said "Removes 90 to 100% of the stain" (team brief 7.1).
+        description: "Treatment, scrubbing, upholstery extraction and 250 degree steam, to lift as much of a set-in stain as the fabric allows."
       }
     ]
   },
@@ -345,7 +348,10 @@ var CORRECTION_TIERS = [
     addCents: CORRECTION_ADD_CENTS.oneStep,
     addMin: 12 * 60,
     result: "Looks perfect from about 5 feet away",
-    detail: "One cutting and finishing pass lifts most light swirling and haze, then the coating goes on. Removes roughly 60 to 70% of visible defects.",
+    detail: (
+      // No removal percentages (team brief 7.1): it said "Removes roughly 60 to 70% of visible defects".
+      "One cutting and finishing pass for light swirling and haze, then the coating goes on. Deeper scratches can stay."
+    ),
     asterisk: true
   },
   {
@@ -354,7 +360,10 @@ var CORRECTION_TIERS = [
     addCents: CORRECTION_ADD_CENTS.twoStep,
     addMin: 18 * 60,
     result: "Looks perfect from about 2 feet away",
-    detail: "A compounding pass to cut deeper defects, then a refining pass to bring the gloss back, then the coating. Removes roughly 80 to 90%.",
+    detail: (
+      // It said "Removes roughly 80 to 90%" (team brief 7.1).
+      "A compounding pass to cut deeper defects, then a refining pass to bring the gloss back, then the coating. How much comes out depends on the paint."
+    ),
     asterisk: true
   },
   {
@@ -362,7 +371,8 @@ var CORRECTION_TIERS = [
     label: "3 to 4 step paint correction, then coating",
     addCents: CORRECTION_ADD_CENTS.threeStep,
     addMin: 30 * 60,
-    result: "Removes 90%+ of all defects, reflective trim included",
+    // It said "Removes 90%+ of all defects" (team brief 7.1).
+    result: "Our most thorough correction, reflective trim included",
     detail: "Heavy cut, refine, then a final jewelling pass under inspection lighting before coating, with a fourth pass where the paint needs it. Reflective trim is corrected and coated alongside the paint. This is show car work and runs across several days.",
     asterisk: false
   }

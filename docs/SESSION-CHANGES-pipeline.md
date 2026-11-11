@@ -81,6 +81,25 @@ Built overnight, November 10 to 11, for you to evaluate. It combines your 8 answ
 - **Also confirmed in Netlify:** `GOOGLE_BUSY_ONLY_CALENDAR_IDS` is set (the review's top condition), and `DETAILERS` is set. The owner confirmed Kris goes live with the new site.
 - **`check-live.mjs`:** read keys only in single quotes, but the published `config.js` is minified with double quotes, so every live key read "not set". It now matches either quote, and also checks GA4 and Clarity.
 
+### No removal promises in the catalog (Elijah, team brief 7.1, November 11)
+- **Stain Treatment (Elijah's "fix first"):**
+  - "Removes 70 to 90% of the stain" became "Treatment, scrubbing and wiping, to lift as much of the stain as the fabric allows."
+  - "Removes 90 to 100% of the stain" became "Treatment, scrubbing, upholstery extraction and 250 degree steam, to lift as much of a set-in stain as the fabric allows."
+  - The tier labels "Minor to moderate treatment" and "Moderate to major removal" became "Surface stain treatment" and "Deep stain treatment".
+  - The explanatory note now ends: "How much of a stain lifts depends on what it is, how long it has set and the fabric, so we never promise it all comes out."
+  - Tier ids (`minor`, `major`) are unchanged, so prices, bookings and old quote links are untouched.
+- **The same thing elsewhere ("check the rest of the catalog"):** the paint correction tiers promised removal percentages ("Removes roughly 60 to 70% of visible defects", "80 to 90%", "Removes 90%+ of all defects"). They now describe the work without a percentage. Correction is still "coming soon", so no customer has seen these as an offer.
+- **Left for Elijah:** "Looks perfect from about 5 feet away" and "from about 2 feet away" on the correction tiers. They're expectations, not removal percentages, but "perfect" is strong.
+- **Checked:** none of the old phrases remain in the built `index.html`, `services.html` or `faq.html`. The service names "Pet hair removal", "Bug removal" and "Seat removal" are names, not promised outcomes.
+
+### Elijah's Accounting sheet reads the booking events: format locked by a test
+- **What:** Elijah's `JobsSync.gs` (Apps Script) reads the booking calendars hourly: the `TOTAL` and `Sales tax` lines, the `SOURCE` and `HEARD ABOUT US` blocks, the ZIP at the end of the location, and the "Kris:" prefix in the title. He asked that the format stay, or that he be told.
+- **Checked:** every field matches what `send-confirmation.mjs` writes today.
+- **New `jobs-sync-contract.test.ts`:** runs his exact patterns against a real priced booking's event description and title. If the format drifts, the build fails. To make it testable, `eventDescription` is exported and the title moved into an exported `eventTitle()`, with the same logic.
+- **Two gaps in his script (for his side, not ours):**
+  - the owner's own jobs have no name in the title, so their Detailer column is blank;
+  - the owner's "DNS" blocks aren't in his skip list, so they'd show as empty job rows.
+
 ### "Register interest" in paint correction works on its own (bug, November 11)
 - **Bug:** "Register interest" on the Showroom Ready card (home page and Services) opened the booking form with that card ticked "Interested". Nothing could be sent without also booking a package: Continue stayed hidden under "Choose a package to continue." Someone who only wanted paint correction was stuck. The live site behaves the same.
 - **Root cause:** interest was designed to ride along with a booking (the Review's "We will let you know when these open"), and nothing handled interest on its own.

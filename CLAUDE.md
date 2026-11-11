@@ -95,6 +95,8 @@ Read this before changing anything. Every rule below came from a real bug or an 
   - `FILES` in `web/scripts/build-dist.mjs`, or it is never published;
   - `PAGES` in `web/scripts/stamp-assets.mjs`;
   - `sitemap.xml`.
+- **No removal promises anywhere a customer reads** (Elijah, team brief): no "removes 90%", no "100%". Say what the work does ("to lift as much as the fabric allows"). Prices and catalog wording live only in `web/lib/catalog/`.
+- **The booking calendar event is read by Elijah's Accounting sheet (JobsSync.gs).** Keep `TOTAL:`, `Sales tax…:`, the `SOURCE` and `HEARD ABOUT US` blocks, the ZIP last in the location and `Name:` first in the title; `jobs-sync-contract.test.ts` guards them. Change them only together with him.
 - **Print landing pages (`lp-golf.html`, `lp-prestige.html`) stay out of the sitemap and carry `noindex`**: they're for people holding the print piece, reached through `/golf` and `/prestige` (redirects in `netlify.toml`). Every other new-page step applies.
 - A page whose Book buttons should open the booking form in place needs `<div id="bookFunnel" hidden>`, `book.css`, `js/vendors.js`, `js/pricing.bundle.js` and `js/funnel.js` (as on `index.html` and `services.html`), and its Book links must be `href="book.html"`, which the form intercepts. On pages without the form, Book links are `index.html#book`.
 - **The home page keeps the full package cards** (the owner reverted a compact teaser: "it looked fine before"). `CATALOG:SERVICES` is rendered into both `index.html` and `services.html`. Ask before replacing an established section's look, even for a decided restructure.
