@@ -355,6 +355,35 @@ describe("the booking funnel opens", () => {
     expect(body, "with nothing added it should be the dark panel").toContain("bk-extras empty");
   });
 
+  it("registers interest in a coming-soon package without booking anything (bug, November 11)", () => {
+    // "Register interest" opened the form with Showroom Ready ticked, but
+    // nothing could be sent without also booking a package.
+    const fresh = loadFunnel();
+    fresh.window.ACFunnel.open();
+    click(fresh, { dataset: { size: "small" } });
+    click(fresh, { dataset: { intent: "exterior" } });
+    click(fresh, { dataset: { interest: "showroom-exterior" } });
+    const body = fresh.lookup("bkBody").innerHTML;
+    expect(body, "a way to send the interest alone").toContain('data-interest-only="showroom-exterior"');
+    click(fresh, { dataset: { interestOnly: "showroom-exterior" } });
+    // The stub page answers every id, so the question form counts as present
+    // and is filled in place (on any other page it is handed to contact.html).
+    expect(fresh.lookup("q-message").value, "the message names what they want").toMatch(
+      /^Please tell me when Showroom Ready \(Paint Correction and Protection\) opens\./,
+    );
+    expect(fresh.lookup("q-message").value).toContain("My vehicle: Small");
+  });
+
+  it("offers interest-only only while nothing bookable is chosen", () => {
+    const fresh = loadFunnel();
+    fresh.window.ACFunnel.open();
+    click(fresh, { dataset: { size: "small" } });
+    click(fresh, { dataset: { intent: "exterior" } });
+    click(fresh, { dataset: { interest: "showroom-exterior" } });
+    click(fresh, { dataset: { pkg: "basic-exterior" } });
+    expect(fresh.lookup("bkBody").innerHTML).not.toContain("data-interest-only");
+  });
+
   it("Help me decide books a real time and leaves only the package open", async () => {
     /*
      * TWO THINGS ARE UNKNOWN WHEN SOMEBODY PRESSES HELP ME DECIDE, and for a
