@@ -23,7 +23,7 @@ Built overnight, November 10 to 11, for you to evaluate. It combines your 8 answ
 - **Clarity never records the booking form:** `data-clarity-mask` on `#bookFunnel` (`web/partials/scripts.html`). Balanced masking hides what is typed, not the Review screen that shows it back.
 - **`/golf` and `/prestige`** redirect (302, temporary) to the home page tagged `utm_source=golf|prestige&utm_medium=print&utm_campaign=qr`, until the magazine pages exist.
 - **`GOOGLE_CALENDAR_SERVER_KEY`** (optional): the booking functions use it first, so the browser key can be locked to the site's pages. Until it is set, don't restrict the browser key.
-- **Server date cap 93 days** (was 400). The form offers 92.
+- **How far ahead: the same as the live site** (your call, November 11): the form offers 365 days again (it was 92 from the November 10 answers) and the server allows 400, as on `main`. The page says "We take bookings up to a year ahead" in the last bookable week. An audit fix had cut the server to 93 days; that is undone. Owner question 17 asks whether to shorten it.
 - **CSP:** `api.weather.gov` added to `connect-src` (the forecast fetch would have been reported as a violation).
 - **Docs brought up to date:** DETAILER_HOMES done, Google sign-in done, the colour scale, and the calendar switch-over order (below).
 - **`npm run gcal:token`:** a Web application client (Google's docs: a localhost redirect is a web client), accepts the downloaded JSON's path, cleans pasted values, never opens a browser itself (it opened the wrong Chrome profile).
