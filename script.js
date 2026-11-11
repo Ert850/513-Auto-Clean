@@ -175,8 +175,10 @@
      so every inclusion shows as one list: the owner wants the lists growing
      package to package on show wherever there is room. The height is where
      the full Interior cards and the banner still fit (measured, see
-     docs/SESSION-CHANGES-fold.md). */
-  var foldMq = window.matchMedia('(min-width: 1000px) and (min-height: 900px)');
+     docs/SESSION-CHANGES-fold.md). 940, not 900, since the eyebrow came back
+     (owner, November 10): at 900 the banner ended at 926 (final validation,
+     November 11). */
+  var foldMq = window.matchMedia('(min-width: 1000px) and (min-height: 940px)');
   function syncFold() {
     var full = foldMq.matches;
     document.documentElement.classList.toggle('svc-full', full);

@@ -1630,6 +1630,10 @@ button.bk-tl-s:hover { border-color: var(--red); box-shadow: 0 0 0 3px var(--red
 .bk-pkgcard.on { border-color: var(--red); box-shadow: 0 0 0 3px var(--red-ghost); }
 .bk-pkgcard .bk-pkg { border: 0; background: none; border-radius: var(--r-md); padding: .75rem 1rem .2rem; align-items: center; }
 .bk-pkgcard .bk-pkg:hover { border: 0; }
+/* Phones stack the card, so its text lines up on the left like every other
+   card (final validation, November 11: the rule above outranked the phone
+   rule's stretch and centred "Showroom Ready" and the short taglines). */
+@media (max-width: 560px) { .bk-pkgcard .bk-pkg { align-items: stretch; } }
 .bk-pkgcard .bk-pkg-tag { margin-top: .1rem; }
 .bk-pkgcard .bk-how-pkg { margin: 0; padding: 0 1rem .6rem; }
 .bk-pkgcard .bk-how-pkg p { margin-top: .4rem; }
