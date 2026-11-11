@@ -117,6 +117,7 @@ Read this before changing anything. Every rule below came from a real bug or an 
 - **`.field input` (width 100%, padding, border, background) is for text boxes, but it matches radios and checkboxes inside `.field` too.** The contact pills' radios stretched to the full pill and pushed the words outside. Any control that isn't a text box, inside `.field`, needs `width: auto; padding: 0; border: 0; background: none`.
 - **`.field label { display: block }` beats single-class component rules.** Any component built from `<label>`s inside `.field` (such as the `.pref` pills) has to restate its display, or it falls back to block and stacks.
 - **Form rows align on their boxes (`align-items: end`).** A label that wraps must not push its input below its neighbour's.
+- **Booking form icons are drawn at a fixed line width** (`.bk-pic-ic * { vector-effect: non-scaling-stroke }`). A scaled-down part keeps the normal stroke; a thicker one draws as a solid blob. A package's level (1 to 4, the meter on the Package row and the cards) comes from `pkgLevel()`, its place in its side's catalog order, never its position in a list (owner's picks B2 and P2, November 12).
 - **The logo's spray trigger is black.** On dark backgrounds (the footer, the mobile menu) it sits on a light rounded tile (`.footer .brand .mark-img`, `.mobile-menu .brand .mark-img`). Any new dark placement needs the same tile.
 - **`images/logo-mark.png` is mostly transparent**: the bottle fills only x 40–78 and y 18–93 of 120×120. Size it with `object-fit: cover` and a narrow width, not as a square.
 

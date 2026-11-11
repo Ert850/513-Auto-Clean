@@ -554,6 +554,14 @@
   /** The answer's picture, between the step's name and the answer (owner, November 11). */
   function doneIcon(id) {
     var v = veh();
+    // The package's own picture says its level, so it no longer repeats
+    // the Service row's (owner's pick B2, November 12).
+    if (id === 'package' && !state.advice) {
+      var lv = function (cat) { var p = v.packageIds.map(P.findPackage).filter(function (x) { return x && x.category === cat; })[0]; return p ? pkgLevel(p) : 0; };
+      var inner = v.intent === 'both' ? levelPicBoth(lv('interior'), lv('exterior'))
+        : v.intent === 'interior' || v.intent === 'exterior' ? levelPic(v.intent, lv(v.intent)) : '';
+      if (inner) return '<i class="bk-donerow-ic">' + picSvg(inner) + '</i>';
+    }
     var key = id === 'size' ? v.size
       : id === 'intent' || id === 'package' ? (state.advice ? 'ask' : v.intent)
       : id === 'addons' ? 'extras' : '';
@@ -1543,8 +1551,54 @@
     extras: '<path d="M12 3.5l1.9 5.1 5.1 1.9-5.1 1.9L12 17.5l-1.9-5.1L5 10.5l5.1-1.9z"/><path d="M18.5 15.5l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7z"/>',
     ask: '<circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 0 1 4.8.9c0 1.7-2.4 2.2-2.4 3.6"/><path d="M12 17h.01"/>'
   };
-  function pic(id) {
-    return '<svg class="bk-pic-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + PIC[id] + '</svg>';
+  function pic(id) { return picSvg(PIC[id]); }
+  function picSvg(inner) {
+    return '<svg class="bk-pic-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + inner + '</svg>';
+  }
+
+  /*
+   * A package's level of service, 1 to 4 (owner's pick B2, November 12):
+   * its place in its side's catalog order (Maintenance or Express, Basic,
+   * Full, Showroom Ready). Drawn as four segments, `n` filled.
+   */
+  function pkgLevel(p) {
+    var list = P.packagesFor(p.category);
+    for (var i = 0; i < list.length; i++) if (list[i].id === p.id) return Math.min(4, i + 1);
+    return 0;
+  }
+  function levelSegs(x0, step, w, n) {
+    var out = '';
+    for (var i = 0; i < 4; i++) {
+      out += '<rect x="' + (x0 + i * step).toFixed(2) + '" y="20.4" width="' + w + '" height="2.6" rx=".8" stroke="none" fill="currentColor"' + (i < n ? '' : ' opacity=".2"') + '/>';
+    }
+    return out;
+  }
+  /** The Package row: the service's picture over its level. */
+  function levelPic(side, n) {
+    return '<g transform="translate(2.4 -.9) scale(.8)">' + PIC[side] + '</g>' + levelSegs(2.6, 4.85, 4.1, n);
+  }
+  /**
+   * Inside and out: seat over the interior level, car over the exterior
+   * level, the shine on top and a faint line between (owner, November 12).
+   * Strokes need no thickening when scaled: .bk-pic-ic draws every line at
+   * a fixed width (vector-effect: non-scaling-stroke).
+   */
+  var SEAT_PATH = '<path d="M8.3 3h4.4a1.5 1.5 0 0 1 1.5 1.7l-.7 7.3H8.9L7 4.9A1.5 1.5 0 0 1 8.3 3z"/><path d="M8.9 12h7.6a2 2 0 0 1 2 2v2.8H7.9L8.9 12z"/><path d="M9.4 16.8v4M16.5 16.8v4"/>';
+  var CAR_PATH = '<path d="M19 17h2a1 1 0 0 0 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4a1 1 0 0 0 1 1h2"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/><path d="M9 17h6"/>';
+  function levelPicBoth(ni, ne) {
+    return '<path d="M12 .9v2.8M10.6 2.3h2.8M8.4 1.7v1.6M7.6 2.5h1.6M15.6 1.7v1.6M14.8 2.5h1.6" stroke-width="1.3"/>' +
+      '<path d="M12 6.4V23" stroke-width="1" stroke-dasharray="1.5 1.7" opacity=".45"/>' +
+      '<g transform="translate(-.9 5.6) scale(.56)">' + SEAT_PATH + '</g>' +
+      '<g transform="translate(13 7.6) scale(.47)">' + CAR_PATH + '</g>' +
+      levelSegs(.6, 2.65, 2.2, ni) + levelSegs(13.25, 2.65, 2.2, ne);
+  }
+  /** On a package card, after its name: the four segments and their words for screen readers. */
+  function levelMeter(p) {
+    var n = pkgLevel(p);
+    if (!n) return '';
+    var segs = '';
+    for (var i = 0; i < 4; i++) segs += '<i' + (i < n ? ' class="on"' : '') + '></i>';
+    return '<span class="bk-lvl" role="img" aria-label="Level ' + n + ' of 4">' + segs + '</span>';
   }
 
   /* ================= step 1: size ================= */
@@ -1803,7 +1857,7 @@
           html += '<button type="button" class="bk-pkg soon' + (want ? ' want' : '') +
             '" data-interest="' + p.id + '">' +
             '<span class="bk-pkg-l">' +
-              '<b>' + esc(p.name) + '<i class="bk-flag soon">Coming soon</i></b>' +
+              '<b>' + esc(p.name) + levelMeter(p) + '<i class="bk-flag soon">Coming soon</i></b>' +
               '<span class="bk-pkg-tag">' + esc(p.tagline) + '</span>' +
               '<span class="bk-pkg-feat">' + esc(p.comingSoonNote || 'Not bookable yet.') + '</span>' +
             '</span>' +
@@ -1832,7 +1886,7 @@
         html += '<div class="bk-pkgcard' + (on ? ' on' : '') + '">' +
           '<button type="button" class="bk-pkg" data-pkg="' + p.id + '" data-cat="' + cat + '">' +
             '<span class="bk-pkg-l">' +
-              '<b>' + esc(p.name) + '</b>' +
+              '<b>' + esc(p.name) + levelMeter(p) + '</b>' +
               (p.featured ? '<i class="bk-flag">Most popular</i>' : '') +
               '<span class="bk-pkg-tag">' + esc(p.tagline) + '</span>' +
             '</span>' +

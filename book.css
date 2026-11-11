@@ -162,6 +162,14 @@ body.bk-open { overflow: hidden; }
   font-weight: 800; letter-spacing: .07em; text-transform: uppercase; color: #fff;
   background: var(--red); padding: .14rem .4rem; border-radius: 5px; vertical-align: 2px;
 }
+/* The package's level, after its name (owner's pick P2, November 12): four
+   ink segments, `n` filled. Its right margin keeps "Most popular" clear of it. */
+.bk-lvl { display: inline-flex; gap: 2px; margin: 0 .5rem 0 .55rem; vertical-align: 2px; }
+.bk-lvl i { display: block; width: 8px; height: 5px; border-radius: 2px; background: var(--text); opacity: .18; }
+.bk-lvl i.on { opacity: 1; }
+/* "Coming soon" sits right after the meter, inside the name: the meter's own
+   margin spaces it, and when it wraps it starts flush at the left. */
+.bk-lvl + .bk-flag { margin-left: 0; }
 .bk-pkg-tag { display: block; color: var(--text-soft); font-size: .85rem; margin-top: .18rem; }
 .bk-pkg-feat { display: block; color: var(--text-soft); font-size: .77rem; line-height: 1.5; margin-top: .4rem; opacity: .9; }
 .bk-pkg-feat em { font-style: normal; font-weight: 700; color: var(--text); }
