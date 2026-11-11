@@ -20,10 +20,19 @@
  *
  * Inside the forecast (the National Weather Service gives about 7 days,
  * hourly, free for any use) every hour of the job is checked, so a warm spell
- * in winter is bookable. Past the forecast nobody knows, so the season
- * decides. With no forecast at all, the season decides everything.
+ * in winter is bookable. Past the forecast nobody knows:
+ * - EXTERIOR goes by Cincinnati's typical temperature for each hour of the
+ *   job (NOAA 1991-2020 hourly normals, normals-cvg.ts), tentatively (owner,
+ *   November 11: "disable exterior based on weather"; it used to be a fixed
+ *   March to October season, which closed every November, December and
+ *   February day past the forecast however mild those usually are).
+ *   Typically that means open until about December 20 and from about
+ *   February 25. The same 40°F, the same every-hour rule.
+ * - Correction and coating keep their seasons (both are coming soon).
+ * With no forecast at all, the same past-the-forecast rules decide.
  */
-import { localParts } from "../time/zone.js";
+import { localParts, localDayStart, localTimeOnDay } from "../time/zone.js";
+import { CVG_HOURLY_NORMALS_F } from "./normals-cvg.js";
 
 const TZ = "America/New_York";
 const HOUR_MS = 3_600_000;
@@ -37,20 +46,23 @@ export interface WeatherRule {
   maxRainMmPerHour: number;
   /** Clear sun and hotter than this, no (unless covered). Null for never. */
   maxSunTempF: number | null;
-  /** Months (1 to 12) open past the forecast. */
-  seasonMonths: readonly number[];
+  /**
+   * Past the forecast: months (1 to 12) that are open, or "normals" for the
+   * typical temperature of every hour of the job (normals-cvg.ts).
+   */
+  pastForecast: readonly number[] | "normals";
 }
 
 const ALL_YEAR = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] as const;
 
 export const WEATHER_RULES: Record<WeatherKind, WeatherRule> = {
-  interior: { minTempF: null, maxRainMmPerHour: 20, maxSunTempF: null, seasonMonths: ALL_YEAR },
+  interior: { minTempF: null, maxRainMmPerHour: 20, maxSunTempF: null, pastForecast: ALL_YEAR },
   // "Light peppering is fine (like a mist or intermittent)": 4 mm an hour is
   // well past a drizzle.
-  exterior: { minTempF: 40, maxRainMmPerHour: 4, maxSunTempF: 100, seasonMonths: [3, 4, 5, 6, 7, 8, 9, 10] },
+  exterior: { minTempF: 40, maxRainMmPerHour: 4, maxSunTempF: 100, pastForecast: "normals" },
   // "Can't do in rain": anything measurable.
-  correction: { minTempF: 50, maxRainMmPerHour: 0.25, maxSunTempF: 85, seasonMonths: [4, 5, 6, 7, 8, 9, 10] },
-  coating: { minTempF: 60, maxRainMmPerHour: 0.25, maxSunTempF: 85, seasonMonths: [5, 6, 7, 8, 9] },
+  correction: { minTempF: 50, maxRainMmPerHour: 0.25, maxSunTempF: 85, pastForecast: [4, 5, 6, 7, 8, 9, 10] },
+  coating: { minTempF: 60, maxRainMmPerHour: 0.25, maxSunTempF: 85, pastForecast: [5, 6, 7, 8, 9] },
 };
 
 /** Clear sun: less cloud than this, in percent. */
@@ -73,7 +85,26 @@ export interface Forecast {
   until: number;
 }
 
-export type WeatherVerdict = { ok: true } | { ok: false; reason: "cold" | "rain" | "heat" | "season" };
+/**
+ * "season": past the forecast, a month the work is closed. "typical": past
+ * the forecast, an hour of the job is typically too cold (normals).
+ */
+export type WeatherVerdict = { ok: true } | { ok: false; reason: "cold" | "rain" | "heat" | "season" | "typical" };
+
+const DAYS_BEFORE_MONTH = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334];
+
+/**
+ * Cincinnati's typical temperature at this instant, °F (NOAA hourly normals).
+ * The table is in local standard time, so the clock is read at UTC-5 all
+ * year; February 29 reads as February 28.
+ */
+export function typicalTempF(ms: number): number {
+  const est = new Date(ms - 5 * HOUR_MS);
+  const mo = est.getUTCMonth();
+  const day = Math.min(est.getUTCDate(), mo === 1 ? 28 : 31);
+  const index = (DAYS_BEFORE_MONTH[mo]! + day - 1) * 24 + est.getUTCHours();
+  return CVG_HOURLY_NORMALS_F.charCodeAt(index) - 32;
+}
 
 /** "PT6H", "P1DT3H", "PT30M" as milliseconds. */
 export function isoDurationMs(text: string): number {
@@ -128,8 +159,16 @@ export function weatherVerdict(req: {
   const f = req.forecast;
 
   if (!f || end > f.until) {
+    if (rule.pastForecast === "normals") {
+      if (rule.minTempF === null) return { ok: true };
+      // Every hour the job touches, start and end included.
+      for (let t = req.startMs; t < end + HOUR_MS; t += HOUR_MS) {
+        if (typicalTempF(Math.min(t, end)) < rule.minTempF) return { ok: false, reason: "typical" };
+      }
+      return { ok: true };
+    }
     const month = localParts(req.startMs, req.timeZone ?? TZ).mo;
-    return rule.seasonMonths.includes(month) ? { ok: true } : { ok: false, reason: "season" };
+    return rule.pastForecast.includes(month) ? { ok: true } : { ok: false, reason: "season" };
   }
 
   const during = (s: ForecastSpan) => s.end > req.startMs && s.start < end;
@@ -153,4 +192,53 @@ export function weatherVerdict(req: {
     }
   }
   return { ok: true };
+}
+
+/**
+ * The first day, from today, with any start (8am to 5pm, every half hour) at
+ * which this work is warm enough, judged on the cold alone: rain and sun move
+ * a day's times about, but only the cold closes the work for weeks. Midnight
+ * of that day, or null when nothing in `maxDays` qualifies.
+ */
+export function nextWarmEnoughDay(req: {
+  kind: WeatherKind;
+  durationMin: number;
+  forecast: Forecast | null;
+  nowMs: number;
+  maxDays?: number;
+  timeZone?: string;
+}): number | null {
+  const tz = req.timeZone ?? TZ;
+  const day0 = localDayStart(req.nowMs, tz);
+  for (let d = 0; d < (req.maxDays ?? 366); d++) {
+    for (let min = 8 * 60; min <= 17 * 60; min += 30) {
+      const startMs = localTimeOnDay(day0, d, min, tz);
+      if (startMs < req.nowMs) continue;
+      // covered: lifts the rain and sun rules, leaving the cold.
+      if (weatherVerdict({ startMs, durationMin: req.durationMin, kind: req.kind, forecast: req.forecast, covered: true, timeZone: tz }).ok) {
+        return localTimeOnDay(day0, d, 0, tz);
+      }
+    }
+  }
+  return null;
+}
+
+/**
+ * Is this work paused by the cold for the next `horizonDays` (owner, November
+ * 11: "if below 40 for next 2 weeks, show ... when it's expected to next be
+ * available")? Null when a day inside the horizon is warm enough; otherwise
+ * the next warm-enough day (midnight), tentative past the forecast.
+ */
+export function coldPause(req: {
+  kind: WeatherKind;
+  durationMin: number;
+  forecast: Forecast | null;
+  nowMs: number;
+  horizonDays?: number;
+  timeZone?: string;
+}): { nextDayMs: number | null } | null {
+  const tz = req.timeZone ?? TZ;
+  const next = nextWarmEnoughDay(req);
+  const horizonEnd = localTimeOnDay(localDayStart(req.nowMs, tz), req.horizonDays ?? 14, 0, tz);
+  return next !== null && next < horizonEnd ? null : { nextDayMs: next };
 }

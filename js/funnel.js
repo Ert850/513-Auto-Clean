@@ -1632,11 +1632,28 @@
     ];
     if (state.browse) return rBrowse();
 
-    return '<div class="bk-pics">' +
+    // Exterior paused by the cold (owner, November 11): said before they
+    // choose, with the likely day back. Still selectable, to book that day.
+    // The forecast loads in the background; when it lands, draw again once.
+    var pause = exteriorPause();
+    if (pause === undefined) {
+      loadWeather().then(function () { if (exteriorPause() && step().id === 'intent') render(); });
+    }
+    var back = pause && pause.nextDayMs ? shortDay(pause.nextDayMs) : '';
+    var coldNote = pause
+      ? '<p class="bk-warn bk-cold" role="status"><b>Exterior details pause below ' + P.WEATHER_RULES.exterior.minTempF +
+        '&deg;F</b>, so water can&rsquo;t freeze on your car. ' +
+        (back ? 'Next likely: <b>' + back + '</b>, weather permitting.' : 'They are back when it warms up.') + '</p>'
+      : '';
+
+    return coldNote + '<div class="bk-pics">' +
       opts.map(function (o) {
+        var cold = pause && o[0] !== 'interior';
         return '<button type="button" class="bk-pic' +
           (!state.advice && v.intent === o[0] ? ' on' : '') + '" data-intent="' + o[0] + '">' +
-          pic(o[0]) + '<b>' + o[1] + '</b><span>' + o[2] + '</span></button>';
+          pic(o[0]) + '<b>' + o[1] + '</b><span>' + o[2] + '</span>' +
+          (cold ? '<i class="bk-pic-price bk-pic-cold">' + (back ? 'From ' + back.replace(/^\w+, /, '') : 'Paused for cold') + '</i>' : '') +
+          '</button>';
       }).join('') + '</div>' +
       // Nobody should have to already know what they want in order to ask.
       // This turns the booking into a request: no package, no price, no time
@@ -2984,8 +3001,30 @@
         .then(P.parseGridpoint),
       new Promise(function (r) { setTimeout(function () { r(null); }, 6000); })
     ]).catch(function () { return null; });
-    weatherCache[key] = { at: Date.now(), promise: p };
+    var entry = { at: Date.now(), promise: p, done: false, value: null };
+    p.then(function (f) { entry.done = true; entry.value = f; });
+    weatherCache[key] = entry;
     return p;
+  }
+
+  /**
+   * Is exterior work paused by the cold for the next two weeks (owner,
+   * November 11)? Judged for the shortest exterior package, on the cold
+   * alone, from the forecast for the customer's area where it is known
+   * (downtown before an address). Undefined until the forecast is in; then
+   * null, or { nextDayMs } for "Next likely: Tue, Feb 24".
+   */
+  function exteriorPause() {
+    var pt = weatherPoint();
+    var hit = weatherCache[pt.lat.toFixed(2) + ',' + pt.lon.toFixed(2)];
+    if (!hit || !hit.done) return undefined;
+    var shortest = Math.min.apply(null, P.packagesFor('exterior').map(function (p) { return p.durationMin; }));
+    return P.coldPause({ kind: 'exterior', durationMin: shortest, forecast: hit.value, nowMs: Date.now(), horizonDays: 14 });
+  }
+
+  /** "Tue, Feb 24" in Cincinnati. */
+  function shortDay(ms) {
+    return new Date(ms).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: TZ });
   }
 
   function loadSlots() {
@@ -3564,6 +3603,10 @@
       html += (html ? ' ' : '') + '<b>' + (season.indexOf('exterior') > -1 ? 'Exterior details are back in spring' : 'Paint correction is back in spring') +
         '.</b> Until then we book them as far ahead as the forecast reaches, about a week, whenever it is warm and dry enough.';
     }
+    if (keys.indexOf('exterior:typical') > -1) {
+      html += (html ? ' ' : '') + '<b>Exterior details pause below ' + P.WEATHER_RULES.exterior.minTempF + '&deg;F.</b> ' +
+        'Past the 7-day forecast, exterior times follow typical Cincinnati temperatures, so they may move if it turns colder.';
+    }
     if (!state.covered && keys.some(function (k) { return /:(rain|heat)$/.test(k); })) {
       html += ' A garage or covered spot lifts the rain and sun limits: tick it on the address step.';
     }
@@ -3582,9 +3625,12 @@
     var kinds = [];
     keys.forEach(function (k) { var kind = k.split(':')[0]; if (kinds.indexOf(kind) < 0) kinds.push(kind); });
     var what = kinds.map(function (k) { return k === 'correction' ? 'paint correction' : k; }).join(' and ');
-    var cold = keys.some(function (k) { return /:(cold|season)$/.test(k); });
+    var cold = keys.some(function (k) { return /:(cold|season|typical)$/.test(k); });
+    // A closed season stops at the forecast's end; typical cold (exterior,
+    // November 11) only removes the hours that are usually too cold.
+    var season = keys.some(function (k) { return /:season$/.test(k); });
     return '<p class="bk-recs-weather"><b>' + (cold ? 'Cold weather' : 'The forecast') + '</b> ' +
-      (cold ? 'limits ' + esc(what) + ' times to about the next week.' : 'removes some ' + esc(what) + ' times.') + '</p>';
+      (season ? 'limits ' + esc(what) + ' times to about the next week.' : 'removes some ' + esc(what) + ' times.') + '</p>';
   }
 
   /** "Coating moves to a warmer day", when this start suits all but the coating. */

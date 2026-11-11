@@ -25,6 +25,19 @@ Built November 11, 2026, after the owner asked to test whether showing GOLF10 on
 
 **Never rename a running test or its versions.** The names are what the results are counted by.
 
+## Later: when to start the golf code test (`golf-code`)
+
+Noted November 11, 2026. Not urgent: nobody scans before the booklets go out.
+
+- **When:** the week the golf booklets reach golfers, spring into summer 2027 (owner). Start it then, not before, so every reader is counted from their first scan.
+- **The day before:**
+  1. Switch GOLF10 on: `"active": true` in `config/promo-codes.json`.
+  2. Decide whether "one per customer" must be enforced first (owner wants it; it isn't built yet).
+  3. Write the stop date and the question in the test's `note`.
+  4. Set `"status": "running"` in `config/experiments.json`, and deploy.
+- **Check after starting:** open `513autoclean.com/golf` in a private window a few times. Some visits should show the GOLF10 line with its Copy code button, some shouldn't, and each should keep its own version on reload.
+- The GA4 dimension "Test version" (`exp_variant_string`) is already registered (November 11), so data collects from the first day.
+
 ## Reading the result
 
 - **Bookings per version:** count the "A/B TESTS" lines in the booking emails. This is the number that matters.

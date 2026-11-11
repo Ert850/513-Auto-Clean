@@ -81,6 +81,30 @@ Built overnight, November 10 to 11, for you to evaluate. It combines your 8 answ
 - **Also confirmed in Netlify:** `GOOGLE_BUSY_ONLY_CALENDAR_IDS` is set (the review's top condition), and `DETAILERS` is set. The owner confirmed Kris goes live with the new site.
 - **`check-live.mjs`:** read keys only in single quotes, but the published `config.js` is minified with double quotes, so every live key read "not set". It now matches either quote, and also checks GA4 and Clarity.
 
+### Exterior follows the weather, with a clear notice when the cold pauses it (owner, November 11)
+- **The owner:** "Disable exterior based on weather. Exterior can't happen when below 40. Kris does not do exteriors. If below 40 for next 2 weeks, show in a very clear way … when it's expected to next be available tentatively based on weather before they select exterior."
+- **Before:** inside the 7-day forecast, every hour of an exterior job had to be 40°F or warmer (unchanged). Past it, a fixed March-to-October season decided, so every November, December and February day past the forecast was closed, however mild those usually are.
+- **Now, past the forecast:** exterior goes by **Cincinnati's typical temperature for each hour of the job**: NOAA's official 1991-2020 hourly normals for CVG, built into the site (`web/lib/availability/normals-cvg.ts`, about 10 KB, no new third party). The same 40°F, every hour. Typically that's open until about December 20 and from about February 25 (for example 1 December is fine at noon, not at 8am). Correction and coating keep their seasons; interior is unaffected.
+- **The notice (first step, before choosing):** when no day in the next 14 is warm enough for the shortest exterior job, judged on the cold only (rain moves times about but never pauses the work):
+  - an amber `.bk-warn` above the choices: "**Exterior details pause below 40°F**, so water can't freeze on your car. Next likely: **Wed, Feb 24**, weather permitting.";
+  - grey "From Feb 24" pills on Both and Exterior (grey, because gold means a fee).
+  
+  The choices stay selectable, so a customer can book that day ahead. The forecast is for the customer's area once known, downtown before that.
+- **Time picker wording:** past the forecast, exterior times "follow typical Cincinnati temperatures, so they may move if it turns colder". The recommended-times line no longer says cold "limits exterior times to about the next week", which is only true for a closed season.
+- **Kris:** already `"does": "interior"` in `DETAILERS`, so he is never offered exterior work. Nothing changed.
+- **Tests:** `weather.test.ts`, 14 tests:
+  - mid-January closed and late November open past the forecast;
+  - 1 December 8am closed, noon open;
+  - the normals read in standard time, with 29 February read as the 28th;
+  - the pause in early January naming a late-February day;
+  - a forecast warm spell lifting it;
+  - rain never causing it;
+  - interior never pausing.
+  
+  604 of 604 pass.
+- **Seen in a browser** (headless, 1440 and 375): today nothing shows. With the pause forced, the notice and pills render with no sideways scroll. Screenshots: `docs/mockups/exterior-cold-*.png`.
+- **To review:** "may move if it turns colder" promises the business reschedules an exterior booked on a typically-warm day that turns cold; confirm with the owner.
+
 ### Landing pages stay out of search results (user's question, November 11)
 - **Google's guidance (Search Central, "Block search indexing"):**
   - `noindex` drops a page from results "regardless of whether other sites link to it";
