@@ -23,7 +23,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 export const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
-export const CHROME_PAGES = ["index.html", "services.html", "about.html", "service-area.html", "faq.html", "contact.html"];
+export const CHROME_PAGES = ["index.html", "services.html", "about.html", "service-area.html", "faq.html", "contact.html", "lp-golf.html", "lp-prestige.html"];
 const PARTS = ["HEAD", "HEADER", "FOOTER", "SCRIPTS"];
 /** The build stamps asset URLs (?v=hash) after this step; compare without them. */
 export const unstamp = (s) => s.replace(/\?v=[0-9a-f]{10}/g, "");

@@ -836,6 +836,29 @@ main > .areas:first-child .section-head { margin-bottom: 18px; }
    at the bottom of a page it covered the Privacy, Terms and Cancellation links. */
 .footer { padding-bottom: calc(2rem + 58px); }
 
+/* Print landing pages (lp-golf.html, lp-prestige.html): the About layout for
+   the story, then three options. Built from the site's own tokens. */
+.lp-rating { display: flex; align-items: center; gap: .5rem; font-weight: 600; color: var(--text); margin: 0 0 .4rem; }
+.lp-rating .hb-stars { color: var(--amber); letter-spacing: .08em; }
+.lp-code { background: #fff; border: 1px dashed var(--line); border-radius: var(--r-sm); padding: .7rem .9rem; }
+.lp-cta { display: flex; gap: .7rem; flex-wrap: wrap; margin-top: 1.4rem; }
+.lp-options { background: #fff; }
+.lp-grid { display: grid; gap: 1rem; grid-template-columns: 1fr; }
+@media (min-width: 820px) { .lp-grid { grid-template-columns: repeat(3, 1fr); } }
+.lp-opt { background: var(--paper); border: 1px solid var(--line); border-radius: var(--r-md); padding: 1.4rem 1.3rem; display: flex; flex-direction: column; }
+.lp-opt h3 { margin: 0 0 .5rem; font-size: 1.2rem; }
+.lp-opt p { color: var(--text-soft); margin: 0 0 1rem; flex: 1; }
+.lp-link { font-weight: 700; color: var(--text); text-decoration: underline; text-underline-offset: 3px; }
+.lp-soon { font-weight: 700; color: var(--amber-ink); }
+.lp-cta-end { justify-content: center; margin-top: 2rem; }
+#story .about-copy p + p { margin-top: .7rem; }
+/* The About page drops this padding because its reviews follow; here the options do, so keep it. */
+#story { padding-bottom: clamp(40px, 5vw, 72px); }
+/* Nearly every visitor arrives by scanning on a phone: the story first, then
+   the portrait, so the first screen says what this is. One column only, so
+   the order changes no grid track. */
+@media (max-width: 959.98px) { #story .about-photo { order: 2; } }
+
 /* A/B tests (config/experiments.json): an element for one version only, data-exp="test:version",
    stays hidden until js/analytics.js picks that version. !important beats a component's own display. */
 [data-exp]:not(.exp-on) { display: none !important; }

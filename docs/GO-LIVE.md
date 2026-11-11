@@ -27,10 +27,10 @@ Check that each exists, with Builds and Functions scopes. Don't paste secret val
 
 | Variable | New? | If it's missing |
 |---|---|---|
-| `GOOGLE_BUSY_ONLY_CALENDAR_IDS` | New | **Must be set before the jobs calendar goes free/busy.** Without it the site reads that calendar in full, and loses sight of booked jobs once it is free/busy. |
-| `GA4_MEASUREMENT_ID` = `G-P11P7V82FM` | New | No Google Analytics and no consent banner. Not secret. |
-| `CLARITY_PROJECT_ID` = `zc5bvd0743` | New | No Clarity. Not secret. |
-| `DETAILERS` | New | Elijah only, as today. **The owner decides whether Kris is bookable from launch.** His bookings calendar isn't shared with him yet. |
+| `GOOGLE_BUSY_ONLY_CALENDAR_IDS` | New, **set (checked November 11)** | **Must be set before the jobs calendar goes free/busy.** Without it the site reads that calendar in full, and loses sight of booked jobs once it is free/busy. |
+| `GA4_MEASUREMENT_ID` = `G-P11P7V82FM` | New, **set November 11** | No Google Analytics and no consent banner. Not secret. |
+| `CLARITY_PROJECT_ID` = `zc5bvd0743` | New, **set November 11** | No Clarity. Not secret. |
+| `DETAILERS` | New, **set** | Elijah only, as today. **The owner confirmed (November 11) that Kris is bookable from launch.** Share his bookings calendar with him (his email is coming to Emmett). |
 | `DETAILER_HOMES` | New | Drive time measured from the shop. |
 | `GOOGLE_OWNER_AVAILABILITY_ID` | New, optional | Uses the built-in 513 Availability ID. |
 | `GOOGLE_CALENDAR_SERVER_KEY` | New, optional | The functions use the browser key. Don't restrict that key until this is set. |
@@ -43,7 +43,7 @@ Check that each exists, with Builds and Functions scopes. Don't paste secret val
 1. **You:**
    - Check the variables above.
    - Approve the pull request.
-   - **Owner:** say whether Kris takes bookings from day one.
+   - **Owner:** confirmed November 11: Kris takes bookings from day one.
 2. **Agent:** opens the pull request `eNov6` → `main` (only with your approval). Netlify builds a **Deploy Preview** on its own.
 3. **Agent, on the Deploy Preview:**
    - the build log is green;
@@ -62,10 +62,15 @@ Check that each exists, with Builds and Functions scopes. Don't paste secret val
 6. **The minute the production deploy is published:**
    - **Owner:** set the **513 Auto Clean** calendar to **"See only free/busy"** (Google Calendar → its settings → Access permissions).
    - **Agent:** reload the booking form and confirm real times still show, then run `check-live.mjs`. The "STALE" and "privacy version" warnings should be gone.
-7. **Agent, Analytics:**
-   - **GA4:** data retention 14 months, Google signals off, ads personalization off; key events `booking_complete`, `booking_request`, `contact_click`; custom dimensions `method`, `kind`, `detailer`, `reason`, `via` and `exp_variant_string` (`docs/ANALYTICS-SETUP.md`, `docs/AB-TESTING.md`).
-   - **Clarity:** Balanced masking, and the link to GA4.
-   - **Check:** declining loads nothing; accepting shows up in GA4 Realtime.
+7. **Analytics.** Already done (November 11):
+   - the IDs are in Netlify;
+   - GA4: 14-month retention, Google signals off, ads personalization off in every region, 8 custom dimensions;
+   - Clarity: Balanced masking.
+
+   **Agent, after the deploy:**
+   - Accept the banner on the live site and check GA4 Realtime and Clarity see the visit; decline and check nothing loads.
+   - Once each has arrived at least once, star `booking_complete`, `booking_request` and `contact_click` as key events (Analytics lists an event only after it arrives).
+   - **With your OK:** link Clarity to GA4 (a Google sign-in that grants Clarity access).
 8. **Later, optional:** set `GOOGLE_CALENDAR_SERVER_KEY`, then restrict the browser calendar key to the site.
 
 ## If something goes wrong: rollback
