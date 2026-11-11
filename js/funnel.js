@@ -292,7 +292,7 @@
       };
     }
     if (state.priority) {
-      // No slot yet but they have asked to see the next three days: show the
+      // No slot yet but they have asked to see the rush days: show the
       // surcharge they are about to pick, so the number does not jump later.
       return { startMinutesLocal: P.minutesOfDay(12), priorityBooking: true };
     }
@@ -2526,7 +2526,7 @@
         (RULES.additionalVehicleDiscountBp / 100) + '% either way.</i></span></label>';
     }
 
-    // No "I need it within 3 days" box: the rush days are marked on the
+    // No "I need it soon" box: the rush days are marked on the
     // calendar itself, and the fee follows the time that is picked.
     if (hasCorrection()) {
       var lead = new Date(startOfToday().getTime() + P.CORRECTION_RULES.minLeadDays * DAY);
