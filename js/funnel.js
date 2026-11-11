@@ -5675,6 +5675,8 @@
         var cut = l.label.indexOf(': ');
         var name = cut > -1 ? l.label.slice(0, cut) : l.label;
         var tier = cut > -1 ? l.label.slice(cut + 2) : '';
+        // "Pet Hair Removal: Pet hair removal" says the name twice.
+        if (tier.toLowerCase() === name.toLowerCase()) tier = '';
         return head + '<tr class="ln-addon"><td>' + esc(name) + (tier ? ' <i>' + esc(tier) + '</i>' : '') +
           '</td><td>' + $(l.amountCents) + '</td></tr>';
       }
