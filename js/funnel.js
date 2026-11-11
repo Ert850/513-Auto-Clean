@@ -4745,7 +4745,8 @@
       'placeholder="e.g. driveway on the left, gate code 4821, car is usually out front">' +
       esc(state.access.parking) + '</textarea></div>' +
       notesBlock() +
-      '<button type="button" class="bk-prep-send" id="bkPrepSend">Send to your detailer</button>' +
+      // A request has no detailer yet, so it goes to us (validation, November 11).
+      '<button type="button" class="bk-prep-send" id="bkPrepSend">' + (state.slot && !isInquiry() ? 'Send to your detailer' : 'Send to us') + '</button>' +
       '<p class="bk-msg" id="bkPrepMsg" role="status" aria-live="polite"></p>' +
       '</div>';
   }
@@ -4779,6 +4780,20 @@
     var msg = root.querySelector('#bkPrepMsg');
     var btn = root.querySelector('#bkPrepSend');
     if (btn) btn.disabled = true;
+    // The same answers onto the booking's own calendar event, where the
+    // detailer reads the job (November 11). Only a booked time has an event;
+    // it never fails the email, and a send again replaces, never repeats.
+    var onCalendar = state.slot && !isInquiry()
+      ? fetch('/api/booking-followup', {
+          method: 'POST', keepalive: true, headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            key: bookingKey(), phone: state.contact.phone, slot: state.slot, detailer: detailerParam(),
+            access: state.access, notes: state.notes,
+            labels: state.vehicles.map(function (v) { return v.label || ''; })
+          })
+        }).then(function (r) { return r.ok ? r.json() : {}; }).then(function (j) { return Boolean(j && j.saved); })
+          .catch(function () { return false; })
+      : Promise.resolve(false);
     var fd = new FormData();
     fd.append('access_key', WEB3FORMS_KEY);
     fd.append('subject', 'BOOKING FOLLOW-UP, ' + (detailerName() ? detailerName() + ', ' : '') + state.contact.name +
@@ -4801,10 +4816,14 @@
         if (!ok) throw new Error('not sent');
         track('booking_followup', { water: Boolean(state.access.water), power: Boolean(state.access.power) });
         if (quiet) return;
-        var box = root.querySelector('#bkPrep');
-        // True to what happens: it is an email to us, which we use to get ready
-        // (session audit, November 11: "attached to your booking" was not).
-        if (box) box.innerHTML = '<h4>Thanks, we have it</h4><p class="bk-prep-sub">We will use it to get ready for your detail.</p>';
+        return onCalendar.then(function (saved) {
+          var box = root.querySelector('#bkPrep');
+          // True to what happened: on the job itself when the calendar took it,
+          // otherwise an email to us (session audit, November 11).
+          if (box) box.innerHTML = saved
+            ? '<h4>Thanks, it is on your booking</h4><p class="bk-prep-sub">Your detailer sees it with the job.</p>'
+            : '<h4>Thanks, we have it</h4><p class="bk-prep-sub">We will use it to get ready for your detail.</p>';
+        });
       })
       .catch(function () {
         prepSent = false;

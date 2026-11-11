@@ -142,6 +142,11 @@
   status = 200
 
 [[redirects]]
+  from = "/api/booking-followup"
+  to = "/.netlify/functions/booking-followup"
+  status = 200
+
+[[redirects]]
   from = "/api/cart-capture"
   to = "/.netlify/functions/cart-capture"
   status = 200

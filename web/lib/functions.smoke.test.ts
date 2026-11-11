@@ -13,7 +13,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { resetRateLimits } from "../../netlify/functions/_ratelimit.mjs";
 
 const FUNCS = [
-  "travel", "create-payment", "paypal-order", "personal-busy", "reviews", "send-confirmation",
+  "travel", "create-payment", "paypal-order", "personal-busy", "reviews", "send-confirmation", "booking-followup",
 ] as const;
 
 const ENV: Record<string, string> = {
