@@ -72,6 +72,7 @@ Read this before changing anything. Every rule below came from a real bug or an 
 
 ## Owner rules
 - **Git:** push only to `eNov6`. Never push to `main` or open or merge PRs without the owner's approval. Parallel sessions commit to their own branch and never push.
+- **Others push to `eNov6` too** (Elijah's agent added `docs/BUSINESS-CONTEXT.md` on November 11). `git fetch` before pushing; if GitHub is ahead, rebase unpushed commits onto `origin/eNov6`. Never force-push.
 - **Design:** keep the site's current look (colors, type, components in `styles.css`). Changes are cleanup and reorganization for conversion, not restyling.
 - **Booking:** never break existing booking behavior. Check what the live site does first (`node web/scripts/check-live.mjs`, or step through the form without submitting). GoHighLevel runs *alongside* the current flow, not instead of it.
 - **Wording:** for every change, ask whether the wording reflects the reality of the business. No em-dashes in anything a customer reads.
