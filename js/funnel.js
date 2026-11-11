@@ -46,7 +46,6 @@
       covered: false,
       locationNote: '',
       priority: false,
-      preferredWindows: [],
       slot: null,
       // The time step: our recommended times first; showAll is the whole
       // week calendar behind "See additional times". weekStart is the Sunday
@@ -90,7 +89,6 @@
       // turning up to find a locked gate and no outdoor tap.
       access: { water: null, power: null, parking: '' },
       // Set when the funnel was opened from a shared quote link.
-      fromQuote: false,
       quotedSlot: null,
       slotTaken: false,
       promoCode: '',
@@ -220,7 +218,6 @@
   /** "50%", "10%". Basis points are for the engine, not for a customer. */
   function pctOf(bp) { return (bp / 100) + '%'; }
 
-  function ok() { return null; }
   function step() { return STEPS[state.step]; }
   function veh() { return state.vehicles[state.active]; }
 
@@ -2583,8 +2580,6 @@
     if (payload.pc) state.promoCode = payload.pc;
     if (payload.in) state.interest = payload.in.slice();
     if (payload.nt) state.notes = payload.nt;
-
-    state.fromQuote = true;
   }
 
   /** Copy the link, with a spoken confirmation rather than a silent success. */
@@ -4297,11 +4292,6 @@
     scrollToEl(prev && prev.classList && prev.classList.contains('bk-donerow') ? prev : sec, 8);
   }
 
-  function scrollToSection(id) {
-    var sec = el('bkBody') && el('bkBody').querySelector('[data-sec="' + id + '"]');
-    if (sec) scrollToEl(sec, 8);
-  }
-
   /**
    * Bring an element to the top of the booking form's scroll area. Measured
    * against the scroll area itself: offsetTop counts from the modal, so it
@@ -5720,7 +5710,7 @@
 
   function onClick(e) {
     var t = e.target.closest(
-      '[data-size],[data-intent],[data-pkg],[data-addon],[data-clear],[data-win],[data-slot],' +
+      '[data-size],[data-intent],[data-pkg],[data-addon],[data-clear],[data-slot],' +
       '[data-pay],[data-delveh],[data-browsepick],[data-max],[data-sort],[data-pkgfirst],' +
       '[data-kind],[data-paymethod],[data-corr],[data-coating],[data-garage],[data-step],' +
       '[data-prefday],[data-prefpart],[data-interest],[data-wkday],[data-more],[data-steer],[data-flexday],[data-wkfold],[data-ckcont],[data-cksec],[data-access],[data-extrarm],' +
@@ -5729,9 +5719,8 @@
       '#bkAskMode,#bkAskMode2,#bkSlotMode,#bkFlexOpen,#bkPickChange,#bkShowExtras,' +
       '#bkLeaveStay,#bkLeaveKeep,#bkLeaveAsk,#bkLeaveDrop,#bkFresh,' +
       '#bkDoneClose,#bkDoneAsk,#bkDoneCopy,#bkDoneAgain,#bkPrepSend,[data-media],' +
-      '#bkCopyQuote,' +
       '#bkPromoApply,#bkPromoClear,' +
-      '#bkQClear,#bkReset,#bkOther'
+      '#bkQClear,#bkReset'
     );
     if (!t) return;
     var v = veh();
@@ -5815,12 +5804,6 @@
       return go(v.size ? 3 : 0);
     }
 
-    if (t.id === 'bkOther') {
-      root.querySelectorAll('.bk-otherslots').forEach(function (d) { d.hidden = false; });
-      t.remove();
-      return;
-    }
-
     if (t.dataset.size) { v.size = t.dataset.size; return advance(); }
     if (t.dataset.intent) {
       if (t.dataset.intent === 'advice') {
@@ -5888,12 +5871,6 @@
       return render();
     }
 
-    if (t.dataset.win) {
-      var w = t.dataset.win, i = state.preferredWindows.indexOf(w);
-      if (i > -1) state.preferredWindows.splice(i, 1); else state.preferredWindows.push(w);
-      state.slot = null;
-      return render();
-    }
     if (t.dataset.steer) {
       var steerFrom = state.slot, steerTo = Number(t.dataset.steer), onTime = step().id === 'time';
       state.steerUsed = true;
@@ -6097,7 +6074,6 @@
       if (inCheckout(want) ? reachNow >= LOC_I : want <= reachNow) return go(want);
       return;
     }
-    if (t.id === 'bkCopyQuote') return copyQuoteLink(t);
     if (t.id === 'bkNext') return advance();
     if (t.id === 'bkBack') return goBack();
     if (t.id === 'bkClose' || t.id === 'bkScrim') return requestClose();
@@ -7347,7 +7323,7 @@
     });
 
     // Any Book Now link opens the funnel in place rather than navigating.
-    document.querySelectorAll('a[href="book.html"], a[href="./book.html"], [data-book], [data-book-browse], [data-book-interest]').forEach(function (a) {
+    document.querySelectorAll('a[href="book.html"], a[href="./book.html"], [data-book-browse], [data-book-interest]').forEach(function (a) {
       a.addEventListener('click', function (e) {
         e.preventDefault();
         open();
@@ -7407,7 +7383,7 @@
       return;
     }
 
-    if (host.dataset.autoOpen === 'true' || location.hash === '#book') open();
+    if (location.hash === '#book') open();
   }
 
   window.ACFunnel = { open: open, close: close };
