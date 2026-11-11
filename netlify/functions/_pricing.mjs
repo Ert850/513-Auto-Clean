@@ -1173,27 +1173,91 @@ function lookupZip(zip) {
   return null;
 }
 
+// ../config/promo-codes.json
+var promo_codes_default = {
+  _read_me: [
+    "Discount codes customers can type at checkout. The browser and the payment and confirmation functions all read this file, and the server re-checks every code itself, so editing a request can't invent a discount.",
+    "Each code: code (letters and digits, matched however it's typed), label (shown on the price breakdown), percentOff OR dollarsOff, active (true or false), blurb (one short line shown when the code lands).",
+    "Optional: until (YYYY-MM-DD, Cincinnati time; the code works all of that day, then stops). Leave it out and the code NEVER ends on its own, which is the safe choice for anything printed. minServiceDollars (refuse it under this much service). note (for us; never shown).",
+    "To switch a code off at once: active false. To add one: copy a block. A mistake in this file fails the build instead of reaching customers.",
+    "One code per booking. 'One per customer' is NOT checked yet: a customer can use the same code on a second booking."
+  ],
+  codes: [
+    {
+      code: "LIKENEW",
+      label: "LIKENEW, 10% off",
+      percentOff: 10,
+      active: true,
+      blurb: "10% off your service."
+    },
+    {
+      code: "FRIANDFAM",
+      label: "FRIANDFAM, 25% off",
+      percentOff: 25,
+      active: true,
+      blurb: "Friends and family rate, 25% off your service.",
+      note: "Not advertised anywhere. Elijah hands it to friends, family and anyone working for him. If it leaks, set active to false and it stops on the next deploy."
+    },
+    {
+      code: "GOLF10",
+      label: "GOLF10, 10% off",
+      percentOff: 10,
+      active: false,
+      blurb: "10% off your service.",
+      note: "For the golf booklet (owner, November 11, 2026). Off until the owner decides to show it; the plan is an A/B test of showing it or not (config/experiments.json). Owner wants one per customer, which isn't enforced yet."
+    },
+    {
+      code: "PRESTIGE10",
+      label: "PRESTIGE10, 10% off",
+      percentOff: 10,
+      active: false,
+      blurb: "10% off your service.",
+      note: "For Prestige Living (owner, November 11, 2026). Off until the owner decides; same as GOLF10."
+    }
+  ]
+};
+
 // lib/pricing/promos.ts
-var PROMOS = [
-  {
-    code: "LIKENEW",
-    label: "LIKENEW, 10% off",
-    percentBp: 1e3,
-    active: true,
-    blurb: "10% off your service."
-  },
-  {
-    // Not advertised anywhere on the site. It works when somebody types it,
-    // which is the point: Elijah hands it out to friends, family and anyone
-    // working for him, and nothing on the page invites a stranger to guess
-    // at it. If it ever leaks, set active to false and it stops that minute.
-    code: "FRIANDFAM",
-    label: "FRIANDFAM, 25% off",
-    percentBp: 2500,
-    active: true,
-    blurb: "Friends and family rate, 25% off your service."
-  }
-];
+function checkPromoCodes(input) {
+  const bad = (where, what) => {
+    throw new Error(`config/promo-codes.json: ${where}: ${what}`);
+  };
+  const codes = input?.codes;
+  if (!Array.isArray(codes)) bad("codes", "must be a list");
+  const seen = /* @__PURE__ */ new Set();
+  const known = ["code", "label", "percentOff", "dollarsOff", "active", "until", "minServiceDollars", "blurb", "note"];
+  return codes.map((c2, i) => {
+    const o = c2 ?? {};
+    const code = typeof o["code"] === "string" ? normalisePromo(o["code"]) : "";
+    const where = code || `code ${i + 1}`;
+    if (!/^[A-Z0-9]{3,32}$/.test(code)) bad(where, "code must be 3 to 32 letters or digits");
+    if (seen.has(code)) bad(where, "this code is listed twice");
+    seen.add(code);
+    for (const k of Object.keys(o)) if (!known.includes(k)) bad(where, `unknown field "${k}" (use ${known.join(", ")})`);
+    if (typeof o["label"] !== "string" || !o["label"].trim()) bad(where, "needs a label");
+    if (typeof o["active"] !== "boolean") bad(where, "active must be true or false");
+    const pct = o["percentOff"];
+    const usd = o["dollarsOff"];
+    if (pct === void 0 === (usd === void 0)) bad(where, "give percentOff OR dollarsOff, not both or neither");
+    if (pct !== void 0 && (typeof pct !== "number" || !(pct > 0 && pct <= 100))) bad(where, "percentOff must be more than 0 and at most 100");
+    if (usd !== void 0 && (typeof usd !== "number" || !(usd > 0))) bad(where, "dollarsOff must be more than 0");
+    const until = o["until"];
+    if (until !== void 0 && (typeof until !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(until))) bad(where, "until must be a date like 2027-06-30");
+    const min = o["minServiceDollars"];
+    if (min !== void 0 && (typeof min !== "number" || min < 0)) bad(where, "minServiceDollars must be 0 or more");
+    return {
+      code,
+      label: o["label"].trim(),
+      ...pct !== void 0 ? { percentBp: Math.round(pct * 100) } : {},
+      ...usd !== void 0 ? { amountCents: Math.round(usd * 100) } : {},
+      active: o["active"],
+      ...until !== void 0 ? { expiresOn: until } : {},
+      ...min !== void 0 ? { minServiceCents: Math.round(min * 100) } : {},
+      ...typeof o["blurb"] === "string" ? { blurb: o["blurb"] } : {}
+    };
+  });
+}
+var PROMOS = checkPromoCodes(promo_codes_default);
 function normalisePromo(code) {
   return String(code ?? "").trim().toUpperCase().replace(/\s+/g, "");
 }
@@ -1204,7 +1268,8 @@ function findPromo(code, opts = {}) {
   if (!hit || !hit.active) return { promo: null, rejected: "unknown" };
   if (hit.expiresOn) {
     const today = opts.today ?? /* @__PURE__ */ new Date();
-    const stamp = today.getFullYear() + "-" + String(today.getMonth() + 1).padStart(2, "0") + "-" + String(today.getDate()).padStart(2, "0");
+    const { y, mo, d } = localParts(today.getTime(), "America/New_York");
+    const stamp = `${y}-${String(mo).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
     if (stamp > hit.expiresOn) return { promo: null, rejected: "expired" };
   }
   if (hit.minServiceCents !== void 0 && opts.serviceCents !== void 0 && opts.serviceCents < hit.minServiceCents) {

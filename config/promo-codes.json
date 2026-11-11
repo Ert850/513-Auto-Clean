@@ -1,0 +1,42 @@
+{
+  "_read_me": [
+    "Discount codes customers can type at checkout. The browser and the payment and confirmation functions all read this file, and the server re-checks every code itself, so editing a request can't invent a discount.",
+    "Each code: code (letters and digits, matched however it's typed), label (shown on the price breakdown), percentOff OR dollarsOff, active (true or false), blurb (one short line shown when the code lands).",
+    "Optional: until (YYYY-MM-DD, Cincinnati time; the code works all of that day, then stops). Leave it out and the code NEVER ends on its own, which is the safe choice for anything printed. minServiceDollars (refuse it under this much service). note (for us; never shown).",
+    "To switch a code off at once: active false. To add one: copy a block. A mistake in this file fails the build instead of reaching customers.",
+    "One code per booking. 'One per customer' is NOT checked yet: a customer can use the same code on a second booking."
+  ],
+  "codes": [
+    {
+      "code": "LIKENEW",
+      "label": "LIKENEW, 10% off",
+      "percentOff": 10,
+      "active": true,
+      "blurb": "10% off your service."
+    },
+    {
+      "code": "FRIANDFAM",
+      "label": "FRIANDFAM, 25% off",
+      "percentOff": 25,
+      "active": true,
+      "blurb": "Friends and family rate, 25% off your service.",
+      "note": "Not advertised anywhere. Elijah hands it to friends, family and anyone working for him. If it leaks, set active to false and it stops on the next deploy."
+    },
+    {
+      "code": "GOLF10",
+      "label": "GOLF10, 10% off",
+      "percentOff": 10,
+      "active": false,
+      "blurb": "10% off your service.",
+      "note": "For the golf booklet (owner, November 11, 2026). Off until the owner decides to show it; the plan is an A/B test of showing it or not (config/experiments.json). Owner wants one per customer, which isn't enforced yet."
+    },
+    {
+      "code": "PRESTIGE10",
+      "label": "PRESTIGE10, 10% off",
+      "percentOff": 10,
+      "active": false,
+      "blurb": "10% off your service.",
+      "note": "For Prestige Living (owner, November 11, 2026). Off until the owner decides; same as GOLF10."
+    }
+  ]
+}
