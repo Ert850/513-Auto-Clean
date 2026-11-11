@@ -529,6 +529,9 @@ button.bk-tl-s:hover { border-color: var(--red); box-shadow: 0 0 0 3px var(--red
 .bk-tl-span b { font-family: var(--font-display); font-size: 1.05rem; color: var(--text); }
 .bk-tl-span .bk-px { font-size: .84rem; font-weight: 800; }
 .bk-tl-span .bk-px.fee { background: rgba(240,169,63,.18); padding: .05rem .4rem; border-radius: 4px; }
+/* The pointed-at block glides between starts (previewTl moves it by transform). */
+.bk-tl-span.preview { transition: transform .14s ease-out; }
+@media (prefers-reduced-motion: reduce) { .bk-tl-span.preview { transition: none; } }
 .bk-tl-span.preview > i { border-style: dashed; background: linear-gradient(rgba(196,20,20,.05), rgba(196,20,20,.05)), var(--paper-2); }
 .bk-tl-span.preview.solid > i { border-style: solid; background: linear-gradient(rgba(196,20,20,.10), rgba(196,20,20,.10)), var(--paper-2); }
 /* "Earlier times" and "Later times": the folded starts, one tap away. */
@@ -577,6 +580,10 @@ button.bk-tl-s:hover { border-color: var(--red); box-shadow: 0 0 0 3px var(--red
 .bk-wk.narrow .bk-wk-h { top: 0; margin-bottom: 0; padding-top: .45rem; padding-bottom: .55rem; }
 .bk-wk.narrow .bk-wk-strip { top: var(--wk-h, 0px); margin-bottom: 0; padding-bottom: .6rem; }
 .bk-wk.narrow .bk-wk-band { top: calc(var(--wk-h, 0px) + var(--wk-strip, 0px)); z-index: 5; margin-top: 0; margin-bottom: 0; padding-top: .55rem; padding-bottom: .4rem; }
+/* Too short to pin all three (pinWeek, PIN_ROOM_MIN): the week bar and the
+   strip scroll away, the part-of-day heading stays pinned at the top. */
+.bk-wk.narrow.nopin .bk-wk-h, .bk-wk.narrow.nopin .bk-wk-strip { position: static; }
+.bk-wk.narrow.nopin .bk-wk-band { top: 0; }
 .bk-wk-item {
   width: 100%; min-height: 48px; display: flex; align-items: center; gap: .7rem; margin-bottom: .35rem;
   font: inherit; text-align: left; cursor: pointer; padding: .5rem .8rem;
