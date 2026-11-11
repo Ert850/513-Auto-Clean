@@ -49,7 +49,7 @@ Check that each exists, with Builds and Functions scopes. Don't paste secret val
    - the build log is green;
    - `node web/scripts/check-live.mjs <preview URL>`;
    - `/js/config.js` carries the calendar and detailer settings;
-   - `/golf` and `/prestige` answer 302;
+   - `/golf` and `/prestige` answer 302 and open `lp-golf.html` and `lp-prestige.html` with their tags, and `curl -sI <preview>/lp-golf.html` shows `X-Robots-Tag: noindex`;
    - "Pick your time" shows real openings.
 4. **You or the Owner, one test booking on the preview,** at one of Elijah's times, with dummy details.
    - **It is real:** it writes to the real calendar, sends real email, and blocks that time on the live site too.
