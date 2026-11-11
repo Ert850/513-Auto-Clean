@@ -277,7 +277,14 @@ ${
  * is going, who he is meeting, what he is doing, what he is owed, and what to
  * expect when he gets there.
  */
-function eventDescription({ contact, cart, priced, extras, payInFull, kind }) {
+/*
+ * Elijah's Accounting sheet reads these events every hour (JobsSync.gs, an
+ * Apps Script): the TOTAL and "Sales tax" lines, the SOURCE and HEARD ABOUT
+ * US blocks, the ZIP at the end of the location, and "Name:" at the start of
+ * the title. jobs-sync-contract.test.ts holds his patterns; change the format
+ * and that test fails, so tell him first.
+ */
+export function eventDescription({ contact, cart, priced, extras, payInFull, kind }) {
   const a = cart.address ?? {};
   const lines = [];
 
@@ -336,6 +343,14 @@ function eventDescription({ contact, cart, priced, extras, payInFull, kind }) {
   return lines.join("\n");
 }
 
+/** The event title (read by JobsSync too: "Kris:" names the detailer). */
+export function eventTitle({ kind, slotMs, nowMs, detailer, names, contactName }) {
+  return (kind === "booking" && slotMs - nowMs < 24 * 60 * 60 * 1000 ? "SHORT NOTICE, accept or decline: " : "") +
+    (detailer ? `${detailer.name}: ` : "") + (kind === "advice"
+    ? `HELP ME DECIDE, ${contactName}`
+    : `${names.join(" + ") || "Detail"}, ${contactName}`);
+}
+
 async function writeCalendar({ contact, cart, priced, extras, payInFull, key, kind, detailer }) {
   if (!gcalConfigured()) return { ok: false, reason: "unconfigured" };
   if (!cart.slot) return { ok: false, reason: "no_slot" };
@@ -357,10 +372,7 @@ async function writeCalendar({ contact, cart, priced, extras, payInFull, key, ki
     // thing he needs to know before setting off: nobody has chosen yet.
     // A short-notice time is a request until someone accepts it, and the
     // calendar says so too (validation, November 11).
-    summary: (kind === "booking" && cart.slot - Date.now() < 24 * 60 * 60 * 1000 ? "SHORT NOTICE, accept or decline: " : "") +
-      (detailer ? `${detailer.name}: ` : "") + (kind === "advice"
-      ? `HELP ME DECIDE, ${contact.name}`
-      : `${names.join(" + ") || "Detail"}, ${contact.name}`),
+    summary: eventTitle({ kind, slotMs: cart.slot, nowMs: Date.now(), detailer, names, contactName: contact.name }),
     description: eventDescription({ contact, cart, priced, extras, payInFull, kind }),
     location: [cart.address?.line1, cart.address?.city, cart.address?.region, cart.address?.zip]
       .filter(Boolean)
