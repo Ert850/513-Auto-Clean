@@ -81,6 +81,13 @@ Built overnight, November 10 to 11, for you to evaluate. It combines your 8 answ
 - **Also confirmed in Netlify:** `GOOGLE_BUSY_ONLY_CALENDAR_IDS` is set (the review's top condition), and `DETAILERS` is set. The owner confirmed Kris goes live with the new site.
 - **`check-live.mjs`:** read keys only in single quotes, but the published `config.js` is minified with double quotes, so every live key read "not set". It now matches either quote, and also checks GA4 and Clarity.
 
+### "Copy code" button on the golf page's offer line (owner and user, November 11)
+- **What:** the GOLF10 line (shown only to the "code" half of the `golf-code` A/B test, which is off) now has a small ink pill with a clipboard icon reading "Copy code". It becomes "Copied" with a tick for 2 seconds. The line says where the code goes: "Paste it into Promo code on the last step."
+- **Ink, not red:** red is Book Now and "that did not work" (CLAUDE.md colours), and a second red button would compete with Book Now right below it.
+- **Behaviour (`script.js`, `[data-copy]`):** the clipboard API where allowed, `execCommand('copy')` otherwise. If both fail, the code itself is selected so a long press or Cmd+C copies it. Each copy records `promo_copy` in analytics (after consent).
+- **Layout:** beside the text from 420 px up, below it on narrower phones. No sideways scroll at 1440, 375 or 320.
+- **Verified in headless Chrome:** click, "Copied", back to "Copy code" after 2 s, at all three widths. Screenshots: `docs/mockups/lp-golf-code-*.png`.
+
 ### Print landing pages approved; /golf and /prestige now lead to them (owner, November 11)
 - **Redirects:** `/golf` goes to `lp-golf.html` and `/prestige` to `lp-prestige.html`, still 302 and still tagged (`utm_source`, `utm_medium=print`, `utm_campaign=qr`). `printed-qr.test.ts` passes.
 - **Book Now is red** (`btn-primary`) on both pages (owner: standard, and it stands out), matching the header and the phone bar. "Read the reviews" and "Ask a Question" stay ghost buttons.

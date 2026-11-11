@@ -840,7 +840,21 @@ main > .areas:first-child .section-head { margin-bottom: 18px; }
    the story, then three options. Built from the site's own tokens. */
 .lp-rating { display: flex; align-items: center; gap: .5rem; font-weight: 600; color: var(--text); margin: 0 0 .4rem; }
 .lp-rating .hb-stars { color: var(--amber); letter-spacing: .08em; }
-.lp-code { background: #fff; border: 1px dashed var(--line); border-radius: var(--r-sm); padding: .7rem .9rem; }
+/* The offer line (A/B test "golf-code"): text, then a quiet ink "Copy code" pill.
+   Ink, not red: red is Book Now and "that did not work". */
+.lp-code { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: .8rem;
+  background: #fff; border: 1px dashed var(--line); border-radius: var(--r-sm); padding: .55rem .55rem .55rem .9rem; }
+.lp-code p { margin: 0; }
+.lp-code b { letter-spacing: .04em; }
+.lp-copy { display: inline-flex; align-items: center; gap: .4rem; white-space: nowrap; font: inherit; font-size: .86rem; font-weight: 700;
+  color: #fff; background: var(--ink); border: 0; border-radius: 999px; padding: .5rem .85rem; cursor: pointer; transition: background .2s, transform .1s; }
+.lp-copy:hover { background: #262b34; }
+.lp-copy:active { transform: scale(.97); }
+.lp-copy:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.lp-copy svg { width: 16px; height: 16px; flex: none; }
+.lp-copy .ic-done, .lp-copy.copied .ic-copy { display: none; }
+.lp-copy.copied .ic-done { display: block; }
+@media (max-width: 419.98px) { .lp-code { grid-template-columns: 1fr; padding: .7rem .9rem; } .lp-copy { justify-self: start; } }
 .lp-cta { display: flex; gap: .7rem; flex-wrap: wrap; margin-top: 1.4rem; }
 .lp-options { background: #fff; }
 .lp-grid { display: grid; gap: 1rem; grid-template-columns: 1fr; }
