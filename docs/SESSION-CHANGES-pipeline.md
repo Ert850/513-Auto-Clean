@@ -37,6 +37,12 @@ Built overnight, November 10 to 11, for you to evaluate. It combines your 8 answ
 - **Unchanged:** the recommended time cards and the phone list are still one tap. The bar's time card no longer offers "Change" while Time is open.
 - **To test (tablet or laptop):** See additional times, tap two rows in turn (the form stays put, the block and the bar follow), then Continue with this time; again with the bar's Continue.
 
+### Day timeline: the side card waits for the pointer to settle (owner, November 12)
+- **Bug:** sweeping the pointer down the rows rewrote the card on every row it crossed, each with a fade from 25% opacity, so it flickered. **Root cause:** the card was redrawn on every `mouseover`, the same event that moves the block.
+- **Fix:** the block still follows the pointer at once; the card changes only once the pointer has rested on a start for 0.16 s (`settleTlCard`), and fades in more gently (from 55% over 0.22 s). A tap updates it at once. Leaving the timeline returns it to the chosen or suggested time after the same pause.
+- **Measured:** a sweep across 8 rows at 50 ms each rewrites the card 0 times while moving and once at the end (before: 8).
+- **To test:** run the pointer quickly up and down the rows; the block glides, the card changes once you stop.
+
 ### Also
 - The QR code generator (`segno`, Python) is installed (your OK, November 12), ready for the magazine pages.
 

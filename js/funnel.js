@@ -4268,8 +4268,23 @@
         ' data-via="timeline_card">' + (chosen ? 'Continue with this time' : 'Choose this time') + '</button>';
   }
   /** A short fade as text changes in place (none when motion is reduced). */
-  function fadeIn(node) {
-    if (node && node.animate && !reducedMotion()) node.animate([{ opacity: 0.25 }, { opacity: 1 }], { duration: 150, easing: 'ease-out' });
+  function fadeIn(node, from, ms) {
+    if (node && node.animate && !reducedMotion()) node.animate([{ opacity: from || 0.25 }, { opacity: 1 }], { duration: ms || 150, easing: 'ease-out' });
+  }
+  /**
+   * The side card waits until the pointer settles on a start (owner,
+   * November 12: sweeping down the rows rewrote it on every row, a flicker
+   * of fades). The block still follows the pointer at once; the card only
+   * changes for the start the pointer stops on, or straight away on a tap.
+   */
+  var tlCardTimer = null;
+  var TL_CARD_SETTLE = 160;
+  function settleTlCard(tl, t, now) {
+    clearTimeout(tlCardTimer);
+    if (now) return renderTlCard(tl, t);
+    tlCardTimer = setTimeout(function () {
+      if (tl.isConnected !== false) renderTlCard(tl, t);
+    }, TL_CARD_SETTLE);
   }
   function renderTlCard(tl, t) {
     var card = tl && tl.querySelector('#bkTlCard');
@@ -4279,7 +4294,7 @@
     // Rewritten only when the time it shows changes, with a short fade.
     if (card.dataset.ms === src.dataset.slot) return;
     card.dataset.ms = src.dataset.slot;
-    fadeIn(card);
+    fadeIn(card, 0.55, 220);
     card.innerHTML = tlCard(Number(src.dataset.slot), Number(src.dataset.row), Number(tl.dataset.dur), tl.dataset.day,
       Boolean(src.dataset.sug), src.getAttribute('aria-pressed') === 'true');
   }
@@ -4355,7 +4370,7 @@
     tl.classList.toggle('pointing', t.getAttribute('aria-pressed') !== 'true');
     markAllLeads();
     // The card follows the start being pointed at, but not its own button.
-    if (!t.closest('#bkTlCard')) renderTlCard(tl, t);
+    if (!t.closest('#bkTlCard')) settleTlCard(tl, t, solid);
   }
   function clearTlPreview(tl) {
     tl.querySelectorAll('.pv').forEach(function (c) { c.classList.remove('pv'); });
@@ -4363,7 +4378,7 @@
     if (pv) { pv.hidden = true; delete pv.dataset.ms; }
     tl.classList.remove('pointing');
     markAllLeads();
-    renderTlCard(tl, null);
+    settleTlCard(tl, null, false);
   }
 
   /**
