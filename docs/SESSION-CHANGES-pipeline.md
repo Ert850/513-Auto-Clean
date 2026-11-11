@@ -81,6 +81,17 @@ Built overnight, November 10 to 11, for you to evaluate. It combines your 8 answ
 - **Also confirmed in Netlify:** `GOOGLE_BUSY_ONLY_CALENDAR_IDS` is set (the review's top condition), and `DETAILERS` is set. The owner confirmed Kris goes live with the new site.
 - **`check-live.mjs`:** read keys only in single quotes, but the published `config.js` is minified with double quotes, so every live key read "not set". It now matches either quote, and also checks GA4 and Clarity.
 
+### "Register interest" in paint correction works on its own (bug, November 11)
+- **Bug:** "Register interest" on the Showroom Ready card (home page and Services) opened the booking form with that card ticked "Interested". Nothing could be sent without also booking a package: Continue stayed hidden under "Choose a package to continue." Someone who only wanted paint correction was stuck. The live site behaves the same.
+- **Root cause:** interest was designed to ride along with a booking (the Review's "We will let you know when these open"), and nothing handled interest on its own.
+- **Fix:**
+  - While a coming-soon card is ticked and nothing bookable is chosen, a row appears under it: "Only want this one? Leave your details and we will tell you first when it opens", with **Tell me when it opens**.
+  - The button opens the question form (on `contact.html`, through the existing `ac-question` hand-off) with the message filled in: "Please tell me when Showroom Ready (Paint Correction and Protection) opens…", the vehicle size, and "Anything else:". So the owner gets a real email.
+  - The hand-off is now one shared `toQuestionForm()` for this and "ask a question".
+- **Found with it, my bug from the same day:** the golf page's Copy code handler matched every `[data-copy]`, which also catches the Contact page's phone-number copy button, and would have relabelled it "Copy code". It now uses its own `data-copy-code`, and the phone button keeps its own wording.
+- **Tests:** two smoke tests: interest alone offers the row and fills the message; choosing a bookable package removes the row. 606 of 606 pass.
+- **Verified in headless Chrome** (home at 1440, Services at 375): Register interest, size, Tell me when it opens, then the Contact page with the message filled. The phone copy button and the golf Copy code button both still work.
+
 ### Exterior follows the weather, with a clear notice when the cold pauses it (owner, November 11)
 - **The owner:** "Disable exterior based on weather. Exterior can't happen when below 40. Kris does not do exteriors. If below 40 for next 2 weeks, show in a very clear way … when it's expected to next be available tentatively based on weather before they select exterior."
 - **Before:** inside the 7-day forecast, every hour of an exterior job had to be 40°F or warmer (unchanged). Past it, a fixed March-to-October season decided, so every November, December and February day past the forecast was closed, however mild those usually are.

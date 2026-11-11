@@ -239,14 +239,16 @@
     window.addEventListener('load', arrive, { once: true });
   }
 
-  /* ---------- Copy a discount code (print landing pages, [data-copy]) ---------- */
+  /* ---------- Copy a discount code (print landing pages, [data-copy-code]) ---------- */
+  // Its own attribute: the phone-number buttons use data-copy with their own
+  // handler below, and a shared one relabelled them "Copy code" (November 11).
   // "Copy code" becomes "Copied" with a tick for two seconds. Where the
   // clipboard is unavailable (an old browser, or no permission), the code
   // itself is selected so a long press or Cmd+C copies it.
   document.addEventListener('click', function (e) {
-    var b = e.target.closest && e.target.closest('[data-copy]');
+    var b = e.target.closest && e.target.closest('[data-copy-code]');
     if (!b) return;
-    var code = b.getAttribute('data-copy');
+    var code = b.getAttribute('data-copy-code');
     var label = b.querySelector('span');
     var finish = function (ok) {
       if (!ok) {

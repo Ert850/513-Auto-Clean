@@ -1539,6 +1539,13 @@ button.bk-tl-s:hover { border-color: var(--red); box-shadow: 0 0 0 3px var(--red
   background: var(--paper); border: 1px solid var(--line); border-radius: 999px; padding: .12rem .55rem;
 }
 .bk-pic-price.none { font-weight: 600; color: var(--text-soft); }
+/* Register interest on its own (bug, November 11): under a coming-soon card that is
+   ticked while nothing bookable is chosen. */
+.bk-soon-only { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: .8rem;
+  margin: -.15rem 0 .2rem; padding: .7rem .9rem; font-size: .86rem; line-height: 1.45; color: var(--text);
+  background: var(--paper); border: 1px dashed var(--line); border-radius: var(--r-md); }
+.bk-soon-only .btn { padding: .55rem 1rem; font-size: .86rem; white-space: nowrap; }
+@media (max-width: 519.98px) { .bk-soon-only { grid-template-columns: 1fr; } .bk-soon-only .btn { justify-self: start; } }
 /* Exterior paused by the cold (owner, November 11): "From Feb 24". Grey, not gold: gold is a fee. */
 .bk-pic-price.bk-pic-cold { font-weight: 700; color: var(--text-soft); }
 .bk-askrow {

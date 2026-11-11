@@ -65,12 +65,11 @@ Check that each exists, with Builds and Functions scopes. Don't paste secret val
 7. **Analytics.** Already done (November 11):
    - the IDs are in Netlify;
    - GA4: 14-month retention, Google signals off, ads personalization off in every region, 8 custom dimensions;
-   - Clarity: Balanced masking.
+   - Clarity: Balanced masking, linked to GA4.
 
    **Agent, after the deploy:**
    - Accept the banner on the live site and check GA4 Realtime and Clarity see the visit; decline and check nothing loads.
    - Once each has arrived at least once, star `booking_complete`, `booking_request` and `contact_click` as key events (Analytics lists an event only after it arrives).
-   - **With your OK:** link Clarity to GA4 (a Google sign-in that grants Clarity access).
 8. **Later, optional:** set `GOOGLE_CALENDAR_SERVER_KEY`, then restrict the browser calendar key to the site.
 
 ## If something goes wrong: rollback

@@ -53,7 +53,7 @@ That's all. Everything below runs on its own.
    - Filter out your own visits: add your home IP under **Data streams → Configure tag settings → Define internal traffic**, if you want that, and turn the filter on.
 4. **Clarity settings:**
    - **Masking mode: Balanced** (Clarity's default, confirmed in settings). It hides what people type into form boxes, which our privacy policy promises. Strict would also hide every word on the page, which would make the recordings much less useful.
-   - **Setup → Google Analytics integration:** connect to the new GA4 property, so recordings can be filtered by GA4 events. **Waiting for your OK:** it's a Google sign-in that grants Microsoft Clarity access to the Analytics account. Masking is on Balanced (checked November 11).
+   - **Setup → Google Analytics integration:** connect to the new GA4 property, so recordings can be filtered by GA4 events. **Done November 11:** connected to `513autoclean.com` and active (the owner approved Google's sign-in; Clarity has read and edit access, which its integration needs for its playback-link dimension). Masking is on Balanced.
 5. **Checks on a deploy preview,** before anything goes live:
    - Decline: nothing from Google or Clarity loads, and the network shows no requests to them.
    - Accept: GA4 **Realtime** shows the visit, and Clarity shows a live session within a few minutes.

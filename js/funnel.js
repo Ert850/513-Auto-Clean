@@ -1883,6 +1883,15 @@
             '<span class="bk-pkg-r"><b>' + pkgPrice(p) + '</b>' +
               '<i class="bk-want">' + (want ? 'Interested' : 'Tell me when') + '</i></span>' +
             '</button>';
+          // Interest ON ITS OWN (bug, November 11): "Register interest" landed
+          // here with this ticked, but nothing could be sent without booking
+          // a package too. Offered while nothing bookable is chosen.
+          if (want && !v.packageIds.length) {
+            html += '<div class="bk-soon-only">' +
+              '<span>Only want this one? Leave your details and we will tell you first when it opens.</span>' +
+              '<button type="button" class="btn btn-ink" data-interest-only="' + p.id + '">Tell me when it opens</button>' +
+              '</div>';
+          }
           return;
         }
 
@@ -6060,7 +6069,7 @@
       '[data-size],[data-intent],[data-pkg],[data-addon],[data-clear],[data-slot],' +
       '[data-pay],[data-delveh],[data-browsepick],[data-max],[data-sort],[data-pkgfirst],' +
       '[data-kind],[data-paymethod],[data-corr],[data-coating],[data-garage],[data-step],' +
-      '[data-prefday],[data-prefpart],[data-interest],[data-wkday],[data-more],[data-steer],[data-flexday],[data-wkfold],[data-cksec],[data-access],[data-extrarm],' +
+      '[data-prefday],[data-prefpart],[data-interest],[data-interest-only],[data-wkday],[data-more],[data-steer],[data-flexday],[data-wkfold],[data-cksec],[data-access],[data-extrarm],' +
       '#bkWkPrev,#bkWkNext,#bkWkNext2,#bkWkToday,#bkWkBack,#bkShowAll,#bkShowRecs,#bkFeeWhy,' +
       '#bkAddVeh,#bkNext,#bkBack,#bkClose,#bkScrim,#bkBrowse,#bkBrowseBack,' +
       '#bkAskMode,#bkAskMode2,#bkSlotMode,#bkFlexOpen,#bkPickChange,#bkShowExtras,' +
@@ -6352,6 +6361,7 @@
       return;
     }
 
+    if (t.dataset.interestOnly) return interestOnly();
     if (t.dataset.interest) {
       toggle(state.interest, t.dataset.interest);
       return render();
@@ -7383,7 +7393,27 @@
 
     saveDraft();
     close();
+    toQuestionForm(msg);
+  }
 
+  /**
+   * Register interest without booking (bug, November 11): a message to the
+   * question form saying which coming-soon service, with their vehicle, so
+   * the owner hears about it. Booking something else still carries the
+   * interest with the booking (the Review's "We will let you know" box).
+   */
+  function interestOnly() {
+    var v0 = state.vehicles[0];
+    var size = v0 && P.VEHICLE_SIZES.filter(function (s) { return s.id === v0.size; })[0];
+    var msg = 'Please tell me when ' + interestNames().join(' and ') + ' opens. I would like to be one of the first.\n\n' +
+      (size ? 'My vehicle: ' + size.label + ' (' + size.examples + ')\n\n' : '') +
+      'Anything else: ';
+    close();
+    toQuestionForm(msg);
+  }
+
+  /** Into the question form: on this page if it is here, else via contact.html. */
+  function toQuestionForm(msg) {
     var form = document.getElementById('inquiryForm');
     if (!form) {
       var v0 = state.vehicles[0];
