@@ -64,7 +64,7 @@ From 20 Google reviews (all 5 stars):
 ## 5. Wording rules (site-wide)
 
 - **No promises of stain or odor removal.** Use "treat", "lift", "reduce", "deep clean" or "restore".
-  - **Fix now:** the Stain Treatment tiers on eNov6 say "Removes 70 to 90% of the stain", "Moderate to major removal" and "Removes 90 to 100% of the stain".
+  - The Stain Treatment and paint correction tiers used to give removal percentages. That was fixed in 61c976b; keep it that way.
 - **No em-dashes** in anything customers read. US spelling.
 - Say **"UC student-owned"**, never "college kid".
 - **Prices** live only in `web/lib/catalog/`. Every price in the old texts is stale.
