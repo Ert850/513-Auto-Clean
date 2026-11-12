@@ -2275,6 +2275,7 @@ function canDo(d, needs) {
 var API = "https://www.googleapis.com/calendar/v3/calendars";
 var AVAILABILITY_PREFIX = "OPEN";
 var BEST_PREFIX = "BEST";
+var BLOCK_PREFIX = "DNS";
 function eventTime(s) {
   const d = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s);
   return d ? zonedToUtc(Number(d[1]), Number(d[2]), Number(d[3]), 0, 0, 0, "America/New_York") : new Date(s).getTime();
@@ -2320,7 +2321,7 @@ async function fetchBusyOnly(apiKey, ids, fromMs, toMs) {
   return out;
 }
 function openFeeBp(summary) {
-  const m = /^OPEN\b\s*\+\s*(\d{1,3}(?:\.\d{1,2})?)\s*%/i.exec(summary.trim());
+  const m = /^OPEN\b\s*\(?\s*\+?\s*(\d{1,3}(?:\.\d{1,2})?)\s*%/i.exec(summary.trim());
   return m ? Math.round(Number(m[1]) * 100) : 0;
 }
 function blockFeeAt(win, startMs) {
@@ -2330,26 +2331,29 @@ function blockFeeAt(win, startMs) {
 async function readCalendars(cfg, fromMs, toMs) {
   const ids = calendarIds(cfg);
   if (ids.length <= 1) return fetchOne(cfg.apiKey, ids[0] ?? "", fromMs, toMs);
-  const settled = await Promise.all(
-    ids.map(
-      (id) => fetchOne(cfg.apiKey, id, fromMs, toMs).catch((err) => {
-        console.warn(`[513] calendar ${id} unreadable:`, err);
-        return { events: [], priority: null };
-      })
-    )
-  );
+  const settled = await Promise.all(ids.map((id) => fetchOne(cfg.apiKey, id, fromMs, toMs)));
   const ranks = settled.map((r) => r.priority).filter((n) => n !== null);
   return { events: settled.flatMap((r) => r.events), priority: ranks.length ? Math.min(...ranks) : null };
 }
 async function fetchOne(apiKey, calendarId, fromMs, toMs) {
   const cfg = { calendarId, apiKey };
-  const url = `${API}/${encodeURIComponent(cfg.calendarId)}/events?key=${encodeURIComponent(cfg.apiKey)}&timeMin=${new Date(fromMs).toISOString()}&timeMax=${new Date(toMs).toISOString()}&singleEvents=true&orderBy=startTime&maxResults=2500`;
-  const res = await fetch(url, { cache: "no-store" });
-  if (!res.ok) {
-    throw new Error(`Google Calendar ${res.status}: ${await res.text()}`);
+  const base = `${API}/${encodeURIComponent(cfg.calendarId)}/events?key=${encodeURIComponent(cfg.apiKey)}&timeMin=${new Date(fromMs).toISOString()}&timeMax=${new Date(toMs).toISOString()}&singleEvents=true&orderBy=startTime&maxResults=2500`;
+  const items = [];
+  let description;
+  let pageToken = "";
+  for (let page = 0; page < 20; page++) {
+    const res = await fetch(base + (pageToken ? `&pageToken=${encodeURIComponent(pageToken)}` : ""), { cache: "no-store" });
+    if (!res.ok) {
+      throw new Error(`Google Calendar ${res.status}: ${await res.text()}`);
+    }
+    const json = await res.json();
+    items.push(...json.items ?? []);
+    description ??= json.description;
+    pageToken = json.nextPageToken ?? "";
+    if (!pageToken) break;
   }
-  const json = await res.json();
-  const events = (json.items ?? []).map((e) => {
+  if (pageToken) throw new Error(`Google Calendar: ${calendarId} has more than 20 pages in this range`);
+  const events = items.map((e) => {
     const s = e.start?.dateTime ?? e.start?.date;
     const t = e.end?.dateTime ?? e.end?.date;
     if (!s || !t) return null;
@@ -2362,7 +2366,7 @@ async function fetchOne(apiKey, calendarId, fromMs, toMs) {
       transparent: e.transparency === "transparent"
     };
   }).filter((e) => e !== null);
-  return { events, priority: parsePriority(json.description) };
+  return { events, priority: parsePriority(description) };
 }
 var DEFAULT_HOURS = {
   /**
@@ -2386,7 +2390,7 @@ var DEFAULT_HOURS = {
 function resolveWindow(events, fromMs, toMs) {
   const isBest = (e) => titleIs(e.summary, BEST_PREFIX);
   const best = [...new Set(events.filter((e) => isBest(e) && !e.allDay && e.start >= fromMs && e.start < toMs).map((e) => e.start))].sort((a, b) => a - b);
-  const usable = events.filter((e) => !e.transparent && !isBest(e));
+  const usable = events.filter((e) => (!e.transparent || titleIs(e.summary, BLOCK_PREFIX)) && !isBest(e));
   const openEvents = events.filter(
     (e) => !isBest(e) && titleIs(e.summary, AVAILABILITY_PREFIX)
   );
