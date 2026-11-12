@@ -15,15 +15,19 @@ Work that's agreed but deliberately not started before Friday. Newest first.
 
 **A native dropdown can't have a submenu.** A `<select>` has no second tier, and `<optgroup>` only adds a heading: it doesn't fold anything. Choices:
 - **A. Recommended. Swap the list in place.**
-  - The dropdown shows "Earlier times (+$43 fee) ›" first, the standard starts, then "Later times (+$43 fee) ›" last.
+  - The dropdown shows "Earlier times (+$X fee) ›" first, the standard starts, then "Later times (+$X fee) ›" last.
   - Choosing Earlier or Later refills the same dropdown with just those starts, headed by "‹ Standard times", and reopens it (`showPicker()` where the browser allows it, otherwise it stays focused for one more tap).
   - It keeps the phone's native picker, keyboard use and screen reader support.
-- **B. Two quiet links under the dropdown,** "Earlier (+$43)" and "Later (+$43)", each opening a short row of chips like "More times". It's simpler, but it's not the one-item grouping asked for.
+- **B. Two quiet links under the dropdown,** "Earlier (+$X)" and "Later (+$X)", each opening a short row of chips like "More times". It's simpler, but it's not the one-item grouping asked for.
 - **C. A custom menu with a flyout.** Rejected: flyouts work badly on touch, and it means rebuilding keyboard and screen reader support for one dropdown.
 
 **Wording:**
-- **Approved (Emmett, November 12):** "Earlier times (+$43 fee)" and "Later times (+$43 fee)". They're shorter than "See Earlier Times - Early Fee", and they give the price up front in the same "(+$43)" form the rows use.
-- **If the fee differs between starts,** use "from +$43".
+- **Approved (Emmett, November 12):** "Earlier times (+$X fee)" and "Later times (+$X fee)". They're shorter than "See Earlier Times - Early Fee", and they give the price up front in the same "(+$X)" form the rows use.
+- **$X is never written in.**
+  - It's the group's fee, worked out from the booking's own price with the same `feeText()` the rows use.
+  - The fee is a percentage of the job, and comes from the calendar's fee blocks, so it changes with the package, the vehicle and the calendar.
+  - The $43 in the screenshot was one booking's fee.
+- **If the fee differs between starts in a group,** say "from +$X", with the smallest.
 - **No em-dashes.**
 
 **Rules for the build:**
