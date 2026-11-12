@@ -430,14 +430,14 @@ section { padding-block: clamp(40px, 5vw, 72px); position: relative; }
   display: flex; align-items: flex-start; gap: .75rem; height: 100%;
   transition: border-color .25s, transform .25s;
 }
-.addon .ad-body { display: flex; flex-direction: column; flex: 1; min-width: 0; }
-.addon .ad-price, .addon .ad-soon { margin-top: auto; }
-.addon .ad-soon + .ad-how, .addon .ad-price + .ad-how { margin-top: .35rem; }
+.addon .addon-body { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+.addon .addon-price, .addon .addon-soon { margin-top: auto; }
+.addon .addon-soon + .addon-how, .addon .addon-price + .addon-how { margin-top: .35rem; }
 .addon:hover { border-color: var(--red); transform: translateY(-2px); }
-.addon .ad-ic { width: 36px; height: 36px; border-radius: 10px; background: var(--ink); color: var(--red-bright); display: grid; place-items: center; flex-shrink: 0; }
-.addon .ad-ic svg { width: 19px; height: 19px; }
-.addon .ad-price { padding-top: .4rem; }
-.addon .ad-ast { display: block; font-style: normal; font-size: .72rem; color: var(--text-soft); line-height: 1.45; margin-top: .3rem; }
+.addon .addon-ic { width: 36px; height: 36px; border-radius: 10px; background: var(--ink); color: var(--red-bright); display: grid; place-items: center; flex-shrink: 0; }
+.addon .addon-ic svg { width: 19px; height: 19px; }
+.addon .addon-price { padding-top: .4rem; }
+.addon .addon-ast { display: block; font-style: normal; font-size: .72rem; color: var(--text-soft); line-height: 1.45; margin-top: .3rem; }
 .addon b { font-size: .93rem; display: block; line-height: 1.25; }
 .addon span { font-size: .79rem; color: var(--text-soft); line-height: 1.45; display: block; margin-top: .15rem; }
 
@@ -1485,7 +1485,7 @@ body > #quote { padding-block: clamp(40px, 4.4vw, 64px); }
    ============================================================ */
 .addon-grp { font-size: .95rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--text-soft); margin: 1.4rem 0 .65rem; }
 .addons > .addon-grp:first-child { margin-top: 0; }
-.addon .ad-price { display: block; font-style: normal; font-weight: 800; color: var(--red); font-size: .88rem; margin-top: .35rem; }
+.addon .addon-price { display: block; font-style: normal; font-weight: 800; color: var(--red); font-size: .88rem; margin-top: .35rem; }
 .swide-main { display: flex; flex-direction: column; min-width: 0; }
 /* Stacked on a phone the tier box came straight after the Register button,
    with nothing between them; the grid gap only exists from 820px up. */
@@ -1511,13 +1511,13 @@ body > #quote { padding-block: clamp(40px, 4.4vw, 64px); }
 .svc-corr .corr-meta + .corr-meta { margin-top: 0; }
 
 /* add-ons that are listed but not bookable yet */
-.addon.ad-off { opacity: .78; }
-.addon.ad-off b sup { color: var(--amber-ink); }
-.addon .ad-soon {
+.addon.addon-off { opacity: .78; }
+.addon.addon-off b sup { color: var(--amber-ink); }
+.addon .addon-soon {
   display: block; font-style: normal; color: var(--amber-ink);
   font-weight: 700; font-size: .76rem; line-height: 1.4; margin-top: .2rem;
 }
-.ad-how { margin-top: .5rem; }
+.addon-how { margin-top: .5rem; }
 
 .svc-coverage { margin-top: .9rem; margin-bottom: 0; font-size: .8rem; color: var(--text-soft); font-style: italic; }
 
@@ -1538,11 +1538,11 @@ body > #quote { padding-block: clamp(40px, 4.4vw, 64px); }
 /* ONE "How it works" look on every card. The package cards' style above is
    the agreed standard; the add-on cards and the coating explainer used to have
    their own (plain text; a boxed display-font heading). Same toggle, same panel. */
-.ad-how summary, .svc-explain summary { display: inline-block; padding: .2rem 0; cursor: pointer; font-family: inherit; font-size: .8rem; font-weight: 700; color: var(--red); list-style: none; }
-.ad-how summary::-webkit-details-marker, .svc-explain summary::-webkit-details-marker { display: none; }
-.ad-how summary::after, .svc-explain summary::after { content: " +"; font-weight: 800; color: var(--red); }
-.ad-how[open] summary::after, .svc-explain[open] summary::after { content: " -"; }
-.ad-how p, .svc-explain .how-body { margin: .45rem 0 0; font-size: .82rem; line-height: 1.65; color: var(--text-soft); background: var(--paper); border-left: 2px solid var(--line); padding: .8rem .95rem; border-radius: 0 var(--r-sm) var(--r-sm) 0; }
+.addon-how summary, .svc-explain summary { display: inline-block; padding: .2rem 0; cursor: pointer; font-family: inherit; font-size: .8rem; font-weight: 700; color: var(--red); list-style: none; }
+.addon-how summary::-webkit-details-marker, .svc-explain summary::-webkit-details-marker { display: none; }
+.addon-how summary::after, .svc-explain summary::after { content: " +"; font-weight: 800; color: var(--red); }
+.addon-how[open] summary::after, .svc-explain[open] summary::after { content: " -"; }
+.addon-how p, .svc-explain .how-body { margin: .45rem 0 0; font-size: .82rem; line-height: 1.65; color: var(--text-soft); background: var(--paper); border-left: 2px solid var(--line); padding: .8rem .95rem; border-radius: 0 var(--r-sm) var(--r-sm) 0; }
 /* The explainer sits in the grey tier box, so its panel is the lighter tone. */
 .svc-explain .how-body { background: var(--paper-2); }
 .svc-explain .how-body > p:first-child { margin-top: 0; }
