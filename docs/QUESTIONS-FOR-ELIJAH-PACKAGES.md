@@ -88,3 +88,17 @@ From Emmett's agent, November 11, 2026, on branch `eNov6`.
 **13. When does Prestige Living print?** `BUSINESS-CONTEXT.md` says late November to early December. In his recording the owner said 2027. The QR code points at `513autoclean.com/prestige`, which only works once `eNov6` is merged (planned for November 12), so either date is covered. The date only decides when the offer and page need to be final.
 
 **Answer:**
+
+## Business hours (added November 12)
+
+**14. What hours should Google and the website show?**
+- **Today:**
+  - The Google Business Profile and the website both say "7 days a week, 7 AM to 10 PM". On the website that's the footer of every page, the home page's contact block and the Contact page.
+  - The website's hidden business data for Google says 6 AM to 10 PM, so it doesn't even agree with itself.
+- **Your `BUSINESS-CONTEXT.md` (section 6):** those hours don't match real capacity. The booking form already ignores them: it only offers times inside each detailer's OPEN blocks.
+- **Recommended:** show the hours when someone answers texts and calls and takes bookings, which is the usual choice for a mobile business. Leave the real job times to the booking form.
+- **Once you give the hours:** Imperion sets them on Google, and Emmett makes all the website's copies match, the hidden data included.
+
+Please give the days and times.
+
+**Answer:**
