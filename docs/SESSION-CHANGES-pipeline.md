@@ -42,6 +42,25 @@ Built overnight, November 10 to 11, for you to evaluate. It combines your 8 answ
     - Address and Time show only the red one.
     - On a phone, the small one comes after Email.
 
+- **Final pre-release review (November 13): booking and calendar fixes.** A read-only reviewer probed the real functions with Google and Resend faked. Each fix below was re-checked with its probe.
+  - **Blocker: a failed calendar write still told the customer "confirmed and booked in".**
+    - *Root cause:* the email's `confirmed` ignored the calendar result, and the owner email never mentioned it, so an expired Google token left every booking off the calendar, and sellable again, with nobody told.
+    - *Fix:* "confirmed" now needs the calendar write to have worked. Otherwise the customer gets the "we have your booking" wording, and Elijah's email leads with **NOT ON THE CALENDAR (reason), add it by hand**.
+    - *Probe:* the token was refused, and the owner subject reads "NOT ON THE CALENDAR, BOOKING, …" while the customer wording isn't "confirmed".
+  - **A second submit wrote a second event and sent the emails again.**
+    - *Root cause:* the booking key was stored on the event but never looked up.
+    - *Fix:* `writeCalendar` first looks for an event with that key (`findBookingEvent`). If there is one, nothing is written and no emails are sent.
+    - *Probe:* the same key twice gave 1 event and 2 emails.
+  - **A second booking in the same visit reused the first one's key.** JobsSync would count it as a duplicate. Fixed: `open()` starts every booking with a new key.
+  - **Requested days with a single-digit month or day vanished from the emails** ("2026-12-3"). The server's day pattern needed two digits; it now accepts one or two. *Probe:* Dec 3 and Jan 14 now appear.
+  - **JobsSync ignored Indiana ZIPs (47xxx).** Its ZIP pattern and the contract test now take 40xxx to 47xxx, and 47xxx maps to Southeast Indiana. A new test reads a Lawrenceburg address.
+  - **A time checked long ago wasn't checked again at Confirm.** The form now re-checks at the final step if the last check is over 5 minutes old (`lastFreeCheck`, `RECHECK_MS`).
+  - **Two server crashes:**
+    - a bad `BUSINESS_PHONE` set only in the Functions scope stopped the booking function loading; it now falls back to the repo number and logs it;
+    - a network error from Resend threw after the calendar was written; it now returns "not sent" and the customer email is still attempted.
+  - **Tests:** 652 pass. The full list of later items is in the review report: Turnstile before switching it on, a server-side free/busy check, the multi-day plan sent from the browser, the service-length parameter name, and business numbers still typed in code.
+  - **To check on the Deploy Preview:** the calendars' sharing settings. Bookings carry customer details, so "513 Auto Clean" must be public as "See only free/busy" (it's in `GOOGLE_BUSY_ONLY_CALENDAR_IDS`).
+
 - **Interior prices corrected (Elijah, November 12): Basic Interior $135 (was $125), Full Interior $225 (was $215).**
   - *Root cause:* the catalog was never updated when he changed them; he says these are what he charges.
   - **What changed:** two numbers in `web/lib/catalog/seed.ts`. The build updated everything from them: the home and Services cards, the terms' "A Basic Interior at $135" (via `STAMPS`), the booking form's pricing and the server functions.

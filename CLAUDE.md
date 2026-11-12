@@ -236,6 +236,9 @@ Read this before changing anything. Every rule below came from a real bug or an 
 - **A detailer's schedule lives only in their calendar.** Days, hours, fees and best times are OPEN, `OPEN +20%` and BEST events; who goes first is `Priority: N` in the calendar description (lowest found across all of a person's calendars). `noFeeStarts` in `DETAILERS` only stands in when the calendar can't be read, never for a time outside their OPEN blocks. `DETAILERS` is checked at build. Changing a detailer's days needs no code; to narrow a repeating event's days, edit its repeat in Google Calendar ("This and following events"), since the API tool can't.
 - **A time is re-checked against whoever it was given to when the job changes** (`slotStillFits`, `canDo`). Kris does interior only: an exterior added after picking his time drops the time.
 
+- **A booking is only "confirmed" to the customer when its calendar event was written, and every failure is told to Elijah** (final review, November 13). A silent `{ok:false}` from the calendar left times sellable with "booked in" emails sent. Any new write path reports its failure in the owner email.
+- **Every booking write is idempotent by its booking key** (`findBookingEvent` before `createBookingEvent`), and every booking gets a fresh key (`open()` clears `_key`). A retry must never make a second event or a second set of emails.
+
 ## Print (November 11)
 - **Printed QR codes can never change.** `/golf` (golf course booklet) and `/prestige` (Prestige Living) are in print from 2027 for about a year. Keep both addresses served forever, by the 302 in `netlify.toml` or a page of that name. Never a 301: a browser keeps a 301, so a later change never reaches someone who scanned once. `printed-qr.test.ts` guards this and the files' checksums. A new printed code is a new address, made with `marketing/qr/make_qr.py`; never edit a printed one.
 

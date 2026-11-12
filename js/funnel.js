@@ -1564,6 +1564,8 @@
    * a phone call; the cost of refusing a real customer because Google was
    * briefly unreachable is the whole job.
    */
+  /** When verifySlot last found the chosen time free, and how stale that may get before booking. */
+  var lastFreeCheck = 0, RECHECK_MS = 5 * 60 * 1000;
   function verifySlot() {
     var slot = state.slot;
     if (!slot) return Promise.resolve(true);
@@ -1599,13 +1601,15 @@
       if (!plan.ok) return Promise.resolve(true);
       return P.loadWindow(cfg, from, dayStart.getTime() + (plan.totalDays + 1) * DAY)
         .then(function (win) {
-          return P.multiDayStillFits({
+          var ok = P.multiDayStillFits({
             plan: plan,
             startMs: slot,
             openBlocks: win.open,
             busy: win.busy || [],
             allowedWeekdays: corr ? [0, 6] : undefined
           });
+          if (ok) lastFreeCheck = Date.now();
+          return ok;
         })
         .catch(function () { return true; });
     }
@@ -1636,6 +1640,7 @@
         var hit = slots.filter(function (ms) { return Math.abs(ms - slot) < 60000; })[0];
         // The planned arrival from the calendar as it is now, for the event's end.
         if (hit !== undefined && state.slot === slot) state.slotLateMin = late.get(hit) || 0;
+        if (hit !== undefined) lastFreeCheck = Date.now();
         return hit !== undefined;
       })
       .catch(function () { return true; });
@@ -1681,7 +1686,11 @@
     // Checked once per chosen slot, so going back and forth does not ask
     // Google the same question repeatedly.
     // Booking from the checkout with a time on it: confirm it is still free.
-    if (onCheckout() && state.slot && state.checkedSlot !== state.slot) {
+    // Checked again before booking when the last check is more than a few
+    // minutes old: two people can sit in checkout on the same time (final
+    // review, November 13).
+    if (onCheckout() && state.slot && (state.checkedSlot !== state.slot ||
+        (state.step === STEPS.length - 1 && Date.now() - lastFreeCheck > RECHECK_MS))) {
       return checkThenAdvance();
     }
 
@@ -7486,6 +7495,10 @@
   function open() {
     if (!host) return;
     reset();
+    // A new booking gets a new key. Kept, a second booking in the same visit
+    // carried the first one's key: JobsSync counted it as a duplicate, and the
+    // retry check would have dropped it (final review, November 13).
+    _key = null;
     track('booking_open');
 
     // Pick up exactly where they left off, including the step they were on,

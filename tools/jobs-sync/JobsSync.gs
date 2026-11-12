@@ -301,11 +301,13 @@ function eventTime(t) {
 function areaFor(zip, loc) {
   if (ZIP_AREA[zip]) return ZIP_AREA[zip];
   if (zip.indexOf('41') === 0 || /\bKY\b|Kentucky/i.test(loc)) return 'Northern Kentucky';
+  if (zip.indexOf('47') === 0 || /\bIN\b|Indiana/i.test(loc)) return 'Southeast Indiana';
   return zip ? 'Other (' + zip + ')' : 'Unknown';
 }
 
 function findZip(s) {
-  const m = String(s).match(/\b(4[0-5]\d{3})(?:-\d{4})?\b/g);
+  // 40xxx to 47xxx: Ohio, Kentucky and Southeast Indiana (47xxx), as the site serves.
+  const m = String(s).match(/\b(4[0-7]\d{3})(?:-\d{4})?\b/g);
   return m ? m[m.length - 1].slice(0, 5) : '';
 }
 
