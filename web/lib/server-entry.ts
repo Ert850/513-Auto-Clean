@@ -241,6 +241,7 @@ export function wireNeeds(wire: WireCart): string[] {
 export { mileageFeeCents } from "./pricing/mileage.js";
 export { cancellationLadder } from "./pricing/cancellation.js";
 export { CAPABILITIES, DRAFT_KEEP_DAYS, copyFor, isLive, liveProcessors } from "./site/capabilities.js";
+export { LONG_JOB_STARTS, multiDayEvents } from "./availability/multiDay.js";
 export { HOURS, REPO_PHONE, businessPhone, hoursText, parsePhone, phoneTrace, swapPhone } from "./site/business.js";
 export { estimateOneWayMinutes } from "./travel/zipRanges.js";
 

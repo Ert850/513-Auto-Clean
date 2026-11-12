@@ -1584,8 +1584,33 @@
     var myDrive = driveFor(who.id);
     var buffer = P.travelBufferMin(myDrive);
 
-    var personal = who.owner ? personalBusy() : Promise.resolve([]);
+    // A job past one day's work was offered by the multi-day search, so it
+    // is checked by the same search (paintMultiDay): the slot search below
+    // can never fit it and refused every one as taken (review, November 13).
+    var drive = travelAllowanceMin();
+    if (!P.fitsOneDay(dur, P.LONGEST_DAY, drive, drive)) {
+      var corr = hasCorrection();
+      var plan = P.planDays({
+        serviceMinutes: dur,
+        travelBeforeMin: drive,
+        travelAfterMin: drive,
+        preferredStartsMin: corr ? P.CORRECTION_RULES.allowedStartsMin : P.LONG_JOB_STARTS
+      });
+      if (!plan.ok) return Promise.resolve(true);
+      return P.loadWindow(cfg, from, dayStart.getTime() + (plan.totalDays + 1) * DAY)
+        .then(function (win) {
+          return P.multiDayStillFits({
+            plan: plan,
+            startMs: slot,
+            openBlocks: win.open,
+            busy: win.busy || [],
+            allowedWeekdays: corr ? [0, 6] : undefined
+          });
+        })
+        .catch(function () { return true; });
+    }
 
+    var personal = who.owner ? personalBusy() : Promise.resolve([]);
     return Promise.all([P.loadWindow(cfg, from, to), personal])
       .then(function (both) {
         var win = both[0];

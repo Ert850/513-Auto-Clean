@@ -9,8 +9,10 @@
  * him, and update these patterns to match his new script.
  */
 import { describe, expect, it } from "vitest";
+import fs from "node:fs";
+import path from "node:path";
 // @ts-expect-error: plain ESM Netlify function, no types
-import { eventDescription, eventTitle } from "../../netlify/functions/send-confirmation.mjs";
+import { bookingEvents, eventDescription, eventTitle } from "../../netlify/functions/send-confirmation.mjs";
 import { priceFromWire, type WireCart } from "./server-entry.js";
 
 /* ---- From JobsSync.gs (findMoney, findBlock, findZip, the detailer match) ---- */
@@ -23,6 +25,8 @@ const findZip = (s: string) => {
   return m ? m[m.length - 1]!.slice(0, 5) : "";
 };
 const DETAILER = /^(?:SHORT NOTICE[^:]*:\s*)?([A-Z][a-z]+):/;
+// tools/jobs-sync/JobsSync.gs: day 2 and on of a multi-day job, skipped.
+const CONTINUATION_DAY = /^(?:SHORT NOTICE[^:]*:\s*)?(?:[A-Z][a-z]+:\s*)?Day \d+ of \d+\b/;
 const num = (s: string) => Number(String(s).replace(/[$,]/g, ""));
 
 const DAY = 86_400_000;
@@ -78,3 +82,32 @@ describe("the booking calendar event, as JobsSync reads it", () => {
     expect(eventTitle({ kind: "booking", slotMs: NOW + 5 * DAY, nowMs: NOW, detailer: null, names, contactName: "A B" }).match(DETAILER)).toBeNull();
   });
 });
+
+describe("a job longer than one day, as JobsSync reads it (November 13)", () => {
+  function multi(detailer: { name: string } | null) {
+    const { cart, priced } = booking();
+    return bookingEvents({
+      contact: { name: "Test Customer", phone: "5135550100", email: "" },
+      cart, priced: { ...priced, serviceDurationMin: 1200 }, payInFull: false, kind: "booking", detailer,
+      extras: { source: "golf / print / qr", heard: "Golf booklet" }, nowMs: NOW, measuredMin: 30,
+    }) as { summary: string; description: string }[];
+  }
+
+  it("day 1 is counted (TOTAL, detailer) and days 2+ are skipped (no TOTAL, Day N of M)", () => {
+    for (const d of [{ name: "Kris" }, null]) {
+      const [day1, day2] = multi(d);
+      expect(CONTINUATION_DAY.test(day1!.summary), day1!.summary).toBe(false);
+      expect(day1!.description).toMatch(TOTAL);
+      expect(block(day1!.description, "SOURCE")).toBe("golf / print / qr");
+      expect(CONTINUATION_DAY.test(day2!.summary), day2!.summary).toBe(true);
+      expect(day2!.description).not.toMatch(TOTAL);
+      expect(day2!.summary.match(DETAILER)?.[1] ?? null).toBe(d ? "Kris" : null);
+    }
+  });
+
+  it("JobsSync.gs carries the same pattern", () => {
+    const gs = fs.readFileSync(path.join(__dirname, "../../tools/jobs-sync/JobsSync.gs"), "utf8");
+    expect(gs).toContain(CONTINUATION_DAY.source);
+  });
+});
+

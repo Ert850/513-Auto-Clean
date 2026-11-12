@@ -39,6 +39,13 @@ export const AVAILABILITY_PREFIX = "OPEN";
 export const BEST_PREFIX = "BEST";
 
 /**
+ * "DNS" (do not schedule) blocks time even when Google has it as Free, which
+ * is Google's default for an all-day event: an all-day DNS used to be dropped
+ * with the other Free events and the day stayed bookable (review, November 13).
+ */
+export const BLOCK_PREFIX = "DNS";
+
+/**
  * An event's start or end. An all-day event gives a bare date, which
  * new Date() reads as midnight UTC: 7pm the evening before in Cincinnati,
  * so an all-day "Vacation" left its own evening bookable and blocked the
@@ -172,9 +179,13 @@ export interface CalendarWindow {
   fees?: { start: number; end: number; bp: number }[];
 }
 
-/** "OPEN" is standard price; "OPEN +20%" adds 20% (2000 basis points). */
+/**
+ * "OPEN" is standard price; "OPEN +20%" adds 20% (2000 basis points). "OPEN
+ * 20%" and "OPEN (+20%)" mean the same and used to charge nothing (review,
+ * November 13).
+ */
 export function openFeeBp(summary: string): number {
-  const m = /^OPEN\b\s*\+\s*(\d{1,3}(?:\.\d{1,2})?)\s*%/i.exec(summary.trim());
+  const m = /^OPEN\b\s*\(?\s*\+?\s*(\d{1,3}(?:\.\d{1,2})?)\s*%/i.exec(summary.trim());
   return m ? Math.round(Number(m[1]) * 100) : 0;
 }
 
@@ -209,23 +220,13 @@ export async function readCalendars(
   if (ids.length <= 1) return fetchOne(cfg.apiKey, ids[0] ?? "", fromMs, toMs);
 
   /*
-   * All of them, in parallel, pooled.
-   *
-   * One calendar that fails must not take the others down with it: a booking
-   * offered against slightly stale availability is recoverable, and a
-   * scheduler that shows nothing is not. A failure that loses the JOBS
-   * calendar is the dangerous direction, so it is logged loudly rather than
-   * swallowed silently.
+   * All of them, in parallel, pooled. One that fails fails the whole read,
+   * exactly as a single calendar's failure does (review, November 13). It
+   * used to be swallowed: when the one that failed held the jobs, those
+   * hours were offered again, which is the double booking fetchBusyOnly
+   * already refuses to risk. Callers already fall back on a failed read.
    */
-  const settled = await Promise.all(
-    ids.map((id) =>
-      fetchOne(cfg.apiKey, id, fromMs, toMs).catch((err: unknown): CalendarRead => {
-        // eslint-disable-next-line no-console
-        console.warn(`[513] calendar ${id} unreadable:`, err);
-        return { events: [], priority: null };
-      }),
-    ),
-  );
+  const settled = await Promise.all(ids.map((id) => fetchOne(cfg.apiKey, id, fromMs, toMs)));
   const ranks = settled.map((r) => r.priority).filter((n): n is number => n !== null);
   return { events: settled.flatMap((r) => r.events), priority: ranks.length ? Math.min(...ranks) : null };
 }
@@ -237,7 +238,7 @@ async function fetchOne(
   toMs: number,
 ): Promise<CalendarRead> {
   const cfg = { calendarId, apiKey };
-  const url =
+  const base =
     `${API}/${encodeURIComponent(cfg.calendarId)}/events` +
     `?key=${encodeURIComponent(cfg.apiKey)}` +
     `&timeMin=${new Date(fromMs).toISOString()}` +
@@ -245,17 +246,29 @@ async function fetchOne(
     // Expands recurrence server side, so we never implement RRULE ourselves.
     `&singleEvents=true&orderBy=startTime&maxResults=2500`;
 
-  // NEVER from the browser cache. Availability is the one thing on this site
-  // where a thirty second old answer is a double booking, and the customer
-  // reloading the step has to be asking Google again, not asking memory.
-  const res = await fetch(url, { cache: "no-store" });
-  if (!res.ok) {
-    throw new Error(`Google Calendar ${res.status}: ${await res.text()}`);
+  // Every page: Google can split a list however it likes, and a job on a
+  // page never read is a job the site would sell again (review, November 13).
+  const items: GoogleEvent[] = [];
+  let description: string | undefined;
+  let pageToken = "";
+  for (let page = 0; page < 20; page++) {
+    // NEVER from the browser cache. Availability is the one thing on this site
+    // where a thirty second old answer is a double booking, and the customer
+    // reloading the step has to be asking Google again, not asking memory.
+    const res = await fetch(base + (pageToken ? `&pageToken=${encodeURIComponent(pageToken)}` : ""), { cache: "no-store" });
+    if (!res.ok) {
+      throw new Error(`Google Calendar ${res.status}: ${await res.text()}`);
+    }
+    // The calendar's own Description rides along on every events list.
+    const json = (await res.json()) as { items?: GoogleEvent[]; description?: string; nextPageToken?: string };
+    items.push(...(json.items ?? []));
+    description ??= json.description;
+    pageToken = json.nextPageToken ?? "";
+    if (!pageToken) break;
   }
-  // The calendar's own Description rides along on every events list.
-  const json = (await res.json()) as { items?: GoogleEvent[]; description?: string };
+  if (pageToken) throw new Error(`Google Calendar: ${calendarId} has more than 20 pages in this range`);
 
-  const events = (json.items ?? [])
+  const events = items
     .map((e): RawEvent | null => {
       const s = e.start?.dateTime ?? e.start?.date;
       const t = e.end?.dateTime ?? e.end?.date;
@@ -270,7 +283,7 @@ async function fetchOne(
       };
     })
     .filter((e): e is RawEvent => e !== null);
-  return { events, priority: parsePriority(json.description) };
+  return { events, priority: parsePriority(description) };
 }
 
 interface GoogleEvent {
@@ -354,7 +367,7 @@ export function resolveWindow(
   // Best start times mark a time; they never take it away, Busy or Free.
   const best = [...new Set(events.filter((e) => isBest(e) && !e.allDay && e.start >= fromMs && e.start < toMs).map((e) => e.start))]
     .sort((a, b) => a - b);
-  const usable = events.filter((e) => !e.transparent && !isBest(e));
+  const usable = events.filter((e) => (!e.transparent || titleIs(e.summary, BLOCK_PREFIX)) && !isBest(e));
   // OPEN blocks count whatever their Busy/Free setting. An OPEN event set to
   // Free used to be dropped with the other Free events, silently taking
   // those hours away (found by the calendar setup walkthrough, November 10).

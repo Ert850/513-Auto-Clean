@@ -10,7 +10,7 @@ The site reads three things from each detailer's **availability** calendar:
 | **BEST** events (new) | An event titled `BEST` starting at an ideal start time, any length (15 minutes is tidy), repeating weekly, set to **Show as: Free**. | Those start times are what "Our recommended times" offers. |
 | **Priority** (new) | One line in the calendar's **Description**: `Priority: 1` | Who is offered first. 1 goes first, then 2, and so on. |
 
-Anything else on an availability calendar still blocks time, unless it's set to **Show as: Free**. That's why BEST events have to be Free: they mark a time and never take it away.
+Anything else on an availability calendar still blocks time, unless it's set to **Show as: Free**. BEST events are the exception: the new booking form never lets one block time, Busy or Free. Set them to Free anyway, because the site live today (`main`) doesn't know BEST and treats a Busy one as a job.
 
 ---
 
@@ -84,6 +84,8 @@ Make these, each titled `BEST`, 15 minutes long, set to **Show as: Free**:
 - **OPEN events can be Busy or Free;** they count either way.
 
 - **Titles:** they only have to start with the word, so `BEST`, `Best` or `BEST evening` all work. The same goes for `OPEN`.
-- **BEST events must be Free.** A BEST event left on Busy blocks that time, like any other event.
+- **BEST events should be Free.** The new booking form never lets a BEST event block time, but the site live today (`main`) treats a Busy one as a job until this version goes live. (Corrected November 13: this line said a Busy BEST blocks time, which the new code never did.)
+- **DNS blocks time even when Free.** An all-day event is Free by default in Google, so an all-day `DNS` used to leave the day bookable; it now blocks either way.
+- **Fee blocks:** `OPEN +20%`, `OPEN 20%` and `OPEN (+20%)` all mean 20% extra.
 - **Only on availability calendars.** Never put OPEN or BEST events on a bookings calendar: a free/busy reader only sees "busy".
 - **One Priority number per person.** If two calendars share a number, or one has none, the order in Netlify's `DETAILERS` setting breaks the tie.
