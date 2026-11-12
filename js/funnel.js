@@ -7700,7 +7700,74 @@
     document.body.classList.remove('bk-open');
     setPageInert(false);
     document.removeEventListener('keydown', trapTab);
+    // A takeover (flipFrom) switched the modal's own rise off; it gets it back
+    // the next time it opens.
+    var modal = host.querySelector('.bk-modal');
+    if (modal) modal.style.animation = '';
+    // The booking page shows the size they chose, still chosen.
+    paintSizeSteps();
     if (lastFocus && lastFocus.focus) lastFocus.focus();
+  }
+
+  /*
+   * THE SIZE STEP ON A PAGE OF ITS OWN (booking.html, A2P plan T7).
+   *
+   * The booking page shows the form's first step in its card, before the form
+   * opens. It is this form's own rSize(), painted into the page, never a copy
+   * of its markup, so the two can never drift (Emmett, November 12). Picking a
+   * size opens the full form at step 2 with that size set, the form growing
+   * out of the card (flipFrom). A true inline embed was rejected: the form is
+   * built as a full-window modal.
+   *
+   * Markup: <div data-bk-sizestep data-bk-from="#cardId"></div>.
+   */
+  var sizeSteps = [];
+  function paintSizeSteps() {
+    sizeSteps.forEach(function (c) { c.innerHTML = rSize(); });
+  }
+  function mountSizeSteps() {
+    document.querySelectorAll('[data-bk-sizestep]').forEach(function (c) {
+      sizeSteps.push(c);
+      c.addEventListener('click', function (e) {
+        var b = e.target.closest && e.target.closest('[data-size]');
+        if (!b) return;
+        var from = document.querySelector(c.getAttribute('data-bk-from')) || c;
+        openWithSize(b.getAttribute('data-size'), from);
+      });
+    });
+    paintSizeSteps();
+  }
+
+  /** Opens the form with this size chosen, at the next unanswered step. */
+  function openWithSize(id, fromEl) {
+    open();
+    if (host.hidden) return;
+    veh().size = id;
+    if (state.step === 0) advance(); else render();
+    flipFrom(fromEl);
+  }
+
+  /**
+   * The modal grows out of the page's card: a FLIP from the card's box to
+   * its own, about 300 ms, transform and opacity only. Instant with reduced
+   * motion, and wherever the browser has no Web Animations.
+   */
+  function flipFrom(fromEl) {
+    var modal = host.querySelector('.bk-modal');
+    if (!fromEl || !modal || !modal.animate) return;
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    var a = fromEl.getBoundingClientRect();
+    modal.style.animation = 'none';
+    var b = modal.getBoundingClientRect();
+    if (!a.width || !a.height || !b.width || !b.height) return;
+    var base = getComputedStyle(modal).transform;
+    if (!base || base === 'none') base = '';
+    modal.animate([
+      { transformOrigin: '0 0', opacity: 0.35,
+        transform: 'translate(' + (a.left - b.left) + 'px,' + (a.top - b.top) + 'px) ' + base +
+          ' scale(' + (a.width / b.width) + ',' + (a.height / b.height) + ')' },
+      { transformOrigin: '0 0', opacity: 1, transform: base || 'none' }
+    ], { duration: 300, easing: 'cubic-bezier(.2,.7,.2,1)' });
   }
 
   function mount() {
@@ -7937,6 +8004,8 @@
         }
       });
     });
+
+    mountSizeSteps();
 
     // A shared quote link. Fragment, not query, so a customer's name and
     // address never reach a server log on the way in.

@@ -1,0 +1,13 @@
+{
+  "_read_me": [
+    "The booking page at 513autoclean.com/book (booking.html), the link on the Google Business Profile.",
+    "video.src: the 9:16 video beside the booking card, a path such as \"images/book-montage.mp4\" (put the file in images/). Empty: the slot shows the hero photo, cropped to 9:16.",
+    "video.poster: the still shown before the video plays, such as \"images/book-montage-poster.jpg\". Empty: the hero photo.",
+    "The video plays muted, looping, inline, on its own; only its first frames load until it plays.",
+    "A mistake in this file fails the build."
+  ],
+  "video": {
+    "src": "",
+    "poster": ""
+  }
+}

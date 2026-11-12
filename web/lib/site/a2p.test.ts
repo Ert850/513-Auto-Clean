@@ -192,3 +192,31 @@ describe("T4: the hours", () => {
     expect(read("index.html")).toContain(`Available 7 days a week, ${hoursText()}`);
   });
 });
+
+describe("T7: the booking page at /book", () => {
+  it("is a 200 rewrite to booking.html, kept out of search and the sitemap; /book.html is left alone", () => {
+    const toml = read("netlify.toml");
+    expect(toml).toMatch(/from = "\/book"\n\s*to = "\/booking\.html"\n\s*status = 200/);
+    expect(toml).toMatch(/from = "\/book\.html"\n\s*to = "\/#book"\n\s*status = 301/);
+    expect(read("booking.html")).toContain('<meta name="robots" content="noindex" />');
+    expect(read("sitemap.xml")).not.toContain("booking");
+  });
+
+  it("is registered like every page", () => {
+    for (const f of ["web/scripts/chrome.mjs", "web/scripts/build-dist.mjs", "web/scripts/stamp-assets.mjs"]) {
+      expect(read(f), f).toContain('"booking.html"');
+    }
+  });
+
+  it("shows the booking form's own first step, never a copy of its markup", () => {
+    const html = read("booking.html");
+    expect(html).toContain("data-bk-sizestep");
+    expect(html, "no size cards typed into the page").not.toContain("data-size=");
+    expect(read("js/funnel.js")).toContain("c.innerHTML = rSize();");
+  });
+
+  it("carries the Cincinnati pill in its header only", () => {
+    expect(read("booking.html")).toContain('class="loc-pill nav-loc"');
+    expect(read("index.html")).not.toContain("nav-loc");
+  });
+});

@@ -35,6 +35,8 @@ const FILES = [
   // Print landing pages (QR codes), not linked from the site and not in the sitemap.
   "lp-golf.html",
   "lp-prestige.html",
+  // The Google Business Profile's booking link, /book (A2P plan T7). Not in the sitemap.
+  "booking.html",
   "styles.css",
   "book.css",
   "script.js",
@@ -139,7 +141,8 @@ const referenced = new Set([
 ]);
 for (const f of textFiles) {
   const text = fs.readFileSync(path.join(root, f), "utf8");
-  for (const m of text.matchAll(/images\/([A-Za-z0-9._-]+\.(?:jpg|jpeg|png|webp|avif|svg))/g)) {
+  // mp4 and webm: the booking page's video (config/booking-page.json).
+  for (const m of text.matchAll(/images\/([A-Za-z0-9._-]+\.(?:jpg|jpeg|png|webp|avif|svg|mp4|webm))/g)) {
     referenced.add(m[1]);
   }
 }
