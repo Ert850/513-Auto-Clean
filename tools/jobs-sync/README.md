@@ -75,3 +75,7 @@ kept, and rows already in the sheet are matched by the same Event ID as before.
   event details on his calendar.
 - **A new detailer:** add a line to `CALENDARS` with their bookings Calendar ID, the calendar's
   name and their name.
+
+## Jobs longer than one day (November 13)
+
+The website now writes a job that runs over several days as one event per day. Day 1 is the booking as before, with the total. Days 2 and on are titled "Day 2 of 2, ..." (after the detailer's name, if any) and carry no total, so this script skips them and the job is counted once.

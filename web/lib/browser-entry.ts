@@ -72,6 +72,7 @@ import {
   describePlan,
   findMultiDayStarts,
   fitsOneDay,
+  multiDayStillFits,
   planDays,
 } from "./availability/multiDay.js";
 import { findPromo, normalisePromo, promoDiscountCents, promoMessage } from "./pricing/promos.js";
@@ -134,6 +135,7 @@ const api = {
   describePlan,
   findMultiDayStarts,
   fitsOneDay,
+  multiDayStillFits,
   planDays,
   localMinutesOfDay,
   weekStartOf,

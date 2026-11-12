@@ -1,4 +1,4 @@
-import { priceFromWire, validateWire, findPackage, findAddon, vehicleSize, isLive, ADVICE_HOLD_MIN, businessPhone } from "./_pricing.mjs";
+import { priceFromWire, validateWire, findPackage, findAddon, vehicleSize, isLive, ADVICE_HOLD_MIN, businessPhone, multiDayEvents, LONG_JOB_STARTS, CORRECTION_RULES } from "./_pricing.mjs";
 import { blockFeeFor, detailerFor, homeFor, timeFeeWaived } from "./_detailers.mjs";
 import { createBookingEvent, gcalAuthMode, gcalConfigured } from "./_gcal.mjs";
 import { measuredOneWayMinutes } from "./_routes.mjs";
@@ -356,14 +356,18 @@ export function eventTitle({ kind, slotMs, nowMs, detailer, names, contactName }
     : `${names.join(" + ") || "Detail"}, ${contactName}`);
 }
 
-async function writeCalendar({ contact, cart, priced, extras, payInFull, key, kind, detailer }) {
-  if (!gcalConfigured()) return { ok: false, reason: "unconfigured" };
-  if (!cart.slot) return { ok: false, reason: "no_slot" };
-
+/**
+ * The events a booking writes: one for a job that fits a day, and one per
+ * working day for a longer one (review, November 13: a two day job used to be
+ * one event from Saturday 8am to Sunday 4am, so Sunday's real hours stayed
+ * bookable). Day 1 is the booking as always, with the TOTAL and everything
+ * JobsSync reads; days 2 and on are titled "Day N of M" and carry no TOTAL,
+ * so the job is counted once (jobs-sync-contract.test.ts).
+ */
+export function bookingEvents({ contact, cart, priced, extras, payInFull, kind, detailer, nowMs, measuredMin }) {
   const names = (cart.vehicles ?? [])
     .flatMap((v) => (v.packageIds ?? []).map((id) => findPackage(id)?.name))
     .filter(Boolean);
-
   /*
    * A "help me decide" visit has no package, so it has no duration, and
    * `?? 120` did not save it: zero is not null, so the event would have ended
@@ -371,25 +375,72 @@ async function writeCalendar({ contact, cart, priced, extras, payInFull, key, ki
    * the same block the customer was offered on the booking screen.
    */
   const minutes = priced.serviceDurationMin || (kind === "advice" ? ADVICE_HOLD_MIN : 120);
+  const location = [cart.address?.line1, cart.address?.city, cart.address?.region, cart.address?.zip]
+    .filter(Boolean)
+    .join(", ");
+  const title = eventTitle({ kind, slotMs: cart.slot, nowMs, detailer, names, contactName: contact.name });
+  const description = eventDescription({ contact, cart, priced, extras, payInFull, kind });
 
-  return createBookingEvent({
-    // The title is what Elijah reads at a glance on a phone, so it says the
-    // thing he needs to know before setting off: nobody has chosen yet.
-    // A short-notice time is a request until someone accepts it, and the
-    // calendar says so too (validation, November 11).
-    summary: eventTitle({ kind, slotMs: cart.slot, nowMs: Date.now(), detailer, names, contactName: contact.name }),
-    description: eventDescription({ contact, cart, priced, extras, payInFull, kind }),
-    location: [cart.address?.line1, cart.address?.city, cart.address?.region, cart.address?.zip]
-      .filter(Boolean)
-      .join(", "),
-    startMs: cart.slot,
-    // To the planned arrival plus the work: a start late in its arrival window
-    // ends that much later, and the next job is spaced from this end.
-    endMs: cart.slot + ((cart.arrivalLateMin || 0) + minutes) * 60_000,
-    key,
-    phone: String(contact.phone ?? "").replace(/\D/g, "").replace(/^1(?=\d{10}$)/, ""),
-    calendarId: detailer ? detailer.bookingsCalendarId : "",
-  });
+  // The same plan the booking form showed: the measured drive, else 30
+  // minutes (travelAllowanceMin), and the correction start times.
+  const corr = (cart.vehicles ?? []).some((v) => v.correction);
+  const days = kind === "booking"
+    ? multiDayEvents({
+        slotMs: cart.slot,
+        serviceMinutes: minutes,
+        travelMin: Number.isFinite(measuredMin) ? measuredMin : 30,
+        preferredStartsMin: corr ? CORRECTION_RULES.allowedStartsMin : LONG_JOB_STARTS,
+      })
+    : null;
+
+  if (!days) {
+    return [{
+      // The title is what Elijah reads at a glance on a phone, so it says the
+      // thing he needs to know before setting off: nobody has chosen yet.
+      // A short-notice time is a request until someone accepts it, and the
+      // calendar says so too (validation, November 11).
+      summary: title,
+      description,
+      location,
+      startMs: cart.slot,
+      // To the planned arrival plus the work: a start late in its arrival window
+      // ends that much later, and the next job is spaced from this end.
+      endMs: cart.slot + ((cart.arrivalLateMin || 0) + minutes) * 60_000,
+    }];
+  }
+  const n = days.length;
+  return days.map((d, i) => i === 0
+    ? {
+        summary: title,
+        description: `${description}\n\nDAYS\n  Day 1 of ${n}. This job runs over ${n} days in a row; each day is its own event, and only this one carries the total.`,
+        location,
+        startMs: d.startMs,
+        endMs: d.endMs + (cart.arrivalLateMin || 0) * 60_000,
+      }
+    : {
+        summary: `${detailer ? `${detailer.name}: ` : ""}Day ${i + 1} of ${n}, ${names.join(" + ") || "Detail"}, ${contact.name}`,
+        description: `Day ${i + 1} of ${n} of ${contact.name}'s booking. The total, the contact details and the notes are on day 1.`,
+        location,
+        startMs: d.startMs,
+        endMs: d.endMs,
+      });
+}
+
+async function writeCalendar({ contact, cart, priced, extras, payInFull, key, kind, detailer, measuredMin }) {
+  if (!gcalConfigured()) return { ok: false, reason: "unconfigured" };
+  if (!cart.slot) return { ok: false, reason: "no_slot" };
+
+  const events = bookingEvents({ contact, cart, priced, extras, payInFull, kind, detailer, nowMs: Date.now(), measuredMin });
+  const phone = String(contact.phone ?? "").replace(/\D/g, "").replace(/^1(?=\d{10}$)/, "");
+  const calendarId = detailer ? detailer.bookingsCalendarId : "";
+  const first = await createBookingEvent({ ...events[0], key, phone, calendarId });
+  if (!first.ok) return first;
+  // Days 2 and on: their own key, so day 1 stays the one a follow-up finds.
+  for (let i = 1; i < events.length; i++) {
+    const r = await createBookingEvent({ ...events[i], key: key ? `${key}:day${i + 1}` : key, phone, calendarId });
+    if (!r.ok) return { ...first, ok: false, reason: `day${i + 1}_${r.reason}` };
+  }
+  return events.length > 1 ? { ...first, days: events.length } : first;
 }
 
 async function send(apiKey, from, to, { subject, html }, replyTo) {
@@ -490,6 +541,7 @@ export async function handler(event) {
           contact, cart, priced, extras, payInFull, kind,
           key: text(payload?.idempotencyKey, 120),
           detailer,
+          measuredMin: measured,
         }).catch((err) => {
           console.error("calendar write", err);
           return { ok: false, reason: "threw" };

@@ -17,6 +17,23 @@ import { parseDetailers, waivesFeeAt, canDo, wireNeeds, loadWindow, blockFeeAt, 
 /** Elijah's OPEN blocks live on 513 Availability (as js/config.template.js). */
 const OWNER_AVAILABILITY = process.env.GOOGLE_OWNER_AVAILABILITY_ID ||
   "9f26a370ac8629b6df3f7f4e8181aa1086f3acb2b47866e01a1b868cd4ab8161@group.calendar.google.com";
+/** 513 Auto Clean, the browser's googleCalendarId (the same default as render-config.mjs). */
+const OWNER_CALENDAR = process.env.GOOGLE_CALENDAR_ID ||
+  "75726fed82aa92a27201386beda7b3a15f550a3a5691e5e6cfc51382f0f0b9cf@group.calendar.google.com";
+
+/**
+ * The calendars the owner's fee is read from: every one the booking form
+ * reads in full (calendarCfgFor in js/funnel.js), so the fee charged is the
+ * fee quoted wherever an OPEN block lives. Only 513 Availability was read,
+ * so an "OPEN +20%" on 513 Auto Clean was quoted and never charged (review,
+ * November 13). Busy-only calendars are skipped: they hold jobs, not OPEN
+ * blocks, and can't be read in full.
+ */
+export function ownerFeeCalendars(env = process.env) {
+  const busyOnly = String(env.GOOGLE_BUSY_ONLY_CALENDAR_IDS || "").split(",").map((x) => x.trim()).filter(Boolean);
+  const ids = [env.GOOGLE_CALENDAR_ID || OWNER_CALENDAR, env.GOOGLE_OWNER_AVAILABILITY_ID || OWNER_AVAILABILITY];
+  return ids.filter((id, i) => id && !busyOnly.includes(id) && ids.indexOf(id) === i);
+}
 
 /**
  * The detailer for an id from a request body, or null for the owner.
@@ -51,10 +68,10 @@ export async function blockFeeFor(detailer, slotMs, shownBp) {
   // own pages (an HTTP-referrer restriction), which a function call never
   // passes. Without one, the browser key is used, as before.
   const apiKey = process.env.GOOGLE_CALENDAR_SERVER_KEY || process.env.GOOGLE_CALENDAR_API_KEY || process.env.GOOGLE_API_KEY;
-  const calendarId = detailer ? detailer.availabilityCalendarId : OWNER_AVAILABILITY;
-  if (apiKey && calendarId) {
+  const ids = detailer ? [detailer.availabilityCalendarId].filter(Boolean) : ownerFeeCalendars();
+  if (apiKey && ids.length) {
     try {
-      const win = await loadWindow({ calendarId, apiKey }, slotMs - 12 * 3600_000, slotMs + 12 * 3600_000);
+      const win = await loadWindow({ calendarId: ids[0], extraCalendarIds: ids.slice(1), apiKey }, slotMs - 12 * 3600_000, slotMs + 12 * 3600_000);
       const fee = blockFeeAt(win, slotMs);
       if (fee !== null) return fee;
       // Read fine, but no OPEN block holds this start: the detailer is not

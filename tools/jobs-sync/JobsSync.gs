@@ -63,6 +63,12 @@ const CONFIG = {
 // "SHORT NOTICE, accept or decline: Kris: Full Interior, Jane Doe".
 const DETAILER = /^(?:SHORT NOTICE[^:]*:\s*)?([A-Z][a-z]+):/;
 
+// Day 2 and on of a job longer than one day: "Day 2 of 2, Paint Correction,
+// Jane Doe", or "Kris: Day 2 of 2, ..." (website, November 13). Day 1 is the
+// booking and carries the total; these never do, so they are skipped and the
+// job is counted once.
+const CONTINUATION_DAY = /^(?:SHORT NOTICE[^:]*:\s*)?(?:[A-Z][a-z]+:\s*)?Day \d+ of \d+\b/;
+
 // ZIP -> area. Matches the areas in the team brief's "value by area" table.
 const AREAS = {
   'West side': ['45002', '45030', '45052', '45204', '45205', '45211', '45233', '45238', '45239', '45247', '45248', '45251', '45252'],
@@ -173,6 +179,7 @@ function jobRow(ev, cal, now) {
   if (ev.status === 'cancelled') return null;
   if (ev.transparency === 'transparent') return null;   // marked Free: fee blocks and the like
   if (CONFIG.skipTitle.test(title.trim())) return null;
+  if (CONTINUATION_DAY.test(title.trim())) return null;
   if (CONFIG.officeMatch.test(loc) || CONFIG.officeMatch.test(desc)) return null;
   const allDay = !ev.start.dateTime;
   if (allDay && !/\$\d/.test(title + desc)) return null;

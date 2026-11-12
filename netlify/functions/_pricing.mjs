@@ -852,6 +852,7 @@ function computeTax(taxableBaseCents, zip, table, currentYear) {
 }
 
 // lib/time/zone.ts
+var DAY_MS = 864e5;
 function zoneOffsetMs(utcMs, timeZone) {
   const dtf = new Intl.DateTimeFormat("en-US", {
     timeZone,
@@ -902,6 +903,10 @@ function localParts(ms, timeZone) {
 function localDayStart(ms, timeZone) {
   const { y, mo, d } = localParts(ms, timeZone);
   return zonedToUtc(y, mo, d, 0, 0, 0, timeZone);
+}
+function localTimeOnDay(dayStartMs, daysAhead, minutesOfDay2, timeZone) {
+  const { y, mo, d } = localParts(dayStartMs + daysAhead * DAY_MS + DAY_MS / 2, timeZone);
+  return zonedToUtc(y, mo, d, 0, minutesOfDay2, 0, timeZone);
 }
 function localWeekday(ms, timeZone) {
   const name = new Intl.DateTimeFormat("en-US", { timeZone, weekday: "short" }).format(new Date(ms));
@@ -1864,7 +1869,7 @@ function legalFingerprint(html) {
 }
 
 // lib/booking/ics.ts
-var DAY_MS = 864e5;
+var DAY_MS2 = 864e5;
 function parseTime(value, params, fallbackZone) {
   const v = value.trim();
   const dateOnly = /^(\d{4})(\d{2})(\d{2})$/.exec(v);
@@ -2049,7 +2054,7 @@ function expand(startMs, rule, from, to, cap) {
     return true;
   };
   if (rule.freq === "DAILY") {
-    const step = rule.interval * DAY_MS;
+    const step = rule.interval * DAY_MS2;
     let ms = startMs;
     if (rule.count === null && from > startMs) {
       ms = startMs + Math.floor((from - startMs) / step) * step;
@@ -2060,7 +2065,7 @@ function expand(startMs, rule, from, to, cap) {
     return out;
   }
   if (rule.freq === "WEEKLY") {
-    const week = rule.interval * 7 * DAY_MS;
+    const week = rule.interval * 7 * DAY_MS2;
     const days = rule.byDay.length ? rule.byDay : [new Date(startMs).getUTCDay()];
     let anchor = startMs;
     if (rule.count === null && from - week > startMs) {
@@ -2070,7 +2075,7 @@ function expand(startMs, rule, from, to, cap) {
       const base = new Date(anchor);
       for (const d of days) {
         const shift = (d - base.getUTCDay() + 7) % 7;
-        const ms = anchor + shift * DAY_MS;
+        const ms = anchor + shift * DAY_MS2;
         if (ms < startMs) continue;
         if (ms > hardEnd) continue;
         if (!push(ms)) return out;
@@ -2112,8 +2117,8 @@ function parseIcsBusy(text, opts) {
     let lengthMs;
     if (e.end) lengthMs = e.end.ms - e.start.ms;
     else if (e.durationMs !== null) lengthMs = e.durationMs;
-    else lengthMs = e.start.allDay ? DAY_MS : 0;
-    if (lengthMs <= 0) lengthMs = e.start.allDay ? DAY_MS : 30 * 60 * 1e3;
+    else lengthMs = e.start.allDay ? DAY_MS2 : 0;
+    if (lengthMs <= 0) lengthMs = e.start.allDay ? DAY_MS2 : 30 * 60 * 1e3;
     const starts = [];
     if (e.rrule && !e.recurrenceId) {
       const rule = parseRule(e.rrule, zone);
@@ -2767,6 +2772,93 @@ function copyFor(id) {
   return isLive(row.capability) ? row.live : row.notYet;
 }
 
+// lib/availability/multiDay.ts
+var LONGEST_DAY = { startMin: 8 * 60, endMin: 24 * 60 };
+var MAX_DOOR_TO_DOOR_MIN = 17 * 60;
+var LONG_JOB_STARTS = [8 * 60, 10 * 60];
+function dayCapacityMin(window = LONGEST_DAY, travelBeforeMin = 0, travelAfterMin = 0, maxDoorToDoor = MAX_DOOR_TO_DOOR_MIN) {
+  const byClock = window.endMin - window.startMin;
+  const byStamina = maxDoorToDoor - travelBeforeMin - travelAfterMin;
+  return Math.max(0, Math.min(byClock, byStamina));
+}
+function fitsOneDay(serviceMinutes, window = LONGEST_DAY, travelBeforeMin = 0, travelAfterMin = 0) {
+  return serviceMinutes <= dayCapacityMin(window, travelBeforeMin, travelAfterMin);
+}
+function splitEvenly(totalMinutes, days) {
+  const base = Math.floor(totalMinutes / days);
+  const extra = totalMinutes - base * days;
+  return Array.from({ length: days }, (_, i) => base + (i < extra ? 1 : 0));
+}
+function toQuarter(min) {
+  return Math.ceil(min / 15) * 15;
+}
+function planDays(req) {
+  const window = req.window ?? LONGEST_DAY;
+  const before = Math.max(0, req.travelBeforeMin ?? 0);
+  const after = Math.max(0, req.travelAfterMin ?? 0);
+  const maxDoorToDoor = req.maxDoorToDoorMin ?? MAX_DOOR_TO_DOOR_MIN;
+  const maxDays = req.maxDays ?? 5;
+  const service = Number.isFinite(req.serviceMinutes) ? Math.max(0, Math.round(req.serviceMinutes)) : 0;
+  if (service <= 0) return { ok: false, reason: "Nothing to schedule." };
+  const capacity = dayCapacityMin(window, before, after, maxDoorToDoor);
+  if (capacity <= 0) {
+    return { ok: false, reason: "The drive alone fills the day." };
+  }
+  const totalDays = Math.ceil(service / capacity);
+  if (totalDays > maxDays) {
+    return {
+      ok: false,
+      reason: `That is ${Math.round(service / 60)} hours of work, more than ${maxDays} days. Talk to us and we will plan it properly.`
+    };
+  }
+  const raw = splitEvenly(service, totalDays);
+  const perDay = raw.map(toQuarter);
+  const starts = (req.preferredStartsMin ?? LONG_JOB_STARTS).filter((m) => m >= window.startMin).sort((a, b) => a - b);
+  const days = [];
+  for (let i = 0; i < totalDays; i++) {
+    const workMin = perDay[i];
+    const latestStart = window.endMin - workMin;
+    if (latestStart < window.startMin) {
+      return { ok: false, reason: "That day is longer than the working day allows." };
+    }
+    const start = starts.find((m) => m <= latestStart) ?? window.startMin;
+    days.push({
+      index: i,
+      startMin: start,
+      workMin,
+      endMin: start + workMin,
+      blockStartMin: start - before,
+      blockEndMin: start + workMin + after
+    });
+  }
+  const lengths = days.map((d) => d.workMin);
+  const longestDoorToDoor = Math.max(...days.map((d) => d.blockEndMin - d.blockStartMin));
+  return {
+    ok: true,
+    days,
+    totalDays,
+    serviceMinutes: service,
+    balanced: Math.max(...lengths) - Math.min(...lengths) <= 30,
+    longestDoorToDoorMin: longestDoorToDoor
+  };
+}
+function multiDayEvents(req) {
+  const tz = req.timeZone ?? "America/New_York";
+  if (fitsOneDay(req.serviceMinutes, LONGEST_DAY, req.travelMin, req.travelMin)) return null;
+  const plan = planDays({
+    serviceMinutes: req.serviceMinutes,
+    travelBeforeMin: req.travelMin,
+    travelAfterMin: req.travelMin,
+    ...req.preferredStartsMin ? { preferredStartsMin: req.preferredStartsMin } : {}
+  });
+  if (!plan.ok) return null;
+  const day0 = localDayStart(req.slotMs, tz);
+  return plan.days.map((d) => {
+    const start = d.index === 0 ? req.slotMs : localTimeOnDay(day0, d.index, d.startMin, tz);
+    return { startMs: start, endMs: start + d.workMin * 6e4 };
+  });
+}
+
 // ../config/business.json
 var business_default = {
   _read_me: [
@@ -2972,6 +3064,7 @@ export {
   DRAFT_KEEP_DAYS,
   HOURS,
   LEGAL,
+  LONG_JOB_STARTS,
   MAX_BOOKING_CENTS,
   MAX_ONE_WAY_MINUTES,
   REPO_PHONE,
@@ -2997,6 +3090,7 @@ export {
   longDate,
   mergeBusy,
   mileageFeeCents,
+  multiDayEvents,
   packagesFor,
   parseDetailers,
   parseIcsBusy,
