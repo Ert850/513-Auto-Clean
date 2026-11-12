@@ -2,6 +2,34 @@
 
 Branch `claude/a2p-nov12-8a6544` (the plan called it `a2p-nov12`). The brief is `docs/OVERNIGHT-A2P-PLAN.md`. Nothing is pushed, merged or deployed, and no calendar event was touched.
 
+## Follow-up, November 13: calendar fixes and decision mockups
+
+Emmett asked for every open bug from the T5 review to be fixed, and for mockups of the open design choices. Commit `1e74ac4` holds the fixes. Tests: 651 pass (15 new in `web/lib/availability/calendar-review-fixes.test.ts` and `jobs-sync-contract.test.ts`).
+
+| # | Fix | Root cause | Test |
+|---|---|---|---|
+| 1 | `verifySlot` checks a job longer than a day with the same multi-day search that offered it (`multiDayStillFits`). | It ran the one-day slot search, which no multi-day job can pass, so every one was refused as taken. | An option on an empty OPEN window still fits; a job since booked on day 2 makes it taken; `verifySlot` calls it. |
+| 2 | One calendar event per working day (`multiDayEvents`, `bookingEvents` in `send-confirmation.mjs`). Day 1 is the booking as before (TOTAL, tax, SOURCE, HEARD ABOUT US) plus a DAYS line; days 2+ are "[Name: ]Day N of M, packages, customer", with no TOTAL and their own booking key (`key:dayN`). `JobsSync.gs` skips them (`CONTINUATION_DAY`), and the contract test carries the same pattern. | `endMs = slot + whole job`: Saturday 8am to Sunday 4am, which left Sunday's real hours bookable. | Saturday and Sunday 8am to 6pm; day 1 has TOTAL and SOURCE, day 2 has neither, and the JobsSync pattern skips day 2 only. |
+| 3 | A multi-day start needs only the work inside OPEN; a drive out of up to an hour sits before the day, as in `computeSlots`. Nothing may clash with the whole block, drive included. | `covered()` tested the block with the drive. | OPEN from 8am offers an 8am start with a 30 minute drive; a busy hour in the drive still clashes. |
+| 4 | The owner's fee is read from 513 Auto Clean and 513 Availability (`ownerFeeCalendars`, minus busy-only calendars), like the form. | The server read only 513 Availability. | An `OPEN +20%` on 513 Auto Clean is charged 20%. |
+| 5a | One calendar failing fails the pooled read, so callers fall back as for a single calendar. | The failure was swallowed: a jobs calendar that failed made its hours sellable. | The read rejects. |
+| 5b | `DNS` blocks time even when Free (Google's default for all-day events). | Every Free event was dropped. | An all-day Free DNS is busy; a Free birthday isn't. |
+| 5c | "OPEN 20%" and "OPEN (+20%)" parse like "OPEN +20%". | The `+` was required. | `openFeeBp`. |
+| 5d | Every page of an event list is read (`nextPageToken`, up to 20 pages, then it fails rather than guess). | Only the first page was read. | Two pages, both read. |
+| 5e | The weekday rule applies to every day of a multi-day job. | Only day 1 was checked, so a weekend-only job started Sunday ran into Monday. | Saturday is offered, Sunday isn't. |
+| 5f | `docs/CALENDAR-SETUP.md` no longer says a Busy BEST blocks time (the new code never did). It still says to keep BEST Free, because the live site (`main`) has no BEST and treats a Busy one as a job. It also documents DNS and the fee spellings. | | |
+
+**Not changed:** the multi-day "still free?" check reads the same calendars the offer did, without Elijah's personal calendar, as `paintMultiDay` does. Adding it only to the check would refuse times the form had just offered.
+
+**Decision mockups** (real screenshots from the built branch on the 8792 preview, each option injected, measured; recommendation first):
+- `docs/mockups/a2p-decision-1-texts-box.png`: keep the one box in Your details (recommended); back in Almost done; or both, with a pre-ticked short box in Almost done.
+- `docs/mockups/a2p-decision-2-small-continue.png`: leave it (recommended); a compact box brings it back at 1280×720 only, at exactly 160 px; folding in the terms line brings it back nowhere.
+- `docs/mockups/a2p-decision-3-request-quote-fold.png`: tighter only below 760 px tall (recommended: the button lands at 624 to 681 at 1280×720, and 1440×790 is unchanged); leave it; boxes side by side (worse, 731 to 789).
+- `docs/mockups/a2p-decision-4-book-header-pill.png`: pill in the dark top bar (recommended: all six links at 1440, links and More at 1000); leave it (menu button at 1000); a smaller pill (no better).
+- `docs/mockups/a2p-decision-5-area-pills.png`: "Southeast Indiana" (recommended, matches the mockup and the Range & Travel cards; one word in the footer partial) or "SE Indiana".
+
+None of the options is applied: each waits for Emmett's pick.
+
 ## Morning report
 
 | Task | Done? | How it was checked | For Emmett before merging |
@@ -10,7 +38,7 @@ Branch `claude/a2p-nov12-8a6544` (the plan called it `a2p-nov12`). The brief is 
 | T2 Request a quote | Done | Matches the mockup at 1440 and 375 (`docs/mockups/a2p-contact-built.png`). Request Quote sits at 717 to 774 px at 1440×790, inside the fold (it was at 795 to 853 before trimming). Flipping `mode` to `"question"` and rebuilding gave today's `contact.html` back except for the region markers and the T4 hours. Neither box is required, both are unticked. The `ac-question` hand-off fills `#q-message`, whose id is unchanged. Tests: `a2p.test.ts` T2. | At 1280×720 the button is below the fold (774 > 720). The owner's test is 1440×790 only. The question box's three-line placeholder is cut at its new height. |
 | T3 booking form texts box | Done | Matches the mockup at 1440 and 375 (`a2p-booking-built.png`). The small Continue spot was re-checked at the six sizes (below). The smoke tests walk every booking path to Done and all pass. Tests: `a2p.test.ts` T3, `funnel.smoke.test.mjs`. | The box **moved** from "Almost done" to "Your details" (two boxes for one answer would be confusing), so "Almost done" lost its old "Text me about this booking" box. At 375×812 and 1280×720 the hint line "Add your name and phone to continue" is now hidden by the 160 px rule; the mockup shows it at 375. |
 | T4 hours | Done | No page says 7 AM or 10 PM. The footer, the home contact block and the Contact page say "6 AM to midnight", and the hidden data says `"opens": "06:00", "closes": "24:00"`, all from `config/business.json`. Test: `a2p.test.ts` T4. | Google's documentation writes a midnight close as `23:59`. "24:00" is valid ISO time and what the plan asked for. If Search Console complains, change `closes` to `"23:59"` (the words still say midnight only for 24:00 or 00:00, so check the words too). |
-| T5 calendar review | Done, no fixes | A read-only subagent review, with probes. Four bugs, none fixed tonight (below). | Decide on the multi-day fixes before correction becomes bookable. |
+| T5 calendar review | Done; all fixed November 13 | A read-only subagent review, with probes, then every finding fixed with a test (follow-up above). | Multi-day jobs now write one event per day: JobsSync needs the updated script before correction is bookable. |
 | T6 JobsSync | Delivered | `tools/jobs-sync/JobsSync.gs` and `README.md`. The subagent checked the title and description parsing against the real `eventTitle` and `eventDescription` (Kris, short notice, owner, help me decide), and that OPEN, OPEN +N%, BEST, DNS and Free events are skipped. The double-count handling needs the real sheet and was not run. | Elijah has to paste Kris's bookings calendar id, turn on the Calendar API advanced service, run `setup` once, and delete any old BEST or DNS rows. Nothing is deployed. |
 | T7 /book page | Done | Matches the mockup at 1440 and 375 (`a2p-bookpage-built.png`). At 1440×790 the whole card fits (it ends at 655 px). `/book` serves it (through the preview server's copy of the rewrite). Picking a size opens the form at step 2 (Service) with that size set, and the modal grows out of the card over 300 ms. It switches instantly with reduced motion. Closing ("Keep it", or "Cancel my booking") returns to the page with the size still chosen. The phone's Book Now opens the form. A test video set in `video.src` played muted inline at 272×484 (9:16). No sideways scroll at 320. Header sweep from 700 to 1500 px: Book Now is always in view, nothing clips, and there's no sideways scroll. | `/book` used to be a **301 to /#book** (on `main` too). Browsers that followed it keep going to the home page's form, which still books. The pill makes the header switch to the menu button below about 1040 px on this page (about 880 elsewhere). Area pills say "SE Indiana", as in the footer list they come from; the mockup says "Southeast Indiana". |
 
