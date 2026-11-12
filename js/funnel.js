@@ -7169,7 +7169,7 @@
   // v2: the steps changed (no Vehicles step), so an older draft's step
   // number would land on the wrong screen.
   var DRAFT_KEY = 'ac-booking-draft-v2';
-  var DRAFT_DAYS = 14;
+  var DRAFT_DAYS = P.DRAFT_KEEP_DAYS;
 
   /** Answers only. Never the payment state, the card, or the bot token. */
   var DRAFT_FIELDS = [

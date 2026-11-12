@@ -27,6 +27,7 @@ import {
   SEED_CATALOG,
   componentsOf,
   findPackage,
+  MAX_ONE_WAY_MINUTES,
   packagesFor,
   unavailableReason,
 } from "../../netlify/functions/_pricing.mjs";
@@ -399,23 +400,55 @@ pages["faq.html"] = splice("faq.html", pages["faq.html"], "FAQPRICE_JSON", JSON.
 
 for (const f of PAGES) fs.writeFileSync(path.join(root, f), pages[f]);
 
-/* ---------------- the free drive minutes, from the pricing rules ---------------- */
+/* ---------------- business numbers in hand-written pages, from their settings ---------------- */
 
-// "The first 10 minutes are free" was typed into these pages while the number
-// is DEFAULT_RULES.mileage.freeMinutes. Each page must still carry the
-// sentence, so a rewording that the pattern no longer matches fails the build
-// instead of quietly going stale. (The booking form reads the same rule.)
+// These sentences were typed with the number in them while the number itself
+// lives in the pricing rules or the catalog: "the first 10 minutes are free"
+// sat in three places from September to November 12, 2026. Each entry stamps
+// the number from its source, matched by the words around it, so the page
+// text stays exactly as written (the terms' wording check sees no change).
+// Every entry must still match its count: a rewording that drops the pattern
+// fails the build instead of quietly going stale. (The booking form reads the
+// same settings through P.RULES and the catalog.)
 {
-  const free = DEFAULT_RULES.mileage.freeMinutes;
-  for (const f of ["service-area.html", "terms.html"]) {
+  const R = DEFAULT_RULES;
+  const pkg = (id) => {
+    const p = findPackage(id);
+    if (!p) throw new Error(`render-site: no package ${id}`);
+    return p;
+  };
+  const num = (n) => String(Math.round(n * 100) / 100);
+  // [file, pattern (a group around each number), the numbers in order, matches expected]
+  const STAMPS = [
+    ["service-area.html", /(first )\d+( minutes are free)/g, [R.mileage.freeMinutes], 1],
+    ["service-area.html", /(travel up to <b>)\d+( hours each way)/g, [MAX_ONE_WAY_MINUTES / 60], 1],
+    ["terms.html", /(first )\d+( minutes of drive time are free)/g, [R.mileage.freeMinutes], 1],
+    ["terms.html", /([Mm]ore than )\d+( hours notice)/g, [R.refundFullWindowHours], 2],
+    ["terms.html", /(Inside )\d+( hours the day is half committed and hard to refill; inside )\d+( hours it is gone)/g,
+      [R.refundFullWindowHours, R.refundMidWindowHours], 1],
+    ["terms.html", /(Moving a booking inside )\d+( hours)/g, [R.refundMidWindowHours], 1],
+    ["terms.html", /(counts as a cancellation inside )\d+( hours)/g, [R.refundMidWindowHours], 1],
+    ["terms.html", /(A Basic Interior at \$)\d+( is a Basic Interior at \$)\d+()/g,
+      [pkg("basic-interior").priceCents / 100, pkg("basic-interior").priceCents / 100], 1],
+    ["index.html", /(save )\d+(% on each extra)/g, [R.additionalVehicleDiscountBp / 100], 1],
+    ["faq.html", /(billed at \$)\d+(\/hr)/g, [R.addonRateCents / 100], 2],
+    ["faq.html", /(basic details around )[\d.]+( hours, and full details about )[\d.]+( hours)/g,
+      [pkg("basic-interior").durationMin / 60, pkg("full-interior").durationMin / 60], 2],
+  ];
+  const files = {};
+  for (const [f, re, values, expected] of STAMPS) {
     let hits = 0;
-    const out = read(f).replace(/\b(first )\d+( minutes (?:of drive time )?are free)/g, (_, a, b) => {
+    const html = (files[f] ?? read(f)).replace(re, (...m) => {
       hits++;
-      return `${a}${free}${b}`;
+      const groups = m.slice(1, values.length + 2);
+      return groups.map((g, i) => g + (i < values.length ? num(values[i]) : "")).join("");
     });
-    if (!hits) throw new Error(`${f} no longer says "the first N minutes … are free"; update render-site.mjs`);
-    fs.writeFileSync(path.join(root, f), out);
+    if (hits !== expected) {
+      throw new Error(`render-site: ${f} matched ${re} ${hits} times, expected ${expected}. Reworded? Update STAMPS.`);
+    }
+    files[f] = html;
   }
+  for (const [f, html] of Object.entries(files)) fs.writeFileSync(path.join(root, f), html);
 }
 
 const count =
