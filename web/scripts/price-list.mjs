@@ -114,7 +114,7 @@ out(`Each Google service name with the matching service on the site and the pric
 out();
 const ext = (id) => usd(pkg(id).priceCents);
 const gbp = [
-  ["Auto detailing", `Basic Interior, Full Interior, exterior packages`, `from ${usd(Math.min(...m.packagesFor("interior").filter((p) => !p.requiresPriorDetail && !p.unavailable).map((p) => p.priceCents)))}`],
+  ["Auto detailing", `Basic Interior and Full Interior (exterior packages from ${ext("express-exterior")})`, `from ${usd(Math.min(...m.packagesFor("interior").filter((p) => !p.requiresPriorDetail && !p.unavailable).map((p) => p.priceCents)))}`],
   ["Car waxing", "Ceramic Wax Sealant: included in Full Exterior, or an add-on", `${usd(addon("ceramic-sealant").tiers[0].priceCents)} add-on; in Full Exterior ${ext("full-exterior")}`],
   ["Clay bar treatment", "Clay Bar or Clay Towel: included in Full Exterior, or an add-on", `${usd(addon("clay-bar").tiers[0].priceCents)} add-on`],
   ["Engine detailing", "Engine Bay Detail: included in Full Exterior, or an add-on", `${usd(addon("engine-bay").tiers[0].priceCents)} add-on`],

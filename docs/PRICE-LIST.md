@@ -14,8 +14,8 @@ Generated from the website's own catalog on November 12, 2026 (`web/scripts/pric
 | Package | Price (small vehicle) | Time on site | Note |
 |---|---|---|---|
 | Maintenance | $95 | about 1 h 45 min | Returning customers only, not shown on the website: leave it off Google |
-| Basic Interior | $125 | about 2 h |  |
-| Full Interior | $215 | about 4 h |  |
+| Basic Interior | $135 | about 2 h |  |
+| Full Interior | $225 | about 4 h |  |
 | Showroom Ready | $395 | about 7 h |  |
 
 ## Exterior packages
@@ -68,15 +68,15 @@ Each Google service name with the matching service on the site and the price to 
 
 | Google service | On the site | Price to show |
 |---|---|---|
-| Auto detailing | Basic Interior, Full Interior, exterior packages | from $125 |
+| Auto detailing | Basic Interior and Full Interior (exterior packages from $75) | from $135 |
 | Car waxing | Ceramic Wax Sealant: included in Full Exterior, or an add-on | $35 add-on; in Full Exterior $245 |
 | Clay bar treatment | Clay Bar or Clay Towel: included in Full Exterior, or an add-on | $35 add-on |
 | Engine detailing | Engine Bay Detail: included in Full Exterior, or an add-on | $50 add-on |
 | Full body wash | Express Exterior / Basic Exterior | from $75 |
 | Headlight polishing | Headlight Restoration (add-on) | $75 |
-| Seat shampooing | Full Interior (shampoo scrub of the upholstery); single stains: Stain Treatment | from $215; stains from $50 |
+| Seat shampooing | Full Interior (shampoo scrub of the upholstery); single stains: Stain Treatment | from $225; stains from $50 |
 | Steam cleaning | Full Vehicle Steam Treatment (add-on to an interior package) | $75 |
-| Vehicle interior vacuuming | Basic Interior | from $125 |
+| Vehicle interior vacuuming | Basic Interior | from $135 |
 | Wheel washing | Hubcaps scrubbed in Express Exterior; wheels, tires and wells in Basic and Full Exterior; Tire and Rim Shine add-on | from $75; shine $45 |
 
 **Worth adding to Google:** Pet Hair Removal ($50), Stain Treatment ($50 to $100), Ozone Odor Reset ($50), Paint Decontamination ($45), Hard Water Spot Removal ($50).

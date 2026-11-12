@@ -42,6 +42,16 @@ Built overnight, November 10 to 11, for you to evaluate. It combines your 8 answ
     - Address and Time show only the red one.
     - On a phone, the small one comes after Email.
 
+- **Interior prices corrected (Elijah, November 12): Basic Interior $135 (was $125), Full Interior $225 (was $215).**
+  - *Root cause:* the catalog was never updated when he changed them; he says these are what he charges.
+  - **What changed:** two numbers in `web/lib/catalog/seed.ts`. The build updated everything from them: the home and Services cards, the terms' "A Basic Interior at $135" (via `STAMPS`), the booking form's pricing and the server functions.
+  - **Terms:** dated 2026-11-12 and re-locked (`legal.lock.json`), since their wording now has the new price.
+  - **Reply templates:** `docs/REPLY-TEMPLATES.md` now quotes the new prices and combo examples ($235 and $445). `templates.test.ts` caught the old ones.
+  - **Price list:** `docs/PRICE-LIST.md` was regenerated and re-checked against the built pages.
+  - **Checked:** 614 tests pass, and no page shows $125 or $215 for an interior package.
+  - **His later prices aren't built yet:** Maintenance $115, Basic $145, Full $235, Full + Steam $295. They wait on question 2 (`QUEUE-AFTER-FRIDAY.md`).
+  - **To test:** the Services page shows Basic Interior $135 and Full Interior $225, and a Basic Interior for a medium vehicle totals $145 before travel and tax.
+
 - **Kris works Monday to Thursday only (owner, November 12): calendar changed and the whole pipeline audited.**
   - **Calendar** (513 Kris Availability): his seven weekly events were recreated with the new days, since the Calendar API tool can't narrow a repeat. The old ones are in the trash for 30 days.
     - Monday: OPEN +20% 8 to 10am, OPEN 10am to 6pm, OPEN +20% 6pm to midnight, BEST 10am.

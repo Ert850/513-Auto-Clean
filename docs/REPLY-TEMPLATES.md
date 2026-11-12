@@ -15,8 +15,8 @@ page cannot, so it is the one to check.
 
 | | | |
 |---|---|---|
-| Basic Interior | $125 | 2 hrs |
-| Full Interior | $215 | 4 hrs |
+| Basic Interior | $135 | 2 hrs |
+| Full Interior | $225 | 4 hrs |
 | Showroom Ready | $395 | 7 hrs |
 
 **Exterior**
@@ -46,7 +46,7 @@ the site. Send the link rather than retyping them.
 > We offer a 100% satisfaction guarantee. If anything is not to your liking,
 > we will make it right. We are also fully insured.
 >
-> **Interior:** Basic Interior ($125), Full Interior ($215), or Showroom Ready
+> **Interior:** Basic Interior ($135), Full Interior ($225), or Showroom Ready
 > ($395).
 >
 > Basic: vacuum, clean mats, clean surfaces, remove interior grime.
@@ -86,7 +86,7 @@ the site. Send the link rather than retyping them.
 
 > Hi! We'd be happy to help.
 >
-> We can do a Full Interior detail for $215: thorough vacuum, shampoo and
+> We can do a Full Interior detail for $225: thorough vacuum, shampoo and
 > scrub upholstery, treat stains, wash and dress mats, condition leather,
 > clean glass, brush detail every crevice. About 4 hours.
 >
@@ -103,9 +103,9 @@ the site. Send the link rather than retyping them.
 
 > Hi, we'd be happy to help.
 >
-> Booked together, a Basic Interior and Basic Exterior is $250, less the $25
-> combo discount, so **$225**. Full Interior and Full Exterior together is
-> $460, less $25, so **$435**.
+> Booked together, a Basic Interior and Basic Exterior is $260, less the $25
+> combo discount, so **$235**. Full Interior and Full Exterior together is
+> $470, less $25, so **$445**.
 >
 > Pick any combination and see the price instantly:
 > **513autoclean.com/#services**
@@ -155,9 +155,9 @@ message can be recognised, not to be sent.
 
 - **$15 combo discount.** It is **$25** now.
 - **Express Interior $65.** Discontinued. The cheapest interior is Basic at
-  $125.
-- **Basic Interior $100 or $115, Full Interior $189 or $195.** Now $125 and
-  $215.
+  $135.
+- **Basic Interior $100, $115 or $125, Full Interior $189, $195 or $215.** Now
+  $135 and $225 (Elijah, November 12).
 - **Basic Exterior $100 or $115, Full Exterior $189, $200 or $210.** Now $125
   and $245.
 - **"$50/hour add-ons".** Add-ons are flat priced by tier now, not hourly.
