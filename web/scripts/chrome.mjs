@@ -18,7 +18,8 @@
  *   contact  "Contact Us": the form itself on contact.html, the page elsewhere
  *   areas    footer place links: in-page on service-area.html, that page elsewhere
  *   hours    the opening hours in words, from config/business.json (the same on every page)
- *   locpill  the red "Cincinnati, OH" pill beside the logo: booking.html only (A2P plan T7)
+ *   locpill  the red "Cincinnati, OH" pill in the top bar, beside the phone: booking.html only
+ *            (A2P plan T7; moved out of the header, owner's pick, November 13)
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -47,8 +48,9 @@ export function valuesFor(page, html) {
     contact: page === "contact.html" ? "#inquiry" : "contact.html",
     areas: page === "service-area.html" ? "" : "service-area.html",
     hours: hoursText(),
-    // Part of the header, so the Priority+ nav measures it like any link.
-    locpill: page === "booking.html" ? '\n    <span class="loc-pill nav-loc"><i aria-hidden="true"></i>Cincinnati, OH</span>' : "",
+    // In the top bar, not the header: in the header it took the room of two
+    // links (owner's pick, November 13, docs/mockups/a2p-decision-4-*).
+    locpill: page === "booking.html" ? '\n      <span class="loc-pill tb-loc"><i aria-hidden="true"></i>Cincinnati, OH</span>' : "",
   };
 }
 
