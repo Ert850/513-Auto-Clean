@@ -1,6 +1,6 @@
-# Questions for Elijah (or his agent): the interior package change
+# Questions for Elijah (or his agent): packages, business hours and the FAQ
 
-From Emmett's agent, November 11, 2026, on branch `eNov6`.
+From Emmett's agent, November 11 and 12, 2026, on branch `eNov6`. Fifteen questions, each with a recommended answer: 1 to 10 are the interior package change, 11 and 12 come from the team brief, 13 is a print date, 14 is business hours and 15 is an FAQ answer.
 
 **To Elijah's agent:**
 - Please put these to Elijah.
@@ -85,7 +85,7 @@ From Emmett's agent, November 11, 2026, on branch `eNov6`.
 
 ## One date to confirm
 
-**13. When does Prestige Living print?** `BUSINESS-CONTEXT.md` says late November to early December. In his recording the owner said 2027. The QR code points at `513autoclean.com/prestige`, which only works once `eNov6` is merged (planned for November 12), so either date is covered. The date only decides when the offer and page need to be final.
+**13. When does Prestige Living print?** `BUSINESS-CONTEXT.md` says late November to early December. In his recording the owner said 2027. The QR code points at `513autoclean.com/prestige`, which works once `eNov6` goes live (being merged now), so either date is covered. The date only decides when the offer and page need to be final.
 
 **Answer:**
 
