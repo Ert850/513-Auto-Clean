@@ -1,4 +1,4 @@
-import { priceFromWire, validateWire, findPackage, findAddon, vehicleSize, isLive, ADVICE_HOLD_MIN } from "./_pricing.mjs";
+import { priceFromWire, validateWire, findPackage, findAddon, vehicleSize, isLive, ADVICE_HOLD_MIN, businessPhone } from "./_pricing.mjs";
 import { blockFeeFor, detailerFor, homeFor, timeFeeWaived } from "./_detailers.mjs";
 import { createBookingEvent, gcalAuthMode, gcalConfigured } from "./_gcal.mjs";
 import { measuredOneWayMinutes } from "./_routes.mjs";
@@ -84,6 +84,11 @@ function whenLabel(slot) {
 /* The emails                                                          */
 /* ------------------------------------------------------------------ */
 
+// The number in every email: BUSINESS_PHONE in Netlify, else today's number
+// (config/business.json), the same as the pages (A2P plan T1). A bad value
+// stops the build, so it cannot normally get this far.
+const PHONE = businessPhone();
+
 const SHELL = (title, inner) => `<!doctype html>
 <html><body style="margin:0;padding:24px;background:#f4f5f2;font:16px/1.6 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#14171d">
 <div style="max-width:560px;margin:0 auto;background:#fff;border-radius:12px;padding:28px">
@@ -92,7 +97,7 @@ const SHELL = (title, inner) => `<!doctype html>
 ${inner}
 <p style="margin:24px 0 0;padding-top:16px;border-top:1px solid #e2e4df;font-size:13px;color:#5a6069">
 Questions, or need to change something? Text or call
-<a href="sms:+15132792915" style="color:#c41414;font-weight:700">(513) 279-2915</a>.
+<a href="sms:${PHONE.e164}" style="color:#c41414;font-weight:700">${PHONE.display}</a>.
 </p>
 </div></body></html>`;
 

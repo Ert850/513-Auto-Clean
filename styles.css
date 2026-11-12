@@ -1262,6 +1262,17 @@ body > #quote { padding-block: clamp(40px, 4.4vw, 64px); }
   /* The contact pills take the width they need; the two inputs share the rest. */
   .field-row.three:has(.contact-pref) { grid-template-columns: 1fr 1fr auto; }
 }
+/* "Request a quote" (config/contact-form.json, mode "quote"): the two optional
+   tick boxes for texting approval, and the terms line under them. */
+.inq-ticks { display: grid; gap: .55rem; margin-top: .2rem; }
+.inq-tick {
+  display: flex; gap: .7rem; align-items: flex-start; cursor: pointer;
+  padding: .65rem .85rem; border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--paper);
+  font-size: .8rem; line-height: 1.45; color: var(--text-soft);
+}
+.inq-tick input { appearance: auto; accent-color: var(--red); width: 17px; height: 17px; flex: none; margin: .05rem 0 0; }
+.inq-terms { font-size: .8rem; color: var(--text-soft); margin: .15rem 0 0; }
+.inq-terms a { color: var(--red-deep); font-weight: 600; }
 
 /* Booking CTA panel (replaces the old quote form in the contact section) */
 .book-cta { background: var(--paper-2); border: 1px solid var(--line); border-radius: var(--r-lg); padding: clamp(1.4rem, 4vw, 2rem); box-shadow: var(--shadow-md); }

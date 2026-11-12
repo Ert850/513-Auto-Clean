@@ -15,9 +15,12 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { phoneHashSalt } from "./phone-stamp.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const PAGES = ["index.html", "terms.html", "privacy.html", "404.html", "services.html", "about.html", "service-area.html", "faq.html", "contact.html", "lp-golf.html", "lp-prestige.html"];
+
+const SALT = phoneHashSalt();
 
 const hashOf = (rel) =>
   // Line endings normalised before hashing. Git hands a Windows checkout CRLF
@@ -27,6 +30,10 @@ const hashOf = (rel) =>
   crypto
     .createHash("sha256")
     .update(fs.readFileSync(path.join(root, rel)).toString("binary").replace(/\r\n/g, "\n"), "binary")
+    // A BUSINESS_PHONE other than the repo's number is swapped into dist/js
+    // after this hash is taken, so it has to change the hash too, or browsers
+    // keep the old number for the year the scripts are cached. "" otherwise.
+    .update(SALT, "binary")
     .digest("hex")
     .slice(0, 10);
 

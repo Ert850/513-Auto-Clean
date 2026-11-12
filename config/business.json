@@ -1,0 +1,12 @@
+{
+  "_read_me": [
+    "The business's phone number and opening hours. A mistake in this file fails the build.",
+    "phone: today's number, the one every page in the repo is written with. To use a different number, set BUSINESS_PHONE in Netlify (10 US digits, any format) and redeploy: the build swaps it into every published page and script, and the booking emails read the same variable. Leave this value alone unless the pages are rewritten with a new number.",
+    "hours: opens and closes as 24-hour times (\"24:00\" is midnight), the same every day. The pages say them in words (\"6 AM to midnight\") and the hidden business data for Google carries them as written here."
+  ],
+  "phone": "(513) 279-2915",
+  "hours": {
+    "opens": "06:00",
+    "closes": "24:00"
+  }
+}

@@ -4968,8 +4968,21 @@
       '<input type="tel" id="bkPhone" name="tel" data-c="phone" value="' + esc(c.phone) + '" inputmode="tel" autocomplete="tel" maxlength="20" aria-required="true" /></div>' +
       '<div class="bk-field"><label for="bkEmail">Email <i>(optional)</i></label>' +
       '<input type="email" id="bkEmail" name="email" data-c="email" value="' + esc(c.email) + '" inputmode="email" autocomplete="email" maxlength="120" data-optional /></div>' +
-      '</div></form>';
+      '</div>' +
+      // Texts: optional and unticked, in the words texting approval (A2P)
+      // asks for, the same as the Contact form's box (config/contact-form.json
+      // smsBox; contact-form.test.ts keeps the two in step). Moved here from
+      // "Almost done", A2P plan T3, November 12.
+      consentBox('sms', 'bkSms', SMS_CONSENT, '') +
+      '<p class="bk-terms-line">By continuing you agree to our ' +
+      '<a href="terms.html" target="_blank" rel="noopener">Terms &amp; Conditions</a> and ' +
+      '<a href="privacy.html" target="_blank" rel="noopener">Privacy Policy</a>.</p>' +
+      '</form>';
   }
+
+  var SMS_CONSENT = 'I consent to receive SMS notifications, alerts &amp; occasional marketing communication from 513 Auto Clean. ' +
+    'Message frequency varies. Message &amp; data rates may apply. Text HELP to (513) 279-2915 for assistance. ' +
+    'You can reply STOP to unsubscribe at any time.';
 
   /** Where they heard about us: one optional choice, for the owner's ROI. */
   var HEARD_OPTIONS = ['Google search', 'Google Maps', 'Instagram', 'Facebook', 'TikTok', 'A friend or family member',
@@ -4994,11 +5007,7 @@
         '<a class="bk-readmore inline" href="terms.html#cancellation" target="_blank" rel="noopener">Terms</a> &middot; ' +
         '<a class="bk-readmore inline" href="privacy.html" target="_blank" rel="noopener">Privacy</a>') +
       mediaQuestion() +
-      consentBox('sms', 'bkSms',
-        '<b>Text me about this booking</b> <em class="bk-opt">Optional</em>',
-        // What we actually send today: texts about this booking, by hand (no
-        // automatic reminders yet), session audit, November 11.
-        'Texts about this booking, such as when we are on the way. Usually 2 to 5 messages per booking. Msg and data rates may apply. Reply STOP to opt out, HELP for help.') +
+      // The texts box moved up to "Your details" (A2P plan T3).
       heard;
   }
 
@@ -7073,7 +7082,7 @@
       (accessText() ? 'ACCESS\n' + accessText() + '\n\n' : 'ACCESS\n  Asked after booking. Any answers come as a BOOKING FOLLOW-UP email.\n\n') +
       'CONSENT\n  Terms: yes, version ' + P.LEGAL.termsEffective +
       '\n  Card authorization: ' + (state.mandate ? 'YES' : 'no') +
-      '\n  SMS: ' + (state.consent.sms ? 'YES' : 'no') +
+      '\n  SMS consent: ' + (state.consent.sms ? 'yes' : 'no') +
       '\n  Filming: ' + (state.consent.media ? 'YES' : 'no') + '\n\n' +
       (state.notes ? 'NOTES\n  ' + state.notes + '\n' : '') +
       (source() ? '\nSOURCE\n  ' + source() + '\n' : '') +

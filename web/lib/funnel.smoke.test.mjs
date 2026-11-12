@@ -442,14 +442,13 @@ describe("the booking funnel opens", () => {
     // Round 15: picking a time on the checkout selects it and moves down the
     // same page; nothing is sent until Confirm.
     expect(fresh.lookup("bkTitle").textContent).toBe("Checkout");
-
     type(fresh, { dataset: { c: "name" } }, "Ada");
     type(fresh, { dataset: { c: "phone" } }, "5135551212");
     // Terms is one required tick box, texts an optional one, and recording a
     // required Yes or No (owner, November 10).
     const contact = fresh.lookup("bkBody").innerHTML;
     expect(contact, "the terms are a tick box").toContain('data-consentbox="terms"');
-    expect(contact, "texts are an optional tick box").toContain('data-consentbox="sms"');
+    expect(contact, "texts moved up to Your details (A2P plan T3; contact-form.test.ts)").not.toContain('data-consentbox="sms"');
     expect(contact, "recording is asked here").toContain('data-media="yes"');
     expect(contact, "and where they heard about us, optional").toContain("bkHeard");
     change(fresh, { dataset: { consentbox: "terms" }, checked: true });

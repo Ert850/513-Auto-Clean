@@ -17,10 +17,12 @@
  *            form intercepts it and opens in place), index.html#book elsewhere
  *   contact  "Contact Us": the form itself on contact.html, the page elsewhere
  *   areas    footer place links: in-page on service-area.html, that page elsewhere
+ *   hours    the opening hours in words, from config/business.json (the same on every page)
  */
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { hoursText } from "../../netlify/functions/_pricing.mjs";
 
 export const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 export const CHROME_PAGES = ["index.html", "services.html", "about.html", "service-area.html", "faq.html", "contact.html", "lp-golf.html", "lp-prestige.html"];
@@ -43,6 +45,7 @@ export function valuesFor(page, html) {
     book: /CHROME:SCRIPTS:START|\bid="bookFunnel"/.test(html) ? "book.html" : "index.html#book",
     contact: page === "contact.html" ? "#inquiry" : "contact.html",
     areas: page === "service-area.html" ? "" : "service-area.html",
+    hours: hoursText(),
   };
 }
 
