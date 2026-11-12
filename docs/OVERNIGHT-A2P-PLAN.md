@@ -93,7 +93,14 @@ Build it as in `a2p-bookpage-current-vs-proposed.png`.
   - "Book an appointment" and one line of copy;
   - the area pills from the service-area data;
   - the phone (T1) and email;
-  - the booking form's first step: size cards that open the full form at step 2 with that size chosen.
+  - **the real booking form's first step, not a copy** (Emmett, November 12). The size cards are rendered by `js/funnel.js` itself, from the same code as the form's size step: a small exported `renderSizeStep(container)`, or the form mounted in a preview state.
+- **Choosing a size hands over to the full form with a transition** (Emmett's option: the card is taken over by the real form):
+  - The form opens with the size already set, at step 2.
+  - The modal animates from the card's own rectangle: a FLIP transform from the card's box to the modal's box, about 300 ms, with `transform` and `opacity` only.
+  - Reduced motion makes it an instant switch.
+  - Closing the form returns to the page with the size still shown as chosen.
+  - No copied markup anywhere, so the first step can never drift from the real one.
+- **Rejected:** a true inline embed (the whole form inside the card). The form is built as a full-window modal, with a pinned bottom bar, Back and × in the header, a scroll lock, and sticky time-picker bars sized to the window. Re-fitting all of that inside a card is a much bigger, riskier change before go-live. Revisit after A2P if wanted.
 - **Phone layout:** the video slot, then the Google rating (from `data/reviews.json`, like the badges), then a big fixed red "Book Now" that opens the form.
 - **Header:** a red location pill "Cincinnati, OH" on this page only. It must be part of the header partial's per-page values, so the Priority+ nav measures it. In the mockup it pushed "Range & Travel" off the edge.
 - **The video is set in config:** `config/booking-page.json` holds `video` (`src`, `poster`, both empty for now).
