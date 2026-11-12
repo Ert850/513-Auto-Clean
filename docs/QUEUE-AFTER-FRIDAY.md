@@ -2,6 +2,41 @@
 
 Work that's agreed but deliberately not started before Friday. Newest first.
 
+## Time step, "Need a different start?": fold the early and late times into two items (Emmett, November 12)
+
+**Ask:**
+- The dropdown under "More times on <day>" lists every start of the day. The early-fee and late-fee starts make it run past the screen: 25 rows on a Saturday.
+- **Group them:**
+  - one **Earlier** item at the top that opens the early-fee starts;
+  - one **Later** item at the bottom that opens the late-fee starts;
+  - the standard-price starts in between, in time order as now.
+
+**Where:** `openMoreTimes()` in `js/funnel.js` (the `select[data-otherstart]`). The recommended cards, the "More times" chips, the phone list and the day timeline don't change.
+
+**A native dropdown can't have a submenu.** A `<select>` has no second tier, and `<optgroup>` only adds a heading: it doesn't fold anything. Choices:
+- **A. Recommended. Swap the list in place.**
+  - The dropdown shows "Earlier times (+$43 fee) ›" first, the standard starts, then "Later times (+$43 fee) ›" last.
+  - Choosing Earlier or Later refills the same dropdown with just those starts, headed by "‹ Standard times", and reopens it (`showPicker()` where the browser allows it, otherwise it stays focused for one more tap).
+  - It keeps the phone's native picker, keyboard use and screen reader support.
+- **B. Two quiet links under the dropdown,** "Earlier (+$43)" and "Later (+$43)", each opening a short row of chips like "More times". It's simpler, but it's not the one-item grouping asked for.
+- **C. A custom menu with a flyout.** Rejected: flyouts work badly on touch, and it means rebuilding keyboard and screen reader support for one dropdown.
+
+**Wording:**
+- **Recommended:** "Earlier times (+$43 fee)" and "Later times (+$43 fee)". They're shorter than "See Earlier Times - Early Fee", and they give the price up front in the same "(+$43)" form the rows use.
+- **If the fee differs between starts,** use "from +$43".
+- **No em-dashes.**
+
+**Rules for the build:**
+- **Group by the early or late band** (`timeFeeApplies()`, morning or evening), **never by "has a fee".**
+  - On a rush day, every start carries the rush fee. Grouping by "has a fee" would fold the whole list into one item.
+  - Rush-only starts stay in the standard part, and keep showing their fee as now.
+- **A start with both fees** (rush plus early or late) goes in its early or late group.
+- **Leave out empty groups:** no Earlier item on a day without early-fee starts.
+- **Choosing a start** behaves exactly as today (same `data-otherstart` handling, analytics `via`).
+- **Check:**
+  - Chrome, Safari and Firefox on a laptop, plus iPhone and Android pickers;
+  - a rush day, a day with only late starts, keyboard only.
+
 ## Checkout: a small in-section Continue where it saves a reach (Emmett, November 12)
 
 **Ask:** add back the small Continue under a checkout section's boxes, as a second way to move on with less mouse travel. It started with "Your details" (Name, Phone, Email). The bottom bar's red Continue stays exactly as it is.
