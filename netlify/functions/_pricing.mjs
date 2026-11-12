@@ -2767,6 +2767,77 @@ function copyFor(id) {
   return isLive(row.capability) ? row.live : row.notYet;
 }
 
+// ../config/business.json
+var business_default = {
+  _read_me: [
+    "The business's phone number and opening hours. A mistake in this file fails the build.",
+    "phone: today's number, the one every page in the repo is written with. To use a different number, set BUSINESS_PHONE in Netlify (10 US digits, any format) and redeploy: the build swaps it into every published page and script, and the booking emails read the same variable. Leave this value alone unless the pages are rewritten with a new number.",
+    'hours: opens and closes as 24-hour times ("24:00" is midnight), the same every day. The pages say them in words ("6 AM to midnight") and the hidden business data for Google carries them as written here.'
+  ],
+  phone: "(513) 279-2915",
+  hours: {
+    opens: "06:00",
+    closes: "24:00"
+  }
+};
+
+// lib/site/business.ts
+function parsePhone(input) {
+  const text = String(input ?? "").trim();
+  if (!text) return { error: "it is empty" };
+  if (/[^\d\s().+-]/.test(text)) return { error: `"${text}" has characters a phone number does not` };
+  let d = text.replace(/\D/g, "");
+  if (d.length === 11 && d.startsWith("1")) d = d.slice(1);
+  if (d.length !== 10) return { error: `"${text}" is not 10 US digits` };
+  if (/^[01]/.test(d)) return { error: `"${text}" has an area code starting with ${d[0]}` };
+  return {
+    phone: { digits: d, display: `(${d.slice(0, 3)}) ${d.slice(3, 6)}-${d.slice(6)}`, e164: `+1${d}` }
+  };
+}
+function mustParse(input, where) {
+  const r = parsePhone(input);
+  if ("error" in r) throw new Error(`${where}: the phone number ${r.error}.`);
+  return r.phone;
+}
+var REPO_PHONE = mustParse(business_default.phone, "config/business.json phone");
+function businessPhone(env = process.env.BUSINESS_PHONE) {
+  return env === void 0 || env.trim() === "" ? REPO_PHONE : mustParse(env, "BUSINESS_PHONE");
+}
+function swapPhone(text, from, to) {
+  if (from.digits === to.digits) return text;
+  const [a, b, c2] = [from.digits.slice(0, 3), from.digits.slice(3, 6), from.digits.slice(6)];
+  const [x, y, z] = [to.digits.slice(0, 3), to.digits.slice(3, 6), to.digits.slice(6)];
+  const re = new RegExp(
+    `(?<!\\d)(\\+?1[-. ]?)?(\\()?${a}(\\)(?: |&nbsp;|\\u00a0)?|[-. ])?${b}([-. ])?${c2}(?!\\d)`,
+    "g"
+  );
+  return text.replace(
+    re,
+    (_m, cc = "", open = "", mid = "", sep = "") => `${cc}${open}${x}${mid}${y}${sep}${z}`
+  );
+}
+function phoneTrace(text, p) {
+  const [a, b, c2] = [p.digits.slice(0, 3), p.digits.slice(3, 6), p.digits.slice(6)];
+  const m = text.match(new RegExp(`(?<!\\d)(?:1\\D{0,2})?(?:${a}\\D{0,7})?${b}\\D{0,2}${c2}(?!\\d)`));
+  return m ? m[0] : null;
+}
+var HHMM = /^([01]\d|2[0-4]):([0-5]\d)$/;
+function hourWords(t) {
+  const m = HHMM.exec(t);
+  if (!m) throw new Error(`config/business.json hours: "${t}" is not a 24-hour time like 06:00`);
+  const h = Number(m[1]);
+  const min = m[2];
+  if (h === 24 || h === 0 && min === "00") return "midnight";
+  if (h === 12 && min === "00") return "noon";
+  const h12 = h % 12 === 0 ? 12 : h % 12;
+  return `${h12}${min === "00" ? "" : ":" + min} ${h < 12 ? "AM" : "PM"}`;
+}
+var HOURS = { opens: String(business_default.hours?.opens), closes: String(business_default.hours?.closes) };
+function hoursText(h = HOURS) {
+  return `${hourWords(h.opens)} to ${hourWords(h.closes)}`;
+}
+hoursText();
+
 // lib/server-entry.ts
 function priceFromWire(wire, opts = {}) {
   const rejected = [];
@@ -2899,13 +2970,16 @@ export {
   CORRECTION_TIERS,
   DEFAULT_RULES,
   DRAFT_KEEP_DAYS,
+  HOURS,
   LEGAL,
   MAX_BOOKING_CENTS,
   MAX_ONE_WAY_MINUTES,
+  REPO_PHONE,
   SEED_CATALOG,
   addonIcon,
   addonsFor,
   blockFeeAt,
+  businessPhone,
   canDo,
   cancellationLadder,
   componentsOf,
@@ -2914,6 +2988,7 @@ export {
   estimateOneWayMinutes,
   findAddon,
   findPackage,
+  hoursText,
   isLive,
   legalFingerprint,
   liveProcessors,
@@ -2925,7 +3000,10 @@ export {
   packagesFor,
   parseDetailers,
   parseIcsBusy,
+  parsePhone,
+  phoneTrace,
   priceFromWire,
+  swapPhone,
   unavailableReason,
   validateWire,
   vehicleSize,

@@ -953,6 +953,12 @@ button.bk-tl-s:hover { border-color: var(--red); box-shadow: 0 0 0 3px var(--red
 .bk-consentbox.on { border-color: var(--red); background: var(--red-ghost); }
 .bk-consentbox i b { color: var(--text); }
 .bk-consentbox .bk-readmore { display: block; margin-top: .3rem; }
+/* The texts box in "Your details" is one paragraph, no bold title (A2P plan T3). */
+.bk-consentbox i:empty { display: none; }
+#bkContactForm .bk-consentbox { margin: .9rem 0 .5rem; }
+#bkContactForm .bk-consentbox span { font-size: .82rem; color: var(--text-soft); }
+.bk-terms-line { font-size: .82rem; color: var(--text-soft); margin: 0 0 .4rem; }
+.bk-terms-line a { color: var(--red-deep); font-weight: 600; }
 /* yes/no buttons, still used by the garage question */
 .bk-consent-h { margin: .35rem 0 0; font-size: .83rem; color: var(--text-soft); line-height: 1.55; }
 .bk-consent-h a { color: var(--red); }

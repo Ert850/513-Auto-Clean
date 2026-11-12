@@ -24,6 +24,8 @@ import {
   COATING_EXPLAINER,
   CORRECTION_TIERS,
   DEFAULT_RULES,
+  HOURS,
+  hoursText,
   SEED_CATALOG,
   componentsOf,
   findPackage,
@@ -31,6 +33,7 @@ import {
   packagesFor,
   unavailableReason,
 } from "../../netlify/functions/_pricing.mjs";
+import { contactCard, contactHead, loadContactForm } from "./contact-form.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 // The catalog is split across pages now: packages on the home page, add-ons
@@ -447,6 +450,52 @@ for (const f of PAGES) fs.writeFileSync(path.join(root, f), pages[f]);
       throw new Error(`render-site: ${f} matched ${re} ${hits} times, expected ${expected}. Reworded? Update STAMPS.`);
     }
     files[f] = html;
+  }
+  for (const [f, html] of Object.entries(files)) fs.writeFileSync(path.join(root, f), html);
+}
+
+/* ---------------- the Contact form, from config/contact-form.json ---------------- */
+
+// "Request a quote" until texting approval, then back to "Got a question
+// first?" by changing one word (A2P plan T2). See contact-form.mjs.
+{
+  const cfg = loadContactForm();
+  let html = read("contact.html");
+  for (const [name, body] of [["HEAD", contactHead(cfg)], ["CARD", contactCard(cfg)]]) {
+    const start = `<!-- CONTACT:${name}:START -->\n`;
+    const end = `<!-- CONTACT:${name}:END -->`;
+    const i = html.indexOf(start);
+    const j = html.indexOf(end);
+    if (i < 0 || j < 0) throw new Error(`render-site: CONTACT:${name} markers not found in contact.html`);
+    html = html.slice(0, i + start.length) + body + html.slice(j);
+  }
+  fs.writeFileSync(path.join(root, "contact.html"), html);
+  console.log(`contact form: ${cfg.mode} mode`);
+}
+
+/* ---------------- opening hours, from config/business.json ---------------- */
+
+// "7 days a week, 7 AM to 10 PM" was typed into four places while the hidden
+// business data said 06:00 to 22:00 (A2P plan T4, November 12). The words and
+// the data now both come from the setting. The footer gets them through the
+// header and footer partials ({{hours}}); these are the hand-written lines.
+{
+  const T = "(?:\\d{1,2}(?::\\d\\d)? (?:AM|PM)|noon|midnight)";
+  const words = new RegExp(`(7 days a week, |7 days/week · )${T} to ${T}`, "g");
+  const HOURS_STAMPS = [
+    // [file, pattern, replacement, matches expected (the footer counts too)]
+    ["index.html", words, `$1${hoursText()}`, 2],
+    ["contact.html", words, `$1${hoursText()}`, 2],
+    ["index.html", /("opens": ")[\d:]+(", "closes": ")[\d:]+(")/g, `$1${HOURS.opens}$2${HOURS.closes}$3`, 1],
+  ];
+  const files = {};
+  for (const [f, re, to, expected] of HOURS_STAMPS) {
+    const before = files[f] ?? read(f);
+    const hits = (before.match(re) || []).length;
+    if (hits !== expected) {
+      throw new Error(`render-site: ${f} matched ${re} ${hits} times, expected ${expected}. Reworded? Update HOURS_STAMPS.`);
+    }
+    files[f] = before.replace(re, to);
   }
   for (const [f, html] of Object.entries(files)) fs.writeFileSync(path.join(root, f), html);
 }

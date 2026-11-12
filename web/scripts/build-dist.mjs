@@ -17,6 +17,7 @@ import esbuild from "esbuild";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { stampPhone } from "./phone-stamp.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const dist = path.join(root, "dist");
@@ -113,6 +114,13 @@ for (const rel of MINIFY) {
   }
 }
 bytes -= saved;
+
+// The published phone number: BUSINESS_PHONE in Netlify, swapped into every
+// page and script here (A2P plan T1). Unset, nothing changes. See phone-stamp.mjs.
+{
+  const { phone, changed } = stampPhone(dist);
+  if (changed.length) console.log(`phone: ${phone.display} (BUSINESS_PHONE) written into ${changed.length} files`);
+}
 
 /* ---- images: only what the page can reach ---- */
 

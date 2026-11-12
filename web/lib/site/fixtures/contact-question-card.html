@@ -1,0 +1,66 @@
+        <h3>Ask us a question</h3>
+        <p class="fc-sub">Tell us what you&rsquo;re dealing with and we&rsquo;ll point you the right way.</p>
+        <form id="inquiryForm" class="js-w3form" action="https://api.web3forms.com/submit" method="POST" novalidate>
+          <input type="hidden" name="access_key" value="8a502fe3-2a53-4904-98e9-b18dabb1f579" />
+          <input type="hidden" name="subject" value="QUESTION from 513autoclean.com" />
+          <input type="hidden" name="from_name" value="513 Auto Clean Website" />
+          <input type="checkbox" name="botcheck" style="display:none" tabindex="-1" autocomplete="off" />
+
+          <!-- Wide screens: the two free-text boxes side by side, then two rows of
+               three. Same fields and order of importance, about half the height. -->
+          <div class="field-row pair-wide">
+            <div class="field">
+              <label for="q-message">What&rsquo;s your question? <span class="req">*</span></label>
+              <textarea id="q-message" name="message" rows="4" required
+                placeholder="e.g. My back seats have old coffee stains and my dog sheds badly. Is a Full Interior enough, or do I need add-ons?"></textarea>
+            </div>
+            <div class="field">
+              <label for="q-condition">Your vehicle&rsquo;s condition</label>
+              <textarea id="q-condition" name="condition" rows="2"
+                placeholder="Pet hair, spills, smoke, kids, work truck, sat outside all winter&hellip;"></textarea>
+            </div>
+          </div>
+
+          <div class="field-row three">
+            <div class="field">
+              <label for="q-name">Name <span class="req">*</span></label>
+              <input type="text" id="q-name" name="name" placeholder="Your name" required autocomplete="name" />
+            </div>
+            <div class="field">
+              <label for="q-phone">Phone <span class="req">*</span></label>
+              <input type="tel" id="q-phone" name="phone" placeholder="(513) 555-0123" required autocomplete="tel" inputmode="tel" />
+            </div>
+            <div class="field">
+              <label for="q-email">Email</label>
+              <input type="email" id="q-email" name="email" placeholder="you@email.com" autocomplete="email" inputmode="email" />
+            </div>
+          </div>
+
+          <div class="field-row three">
+            <div class="field">
+              <label for="q-vehicle">Vehicle</label>
+              <input type="text" id="q-vehicle" name="vehicle" placeholder="e.g. 2018 Honda CR-V" />
+            </div>
+            <div class="field">
+              <label for="q-zip">Your city / ZIP</label>
+              <input type="text" id="q-zip" name="zip" placeholder="e.g. Clifton / 45220" autocomplete="postal-code" />
+            </div>
+            <fieldset class="field contact-pref">
+              <legend>Best way to reach you</legend>
+              <div class="pref-opts">
+                <label class="pref"><input type="radio" name="preferred_contact" value="Text" checked /> <span>Text</span></label>
+                <label class="pref"><input type="radio" name="preferred_contact" value="Call" /> <span>Call</span></label>
+                <label class="pref"><input type="radio" name="preferred_contact" value="Email" /> <span>Email</span></label>
+              </div>
+            </fieldset>
+          </div>
+
+          <div class="form-foot">
+            <button type="submit" class="btn btn-primary btn-lg btn-block">
+              Send My Question
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4z"/></svg>
+            </button>
+            <p class="fineprint">No spam, ever. We only use your info to answer your question. See our <a href="privacy.html">Privacy Policy</a>.</p>
+          </div>
+          <div class="form-msg" role="status" aria-live="polite"></div>
+        </form>

@@ -469,6 +469,9 @@
       showMsg('ok', 'Sending…');
 
       var fd = new FormData(form);
+      // Tick boxes marked data-yesno are sent as "yes" or "no" under their
+      // name, so the email says "SMS consent: no" instead of leaving it out.
+      form.querySelectorAll('[data-yesno]').forEach(function (b) { fd.set(b.name, b.checked ? 'yes' : 'no'); });
       var src = window.AC_SOURCE ? window.AC_SOURCE() : '';
       if (src) fd.append('source', src);
 
@@ -482,7 +485,7 @@
           if (card) card.classList.remove('is-sending');
           if (r.ok && r.j.success) {
             form.reset();
-            showMsg('ok', SUCCESS[form.id] || SUCCESS.inquiryForm);
+            showMsg('ok', form.getAttribute('data-success') || SUCCESS[form.id] || SUCCESS.inquiryForm);
             if (window.AC_TRACK) window.AC_TRACK('question_sent', { form: form.id });
           } else {
             showMsg('err', 'Something went wrong sending that. Please call or text (513) 279-2915 and we\'ll sort it out.');

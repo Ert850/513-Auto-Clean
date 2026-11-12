@@ -79,7 +79,7 @@ out();
 
 out(`## Spot and restoration jobs`);
 out();
-out(`One-off jobs (a single stain, a spill, vomit, pet urine, a smell that won't go) start at **$100**, and some need a photo or a call first. Text a photo to (513) 279-2915. (The $100 minimum is from the team brief, 7.1; the website doesn't book these on their own yet.)`);
+out(`One-off jobs (a single stain, a spill, vomit, pet urine, a smell that won't go) start at **$100**, and some need a photo or a call first. Text a photo to ${m.businessPhone().display}. (The $100 minimum is from the team brief, 7.1; the website doesn't book these on their own yet.)`);
 out(`With any interior package they are booked online as add-ons:`);
 out();
 const spot = [
