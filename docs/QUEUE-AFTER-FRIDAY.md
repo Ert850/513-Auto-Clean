@@ -2,6 +2,39 @@
 
 Work that's agreed but deliberately not started before Friday. Newest first.
 
+## Elijah's answers (voice recording, November 12): what to build
+
+Each answer is on its question in `QUESTIONS-FOR-ELIJAH-PACKAGES.md`.
+
+- **Prices.** He says the site's interior prices were already wrong: Basic Interior is $135 and Full Interior $225, not the $125 and $215 the site shows. The new prices are:
+  - Maintenance $115;
+  - Basic Interior $145;
+  - Full Interior $235;
+  - Full Interior + Steam $295 (steam presented as normally $115, "$80 for you today").
+
+  The Full + Steam arithmetic needs his confirmation first (question 2). Prices change only in `web/lib/catalog/`; the build stamps them everywhere else.
+- **Interior packages:**
+  - Maintenance stays on top, marked "only for customers who had a detail in the last 3 months";
+  - then Basic, then Full;
+  - an always-shown "add steam" button under Full turns it into Full Interior + Steam, the "Most popular" lead offer;
+  - steam counts as 1 hour internally (5 hours for Full + Steam), and the wording keeps "1 h 30 min";
+  - steam on Basic stays an extra, and steam added to Full any other way gets the Full + Steam price.
+- **Showroom Ready Restoration** is an interior add-on:
+  - priced $445 to $495 (one figure needed, question 8);
+  - only on Full and Full + Steam;
+  - Elijah only;
+  - old links map to Full + this add-on at the same total;
+  - low effort.
+- **Exterior:** remove Showroom Ready (exterior), and offer Paint Correction and Protection as its own choice instead.
+- **Restoration entry point:** the first screen offers Interior, Exterior, Paint Correction and Protection, and Stain, Spill and Odor Removal. Each has its own page, and one-off jobs can be upsold to a package.
+- **Hours:** "6 AM to midnight, 7 days a week" (texts, calls and bookings) replaces "7 AM to 10 PM" on the site (footer partial, home contact block, Contact page, and the home page's hidden business data `openingHoursSpecification` 06:00 to 24:00). Imperion sets the same on Google. About 10 minutes.
+- **FAQ program:**
+  - draft 50 to 100 search-driven questions for Elijah to answer in his own words;
+  - show about 5 on the FAQ page;
+  - an expanded FAQ or blog index for search behind them.
+- **Landing pages:** Prestige Living and golf final by the beginning of January. Prestige prints around 2028.
+- **Capacity:** ignore the capacity notes in `BUSINESS-CONTEXT.md`. OPEN blocks decide.
+
 ## Per-detailer follow-ups from the November 12 audit (not urgent with today's schedule)
 
 Found by the audit for Kris's new Monday to Thursday days. Fixed already: the event end, the reassignment check, the fee waiver outside his hours, and the build check of `DETAILERS` (`SESSION-CHANGES-pipeline.md`, Round 22). Left:
