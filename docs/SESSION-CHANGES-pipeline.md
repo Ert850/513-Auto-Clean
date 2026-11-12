@@ -13,6 +13,13 @@ Built overnight, November 10 to 11, for you to evaluate. It combines your 8 answ
   - `web/lib/browser-entry.ts`, `js/pricing.bundle.js` (built), `web/lib/funnel.smoke.test.mjs`.
   - The build also re-stamps `?v=` on every page. Those page changes were left out of the commit; a rebuild after merging restamps them.
 
+## Round 22 (November 12): written-in numbers
+
+- **Bug: the golf page wrote the GOLF10 discount into its text.** *Root cause:* "GOLF10 takes 10% off your first detail" was typed into `lp-golf.html`, while the discount lives in `config/promo-codes.json`. Changing the file would have charged one amount and advertised another. *Fix:* `render-site.mjs` now stamps the amount from the file on every page that says "<b>CODE</b> takes … off", and fails the build if a page names a code the file doesn't have. Checked: with GOLF10 set to 15 in the file the page said 15% off, and back at 10 it said 10% (the page itself is unchanged today). `CLAUDE.md`'s settings rule now names fees and discounts too.
+- **Swept for the same mistake:** the booking form's fee and rush wording already come from the settings (`feeText()`, `rushWords()`), and the landing pages, the confirmation email and the cold-weather notice carry no other written-in amounts.
+- **Found, older, not changed:** "the first 10 minutes of drive time are free" is written into the booking form's address step (`js/funnel.js`, from September) and `terms.html`, while the number is `freeMinutes` in `web/lib/pricing/rules.ts`. Today they agree. Changing the terms means a legal date bump, so it waits for the owner's OK.
+- **To test:** open `lp-golf.html` in the code version of the golf A/B test (or remove `hidden` in the inspector): it still reads "GOLF10 takes 10% off your first detail".
+
 ## Round 21 (November 11, evening): the owner's answers; printed QR codes
 
 ### QR codes for the golf booklet and Prestige Living (`marketing/qr/`)

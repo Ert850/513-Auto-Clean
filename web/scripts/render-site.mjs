@@ -380,6 +380,23 @@ pages["faq.html"] = splice("faq.html", pages["faq.html"], "FAQPRICE_JSON", JSON.
   }
 }
 
+/* ---------------- printed promo codes, from config/promo-codes.json ---------------- */
+
+// "GOLF10 takes 10% off" was typed into lp-golf.html while the discount itself
+// lives in the settings file, so changing one would have left the page wrong.
+// A page that names a code the file doesn't know fails the build.
+{
+  const { codes } = JSON.parse(read("config/promo-codes.json"));
+  const off = (c) => (c.percentOff !== undefined ? `${c.percentOff}% off` : `$${c.dollarsOff} off`);
+  for (const f of PAGES) {
+    pages[f] = pages[f].replace(/<b>([A-Z0-9]+)<\/b> takes [^<]*? off\b/g, (_, code) => {
+      const c = codes.find((x) => String(x.code).toUpperCase() === code);
+      if (!c) throw new Error(`${f} names the promo code ${code}, which is not in config/promo-codes.json`);
+      return `<b>${code}</b> takes ${off(c)}`;
+    });
+  }
+}
+
 for (const f of PAGES) fs.writeFileSync(path.join(root, f), pages[f]);
 
 const count =
