@@ -42,6 +42,22 @@ Built overnight, November 10 to 11, for you to evaluate. It combines your 8 answ
     - Address and Time show only the red one.
     - On a phone, the small one comes after Email.
 
+- **The small Continue waits for the required answers: option A (owner's pick, November 12; `docs/mockups/checkout-continue-options-AB-*.png`).** Until a section's required answers pass, its spot shows a quiet line saying what's still missing. Then the line becomes the button.
+  - **Wording:** "Add your name and phone to continue", then "Add your phone to continue", "Add a full phone number to continue", "Add your street, city and ZIP to continue", "Tick the terms box and answer the recording question to continue", "Pick a time to continue". It's built by `ckMissing()` from the section's own list (`lDetails`, `lLoc`, `lAgree`), so it says exactly what Continue would. Email is never named, because it's optional.
+  - **Timing:** the swap happens when a box is left, a tick or tap lands, or typing pauses for 0.6 s (`CKGO_PAUSE`), never on each keystroke. It fades in over 0.15 s, or not at all with reduced motion.
+  - **No movement:** the line and the button share one grid cell and swap by `visibility` (`.bk-off`). The spot is always 46 px, and the invisible one can't be clicked or focused.
+    - *Root cause of the first try's 27 px jump:* `#bookFunnel [hidden] { display: none !important }` beat the rule meant to keep the hidden one's space.
+  - **Unchanged:** the show rule for the spot (160 px above the bar) and the red bar Continue.
+  - **Checked** (real typing in headless Chrome, at 1440×790, 1280×720, 820×1180, 700×400, 375×812 and 320×568):
+    - the line is right at each step, and unchanged between keystrokes;
+    - it swaps after the pause and on Tab;
+    - the spot's height and the content under it don't move on any swap;
+    - Tab goes from Phone to Email past the invisible button;
+    - the button moves on to Address;
+    - the spot stays hidden on 700×400 and 320×568, as the show rule says;
+    - no page errors, and 610 tests pass.
+  - **To test:** on a laptop, open checkout and type a name. After a moment the line reads "Add your phone to continue". Type a phone number, and when you stop, the line becomes the small dark Continue without anything moving.
+
 - **Bug: the golf page wrote the GOLF10 discount into its text.** *Root cause:* "GOLF10 takes 10% off your first detail" was typed into `lp-golf.html`, while the discount lives in `config/promo-codes.json`. Changing the file would have charged one amount and advertised another. *Fix:* `render-site.mjs` now stamps the amount from the file on every page that says "<b>CODE</b> takes … off", and fails the build if a page names a code the file doesn't have. Checked: with GOLF10 set to 15 in the file the page said 15% off, and back at 10 it said 10% (the page itself is unchanged today). `CLAUDE.md`'s settings rule now names fees and discounts too.
 - **Swept for the same mistake:** the booking form's fee and rush wording already come from the settings (`feeText()`, `rushWords()`), and the landing pages, the confirmation email and the cold-weather notice carry no other written-in amounts.
 - **Bug (older, from September): the free drive minutes were written in three places.** *Root cause:* "the first 10 minutes … are free" was typed into the booking form's address step (`js/funnel.js`), `terms.html` and `service-area.html`, while the number is `DEFAULT_RULES.mileage.freeMinutes` in `web/lib/pricing/rules.ts`. Changing the rule would have charged differently from what all three said. *Fix (Emmett's OK):*

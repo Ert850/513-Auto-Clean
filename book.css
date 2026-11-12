@@ -1655,9 +1655,23 @@ button.bk-tl-s:hover { border-color: var(--red); box-shadow: 0 0 0 3px var(--red
   font: inherit; font-size: .92rem; font-weight: 800; cursor: pointer; color: #fff;
   background: var(--ink); border: 0; border-radius: var(--r-sm); padding: .7rem 1.2rem;
 }
-.bk-ckcont[hidden] { display: none; }
 .bk-ckcont:hover { background: var(--ink-2); }
 .bk-ckcont svg { width: 15px; height: 15px; }
+/* Its spot (option A, Emmett, November 12): a quiet line saying what is still
+   missing, which becomes the button once the section is ready. One fixed
+   height for both, so nothing below moves when they swap. */
+.bk-ckgo { display: grid; align-items: center; justify-items: start; margin-top: .9rem; }
+.bk-ckgo[hidden] { display: none; }
+/* Both in one cell, the inactive one kept but invisible (so not clickable or
+   focusable): the spot is always as tall as the taller of the two. */
+.bk-ckgo > * { grid-area: 1 / 1; }
+.bk-ckgo > .bk-off { visibility: hidden; }
+.bk-ckgo .bk-ckcont { margin-top: 0; }
+.bk-ckhint { display: inline-flex; align-items: center; gap: .45rem; margin: 0; font-size: .86rem; line-height: 1.35; color: var(--text-soft); }
+.bk-ckhint svg { width: 15px; height: 15px; flex-shrink: 0; opacity: .75; }
+.bk-swap { animation: bkSwap .15s ease-out; }
+@keyframes bkSwap { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .bk-swap { animation: none; } }
 /* On the open section's heading line (owner, November 12). */
 .bk-ck > .bk-reqnote { float: right; margin: .3rem 0 0 .75rem; }
 /* The address's optional questions, closer together, so the travel fee under

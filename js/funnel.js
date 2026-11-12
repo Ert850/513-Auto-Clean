@@ -692,8 +692,14 @@
    * Decided when a section opens and again on a resize, never on scroll or
    * while typing: a button appearing mid-task would move the rows under it.
    * A resize needs CKCONT_HYST more to flip, so a window dragged near the
-   * line does not flicker. Time follows the bar: nothing until there is a
-   * time or a request (ckNextIdle()).
+   * line does not flicker.
+   *
+   * Inside that spot (Emmett's option A, November 12): until the section's
+   * required answers are in, a quiet line says what is still missing ("Add
+   * your phone to continue"), from the section's own checks, the same ones
+   * Continue runs; once they pass, the line becomes the button. The two share
+   * one height, so nothing below moves. The swap happens when a box is left
+   * or typing pauses (CKGO_PAUSE), never on every keystroke.
    */
   var CKCONT_GAP = 160, CKCONT_HYST = 24;
   var ckCont = { id: null, show: false };
@@ -710,7 +716,7 @@
    * section that just opened under others (ckScroll() brings it up).
    */
   function ckContRoom(b, rest) {
-    var sc = el('bkScroll'), sec = b.parentNode, wasHidden = b.hidden;
+    var sc = el('bkScroll'), sec = b.closest('.bk-ck'), wasHidden = b.hidden;
     b.hidden = false;
     var top = sc.getBoundingClientRect().top, shift = slideShift(sec);
     var at = function (y) { return sc.scrollTop + y - shift - top; };
@@ -729,17 +735,78 @@
     return sc.clientHeight - (btnBottom - rest);
   }
   function fitCkCont(resized, rest) {
-    var b = el('bkBody') && el('bkBody').querySelector('.bk-ckcont');
+    var b = el('bkBody') && el('bkBody').querySelector('.bk-ckgo');
     var sc = el('bkScroll');
-    if (!b || !b.getBoundingClientRect || !b.parentNode || !b.parentNode.getBoundingClientRect ||
+    var sec = b && b.closest && b.closest('.bk-ck');
+    if (!b || !b.getBoundingClientRect || !sec || !sec.getBoundingClientRect ||
         !sc || !sc.getBoundingClientRect) return;
-    var id = b.dataset.ckcont;
+    var id = b.querySelector('[data-ckcont]').dataset.ckcont;
     if (resized || ckCont.id !== id) {
       var need = !resized ? CKCONT_GAP : ckCont.show ? CKCONT_GAP - CKCONT_HYST : CKCONT_GAP + CKCONT_HYST;
       ckCont = { id: id, show: ckContRoom(b, rest === undefined ? sc.scrollTop : rest) >= need };
     }
-    b.hidden = !ckCont.show || ckNextIdle();
+    b.hidden = !ckCont.show;
+    ckGoState(false);
   }
+
+  /**
+   * What the open section still needs, said as one short line, or '' when
+   * it is ready. Read from the section's own list (lDetails, lLoc, lAgree),
+   * so it can never disagree with what Continue would say.
+   */
+  var CK_SAY = {
+    '#bkName': function (v) { return v.length > 80 ? ['shorten', 'your name'] : ['add', 'your name']; },
+    '#bkPhone': function (v) { return v ? ['add', 'a full phone number'] : ['add', 'your phone']; },
+    '#bkEmail': function () { return ['fix', 'your email']; },
+    '#bkL1': function () { return ['add', 'your street']; },
+    '#bkCity': function () { return ['add', 'your city']; },
+    '#bkZip': function () { return ['add', 'your ZIP']; },
+    '#bkTerms': function () { return ['tick', 'the terms box']; },
+    '[data-media]': function () { return ['answer', 'the recording question']; }
+  };
+  function andList(xs) {
+    return xs.length < 2 ? xs.join('') : xs.slice(0, -1).join(', ') + ' and ' + xs[xs.length - 1];
+  }
+  function ckMissing(id) {
+    if (id === 'when') return ckNextIdle() ? 'Pick a time to continue' : '';
+    var c = CK[ckIndex(id)];
+    if (!c) return '';
+    var list = c.all ? c.all() : [asProblem(c.valid(), LAST)].filter(Boolean);
+    if (!list.length) return '';
+    var groups = [];
+    list.forEach(function (p) {
+      var f = p.focus && root.querySelector(p.focus);
+      var say = CK_SAY[p.focus] ? CK_SAY[p.focus](f && f.value ? f.value.trim() : '') : ['answer', 'the questions above'];
+      var g = groups.length && groups[groups.length - 1].verb === say[0] ? groups[groups.length - 1] : null;
+      if (g) g.what.push(say[1].replace(/^your /, ''));
+      else groups.push({ verb: say[0], what: [say[1]] });
+    });
+    var said = andList(groups.map(function (g) { return g.verb + ' ' + andList(g.what); }));
+    return said.charAt(0).toUpperCase() + said.slice(1) + ' to continue';
+  }
+  /** Show the line or the button in the spot; `swap` fades in whichever just changed. */
+  function ckGoState(swap) {
+    var go = el('bkBody') && el('bkBody').querySelector('.bk-ckgo');
+    if (!go || go.hidden) return;
+    var hint = go.querySelector('.bk-ckhint'), btn = go.querySelector('.bk-ckcont');
+    var span = hint && hint.querySelector('span');
+    if (!btn || !span || !btn.dataset || !btn.dataset.ckcont) return;
+    var text = ckMissing(btn.dataset.ckcont);
+    if (span.textContent !== text && text) span.textContent = text;
+    var ready = !text;
+    // Visibility, not hidden: both keep their place, so the spot never
+    // changes height, and the invisible one can be neither clicked nor focused.
+    if (btn.classList.contains('bk-off') === !ready) return;
+    btn.classList.toggle('bk-off', !ready);
+    hint.classList.toggle('bk-off', ready);
+    if (swap) {
+      var now = ready ? btn : hint;
+      now.classList.remove('bk-swap');
+      void now.offsetWidth;
+      now.classList.add('bk-swap');
+    }
+  }
+  var CKGO_PAUSE = 600, ckGoTimer = null;
 
   /** Continue in a section: check it, fold it, and open the next one. */
   function ckAdvance(id) {
@@ -770,7 +837,9 @@
           // laptop's fold).
           '<p class="bk-reqnote"><span class="bk-req" aria-hidden="true">*</span> Required</p>' +
           '<h3 class="bk-sec-h" tabindex="-1">' + esc(c.title) + '</h3>' + note + c.render() +
-          (c.id === 'review' ? '' : '<button type="button" class="bk-ckcont" data-ckcont="' + c.id + '" hidden>Continue' + CHEV_R + '</button>') +
+          (c.id === 'review' ? '' : '<div class="bk-ckgo" hidden>' +
+            '<p class="bk-ckhint">' + INFO_IC + '<span></span></p>' +
+            '<button type="button" class="bk-ckcont bk-off" data-ckcont="' + c.id + '">Continue' + CHEV_R + '</button></div>') +
           '</section>';
       } else if (state.ckDone[c.id]) {
         html += '<button type="button" class="bk-donerow" data-cksec="' + c.id + '">' +
@@ -3527,6 +3596,8 @@
 
   var CHEV_L = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>';
   var CHEV_R = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg>';
+  /** A small (i) for the in-section Continue's "what's still missing" line. */
+  var INFO_IC = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/></svg>';
   var TICK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg>';
   var STAR = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2.8l2.8 5.8 6.3.9-4.6 4.4 1.1 6.3L12 17.2 6.4 20.2l1.1-6.3L2.9 9.5l6.3-.9z"/></svg>';
   // The two middle choices on the leave dialog: save for later, and ask.
@@ -7716,6 +7787,17 @@
       if (phoneView() !== paintedNarrow) repaintSlots();
     });
     host.addEventListener('input', onInput);
+    // The in-section Continue's line and button (ckGoState): when a box is
+    // left, a tick or a tap lands, or typing pauses. Never per keystroke.
+    host.addEventListener('input', function () {
+      clearTimeout(ckGoTimer);
+      ckGoTimer = setTimeout(function () { if (onCheckout()) ckGoState(true); }, CKGO_PAUSE);
+    });
+    ['focusout', 'change', 'click'].forEach(function (type) {
+      host.addEventListener(type, function () {
+        setTimeout(function () { if (onCheckout()) ckGoState(true); }, 0);
+      });
+    });
 
     /**
       * Enter means "done with this, what is next".
