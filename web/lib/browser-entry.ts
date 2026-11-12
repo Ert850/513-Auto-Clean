@@ -51,7 +51,7 @@ import { assignStarts, canDo, parseDetailers, waivesFeeAt } from "./availability
 import { componentsOf } from "./catalog/types.js";
 import { mileageFeeCents } from "./pricing/mileage.js";
 import { LEGAL } from "./site/legal.js";
-import { IN_PERSON, isLive } from "./site/capabilities.js";
+import { DRAFT_KEEP_DAYS, IN_PERSON, isLive } from "./site/capabilities.js";
 import { DEFAULT_RULES } from "./pricing/rules.js";
 import {
   computeSurcharge,
@@ -100,6 +100,7 @@ export function formatCents(cents: number): string {
 
 const api = {
   RULES: DEFAULT_RULES,
+  DRAFT_KEEP_DAYS,
   CATALOG: SEED_CATALOG,
   ADDONS,
   VEHICLE_SIZES,

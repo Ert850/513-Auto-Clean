@@ -23,6 +23,27 @@ Built overnight, November 10 to 11, for you to evaluate. It combines your 8 answ
   - **Wording:** unchanged today. A different number would change the terms, so the legal lock would then ask for the date bump, as it should.
   - **Checked:** set to 12 in the rules, both pages said 12; back at 10, both said 10. The built form carries the expression, and the browser bundle reports 10. 610 tests pass.
   - **Not checked:** the address step on screen. It's one line of the same kind as the others.
+- **Swept the whole site for the same mistake (Emmett, November 12), and fixed every number that has a setting:**
+
+  | Typed-in | Where | Now read from |
+  |---|---|---|
+  | 72 / 24 hours (cancel and move windows) | `terms.html`, five sentences outside the generated parts | `refundFullWindowHours`, `refundMidWindowHours` |
+  | "A Basic Interior at $125" | `terms.html` | the catalog price |
+  | "save 10% on each extra" vehicle | `index.html` | `additionalVehicleDiscountBp` |
+  | "billed at $50/hr" | `faq.html`, page and search data | `addonRateCents` |
+  | basic about 2 hours, full about 4 | `faq.html`, page and search data | the packages' `durationMin` |
+  | "up to 12 hours each way" | `service-area.html` | `MAX_ONE_WAY_MINUTES` |
+  | coating 9, 16, 22, 34 hours | the catalog's own explainer (both page and form) | Full Exterior plus each tier's `addMin` |
+  | "for 5% off" paying in full | `capabilities.ts` | `payInFullDiscountBp` |
+  | kept booking "14 days" | the privacy policy and `funnel.js`, separately | one `DRAFT_KEEP_DAYS` |
+
+  - **How:** hand-written pages are stamped by a `STAMPS` table in `render-site.mjs`, matched by the surrounding words. Markers or comments would have changed the terms' wording fingerprint. Each entry must match its expected count, or the build fails.
+  - **Checked:** I changed every one of those settings at once (48 and 12 hours, $139, 15%, $60, 2.5 hours, a 5-hour Full Exterior, 6%, 9 days, 15 minutes). Every page and the form followed. Restored, the pages are identical to before: only `?v=` stamps differ, so the terms' wording check passes with no date bump. 610 tests pass. On 8790 the form opens and reads 14 days and 10 minutes, with no errors besides the preview's missing reviews API.
+  - **Left, with a reason:**
+    - **Business hours:** open question 14 for Elijah.
+    - **The FAQ's "Express details run about 1.25 hours":** no Express package exists. It's a wording fix for Elijah, so it's question 15.
+    - **The terms' late-payment ($25, 14 and 30 days) and 30-day redo promises:** the terms are their only source.
+    - **The travel map's band labels:** they describe the bands' own limits in `js/travel.js`.
 - **To test:** the booking form's address step still says "the first 10 minutes of drive time are free"; `terms.html` and `service-area.html` say 10. Open `lp-golf.html` in the code version of the golf A/B test (or remove `hidden` in the inspector): it still reads "GOLF10 takes 10% off your first detail".
 
 ## Round 21 (November 11, evening): the owner's answers; printed QR codes

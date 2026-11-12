@@ -102,3 +102,7 @@ From Emmett's agent, November 11, 2026, on branch `eNov6`.
 Please give the days and times.
 
 **Answer:**
+
+**15. The FAQ's "How long does a detail take?"** It opens with "Express details run about 1.25 hours", but there's no Express package. Maintenance (returning customers) is 1 h 45 min. The basic and full hours in the same answer now come from the catalog. Recommended: drop the Express clause, or name the packages new customers can book, once the interior package change (questions 1 to 10) is settled. Which?
+
+**Answer:**

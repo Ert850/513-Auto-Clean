@@ -240,7 +240,7 @@ export function wireNeeds(wire: WireCart): string[] {
 }
 export { mileageFeeCents } from "./pricing/mileage.js";
 export { cancellationLadder } from "./pricing/cancellation.js";
-export { CAPABILITIES, copyFor, isLive, liveProcessors } from "./site/capabilities.js";
+export { CAPABILITIES, DRAFT_KEEP_DAYS, copyFor, isLive, liveProcessors } from "./site/capabilities.js";
 export { estimateOneWayMinutes } from "./travel/zipRanges.js";
 
 export {

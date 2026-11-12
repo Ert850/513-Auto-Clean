@@ -26,6 +26,7 @@ import { fileURLToPath } from "node:url";
 import {
   CAPABILITIES,
   DEFAULT_RULES,
+  DRAFT_KEEP_DAYS,
   LEGAL,
   cancellationLadder,
   copyFor,
@@ -192,7 +193,7 @@ function cookiesParas() {
       ? ["If you arrive through a link we tagged, such as the QR code in a magazine ad, your browser remembers which link it was until you close the tab, and it is sent with a booking or question so we know how you found us. That works whether or not you accept analytics, identifies nobody, and goes to no one else."]
       : []),
     "Now and then we try two versions of a page to see which one helps people more. If you are shown one, your browser remembers which version you saw, so it stays the same when you come back, and that is sent with a booking so we can count which version led to it. It identifies nobody and goes to no one else" + (isLive("siteAnalytics") ? ", except that Google Analytics and Microsoft Clarity are told which version you saw if you accept analytics." : "."),
-    "Apart from those, there is one more thing we can keep in your browser, and only if you ask for it. If you start a booking and leave before finishing, we offer to keep your answers so they are still there next time. Say yes and they are stored in your own browser for 14 days, so that the next time you tap Book Now you carry on where you stopped. " + (isLive("checkoutFollowUp")
+    "Apart from those, there is one more thing we can keep in your browser, and only if you ask for it. If you start a booking and leave before finishing, we offer to keep your answers so they are still there next time. Say yes and they are stored in your own browser for " + DRAFT_KEEP_DAYS + " days, so that the next time you tap Book Now you carry on where you stopped. " + (isLive("checkoutFollowUp")
       ? "That saved copy stays on your device, and you can throw it away from the same screen that offered to keep it. Say no, or say nothing, and there is nothing to throw away. This is separate from checkout: if you type your contact details there and leave without booking, we receive them and what you had picked, so we can follow up once, as described above."
       : "That information stays on your device, never reaches us until you actually book, and you can throw it away from the same screen that offered to keep it. Say no, or say nothing, and there is nothing to throw away."),
     "If you are part way through booking and choose to ask us a question instead, what you had entered is carried to the question form in your browser for that one step, then deleted.",

@@ -15,6 +15,10 @@
  * depends on the feature. They sit here rather than in the HTML so that the
  * claim and the switch controlling it cannot end up in different files.
  */
+import { DEFAULT_RULES } from "../pricing/rules.js";
+
+/** How long a booking the visitor chose to keep stays in their browser. The form and the privacy policy both read this. */
+export const DRAFT_KEEP_DAYS = 14;
 
 export interface Capability {
   id: string;
@@ -71,7 +75,7 @@ export const CAPABILITIES: Capability[] = [
      * caused this cannot silently return. Test the mobile mount first.
      */
     id: "payInFull",
-    what: "Paying the whole detail online at booking, for 5% off",
+    what: `Paying the whole detail online at booking, for ${DEFAULT_RULES.payInFullDiscountBp / 100}% off`,
     live: false,
     blockedBy: "The Stripe pay-now path does not complete reliably on mobile",
   },
