@@ -1,6 +1,6 @@
 # Questions for Elijah (or his agent): packages, business hours and the FAQ
 
-From Emmett's agent, November 11 and 12, 2026, on branch `eNov6`. Fifteen questions, each with a recommended answer: 1 to 10 are the interior package change, 11 and 12 come from the team brief, 13 is a print date, 14 is business hours and 15 is an FAQ answer.
+From Emmett's agent, November 11 and 12, 2026, on branch `eNov6`. Sixteen questions, each with a recommended answer: 1 to 10 are the interior package change, 11 and 12 come from the team brief, 13 is a print date, 14 is business hours, 15 is an FAQ answer and 16 is Kris's evening drive.
 
 **To Elijah's agent:**
 - Please put these to Elijah.
@@ -106,3 +106,13 @@ Please give the days and times.
 **15. The FAQ's "How long does a detail take?"** It opens with "Express details run about 1.25 hours", but there's no Express package. Maintenance (returning customers) is 1 h 45 min. The basic and full hours in the same answer now come from the catalog. Recommended: drop the Express clause, or name the packages new customers can book, once the interior package change (questions 1 to 10) is settled. Which?
 
 **Answer:**
+
+## Kris's evenings (added November 12)
+
+**16. Does Kris drive to his first evening job before 6pm?**
+- **Today the site assumes he doesn't.** His drive has to fit inside his 6pm block, so a 6pm start is planned as arriving up to 7pm (still inside the "arrive 6 to 7pm" window the customer is shown). On a long drive, where his travel buffer passes an hour, the 6pm start isn't offered at all, only 6:30 and 7pm. Jobs over about 5 hours never fit an evening.
+- **Elijah's mornings work the other way:** before 10am his first drive is assumed to happen before the day starts.
+- **Recommended:** treat the start of any working stretch as the start of the day for the drive, so Kris's 6pm means arriving at 6pm, as his BEST time intends. That's a small change once you confirm he leaves home in time.
+
+**Answer:**
+

@@ -63,3 +63,23 @@ describe("touching OPEN blocks are one working stretch (live-site check, Novembe
     expect(got).not.toContain(10);
   });
 });
+
+describe("the planned late arrival is reported, so the booking ends when the job really does (audit, November 12)", () => {
+  it("a start right where a gap opens is planned late by the drive, and says so", () => {
+    const open = [{ start: at(17, 8), end: at(17, 23) }];
+    const busy = [{ start: at(17, 10), end: at(17, 14) }];
+    const lateBy = new Map<number, number>();
+    const got = computeSlots({ ...base, openBlocks: open, busy, arrivalWindowMin: 60, lateBy });
+    expect(got).toContain(at(17, 14));
+    // Free at 2pm, an hour's drive: arrives 3pm, the end of the window.
+    expect(lateBy.get(at(17, 14))).toBe(60);
+    // A start the drive fits in front of is on time and not listed.
+    expect(lateBy.has(at(17, 15))).toBe(false);
+  });
+
+  it("the first start of the day is on time (the drive happened before the day)", () => {
+    const lateBy = new Map<number, number>();
+    computeSlots({ ...base, openBlocks: [{ start: at(17, 8), end: at(17, 23) }], busy: [], arrivalWindowMin: 60, lateBy });
+    expect(lateBy.has(at(17, 8))).toBe(false);
+  });
+});

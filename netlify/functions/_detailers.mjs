@@ -55,7 +55,17 @@ export async function blockFeeFor(detailer, slotMs, shownBp) {
   if (apiKey && calendarId) {
     try {
       const win = await loadWindow({ calendarId, apiKey }, slotMs - 12 * 3600_000, slotMs + 12 * 3600_000);
-      return blockFeeAt(win, slotMs);
+      const fee = blockFeeAt(win, slotMs);
+      if (fee !== null) return fee;
+      // Read fine, but no OPEN block holds this start: the detailer is not
+      // working then (Kris on a Friday since November 12), so there is no
+      // fee-free start to honour. The plain clock rule, never the
+      // `noFeeStarts` waiver, which only stands in when the calendar cannot
+      // be read (audit, November 12: an edited request naming Kris for a
+      // Friday 6pm got 0% late fee).
+      const mm = localMinutesOfDay(slotMs);
+      const rr = DEFAULT_RULES.surcharge;
+      return mm < rr.earlyBeforeMinutes || mm >= rr.lateFromMinutes ? rr.timeOfDayBp : 0;
     } catch (e) {
       console.error("fee calendar", String(e).slice(0, 200));
     }

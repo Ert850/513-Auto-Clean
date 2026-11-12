@@ -29,21 +29,24 @@ Google Calendar, then Other calendars, then **+**, then Create new calendar:
 On **513 Kris Bookings**, under "Share with specific people", add Kris (See all event details) and, if Netlify has `GOOGLE_SERVICE_ACCOUNT_JSON`, the service account's `client_email` (Make changes to events).
 
 ### 2. His working hours: OPEN events
-On **513 Kris Availability**, make an event titled `OPEN` for each stretch he can work, repeating weekly. His hours (owner, November 10):
-- **Sunday and Monday:** 8:00am to 12:00am.
-- **Tuesday to Saturday:** 6:00pm to 12:00am.
+On **513 Kris Availability**, make an event titled `OPEN` for each stretch he can work, repeating weekly. His hours (owner, November 12; until then Sunday and Monday all day and Tuesday to Saturday evenings):
+- **Monday:** 8:00am to 12:00am.
+- **Tuesday to Thursday:** 6:00pm to 12:00am.
+- **Friday to Sunday:** none. Those days are Elijah's alone.
 
 Jobs always finish by midnight; the site already plans for that.
 
 ### 3. His best times: BEST events
 On **513 Kris Availability**, each titled `BEST`, 15 minutes long (only the start time matters), repeating weekly, set to **Show as: Free**:
-- **Sunday and Monday:** 10:00am.
-- **Tuesday to Saturday:** 6:00pm.
+- **Monday:** 10:00am.
+- **Tuesday to Thursday:** 6:00pm.
 
-Not 6pm on Sunday or Monday: his ideal hours there are 10am to 6pm, so a 6pm start carries the late fee. To offer 10:30am too, add a second BEST event at 10:30.
+Not 6pm on Monday: his ideal hours there are 10am to 6pm, so a 6pm start carries the late fee. To offer 10:30am too, add a second BEST event at 10:30.
 
-### 3b. His fee-free hours (in Netlify, not the calendar)
-On Tuesday to Saturday, a start from 6 to 7pm has no late fee, because Kris works those hours anyway. A 7:30pm start still pays it. Everything else follows the site's clock rule (early before 10am, late from 6pm). That's set in his `DETAILERS` entry as `"noFeeStarts": "Tue-Sat 18:00-19:00"`, not in the calendar, because the payment step prices from that setting.
+### 3b. His fee-free hours: the calendar decides
+Since fee standard B (November 11), the fee comes from the OPEN block a start falls in: `OPEN` is standard price, `OPEN +20%` carries the fee. Kris's 6 to 7:30pm block is plain `OPEN`, so his 6, 6:30 and 7pm starts are standard; 7:30pm and later pay the fee.
+
+His `DETAILERS` entry's `noFeeStarts` is only a stand-in for when his calendar can't be read. Since November 12 it never applies to a time outside his OPEN blocks (a Friday, say). Keep it in step with his evenings: `"Tue-Thu 18:00-19:00"` (Netlify still had `"Tue-Sat 18:00-19:00"` on November 12). The build checks the whole `DETAILERS` value and stops on a mistake.
 
 ### 4. Put him first
 **513 Kris Availability**, then Settings and sharing, then **Description**: type `Priority: 1`

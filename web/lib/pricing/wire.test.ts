@@ -221,3 +221,22 @@ describe("priceFromWire after validation", () => {
     expect(q.totalCents).toBeGreaterThan(200_000 * 0.4);
   });
 });
+
+describe("validateWire: the planned late arrival (audit, November 12)", () => {
+  it("keeps a sensible figure on the cart, rounded, and drops 0", () => {
+    const b = good();
+    b.cart.arrivalLateMin = 59.6;
+    const r = validateWire(b, { nowMs: NOW, mode: "card_only" });
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.booking.cart.arrivalLateMin).toBe(60);
+    const z = good();
+    z.cart.arrivalLateMin = 0;
+    const r0 = validateWire(z, { nowMs: NOW, mode: "card_only" });
+    expect(r0.ok && r0.booking.cart.arrivalLateMin).toBe(undefined);
+  });
+  it("refuses garbage and anything past the limit", () => {
+    rejects((b) => { b.cart.arrivalLateMin = -5; }, "bad_arrival");
+    rejects((b) => { b.cart.arrivalLateMin = WIRE_LIMITS.maxArrivalLateMin + 1; }, "bad_arrival");
+    rejects((b) => { b.cart.arrivalLateMin = "an hour"; }, "bad_arrival");
+  });
+});

@@ -1566,6 +1566,8 @@ var WIRE_LIMITS = {
   maxCity: 60,
   maxRegion: 30,
   maxPromo: 32,
+  /** Planned minutes into the arrival window. The window is an hour; twice that is plainly wrong. */
+  maxArrivalLateMin: 120,
   /**
    * How far ahead a slot may be. Past this it is a conversation, not a form.
    * The same as the live site (November 11): the form offers 365 days
@@ -1703,6 +1705,14 @@ function validateWire(body, opts) {
   if (kind === "inquiry" && slot !== null) {
     return fail("inquiry_has_slot", "A request cannot carry a fixed time.");
   }
+  let arrivalLateMin = 0;
+  const rawLate = cart["arrivalLateMin"];
+  if (rawLate !== void 0 && rawLate !== null && rawLate !== 0) {
+    if (typeof rawLate !== "number" || !Number.isFinite(rawLate) || rawLate < 0 || rawLate > WIRE_LIMITS.maxArrivalLateMin) {
+      return fail("bad_arrival", "That time was not understood.");
+    }
+    if (slot !== null) arrivalLateMin = Math.round(rawLate);
+  }
   const payInFull = opts.mode === "pay_now";
   if (payInFull && slot === null) {
     return fail("inquiry_cannot_prepay", "We do not take payment in full for a time that is not confirmed yet.");
@@ -1781,6 +1791,7 @@ function validateWire(body, opts) {
     zip,
     slot,
     kind,
+    ...arrivalLateMin ? { arrivalLateMin } : {},
     ...visits !== void 0 ? { visits } : {},
     ...promoCode ? { promoCode } : {},
     ...source ? { source } : {},

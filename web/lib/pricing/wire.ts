@@ -47,6 +47,12 @@ export interface WireCart {
   /** Epoch ms of the chosen slot, or null for a request without a time. */
   slot?: number | null;
   /**
+   * Minutes after `slot` the detailer is planned to arrive (inside the
+   * arrival window), so the calendar event ends at that arrival plus the
+   * work. 0 or absent for an on-time start.
+   */
+  arrivalLateMin?: number;
+  /**
    * IGNORED on the server. Priority is derived from the slot. Kept on the
    * type so an old browser sending it is not a validation failure.
    */
@@ -116,6 +122,8 @@ export const WIRE_LIMITS = {
   maxCity: 60,
   maxRegion: 30,
   maxPromo: 32,
+  /** Planned minutes into the arrival window. The window is an hour; twice that is plainly wrong. */
+  maxArrivalLateMin: 120,
   /**
    * How far ahead a slot may be. Past this it is a conversation, not a form.
    * The same as the live site (November 11): the form offers 365 days
@@ -322,6 +330,14 @@ export function validateWire(body: unknown, opts: ValidateOptions): WireValidati
   if (kind === "inquiry" && slot !== null) {
     return fail("inquiry_has_slot", "A request cannot carry a fixed time.");
   }
+  let arrivalLateMin = 0;
+  const rawLate = cart["arrivalLateMin"];
+  if (rawLate !== undefined && rawLate !== null && rawLate !== 0) {
+    if (typeof rawLate !== "number" || !Number.isFinite(rawLate) || rawLate < 0 || rawLate > WIRE_LIMITS.maxArrivalLateMin) {
+      return fail("bad_arrival", "That time was not understood.");
+    }
+    if (slot !== null) arrivalLateMin = Math.round(rawLate);
+  }
 
   /* ---- payment mode drives payInFull, nothing else does ---- */
   const payInFull = opts.mode === "pay_now";
@@ -418,6 +434,7 @@ export function validateWire(body: unknown, opts: ValidateOptions): WireValidati
     zip,
     slot,
     kind,
+    ...(arrivalLateMin ? { arrivalLateMin } : {}),
     ...(visits !== undefined ? { visits } : {}),
     ...(promoCode ? { promoCode } : {}),
     ...(source ? { source } : {}),

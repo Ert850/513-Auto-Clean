@@ -42,6 +42,34 @@ Built overnight, November 10 to 11, for you to evaluate. It combines your 8 answ
     - Address and Time show only the red one.
     - On a phone, the small one comes after Email.
 
+- **Kris works Monday to Thursday only (owner, November 12): calendar changed and the whole pipeline audited.**
+  - **Calendar** (513 Kris Availability): his seven weekly events were recreated with the new days, since the Calendar API tool can't narrow a repeat. The old ones are in the trash for 30 days.
+    - Monday: OPEN +20% 8 to 10am, OPEN 10am to 6pm, OPEN +20% 6pm to midnight, BEST 10am.
+    - Tuesday to Thursday: OPEN 6 to 7:30pm, OPEN +20% 7:30pm to midnight, BEST 6pm.
+    - Friday to Sunday: none.
+    - Priority checked: Kris 1, Elijah 2, and no priority line on either bookings calendar.
+    - The live site (`main`) never reads Kris's calendar, so nothing changed there.
+  - **Checked against the real calendars** (8790 preview): Friday to Sunday is all Elijah. On Monday Kris takes 8am to 8pm and Elijah only before 8am. On Tuesday to Thursday Kris takes the evenings and Elijah the daytime. There's no job cap; the hours make the counts.
+  - **Bug: a booked job's calendar event ignored the planned late arrival, so the next job that day was spaced from the wrong end.**
+    - *Root cause:* `computeSlots` plans a start where a gap opens as arriving up to an hour late (the arrival window), and spaces the next job from that. But `send-confirmation` wrote the event from the start to start plus the work.
+    - On a chained day the third job assumed the detailer free up to an hour early. It affected Elijah too.
+    - *Fix:* `computeSlots` reports each start's planned lateness (`lateBy`). The form keeps it for the chosen time (`selectSlot`, refreshed by `verifySlot`) and sends `arrivalLateMin`, which the server checks (`bad_arrival`, at most 120). The event ends at the planned arrival plus the work.
+    - *Seen live:* Kris's 6pm start is planned as a 7pm arrival, because his drive must fit inside his evening block (question 16 for Elijah). So his events now honestly run to 7pm plus the job.
+  - **Bug: changing the job after picking a time kept the detailer who can't do it.**
+    - *Root cause:* `state.detailer` was set once when the time was picked, and the re-checks only looked at that person's calendar.
+    - Adding exterior to a Kris time made the server book it on Elijah's calendar without checking he's free.
+    - *Fix:* `slotStillFits` drops the time when `canDo` fails, saying "Your detail has changed, so the time you picked needs choosing again." Seen working on 8790.
+  - **Bug: a detailer's fee-free starts applied on days they don't work.**
+    - *Root cause:* `blockFeeFor` returned "no block" for a start outside every OPEN block, and the clock rule then applied `noFeeStarts` (Kris's "Tue-Sat 18:00-19:00"). An edited request for Kris on a Friday at 6pm got 0% late fee.
+    - *Fix:* when the calendar reads fine and no block holds the start, it's the plain clock fee. The waiver stands in only when the calendar can't be read.
+  - **`DETAILERS` is checked at build** (`render-config.mjs`, the same `parseDetailers` the site uses). A typo used to drop a detailer, or their waiver, with only a browser-console warning.
+    - Checked: today's saved value builds, a typo ("Tu-Th 6pm-7pm") stops the build with the reason, and unset builds.
+  - **Docs:** `CALENDAR-SETUP.md`, `DETAILERS-GUIDE.md` and `ADD-A-DETAILER.md` have Kris's new days, the calendar as the fee source, the Priority rule (lowest across all of a person's calendars, so keep "priority" out of other descriptions), and the Netlify `noFeeStarts` to change to "Tue-Thu".
+    - Question 16 for Elijah: does Kris drive before 6pm.
+    - The rest of the audit is queued in `QUEUE-AFTER-FRIDAY.md`.
+  - **Tests:** 614 pass, including new ones for `lateBy` and `arrivalLateMin`.
+  - **To test** (on the Deploy Preview): book a test job at Kris's Tuesday 6pm. The calendar event should end at 7pm plus the job length, and nothing on Friday to Sunday should offer Kris.
+
 - **The small Continue waits for the required answers: option A (owner's pick, November 12; `docs/mockups/checkout-continue-options-AB-*.png`).** Until a section's required answers pass, its spot shows a quiet line saying what's still missing. Then the line becomes the button.
   - **Wording:** "Add your name and phone to continue", then "Add your phone to continue", "Add a full phone number to continue", "Add your street, city and ZIP to continue", "Tick the terms box and answer the recording question to continue", "Pick a time to continue". It's built by `ckMissing()` from the section's own list (`lDetails`, `lLoc`, `lAgree`), so it says exactly what Continue would. Email is never named, because it's optional.
   - **Timing:** the swap happens when a box is left, a tick or tap lands, or typing pauses for 0.6 s (`CKGO_PAUSE`), never on each keystroke. It fades in over 0.15 s, or not at all with reduced motion.

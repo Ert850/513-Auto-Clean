@@ -378,7 +378,9 @@ async function writeCalendar({ contact, cart, priced, extras, payInFull, key, ki
       .filter(Boolean)
       .join(", "),
     startMs: cart.slot,
-    endMs: cart.slot + minutes * 60_000,
+    // To the planned arrival plus the work: a start late in its arrival window
+    // ends that much later, and the next job is spaced from this end.
+    endMs: cart.slot + ((cart.arrivalLateMin || 0) + minutes) * 60_000,
     key,
     phone: String(contact.phone ?? "").replace(/\D/g, "").replace(/^1(?=\d{10}$)/, ""),
     calendarId: detailer ? detailer.bookingsCalendarId : "",

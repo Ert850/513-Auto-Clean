@@ -2,6 +2,26 @@
 
 Work that's agreed but deliberately not started before Friday. Newest first.
 
+## Per-detailer follow-ups from the November 12 audit (not urgent with today's schedule)
+
+Found by the audit for Kris's new Monday to Thursday days. Fixed already: the event end, the reassignment check, the fee waiver outside his hours, and the build check of `DETAILERS` (`SESSION-CHANGES-pipeline.md`, Round 22). Left:
+- **Kris's evening drive:** waits on question 16. If yes, `outboundFree` in `slots.ts` should treat the start of any working stretch (`dayOpens`) as the start of the day, not only a start before `IGNORE_OUTBOUND_BEFORE_MIN` (10am).
+- **The week grid and the day timeline judge "standard price" by the clock, not the calendar.**
+  - `week.ts` `suggested && !premium` uses `bandOf`, so Kris's 6pm BEST (standard price on his calendar) gets no star in the grid.
+  - `REG_FROM`/`REG_TO` (10am to 6pm) fold his standard-price 6 to 7pm starts under "Later times".
+  - Fix: pass `timeFeeApplies` into `buildWeek`, and fold by fee.
+- **`feeWhy` names any fee before noon "early start" and after noon "late start".** It should come from the block.
+- **Multi-day jobs plan on the owner's calendar only** (`funnel.js`, multi-day branch). That's fine while correction and coating are Elijah's.
+- **Assignment ignores fees:** a higher priority can get a +20% start a lower priority would do at standard price. No effect today.
+- **Site-wide clock limits are in code, not config:**
+  - `DEFAULT_BOOKING_WINDOW` (6am, last start 10pm, finish by midnight);
+  - `IGNORE_RETURN_AFTER_MIN`, `TIME_BANDS`, `MIN_NOTICE_MIN`, `SHORT_NOTICE_HOURS`;
+  - correction's weekend-only `[0, 6]` in `funnel.js`, which ignores `CORRECTION_RULES.weekendOnly`.
+
+  Move them to `config/` when a detailer needs hours outside them.
+- **The server never checks a booked time against the detailer's calendar.** The browser re-checks (`verifySlot`), and an edited request could skip it. Add a server-side `computeSlots` check in `send-confirmation`.
+- **Stale examples** of the old Tue-Sat schedule and 3/3/1 capacity: `BOOKING-PIPELINE.md`, `DELIVERABLES-2026-11-13.md`, and code comments in `crew.ts`, `week.ts` and `funnel.js`.
+
 ## Time step, "Need a different start?": fold the early and late times into two items (Emmett, November 12)
 
 **Ask:**
