@@ -2216,7 +2216,7 @@
 
   function rLoc() {
     var a = state.address;
-    return '<p class="bk-sub">We come to you. Travel is worked out from your address, and the first 10 minutes of drive time are free.</p>' +
+    return '<p class="bk-sub">We come to you. Travel is worked out from your address, and the first ' + P.RULES.mileage.freeMinutes + ' minutes of drive time are free.</p>' +
       '<div class="bk-field"><label for="bkL1">Street address <span class="bk-req" aria-hidden="true">*</span></label>' +
       '<input type="text" id="bkL1" data-addr="line1" value="' + esc(a.line1) + '" placeholder="Start typing your address" autocomplete="address-line1" aria-required="true" data-focus />' +
       '<div class="bk-ac" id="bkAc" hidden></div></div>' +

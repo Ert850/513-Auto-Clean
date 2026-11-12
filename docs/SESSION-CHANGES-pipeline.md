@@ -17,8 +17,13 @@ Built overnight, November 10 to 11, for you to evaluate. It combines your 8 answ
 
 - **Bug: the golf page wrote the GOLF10 discount into its text.** *Root cause:* "GOLF10 takes 10% off your first detail" was typed into `lp-golf.html`, while the discount lives in `config/promo-codes.json`. Changing the file would have charged one amount and advertised another. *Fix:* `render-site.mjs` now stamps the amount from the file on every page that says "<b>CODE</b> takes … off", and fails the build if a page names a code the file doesn't have. Checked: with GOLF10 set to 15 in the file the page said 15% off, and back at 10 it said 10% (the page itself is unchanged today). `CLAUDE.md`'s settings rule now names fees and discounts too.
 - **Swept for the same mistake:** the booking form's fee and rush wording already come from the settings (`feeText()`, `rushWords()`), and the landing pages, the confirmation email and the cold-weather notice carry no other written-in amounts.
-- **Found, older, not changed:** "the first 10 minutes of drive time are free" is written into the booking form's address step (`js/funnel.js`, from September) and `terms.html`, while the number is `freeMinutes` in `web/lib/pricing/rules.ts`. Today they agree. Changing the terms means a legal date bump, so it waits for the owner's OK.
-- **To test:** open `lp-golf.html` in the code version of the golf A/B test (or remove `hidden` in the inspector): it still reads "GOLF10 takes 10% off your first detail".
+- **Bug (older, from September): the free drive minutes were written in three places.** *Root cause:* "the first 10 minutes … are free" was typed into the booking form's address step (`js/funnel.js`), `terms.html` and `service-area.html`, while the number is `DEFAULT_RULES.mileage.freeMinutes` in `web/lib/pricing/rules.ts`. Changing the rule would have charged differently from what all three said. *Fix (Emmett's OK):*
+  - **The booking form** reads `P.RULES.mileage.freeMinutes`.
+  - **The two pages** are stamped from the rule by `render-site.mjs`. If either page stops carrying the sentence, the build fails, so a rewording can't go stale quietly.
+  - **Wording:** unchanged today. A different number would change the terms, so the legal lock would then ask for the date bump, as it should.
+  - **Checked:** set to 12 in the rules, both pages said 12; back at 10, both said 10. The built form carries the expression, and the browser bundle reports 10. 610 tests pass.
+  - **Not checked:** the address step on screen. It's one line of the same kind as the others.
+- **To test:** the booking form's address step still says "the first 10 minutes of drive time are free"; `terms.html` and `service-area.html` say 10. Open `lp-golf.html` in the code version of the golf A/B test (or remove `hidden` in the inspector): it still reads "GOLF10 takes 10% off your first detail".
 
 ## Round 21 (November 11, evening): the owner's answers; printed QR codes
 
