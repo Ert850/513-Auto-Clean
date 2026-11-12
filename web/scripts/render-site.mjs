@@ -399,6 +399,25 @@ pages["faq.html"] = splice("faq.html", pages["faq.html"], "FAQPRICE_JSON", JSON.
 
 for (const f of PAGES) fs.writeFileSync(path.join(root, f), pages[f]);
 
+/* ---------------- the free drive minutes, from the pricing rules ---------------- */
+
+// "The first 10 minutes are free" was typed into these pages while the number
+// is DEFAULT_RULES.mileage.freeMinutes. Each page must still carry the
+// sentence, so a rewording that the pattern no longer matches fails the build
+// instead of quietly going stale. (The booking form reads the same rule.)
+{
+  const free = DEFAULT_RULES.mileage.freeMinutes;
+  for (const f of ["service-area.html", "terms.html"]) {
+    let hits = 0;
+    const out = read(f).replace(/\b(first )\d+( minutes (?:of drive time )?are free)/g, (_, a, b) => {
+      hits++;
+      return `${a}${free}${b}`;
+    });
+    if (!hits) throw new Error(`${f} no longer says "the first N minutes … are free"; update render-site.mjs`);
+    fs.writeFileSync(path.join(root, f), out);
+  }
+}
+
 const count =
   packagesFor("interior").concat(packagesFor("exterior")).filter((p) => !p.requiresPriorDetail).length;
 const bookable = ADDONS.filter((a) => !unavailableReason(a)).length;
