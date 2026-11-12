@@ -2,6 +2,30 @@
 
 Work that's agreed but deliberately not started before Friday. Newest first.
 
+## Checkout, "Your details": bring back a small Continue under the fields (Emmett, November 12)
+
+**Ask:** on the Contact section of checkout (Name, Phone, Email), add back the small Continue that used to sit under the boxes, as a second way to move on with less mouse travel. Keep the bottom bar's red Continue as it is.
+
+**This reverses part of an owner decision from the same day.** Round 20 (`SESSION-CHANGES-pipeline.md`; `CLAUDE.md`, "Checkout continues from the bottom bar only") removed every in-section Continue. Update that `CLAUDE.md` rule when this is built.
+
+**Why the in-section Continues were removed:**
+- **Below the fold:** under a long section (Address, Time) the button sat below a laptop's fold.
+- **"Your time" off centre:** with the bar's Continue hidden, the card centred off to the right.
+
+Contact is short, so the first doesn't apply there. The second came from hiding the bar's button, so keeping the bar's Continue avoids it.
+
+**Possible downsides, all small:**
+- **Two buttons that do the same thing** on one screen. That's acceptable when they behave identically and share the same label. It does make the page a little less tidy.
+- **Inconsistent between sections:** Contact would have one, while Address, Time and "Almost done" wouldn't. Either accept that, or add it only where the section is short enough to keep it above the fold.
+- **On phones the boxes stack,** so "under Name" would split the fields. Put it after Email (the last field) at every width, or show it from tablet width up only. On a phone the bottom bar is already under the thumb.
+- **Screen readers hear two "Continue" buttons.** That's harmless if both work the same. The inline one comes right after the fields in tab order, which is good.
+- **Keyboard already covers it:** Enter in a box moves to the next box, and from the last box it continues (the Go key on phones does the same). So the gain is for mouse users only.
+
+**Build notes:**
+- It calls the same `advance()` as the bar, which finishes the open section (`ckAdvance`). No second code path.
+- Look: the small dark button from before Round 20 (in `bf608f0`'s parent).
+- Check: 1440×790, 1280×720 and 375 px; the "Your time" card stays centred; every booking path still reaches Done. About 30 minutes.
+
 ## Photo pipeline: the website gallery pulls from Google Drive (Elijah, team brief section 5, November 11)
 
 **Goal:** the results gallery is built from the shared Drive folder "513 Auto Clean Photos / 03 Website", so new photos reach the site without code changes. The current site photos get replaced.
