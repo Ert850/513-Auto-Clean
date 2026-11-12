@@ -247,19 +247,19 @@ function addonsHtml() {
     const caveat = a.tiers.find((t) => t.asterisk)?.asterisk ?? null;
 
     const price =
-      (range ? `<i class="ad-price">${range}${caveat ? "*" : ""}</i>` : "") +
-      (why ? `<i class="ad-soon">${esc(why)}</i>` : "") +
-      (caveat ? `<i class="ad-ast">*${esc(caveat)}</i>` : "");
+      (range ? `<i class="addon-price">${range}${caveat ? "*" : ""}</i>` : "") +
+      (why ? `<i class="addon-soon">${esc(why)}</i>` : "") +
+      (caveat ? `<i class="addon-ast">*${esc(caveat)}</i>` : "");
     // NOTE: the (i) marker and an autoplaying clip belong here, from
     // addon.videoUrl. Neither renders yet.
     const how = a.note
-      ? `<details class="ad-how"><summary>How it works</summary><p>${esc(a.note)}</p></details>`
+      ? `<details class="addon-how"><summary>How it works</summary><p>${esc(a.note)}</p></details>`
       : "";
     // The icon says what the service IS at a glance. Fifteen identical
     // clocks said only that all fifteen take time.
-    return `        <div class="addon${why ? " ad-off" : ""} reveal">
-          <span class="ad-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${addonIcon(a.icon)}</svg></span>
-          <div class="ad-body"><b>${esc(a.name)}${why ? "<sup>*</sup>" : ""}</b><span>${esc(a.description)}</span>${price}${how}</div>
+    return `        <div class="addon${why ? " addon-off" : ""} reveal">
+          <span class="addon-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${addonIcon(a.icon)}</svg></span>
+          <div class="addon-body"><b>${esc(a.name)}${why ? "<sup>*</sup>" : ""}</b><span>${esc(a.description)}</span>${price}${how}</div>
         </div>`;
   };
 
