@@ -1647,6 +1647,17 @@ button.bk-tl-s:hover { border-color: var(--red); box-shadow: 0 0 0 3px var(--red
 /* Required and optional, said once and marked on every field. */
 .bk-req { color: var(--red); font-weight: 800; margin-left: .1rem; }
 .bk-reqnote { margin: 0 0 .5rem; font-size: .74rem; color: var(--text-soft); text-align: right; }
+/* Continue inside a checkout section: the small dark button from before
+   Round 20, back as a second way on (Emmett, November 12). fitCkCont() in
+   funnel.js shows it only where it is on screen and well above the bar. */
+.bk-ckcont {
+  display: inline-flex; align-items: center; gap: .4rem; margin-top: .9rem;
+  font: inherit; font-size: .92rem; font-weight: 800; cursor: pointer; color: #fff;
+  background: var(--ink); border: 0; border-radius: var(--r-sm); padding: .7rem 1.2rem;
+}
+.bk-ckcont[hidden] { display: none; }
+.bk-ckcont:hover { background: var(--ink-2); }
+.bk-ckcont svg { width: 15px; height: 15px; }
 /* On the open section's heading line (owner, November 12). */
 .bk-ck > .bk-reqnote { float: right; margin: .3rem 0 0 .75rem; }
 /* The address's optional questions, closer together, so the travel fee under
