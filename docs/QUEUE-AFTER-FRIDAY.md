@@ -22,7 +22,7 @@ Work that's agreed but deliberately not started before Friday. Newest first.
 - **C. A custom menu with a flyout.** Rejected: flyouts work badly on touch, and it means rebuilding keyboard and screen reader support for one dropdown.
 
 **Wording:**
-- **Recommended:** "Earlier times (+$43 fee)" and "Later times (+$43 fee)". They're shorter than "See Earlier Times - Early Fee", and they give the price up front in the same "(+$43)" form the rows use.
+- **Approved (Emmett, November 12):** "Earlier times (+$43 fee)" and "Later times (+$43 fee)". They're shorter than "See Earlier Times - Early Fee", and they give the price up front in the same "(+$43)" form the rows use.
 - **If the fee differs between starts,** use "from +$43".
 - **No em-dashes.**
 
