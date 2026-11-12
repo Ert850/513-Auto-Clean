@@ -21,7 +21,7 @@ const TAX = /Sales tax[^:\n]*:\s*\$([\d,]+(?:\.\d\d)?)/i;
 const block = (desc: string, heading: string) =>
   (String(desc).match(new RegExp("(?:^|\\n)" + heading + "\\n\\s+([^\\n]+)")) || [])[1]?.trim() ?? "";
 const findZip = (s: string) => {
-  const m = String(s).match(/\b(4[0-5]\d{3})(?:-\d{4})?\b/g);
+  const m = String(s).match(/\b(4[0-7]\d{3})(?:-\d{4})?\b/g);
   return m ? m[m.length - 1]!.slice(0, 5) : "";
 };
 const DETAILER = /^(?:SHORT NOTICE[^:]*:\s*)?([A-Z][a-z]+):/;
@@ -65,6 +65,10 @@ describe("the booking calendar event, as JobsSync reads it", () => {
     const { desc } = booking();
     expect(block(desc, "SOURCE")).toBe("golf / print / qr");
     expect(block(desc, "HEARD ABOUT US")).toBe("Golf booklet");
+  });
+
+  it("reads a Southeast Indiana ZIP (47xxx), which the site serves", () => {
+    expect(findZip("1 Main St, Lawrenceburg, IN, 47025")).toBe("47025");
   });
 
   it("keeps the ZIP as the last ZIP in the location", () => {

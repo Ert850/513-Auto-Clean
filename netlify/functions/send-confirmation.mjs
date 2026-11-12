@@ -1,6 +1,6 @@
 import { priceFromWire, validateWire, findPackage, findAddon, vehicleSize, isLive, ADVICE_HOLD_MIN, businessPhone, multiDayEvents, LONG_JOB_STARTS, CORRECTION_RULES } from "./_pricing.mjs";
 import { blockFeeFor, detailerFor, homeFor, timeFeeWaived } from "./_detailers.mjs";
-import { createBookingEvent, gcalAuthMode, gcalConfigured } from "./_gcal.mjs";
+import { createBookingEvent, findBookingEvent, gcalAuthMode, gcalConfigured } from "./_gcal.mjs";
 import { measuredOneWayMinutes } from "./_routes.mjs";
 import { limited } from "./_ratelimit.mjs";
 import { verifyTurnstile } from "./_turnstile.mjs";
@@ -87,7 +87,17 @@ function whenLabel(slot) {
 // The number in every email: BUSINESS_PHONE in Netlify, else today's number
 // (config/business.json), the same as the pages (A2P plan T1). A bad value
 // stops the build, so it cannot normally get this far.
-const PHONE = businessPhone();
+const PHONE = (() => {
+  // A bad value only fails the build if it is also in the Builds scope; in
+  // the Functions scope alone it threw at load and no booking could be sent
+  // (final review, November 13). Fall back to the repo number and say so.
+  try {
+    return businessPhone();
+  } catch (e) {
+    console.error("BUSINESS_PHONE", String(e).slice(0, 200));
+    return businessPhone("");
+  }
+})();
 
 const SHELL = (title, inner) => `<!doctype html>
 <html><body style="margin:0;padding:24px;background:#f4f5f2;font:16px/1.6 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#14171d">
@@ -126,7 +136,7 @@ ${
   }`;
 }
 
-function customerEmail({ contact, when, priced, kind, slot, textsOk, flex, asked }) {
+function customerEmail({ contact, when, priced, kind, slot, textsOk, flex, asked, calendarOk = true }) {
   const name = esc(String(contact.name || "").split(" ")[0] || "there");
 
   if (kind === "inquiry" || !when) {
@@ -163,7 +173,10 @@ ${receiptRows(priced)}`,
   // Short notice is a request until a detailer accepts it, as the booking
   // form says (owner, November 10; session audit, November 11: this email
   // used to tell the same customer it was "confirmed and booked in").
-  const confirmed = isLive("liveCalendar") && !soon;
+  // And only when the calendar write worked: a failed write leaves the time
+  // sellable, so it is a request until Elijah puts it on by hand (final
+  // review, November 13: it said "booked in" with nothing on the calendar).
+  const confirmed = isLive("liveCalendar") && !soon && calendarOk;
 
   /*
    * A HELD TIME WITH NO PRICE ON IT.
@@ -228,7 +241,9 @@ ${
 export function askedFor(prefer) {
   if (!prefer || typeof prefer !== "object") return "";
   const days = (Array.isArray(prefer.days) ? prefer.days : [])
-    .filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(String(d))).slice(0, 14)
+    // The booking form writes days unpadded ("2026-12-3"); \d{2} dropped every
+    // single-digit month or day from the email (final review, November 13).
+    .filter((d) => /^\d{4}-\d{1,2}-\d{1,2}$/.test(String(d))).slice(0, 14)
     .map((d) => {
       const [y, m, day] = String(d).split("-").map(Number);
       return new Date(Date.UTC(y, m - 1, day, 12)).toLocaleDateString("en-US", { timeZone: "UTC", weekday: "short", month: "short", day: "numeric" });
@@ -239,7 +254,7 @@ export function askedFor(prefer) {
   return [days.join(", "), prefer.flex === true ? "any start that day" : parts.join(", ")].filter(Boolean).join("; ");
 }
 
-function ownerEmail({ contact, when, priced, kind, cart, detailer, asked, notes }) {
+function ownerEmail({ contact, when, priced, kind, cart, detailer, asked, notes, calendarFail = "" }) {
   const a = cart?.address ?? {};
   const where = [a.line1, a.city, a.region, a.zip].filter(Boolean).join(", ");
   const soon = kind === "booking" && cart?.slot && cart.slot - Date.now() < 24 * 60 * 60 * 1000;
@@ -247,12 +262,15 @@ function ownerEmail({ contact, when, priced, kind, cart, detailer, asked, notes 
     subject:
       // "HELP ME DECIDE" first, because it is the one that needs something
       // from him before the day rather than just turning up.
-      `${kind === "advice" ? "HELP ME DECIDE" : kind === "inquiry" ? "REQUEST" : soon ? "SHORT NOTICE REQUEST" : "BOOKING"}, ${contact.name}, ` +
+      `${calendarFail ? "NOT ON THE CALENDAR, " : ""}${kind === "advice" ? "HELP ME DECIDE" : kind === "inquiry" ? "REQUEST" : soon ? "SHORT NOTICE REQUEST" : "BOOKING"}, ${contact.name}, ` +
       `${kind === "advice" ? "no package yet" : $(priced?.totalCents ?? 0)}${when ? `, ${when}` : ""}`,
     html: SHELL(
       kind === "advice"
         ? cart?.slot ? "Time held, package to work out" : "Help me decide, no time yet"
         : kind === "inquiry" ? "New request" : soon ? "Short-notice request, not confirmed until you accept it" : "New booking",
+      (calendarFail
+        ? `<p style="margin:0 0 14px;padding:10px 12px;background:#fdecea;border-left:3px solid #c62828;color:#7f1d1d"><strong>NOT ON THE CALENDAR</strong> (${esc(calendarFail)}). The time is still open to other customers: add it by hand now.</p>`
+        : "") +
       `<table style="width:100%;font-size:14px;border-collapse:collapse">
 <tr><td style="padding:4px 0;color:#5a6069;width:90px">Who</td><td style="padding:4px 0">${esc(contact.name)}<br>${esc(contact.phone)}${contact.email ? `<br>${esc(contact.email)}` : ""}</td></tr>
 <tr><td style="padding:4px 0;color:#5a6069">When</td><td style="padding:4px 0">${esc(when || (asked ? `asked for ${asked}` : "not selected, they asked us to come back with a time"))}</td></tr>
@@ -433,6 +451,13 @@ async function writeCalendar({ contact, cart, priced, extras, payInFull, key, ki
   const events = bookingEvents({ contact, cart, priced, extras, payInFull, kind, detailer, nowMs: Date.now(), measuredMin });
   const phone = String(contact.phone ?? "").replace(/\D/g, "").replace(/^1(?=\d{10}$)/, "");
   const calendarId = detailer ? detailer.bookingsCalendarId : "";
+  // A retry of the same booking (Confirm pressed again after an error) finds
+  // the event the first try wrote, by its booking key, and stops there
+  // (final review, November 13: two events and four emails).
+  if (key) {
+    const existing = await findBookingEvent({ key, calendarId, aroundMs: cart.slot }).catch(() => null);
+    if (existing) return { ok: true, id: existing.id, duplicate: true };
+  }
   const first = await createBookingEvent({ ...events[0], key, phone, calendarId });
   if (!first.ok) return first;
   // Days 2 and on: their own key, so day 1 stays the one a follow-up finds.
@@ -444,11 +469,19 @@ async function writeCalendar({ contact, cart, priced, extras, payInFull, key, ki
 }
 
 async function send(apiKey, from, to, { subject, html }, replyTo) {
-  const res = await fetch("https://api.resend.com/emails", {
+  let res;
+  try {
+    res = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
     body: JSON.stringify({ from, to: [to], subject, html, ...(replyTo ? { reply_to: replyTo } : {}) }),
-  });
+    });
+  } catch (e) {
+    // A network failure used to throw a 500 after the calendar was written,
+    // skipping the customer's email (final review, November 13).
+    console.error("resend network", String(e).slice(0, 200));
+    return false;
+  }
   if (!res.ok) {
     // The body can name the address that was refused, which is useful in a
     // log and must never reach a browser.
@@ -551,9 +584,14 @@ export async function handler(event) {
   // easier to read when the reply says WHICH way in was being used.
   const calendarOut = { ...calendar, auth: gcalAuthMode() };
 
+  if (calendar.duplicate) {
+    return json(200, { sent: false, duplicate: true, calendar: calendarOut });
+  }
   if (!apiKey) {
     return json(200, { sent: false, reason: "unconfigured", calendar: calendarOut });
   }
+  ctx.calendarOk = kind === "inquiry" || calendar.ok === true;
+  ctx.calendarFail = kind === "inquiry" || calendar.ok ? "" : String(calendar.reason || "write failed");
 
   // Elijah's copy first. If only one of the two can get through, it has to be
   // the one that means the job happens.

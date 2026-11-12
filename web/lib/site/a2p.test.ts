@@ -95,7 +95,9 @@ describe("T1: the phone number", () => {
   it("the booking emails use the same number, not a typed one", () => {
     const src = read("netlify/functions/send-confirmation.mjs");
     expect(phoneTrace(src, REPO_PHONE)).toBeNull();
-    expect(src).toContain("const PHONE = businessPhone();");
+    expect(src).toContain("return businessPhone();");
+    // A bad BUSINESS_PHONE in the Functions scope falls back instead of stopping the function loading.
+    expect(src).toContain('return businessPhone("");');
   });
 });
 
