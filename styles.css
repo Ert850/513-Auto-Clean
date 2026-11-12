@@ -1282,6 +1282,16 @@ body > #quote { padding-block: clamp(40px, 4.4vw, 64px); }
 .inq-quote .inq-tick { padding: .45rem .8rem; }
 .inq-quote .inq-ticks { gap: .4rem; }
 .inq-quote .form-foot { margin-top: .9rem; }
+/* Short windows only (owner's pick, November 13): at 1280x720 Request Quote
+   ended at 774 px. Under 760 px tall the card drops its grey sub-line and the
+   boxes tighten; 1440x790 is unchanged. */
+@media (max-height: 759.98px) {
+  #inquiryCard:has(.inq-quote) { padding-top: 1.4rem; }
+  #inquiryCard:has(.inq-quote) .fc-sub { display: none; }
+  .inq-quote .field-row.pair-wide textarea { height: 3.2rem; min-height: 3.2rem; }
+  .inq-quote .inq-tick { padding: .35rem .7rem; font-size: .74rem; }
+  .inq-quote .field label { margin-bottom: .3rem; }
+}
 
 /* Booking CTA panel (replaces the old quote form in the contact section) */
 .book-cta { background: var(--paper-2); border: 1px solid var(--line); border-radius: var(--r-lg); padding: clamp(1.4rem, 4vw, 2rem); box-shadow: var(--shadow-md); }
@@ -1621,18 +1631,19 @@ body > #quote { padding-block: clamp(40px, 4.4vw, 64px); }
    Imperion's layout for the Google Business Profile link: a 9:16 video
    slot beside a card that holds the booking form's own first step.
    ============================================================ */
-/* The red location pill: in the header on this page (chrome.mjs locpill),
-   and in the page where the header shows the menu button instead. */
+/* The red location pill: in the dark top bar on this page from 720 px
+   (chrome.mjs locpill; owner's pick, November 13: in the header it pushed two
+   links into More), and in the page itself on phones. */
 .loc-pill {
   display: inline-flex; align-items: center; gap: .4rem; flex: none;
   padding: .3rem .75rem; border-radius: 999px;
   background: var(--red); color: #fff; font-size: .78rem; font-weight: 700; white-space: nowrap;
 }
 .loc-pill i { width: 7px; height: 7px; border-radius: 50%; background: #fff; }
-.nav-loc { display: none; margin-right: auto; margin-left: .9rem; }
+.tb-loc { display: none; }
 @media (min-width: 720px) {
-  html:not(.nav-burger) .nav-loc { display: inline-flex; }
-  html:not(.nav-burger) .bp-loc { display: none; }
+  .topbar .tb-loc { display: inline-flex; font-size: .72rem; padding: .15rem .6rem; }
+  .bp-loc { display: none; }
 }
 
 .bookpage { position: relative; isolation: isolate; overflow: hidden; background: var(--ink); color: var(--text); }

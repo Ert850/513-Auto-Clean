@@ -215,8 +215,8 @@ describe("T7: the booking page at /book", () => {
     expect(read("js/funnel.js")).toContain("c.innerHTML = rSize();");
   });
 
-  it("carries the Cincinnati pill in its header only", () => {
-    expect(read("booking.html")).toContain('class="loc-pill nav-loc"');
-    expect(read("index.html")).not.toContain("nav-loc");
+  it("carries the Cincinnati pill in its top bar only (owner's pick, November 13)", () => {
+    expect(read("booking.html")).toContain('class="loc-pill tb-loc"');
+    expect(read("index.html")).not.toContain("tb-loc");
   });
 });
