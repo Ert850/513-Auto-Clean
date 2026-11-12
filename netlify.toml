@@ -109,10 +109,15 @@
   to = "/#book"
   status = 301
 
+# The booking page for the Google Business Profile (A2P plan T7, November
+# 12, 2026). A 200, so the address stays /book. It was a 301 to /#book until
+# then: a browser that followed that once may keep going to the home page's
+# booking form, which still books. /book.html above is left alone for the
+# same reason.
 [[redirects]]
   from = "/book"
-  to = "/#book"
-  status = 301
+  to = "/booking.html"
+  status = 200
 
 # Friendlier URLs for the API.
 [[redirects]]
@@ -188,6 +193,17 @@
 # extensionless /lp-golf that Netlify serves for lp-golf.html.
 [[headers]]
   for = "/lp-*"
+  [headers.values]
+    X-Robots-Tag = "noindex"
+
+# The booking page (/book) is out of search results too, like the landing pages.
+[[headers]]
+  for = "/booking*"
+  [headers.values]
+    X-Robots-Tag = "noindex"
+
+[[headers]]
+  for = "/book"
   [headers.values]
     X-Robots-Tag = "noindex"
 

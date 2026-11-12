@@ -39,7 +39,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..")
 // The catalog is split across pages now: packages on the home page, add-ons
 // on services.html, the FAQ (and its price sentence) on faq.html, and the
 // reviews block that carries the rating on about.html.
-const PAGES = ["index.html", "services.html", "faq.html", "about.html", "lp-golf.html", "lp-prestige.html"];
+const PAGES = ["index.html", "services.html", "faq.html", "about.html", "lp-golf.html", "lp-prestige.html", "booking.html"];
 const read = (f) => fs.readFileSync(path.join(root, f), "utf8");
 
 const money = (c) => {
@@ -471,6 +471,44 @@ for (const f of PAGES) fs.writeFileSync(path.join(root, f), pages[f]);
   }
   fs.writeFileSync(path.join(root, "contact.html"), html);
   console.log(`contact form: ${cfg.mode} mode`);
+}
+
+/* ---------------- the booking page (/book), from config/booking-page.json ---------------- */
+
+// A2P plan T7. The 9:16 video slot shows the hero photo until a video is set
+// (one value in the config file), and the area pills are the footer's own
+// area list, so the two never disagree.
+{
+  const cfg = JSON.parse(read("config/booking-page.json"));
+  const v = cfg.video ?? {};
+  for (const k of ["src", "poster"]) {
+    if (typeof v[k] !== "string") throw new Error(`config/booking-page.json: video.${k} must be text ("" for none)`);
+    if (v[k] && (!/^images\/[A-Za-z0-9._-]+$/.test(v[k]) || !fs.existsSync(path.join(root, v[k])))) {
+      throw new Error(`config/booking-page.json: video.${k} "${v[k]}" is not a file in images/`);
+    }
+  }
+  const HERO = (ext) => [640, 960, 1280].map((w) => `images/hero-exterior-${w}.${ext} ${w}w`).join(", ");
+  const SIZES = "(min-width: 1000px) 320px, 100vw";
+  const media = v.src
+    ? `      <video class="bp-media" src="${v.src}" poster="${v.poster || "images/hero-exterior-960.jpg"}" muted playsinline loop autoplay preload="metadata"></video>`
+    : `      <picture>
+        <source type="image/webp" sizes="${SIZES}" srcset="${HERO("webp")}" />
+        <img class="bp-media" src="images/hero-exterior-960.jpg" sizes="${SIZES}" srcset="${HERO("jpg")}"
+             alt="Freshly detailed glossy white SUV in a Cincinnati driveway" fetchpriority="high" width="1600" height="1200" />
+      </picture>`;
+  const areas = [...read("web/partials/footer.html").matchAll(/<a href="\{\{areas\}\}(#area-[a-z]+)">([^<]+)<\/a>/g)]
+    .map(([, hash, label]) => `          <li><a href="service-area.html${hash}">${label}</a></li>`);
+  if (areas.length < 3) throw new Error("render-site: the footer's area list was not found for the booking page");
+  let html = pages["booking.html"] ?? read("booking.html");
+  for (const [name, body] of [["VIDEO", media], ["AREAS", areas.join("\n")]]) {
+    const start = `<!-- BOOKPAGE:${name}:START -->\n`;
+    const end = `<!-- BOOKPAGE:${name}:END -->`;
+    const i = html.indexOf(start);
+    const j = html.indexOf(end);
+    if (i < 0 || j < 0) throw new Error(`render-site: BOOKPAGE:${name} markers not found in booking.html`);
+    html = html.slice(0, i + start.length) + body + "\n" + html.slice(j);
+  }
+  fs.writeFileSync(path.join(root, "booking.html"), html);
 }
 
 /* ---------------- opening hours, from config/business.json ---------------- */

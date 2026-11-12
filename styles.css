@@ -1273,6 +1273,15 @@ body > #quote { padding-block: clamp(40px, 4.4vw, 64px); }
 .inq-tick input { appearance: auto; accent-color: var(--red); width: 17px; height: 17px; flex: none; margin: .05rem 0 0; }
 .inq-terms { font-size: .8rem; color: var(--text-soft); margin: .15rem 0 0; }
 .inq-terms a { color: var(--red-deep); font-weight: 600; }
+/* Quote mode adds two boxes and a line, which put Request Quote 63 px below a
+   1440x790 window (measured). The owner's test needs the button on the first
+   screen, so this mode trims its own spacing and the two text boxes. */
+#inquiryCard:has(.inq-quote) .fc-sub { margin-bottom: 1.1rem; }
+.inq-quote .field { margin-bottom: .75rem; }
+.inq-quote .field-row.pair-wide textarea { height: 4.6rem; min-height: 4.6rem; }
+.inq-quote .inq-tick { padding: .45rem .8rem; }
+.inq-quote .inq-ticks { gap: .4rem; }
+.inq-quote .form-foot { margin-top: .9rem; }
 
 /* Booking CTA panel (replaces the old quote form in the contact section) */
 .book-cta { background: var(--paper-2); border: 1px solid var(--line); border-radius: var(--r-lg); padding: clamp(1.4rem, 4vw, 2rem); box-shadow: var(--shadow-md); }
@@ -1605,4 +1614,82 @@ body > #quote { padding-block: clamp(40px, 4.4vw, 64px); }
   /* Reassurance, not information. It has already been made on the way down
      the page, so it does not need to push the form off the screen twice. */
   .inq-points { display: none; }
+}
+
+/* ============================================================
+   BOOKING PAGE (booking.html, served at /book; A2P plan T7)
+   Imperion's layout for the Google Business Profile link: a 9:16 video
+   slot beside a card that holds the booking form's own first step.
+   ============================================================ */
+/* The red location pill: in the header on this page (chrome.mjs locpill),
+   and in the page where the header shows the menu button instead. */
+.loc-pill {
+  display: inline-flex; align-items: center; gap: .4rem; flex: none;
+  padding: .3rem .75rem; border-radius: 999px;
+  background: var(--red); color: #fff; font-size: .78rem; font-weight: 700; white-space: nowrap;
+}
+.loc-pill i { width: 7px; height: 7px; border-radius: 50%; background: #fff; }
+.nav-loc { display: none; margin-right: auto; margin-left: .9rem; }
+@media (min-width: 720px) {
+  html:not(.nav-burger) .nav-loc { display: inline-flex; }
+  html:not(.nav-burger) .bp-loc { display: none; }
+}
+
+.bookpage { position: relative; isolation: isolate; overflow: hidden; background: var(--ink); color: var(--text); }
+main > .bookpage:first-child { padding-block: clamp(16px, 2.2vw, 30px); }
+.bp-bg {
+  position: absolute; inset: -24px; z-index: -1;
+  background: linear-gradient(rgba(8,10,14,.55), rgba(8,10,14,.7)), url("images/hero-exterior-960.jpg") center / cover;
+  filter: blur(14px);
+}
+.bp-grid { display: grid; gap: 1rem; justify-items: center; }
+.bp-video {
+  width: min(100%, 15rem); aspect-ratio: 9 / 16; border-radius: var(--r-lg); overflow: hidden;
+  background: var(--ink-2); box-shadow: var(--shadow-lg);
+}
+.bp-video picture { display: block; height: 100%; }
+.bp-media { display: block; width: 100%; height: 100%; object-fit: cover; }
+.bp-rating {
+  display: inline-flex; gap: .45rem; align-items: center; margin: 0;
+  padding: .55rem 1rem; border-radius: 999px; background: var(--paper-2); font-size: .85rem; font-weight: 600;
+}
+.bp-rating .hb-stars { color: var(--amber); letter-spacing: .08em; }
+.bp-card {
+  width: 100%; display: grid; gap: 1.2rem; padding: clamp(1.1rem, 2.4vw, 1.6rem);
+  background: var(--paper); border-radius: var(--r-xl); box-shadow: var(--shadow-lg);
+}
+.bp-info h1 { font-size: clamp(1.5rem, 2.2vw, 1.8rem); line-height: 1.15; margin: 0 0 .5rem; }
+.bp-lead { color: var(--text-soft); font-size: .92rem; margin: 0 0 1rem; }
+.bp-areas { list-style: none; margin: 0 0 1.1rem; padding: 0; display: flex; flex-wrap: wrap; gap: .4rem; }
+.bp-areas a {
+  display: inline-flex; align-items: center; gap: .4rem; padding: .3rem .7rem; border-radius: 999px;
+  background: var(--paper-2); border: 1px solid var(--line); font-size: .8rem; font-weight: 600; color: var(--text);
+}
+.bp-areas a::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--red); }
+.bp-contact { margin: 0; display: grid; gap: .1rem; font-size: .9rem; }
+.bp-contact dt { font-size: .74rem; color: var(--text-soft); }
+.bp-contact dt + dd + dt { margin-top: .5rem; }
+.bp-contact dd { margin: 0; font-weight: 600; }
+.bp-step { background: var(--paper-2); border: 1px solid var(--line); border-radius: var(--r-lg); padding: clamp(1rem, 2vw, 1.4rem); }
+.bp-step h2 { font-size: 1.1rem; margin: 0 0 .9rem; }
+.bp-cta { display: none; }
+
+@media (min-width: 1000px) {
+  .bp-grid { grid-template-columns: 17rem minmax(0, 1fr); align-items: center; gap: 1.8rem; max-width: 1120px; margin-inline: auto; }
+  .bp-video { width: 100%; }
+  .bp-rating { display: none; }
+  .bp-card { grid-template-columns: 14rem minmax(0, 1fr); align-items: start; gap: 1.6rem; }
+  .bp-areas { flex-direction: column; align-items: flex-start; }
+}
+/* Phones: the video, the rating, then one big Book Now held at the bottom,
+   in place of the usual Contact / Book Now bar. */
+@media (max-width: 719.98px) {
+  .page-book .mobile-bar { display: none !important; }
+  .bp-cta {
+    display: block; position: fixed; left: 0; right: 0; bottom: 0; z-index: 90;
+    padding: .7rem 1rem calc(.7rem + env(safe-area-inset-bottom, 0px));
+    background: linear-gradient(rgba(11,14,19,0), rgba(11,14,19,.55));
+  }
+  .bp-cta .btn { text-transform: uppercase; letter-spacing: .04em; }
+  .bp-loc { justify-self: start; }
 }

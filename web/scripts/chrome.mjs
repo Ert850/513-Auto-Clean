@@ -18,6 +18,7 @@
  *   contact  "Contact Us": the form itself on contact.html, the page elsewhere
  *   areas    footer place links: in-page on service-area.html, that page elsewhere
  *   hours    the opening hours in words, from config/business.json (the same on every page)
+ *   locpill  the red "Cincinnati, OH" pill beside the logo: booking.html only (A2P plan T7)
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -25,7 +26,7 @@ import { fileURLToPath } from "node:url";
 import { hoursText } from "../../netlify/functions/_pricing.mjs";
 
 export const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
-export const CHROME_PAGES = ["index.html", "services.html", "about.html", "service-area.html", "faq.html", "contact.html", "lp-golf.html", "lp-prestige.html"];
+export const CHROME_PAGES = ["index.html", "services.html", "about.html", "service-area.html", "faq.html", "contact.html", "lp-golf.html", "lp-prestige.html", "booking.html"];
 const PARTS = ["HEAD", "HEADER", "FOOTER", "SCRIPTS"];
 /** The build stamps asset URLs (?v=hash) after this step; compare without them. */
 export const unstamp = (s) => s.replace(/\?v=[0-9a-f]{10}/g, "");
@@ -46,6 +47,8 @@ export function valuesFor(page, html) {
     contact: page === "contact.html" ? "#inquiry" : "contact.html",
     areas: page === "service-area.html" ? "" : "service-area.html",
     hours: hoursText(),
+    // Part of the header, so the Priority+ nav measures it like any link.
+    locpill: page === "booking.html" ? '\n    <span class="loc-pill nav-loc"><i aria-hidden="true"></i>Cincinnati, OH</span>' : "",
   };
 }
 
