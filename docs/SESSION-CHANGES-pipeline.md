@@ -15,6 +15,33 @@ Built overnight, November 10 to 11, for you to evaluate. It combines your 8 answ
 
 ## Round 22 (November 12): written-in numbers
 
+- **Checkout: a small in-section Continue is back, where it fits (Emmett, November 12).** It's a second way to move on, with less mouse travel. The bar's red Continue is unchanged.
+  - **Show rule, the same for every section** (`fitCkCont()` in `js/funnel.js`): the button shows only when the form's resting position leaves it at least 160 px above the bar (`CKCONT_GAP`). Then it's on screen and saves a reach; just above the bar, the bar's own Continue is as close.
+    - **Resting position:** worked out the way `render()` will place the form. A new step starts at the top, a redraw keeps its place, and a section opening under folded ones is brought up by `ckScroll()`.
+    - **When it's decided:** when a section opens and on resize, with 24 px of hysteresis (`CKCONT_HYST`). Never on scroll or while typing.
+    - **Time:** it follows the bar (`ckNextIdle()`).
+  - **Position:** after the section's last box, left-aligned. On a laptop that's under the Name/Phone/Email row, starting under Name. On a phone, where the boxes stack, it's after Email, never between two.
+  - **Same path as the bar:** the button calls `ckAdvance()`, so errors and scrolling to a problem are identical. The look is the dark `.bk-ckcont` from before Round 20.
+  - **Checked** (walk from vehicle to "Almost done", headless Chrome, no submit):
+
+    | Window | Your details | Address | Time | Almost done |
+    |---|---|---|---|---|
+    | 1440×790 | shown (324 px) | hidden (below the fold) | hidden | hidden |
+    | 1280×720 | shown (263 px above the bar) | hidden (below the fold) | hidden | hidden |
+    | 820×1180 | shown (489 px) | hidden (136 px, under the 160 px gap) | hidden | hidden |
+    | 700×400 | hidden (below the fold) | hidden | hidden | hidden |
+    | 375×812 | shown, after Email (251 px) | hidden | hidden | hidden |
+    | 320×568 | hidden (7 px) | hidden | hidden | hidden |
+
+    - **Behaviour:** never between two boxes, never under the bar. The inline button moves on exactly like the bar's.
+    - **Resize test:** shrinking a 1440-wide window from 790 to 400 px tall and back hid the button at 500 and brought it back at 790, with no flicker.
+    - **Errors and tests:** no page errors; 610 tests pass.
+    - **Screenshots:** `docs/mockups/checkout-inline-continue-1440.png` and `-375.png`.
+  - **To test:**
+    - On a laptop, open checkout: "Your details" shows a small dark Continue under the boxes, and it moves on like the red one.
+    - Address and Time show only the red one.
+    - On a phone, the small one comes after Email.
+
 - **Bug: the golf page wrote the GOLF10 discount into its text.** *Root cause:* "GOLF10 takes 10% off your first detail" was typed into `lp-golf.html`, while the discount lives in `config/promo-codes.json`. Changing the file would have charged one amount and advertised another. *Fix:* `render-site.mjs` now stamps the amount from the file on every page that says "<b>CODE</b> takes … off", and fails the build if a page names a code the file doesn't have. Checked: with GOLF10 set to 15 in the file the page said 15% off, and back at 10 it said 10% (the page itself is unchanged today). `CLAUDE.md`'s settings rule now names fees and discounts too.
 - **Swept for the same mistake:** the booking form's fee and rush wording already come from the settings (`feeText()`, `rushWords()`), and the landing pages, the confirmation email and the cold-weather notice carry no other written-in amounts.
 - **Bug (older, from September): the free drive minutes were written in three places.** *Root cause:* "the first 10 minutes … are free" was typed into the booking form's address step (`js/funnel.js`), `terms.html` and `service-area.html`, while the number is `DEFAULT_RULES.mileage.freeMinutes` in `web/lib/pricing/rules.ts`. Changing the rule would have charged differently from what all three said. *Fix (Emmett's OK):*

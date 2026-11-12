@@ -41,46 +41,9 @@ Work that's agreed but deliberately not started before Friday. Newest first.
   - Chrome, Safari and Firefox on a laptop, plus iPhone and Android pickers;
   - a rush day, a day with only late starts, keyboard only.
 
-## Checkout: a small in-section Continue where it saves a reach (Emmett, November 12)
+## Checkout: a small in-section Continue where it saves a reach: BUILT (November 12)
 
-**Ask:** add back the small Continue under a checkout section's boxes, as a second way to move on with less mouse travel. It started with "Your details" (Name, Phone, Email). The bottom bar's red Continue stays exactly as it is.
-
-**This reverses part of an owner decision from the same day.** Round 20 (`SESSION-CHANGES-pipeline.md`; `CLAUDE.md`, "Checkout continues from the bottom bar only") removed every in-section Continue. Rewrite that `CLAUDE.md` rule when this is built.
-
-**Why Round 20 removed them, and why neither reason applies now:**
-- **Below the fold:** under a long section (Address, Time) the button sat below a laptop's fold. The show rule below never draws it there.
-- **"Your time" off centre:** the card in the bar centred off to the right. That came from hiding the bar's Continue, and the bar keeps its button.
-
-### Design (Emmett's direction, November 12)
-
-**1. One rule decides where the button shows, for every section.**
-- **Where:** the section is Contact, Address, Time or "Almost done". The button is drawn under that section's last row of boxes.
-- **When the section opens,** measure where the button would sit on screen once the section is at rest. That's after the form's own scroll, and after `revealTravel()` on Address.
-- **Show it only when both of these hold:**
-  - **It fits:** the whole button is above the pinned bottom bar, with a small margin. No button below the fold, which was Round 20's reason.
-  - **It saves a reach:** its distance to the bar is at least a set gap, for example 160 px (a named constant, tuned on screen). If the section ends just above the bar, the bar's Continue is already as close, and a second button is clutter.
-- So a short section on a tall window gets the button, a long section or a short window doesn't, and no section is a special case. That answers "inconsistent between sections": the rule is the consistency.
-- **Only re-decide when the section opens, on a window resize, or on a rotation.** Never on scroll or while typing. A button appearing and disappearing mid-task would move the folded rows under it.
-- **Add a little hysteresis around the threshold,** so a window resized near the limit doesn't flicker.
-- **Time:** the button follows the bar's: shown only once there is a time or a request (`ckNextIdle()`).
-
-**2. Position by window size**, using the same test as the time picker (`phoneView()`, under 768 px):
-- **Tablet and up:** the boxes sit in a row, so the button goes under the row, left-aligned, under the first box (Name on "Your details"). That's the shortest reach from where the pointer just was.
-- **Phone:** the boxes stack, so the button goes after the last box (Email), never between two. The same show rule applies. On most phones a section like Address won't qualify, which is right: the bar is already under the thumb.
-
-**3. One code path:** the button calls the same `advance()` as the bar, which finishes the open section (`ckAdvance`). Validation, errors and scrolling to an error are identical.
-
-**4. Screen readers:** both buttons are labelled "Continue" and do the same thing. The inline one comes straight after the boxes in tab order, so keyboard users meet it first. Nothing else is needed. Enter and the phone's Go key already continue from the last box.
-
-**5. Look:** the small dark button from before Round 20 (in the parent of `bf608f0`). No new style.
-
-### Checks when built
-- **Sizes:** 1440×790, 1280×720, 820×1180, 700×400, 375×812 and 320 px.
-- **At each size, for each section:** shown or hidden as the rule says, never under the bar, never between stacked boxes.
-- **Stability:** resizing across the threshold doesn't flicker; the "Your time" card stays centred.
-- **Booking paths:** every path still reaches Done, with no console errors.
-- **Effort:** about 1 hour, with the checks.
-- **Timing:** build it after the ad blocker fix lands. That fix may rename classes in `js/funnel.js` and `book.css`.
+Built and logged in `SESSION-CHANGES-pipeline.md` (Round 22). The design that was here is now the `CLAUDE.md` rule "Checkout continues from the bottom bar, plus a small in-section Continue only where it fits".
 
 ## Photo pipeline: the website gallery pulls from Google Drive (Elijah, team brief section 5, November 11)
 

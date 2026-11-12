@@ -679,6 +679,68 @@
   function ckNextIdle() {
     return ckOpenId() === 'when' && !state.slot && !isInquiry();
   }
+  /**
+   * A second, smaller Continue at the end of the open section (Emmett,
+   * November 12), beside the bar's, for less mouse travel. One rule for every
+   * section: shown only where the section comes to rest with the button at
+   * least CKCONT_GAP above the bar. Then it is on screen (Round 20 removed the
+   * old one because it sat below a laptop's fold) and it saves a reach (just
+   * above the bar, the bar's own Continue is as close). It sits after the
+   * section's last box, so on a phone, where the boxes stack, it comes after
+   * all of them rather than between two.
+   *
+   * Decided when a section opens and again on a resize, never on scroll or
+   * while typing: a button appearing mid-task would move the rows under it.
+   * A resize needs CKCONT_HYST more to flip, so a window dragged near the
+   * line does not flicker. Time follows the bar: nothing until there is a
+   * time or a request (ckNextIdle()).
+   */
+  var CKCONT_GAP = 160, CKCONT_HYST = 24;
+  var ckCont = { id: null, show: false };
+  function slideShift(node) {
+    try {
+      var tf = getComputedStyle(node).transform;
+      if (tf && tf !== 'none' && window.DOMMatrix) return new DOMMatrix(tf).m42;
+    } catch (e) { /* no transform */ }
+    return 0;
+  }
+  /**
+   * Room left between the button and the bar once the form has scrolled
+   * where render() will put it: `rest` is that scrollTop, or null for a
+   * section that just opened under others (ckScroll() brings it up).
+   */
+  function ckContRoom(b, rest) {
+    var sc = el('bkScroll'), sec = b.parentNode, wasHidden = b.hidden;
+    b.hidden = false;
+    var top = sc.getBoundingClientRect().top, shift = slideShift(sec);
+    var at = function (y) { return sc.scrollTop + y - shift - top; };
+    var btnBottom = at(b.getBoundingClientRect().bottom);
+    if (rest === null) {
+      // As ckScroll(): the top if the whole section fits, else the row
+      // above it (or the section itself) up to the top.
+      rest = 0;
+      if (at(sec.getBoundingClientRect().bottom) > sc.clientHeight - 8) {
+        var prev = sec.previousElementSibling;
+        var anchor = prev && prev.classList && prev.classList.contains('bk-donerow') ? prev : sec;
+        rest = at(anchor.getBoundingClientRect().top) + (anchor === sec ? 0 : shift) - 8;
+      }
+    }
+    b.hidden = wasHidden;
+    return sc.clientHeight - (btnBottom - rest);
+  }
+  function fitCkCont(resized, rest) {
+    var b = el('bkBody') && el('bkBody').querySelector('.bk-ckcont');
+    var sc = el('bkScroll');
+    if (!b || !b.getBoundingClientRect || !b.parentNode || !b.parentNode.getBoundingClientRect ||
+        !sc || !sc.getBoundingClientRect) return;
+    var id = b.dataset.ckcont;
+    if (resized || ckCont.id !== id) {
+      var need = !resized ? CKCONT_GAP : ckCont.show ? CKCONT_GAP - CKCONT_HYST : CKCONT_GAP + CKCONT_HYST;
+      ckCont = { id: id, show: ckContRoom(b, rest === undefined ? sc.scrollTop : rest) >= need };
+    }
+    b.hidden = !ckCont.show || ckNextIdle();
+  }
+
   /** Continue in a section: check it, fold it, and open the next one. */
   function ckAdvance(id) {
     var c = CK[ckIndex(id)];
@@ -707,7 +769,9 @@
           // the folded rows (owner, November 12: the travel fee sat below a
           // laptop's fold).
           '<p class="bk-reqnote"><span class="bk-req" aria-hidden="true">*</span> Required</p>' +
-          '<h3 class="bk-sec-h" tabindex="-1">' + esc(c.title) + '</h3>' + note + c.render() + '</section>';
+          '<h3 class="bk-sec-h" tabindex="-1">' + esc(c.title) + '</h3>' + note + c.render() +
+          (c.id === 'review' ? '' : '<button type="button" class="bk-ckcont" data-ckcont="' + c.id + '" hidden>Continue' + CHEV_R + '</button>') +
+          '</section>';
       } else if (state.ckDone[c.id]) {
         html += '<button type="button" class="bk-donerow" data-cksec="' + c.id + '">' +
           '<span>' + esc(ckTabOf(c.id)) + '</span><b>' + esc(c.sum()) + '</b><em>Change</em></button>';
@@ -825,6 +889,10 @@
     repaintAfterRender = false;
     el('bkBody').innerHTML = onCheckout() ? rCheckout(grew) : rBuild(grew);
     if (repaintAfterRender) { repaintAfterRender = false; repaintSlots(); }
+    // Where the form will rest: a section that just opened is brought up by
+    // ckScroll() (null), a new step starts at the top, a redraw keeps its place.
+    if (onCheckout()) fitCkCont(false, grew ? null : lastRenderedStep === s.id ? keptScroll : 0);
+    else ckCont.id = null;
 
     var back = el('bkBack');
     back.hidden = state.step === 0;
@@ -6069,7 +6137,7 @@
       '[data-size],[data-intent],[data-pkg],[data-addon],[data-clear],[data-slot],' +
       '[data-pay],[data-delveh],[data-browsepick],[data-max],[data-sort],[data-pkgfirst],' +
       '[data-kind],[data-paymethod],[data-corr],[data-coating],[data-garage],[data-step],' +
-      '[data-prefday],[data-prefpart],[data-interest],[data-interest-only],[data-wkday],[data-more],[data-steer],[data-flexday],[data-wkfold],[data-cksec],[data-access],[data-extrarm],' +
+      '[data-prefday],[data-prefpart],[data-interest],[data-interest-only],[data-wkday],[data-more],[data-steer],[data-flexday],[data-wkfold],[data-ckcont],[data-cksec],[data-access],[data-extrarm],' +
       '#bkWkPrev,#bkWkNext,#bkWkNext2,#bkWkToday,#bkWkBack,#bkShowAll,#bkShowRecs,#bkFeeWhy,' +
       '#bkAddVeh,#bkNext,#bkBack,#bkClose,#bkScrim,#bkBrowse,#bkBrowseBack,' +
       '#bkAskMode,#bkAskMode2,#bkSlotMode,#bkFlexOpen,#bkPickChange,#bkShowExtras,' +
@@ -6283,7 +6351,7 @@
         var keep = t.dataset.slot;
         repaintSlots();
         updatePick();
-        if (onCheckout()) el('bkNext').hidden = ckNextIdle();
+        if (onCheckout()) { el('bkNext').hidden = ckNextIdle(); fitCkCont(false); }
         var again = root.querySelector('.bk-tl .bk-tl-s[data-slot="' + keep + '"]');
         if (again && again.focus) again.focus({ preventScroll: true });
         updateCue();
@@ -6388,10 +6456,11 @@
       // Continue shows only for a time or a request, and this updates in
       // place, so show or hide it here (final validation, November 11:
       // "Carry on" with nothing to carry on with).
-      if (onCheckout()) el('bkNext').hidden = ckNextIdle();
+      if (onCheckout()) { el('bkNext').hidden = ckNextIdle(); fitCkCont(false); }
       renderTotal();
       return;
     }
+    if (t.dataset.ckcont) return ckAdvance(t.dataset.ckcont);
     if (t.dataset.cksec) return ckOpenSection(t.dataset.cksec);
     if (t.dataset.wkfold) {
       if (t.dataset.wkfold === 'early') state.wkEarly = true;
@@ -7606,6 +7675,7 @@
     // opening, times arriving) or the window changes size.
     el('bkScroll').addEventListener('scroll', updateCue, { passive: true });
     window.addEventListener('resize', updateCue);
+    window.addEventListener('resize', function () { if (onCheckout()) fitCkCont(true); });
     if (window.ResizeObserver) new ResizeObserver(updateCue).observe(el('bkBody'));
 
     // Pointing at a start on the day timeline draws the whole job it would book.
