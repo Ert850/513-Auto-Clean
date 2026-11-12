@@ -71,7 +71,7 @@ Site configuration, then Environment variables, then Add a variable:
 ]
 ```
 
-- **Order is the booking preference.** The first person free for a time gets the job. Kris is first here, then you.
+- **Who goes first is the `Priority: N` line in each availability calendar's description** (lower first; Kris 1, Elijah 2). The order of this list only breaks a tie, or decides when no calendar says. Keep the word "priority" out of every other calendar description: the site takes the lowest number it finds across all of a person's calendars, bookings included.
 - **`does`:** what this person can take on, as one word, a list, or `"all"` (the default):
   - the words are `"interior"`, `"exterior"`, `"correction"` (polishing and paint correction) and `"coating"`, for example `["interior", "correction"]`;
   - a job only goes to someone who has every word it needs, so a job with any exterior work only goes to someone who does exterior;

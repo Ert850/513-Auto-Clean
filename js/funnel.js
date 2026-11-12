@@ -867,6 +867,14 @@
   function slotStillFits() {
     if (!state.slot) return;
     if (state.slot < Date.now()) return dropSlot('The time you picked has passed. Pick a new one below.');
+    // The job now needs work the person given this time does not do (Kris,
+    // interior only, given a time before exterior was added). Kept, the
+    // server would book it on the owner's calendar without checking he is
+    // free (audit, November 12), so the time is chosen again from whoever can.
+    var given = crew().filter(function (d) { return d.id === state.detailer; })[0];
+    if (given && !P.canDo(given, jobNeeds())) {
+      return dropSlot('Your detail has changed, so the time you picked needs choosing again. These times fit.');
+    }
     var dur = holdMinutes();
     if (!state.slotDur) { state.slotDur = dur; return; }
     var key = state.slot + ':' + dur;
@@ -1581,7 +1589,9 @@
     return Promise.all([P.loadWindow(cfg, from, to), personal])
       .then(function (both) {
         var win = both[0];
+        var late = new Map();
         var slots = P.computeSlots({
+          lateBy: late,
           openBlocks: win.open,
           busy: (win.busy || []).concat(both[1]),
           serviceDurationMin: dur,
@@ -1598,7 +1608,10 @@
         });
         // To the minute, not the millisecond: the grid is rebuilt from a
         // different `now` and need not land on the same instant.
-        return slots.some(function (ms) { return Math.abs(ms - slot) < 60000; });
+        var hit = slots.filter(function (ms) { return Math.abs(ms - slot) < 60000; })[0];
+        // The planned arrival from the calendar as it is now, for the event's end.
+        if (hit !== undefined && state.slot === slot) state.slotLateMin = late.get(hit) || 0;
+        return hit !== undefined;
       })
       .catch(function () { return true; });
   }
@@ -3494,6 +3507,8 @@
     var buffer = P.travelBufferMin(drive);
     var needs = jobNeeds();
 
+    // Planned late arrivals per detailer (P.computeSlots lateBy), for the event's end.
+    var lateBy = {};
     var startsFor = function (win, id) {
       // Each detailer's own drive here, from their home.
       var myDrive = id ? driveFor(id) : drive;
@@ -3517,7 +3532,8 @@
         ignoreReturnAfterMin: P.IGNORE_RETURN_AFTER_MIN,
         // And the first job of the day is reached by leaving home earlier,
         // for a drive short enough to absorb before the day starts.
-        ignoreOutboundBeforeMin: myDrive <= 60 ? P.IGNORE_OUTBOUND_BEFORE_MIN : undefined
+        ignoreOutboundBeforeMin: myDrive <= 60 ? P.IGNORE_OUTBOUND_BEFORE_MIN : undefined,
+        lateBy: (lateBy[id || 'owner'] = new Map())
       };
       if (corr) {
         req.preferredStartsMin = { weekday: P.CORRECTION_RULES.allowedStartsMin, weekend: P.CORRECTION_RULES.allowedStartsMin };
@@ -3561,7 +3577,8 @@
       }),
       mode: team.mode,
       forecast: forecast,
-      weatherReasons: reasons
+      weatherReasons: reasons,
+      late: lateBy
     };
 
     // A quoted time was never reserved, so it has to earn its place in the
@@ -3709,6 +3726,10 @@
     state.detailer = (lastCalc && lastCalc.who && lastCalc.who.get(ms)) || 'owner';
     // The rush fee follows the time, so there is no box to tick for it.
     if (!hasCorrection()) state.priority = needsPriority(ms);
+    // Minutes into the arrival window this start was planned to arrive, so
+    // the booking blocks until the job really ends (computeSlots lateBy).
+    var lateMap = lastCalc && lastCalc.late && lastCalc.late[state.detailer];
+    state.slotLateMin = (lateMap && lateMap.get(ms)) || 0;
     // The address came first, so the drive can be measured for this time
     // (traffic matters) while they carry on.
     if (addressComplete()) measureTravel();
@@ -5806,6 +5827,9 @@
         zip: state.address.zip || ''
       },
       slot: state.slot,
+      // Planned minutes into the arrival window (selectSlot, verifySlot): the
+      // calendar event runs to that arrival plus the work.
+      arrivalLateMin: state.slot && state.slotLateMin ? state.slotLateMin : 0,
       priority: state.priority,
       promoCode: state.promoCode || null,
       // Only for the rush fee rules (config/rush-fee.json), which the server

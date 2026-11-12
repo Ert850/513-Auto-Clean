@@ -76,7 +76,7 @@ To move a best time, edit the BEST event's start time. To stop offering it, dele
 2. In **Description**, write `Priority: 1` for the first choice, `Priority: 2` for the next, and so on.
 3. It saves by itself.
 
-Today Kris is Priority 1 and you are Priority 2. When two people are free at the same time, the job goes to the lower number.
+Today Kris is Priority 1 and you are Priority 2 (checked November 12). When two people are free at the same time, the job goes to the lower number. Don't write the word "priority" with a number anywhere else in a calendar description, bookings calendars included: the site takes the lowest number it finds across all of a person's calendars.
 
 ## E. Change prices by time, and where someone drives from
 
@@ -151,14 +151,16 @@ A job only goes to someone who does every part of it. Save, then **Trigger deplo
 
 ## Kris today (for reference)
 
-- **Hours (OPEN):** Sunday and Monday 8am to midnight; Tuesday to Saturday 6pm to midnight. Jobs finish by midnight.
-- **Best times (BEST):** Sunday and Monday 10am; Tuesday to Saturday 6pm.
-- **Prices (fee standard B, set up November 11):** Sunday and Monday `OPEN +20%` 8 to 10am, `OPEN` 10am to 6pm, `OPEN +20%` 6pm to midnight. Tuesday to Saturday `OPEN` 6 to 7:30pm (so 6, 6:30 and 7pm starts are standard), `OPEN +20%` 7:30pm to midnight.
+- **Days (owner, November 12):** Monday to Thursday only. Kris doesn't work Friday, Saturday or Sunday; those days are Elijah's alone. About 5 jobs a week: 2, maybe 3 on Monday, 1 each Tuesday to Thursday. There's no job cap in the code: the hours below produce those counts.
+- **Hours (OPEN):** Monday 8am to midnight; Tuesday to Thursday 6pm to midnight. Jobs finish by midnight.
+- **Best times (BEST):** Monday 10am; Tuesday to Thursday 6pm.
+- **Prices (fee standard B):** Monday `OPEN +20%` 8 to 10am, `OPEN` 10am to 6pm, `OPEN +20%` 6pm to midnight. Tuesday to Thursday `OPEN` 6 to 7:30pm (so 6, 6:30 and 7pm starts are standard), `OPEN +20%` 7:30pm to midnight.
+- **Changed November 12:** the seven weekly events were recreated with the new days (Google Calendar can't narrow a repeating event's days through the API); the old series are in the calendar's trash for 30 days. To change his days again, edit each event's repeat ("Custom", then the days) and choose "This and following events".
 - **Priority:** 1. **Does:** interior only.
 - **Calendars:**
   - 513 Kris Availability: `18f753f8e633da3dec644bca2d658fdccc42ee05a043adbf46dbc939ec88f2dd@group.calendar.google.com` (public, all event details).
   - 513 Kris Bookings: `b79865896edf56c9cc9985c8607a0a4dfec5df71b032ff7c16d3dae23e793826@group.calendar.google.com` (public, free/busy only). Still to do: share it with Kris once we have his email.
-- **His Netlify `DETAILERS` entry (saved November 10):**
+- **His Netlify `DETAILERS` entry (saved November 10; change `Tue-Sat` to `Tue-Thu` to match his November 12 days, which is harmless either way since the calendar sets his fees):**
   ```
   [{"name":"Kris","does":"interior","noFeeStarts":"Tue-Sat 18:00-19:00",
     "availability":"18f753f8e633da3dec644bca2d658fdccc42ee05a043adbf46dbc939ec88f2dd@group.calendar.google.com",

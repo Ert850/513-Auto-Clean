@@ -99,6 +99,16 @@ export interface SlotRequest {
    */
   arrivalWindowMin?: number;
   /**
+   * Filled when given: every offered start planned as a late arrival (inside
+   * the arrival window, because the drive from the previous job runs into
+   * it), as minutes after the start. The booking is written from the start to
+   * that arrival plus the work, so the next job is spaced from when this one
+   * really ends (audit, November 12: the event ended at start plus work, and
+   * a third job chained on the same day assumed the detailer free an hour
+   * early).
+   */
+  lateBy?: Map<number, number>;
+  /**
    * Restrict to these weekdays, 0 Sun to 6 Sat. Correction work uses it to
    * offer weekend starts only, since it runs across several days.
    */
@@ -292,6 +302,7 @@ export function computeSlots(req: SlotRequest): number[] {
         matchesPreferred(t, wanted, req.timeZone)
       ) {
         out.push(t);
+        if (req.lateBy && late > 0) req.lateBy.set(t, late / MIN);
       }
       t += step;
     }

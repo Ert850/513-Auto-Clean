@@ -78,7 +78,19 @@ const experiments = experimentsForPage();
 // loads. esbuild bundles them without running anything, so load the server
 // bundle here: a mistake in config/rush-fee.json or config/promo-codes.json
 // stops the build instead of shipping a booking function that throws.
-await import("../../netlify/functions/_pricing.mjs");
+const { parseDetailers } = await import("../../netlify/functions/_pricing.mjs");
+
+// DETAILERS (Netlify) is checked with the same parser the site and the
+// functions use. A typo there used to drop a detailer, or their fee-free
+// starts, with only a warning in a visitor's browser console (audit,
+// November 12). Unset is fine: the owner alone, as before.
+{
+  const { problems } = parseDetailers(process.env.DETAILERS);
+  if (problems.length) {
+    console.error("render-config: DETAILERS has a problem, fix it in Netlify:\n  " + problems.join("\n  "));
+    process.exit(1);
+  }
+}
 const outWithTests = out + "\nwindow.AC_EXPERIMENTS = " + JSON.stringify(experiments) + ";\n";
 
 fs.writeFileSync(OUT, outWithTests);
