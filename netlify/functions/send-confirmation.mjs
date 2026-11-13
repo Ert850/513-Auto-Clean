@@ -99,8 +99,12 @@ const PHONE = (() => {
   }
 })();
 
-const SHELL = (title, inner) => `<!doctype html>
+// `preview` is the inbox preview line (the grey text under the subject). Hidden
+// in the email itself; the padding stops mail apps filling the rest of the
+// line with body text.
+const SHELL = (title, inner, preview = "") => `<!doctype html>
 <html><body style="margin:0;padding:24px;background:#f4f5f2;font:16px/1.6 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#14171d">
+${preview ? `<div style="display:none;max-height:0;overflow:hidden;opacity:0;font-size:1px;line-height:1px;color:transparent">${esc(preview)}${"&#847;&zwnj;&nbsp;".repeat(60)}</div>` : ""}
 <div style="max-width:560px;margin:0 auto;background:#fff;border-radius:12px;padding:28px">
 <p style="margin:0 0 4px;font-size:12px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:#c41414">513 Auto Clean</p>
 <h1 style="margin:0 0 16px;font-size:24px;line-height:1.2">${title}</h1>
@@ -264,7 +268,14 @@ function ownerEmail({ contact, when, priced, kind, cart, detailer, asked, notes,
       // from him before the day rather than just turning up.
       `${calendarFail ? "NOT ON THE CALENDAR, " : ""}${kind === "advice" ? "HELP ME DECIDE" : kind === "inquiry" ? "REQUEST" : soon ? "SHORT NOTICE REQUEST" : "BOOKING"}, ${contact.name}, ` +
       `${kind === "advice" ? "no package yet" : $(priced?.totalCents ?? 0)}${when ? `, ${when}` : ""}`,
-    html: SHELL(
+    // Elijah's inbox preview (November 13): price, job, date and time, place.
+    html: ((title, inner) => SHELL(title, inner, [
+      kind === "advice" ? "Help me decide" : $(priced?.totalCents ?? 0),
+      (cart?.vehicles ?? []).flatMap((v) => (v.packageIds ?? []).map((id) => findPackage(id)?.name)).filter(Boolean).join(" + ") ||
+        (kind === "advice" ? "package to work out" : ""),
+      when || (asked ? `asked for ${asked}` : "no time yet"),
+      [a.city, a.zip].filter(Boolean).join(" "),
+    ].filter(Boolean).join(" · ")))(
       kind === "advice"
         ? cart?.slot ? "Time held, package to work out" : "Help me decide, no time yet"
         : kind === "inquiry" ? "New request" : soon ? "Short-notice request, not confirmed until you accept it" : "New booking",
