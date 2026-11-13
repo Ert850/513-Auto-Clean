@@ -10,6 +10,18 @@ Work that's agreed but deliberately not started before Friday. Newest first.
   - Check that no page carries 371-5948 afterwards.
   - Emails pick it up from the same deploy.
 
+## Monday: the 513 Auto Clean logo in the booking emails (Elijah, November 14)
+
+Elijah's inbox shows a generic building icon beside "513 Auto Clean". Two separate pieces:
+1. **The logo inside the email** (quick, our code): a small logo at the top of the customer and owner emails in `send-confirmation.mjs` `SHELL`, from an image already on the site (an absolute `https://513autoclean.com/images/…` URL, with alt text "513 Auto Clean"). Check it in Apple Mail, Gmail (web and phone) and dark mode. It's a function change, so it waits for the freeze to end.
+2. **The logo as the sender picture in the inbox list** (the icon in Elijah's screenshot). That's BIMI, set in DNS for 513autoclean.com, not in our code:
+   - DMARC must be at enforcement (`p=quarantine` or `p=reject`) for the sending domain, with SPF and DKIM for Resend aligned. Check the current DMARC record first: tightening it wrongly can send real emails to spam.
+   - The logo must be an SVG Tiny PS file at a public https address, plus a BIMI TXT record.
+   - Gmail and Apple Mail show it only with a mark certificate: a VMC (needs a registered trademark) or a CMC (no trademark; about a year of logo use). Both cost money every year, from roughly several hundred dollars upward. **Ask Elijah if it's worth it.**
+   - Without a certificate, some providers (Yahoo, Fastmail) may show it; Gmail and Apple won't.
+   - It's DNS, not the website, so it doesn't break the verification freeze, but don't change DMARC during the toll-free review without Imperion knowing.
+- Note: the email in Elijah's screenshot (sent November 13, 8:19 PM) is the **old** layout. Bookings since PR #9 get the new one (arrival time, duration, window, travel always priced).
+
 ## Monday: a design spec for one Google calendar (Imperion, November 14)
 
 - **Imperion's ask:** they will do the GoHighLevel integration themselves, later. Their main worry is syncing several calendars, and they'd prefer the booking backend to read and write **one** Google calendar.
