@@ -12,7 +12,13 @@ He checked every page. Results, Meet the Team, Reviews and Range & Travel are fi
      - "UC student-owned team bringing professional interior and exterior detailing to you.";
      - "Support genuine people you can trust when you go with us.";
      - Book Now.
-   - **His reference:** Alex Hormozi's short "We Make Our Landing Pages Like This" (https://youtube.com/shorts/7_NOrSBIYG0). Claude can't watch video, so Emmett or Elijah names the two or three points to take from it before the mockup.
+   - **His reference:** Alex Hormozi's short "We Make Our Landing Pages Like This" (https://youtube.com/shorts/7_NOrSBIYG0; captions pulled November 13). Its rules, and what each means here:
+     - **The headline stops the reader and promises a clear outcome; the subheadline clarifies it.** Elijah's headline is the claim. The subheadline should say the outcome (a clean car, at your door, without losing your day).
+     - **The hero image is proof:** show the thing they get or the outcome. Today's hero photo should be a strong finished car, or a before and after. This ties to Elijah's photo picks.
+     - **The button says what they get and how, nothing else.** Mock up "Book Now" against something like "See my price and book".
+     - **Three bullets below the fold: the three biggest objections, most common first.** Use the "Ready to book?" bullets (item 2). Likely candidates from `BUSINESS-CONTEXT.md` section 4: when do I pay (after, on site), do you need my water or power (no), do I need to be home (no). Elijah confirms the order.
+     - **Social proof below, only if needed. Keep everything else empty, the page short and the images compressed.** Anything that doesn't raise qualified bookings gets cut. Ask before cutting home-page sections: the owner kept the full package cards once already.
+     - **More than five form fields means steps.** The booking form already works in steps.
    - **Ask with the mockup:**
      - Does the hero keep View Services and Contact Us, the Google rating pill and the hours line, or show only Book Now?
      - Is "Best" OK as written? The 5.0 Google rating beside it backs it up.
