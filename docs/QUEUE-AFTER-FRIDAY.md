@@ -2,6 +2,42 @@
 
 Work that's agreed but deliberately not started before Friday. Newest first.
 
+## Monday: Elijah's walkthrough of the live site on a phone (November 13)
+
+He checked every page. Results, Meet the Team, Reviews and Range & Travel are fine as they are. The results slider "works great" on mobile, and the booking section at the bottom of the home page "should work well".
+
+1. **Home page hero: new wording (mockup current vs proposed first; the hero is the owner's first screen).**
+   - **His text:**
+     - "Best mobile detailing in Cincinnati";
+     - "UC student-owned team bringing professional interior and exterior detailing to you.";
+     - "Support genuine people you can trust when you go with us.";
+     - Book Now.
+   - **His reference:** Alex Hormozi's short "We Make Our Landing Pages Like This" (https://youtube.com/shorts/7_NOrSBIYG0). Claude can't watch video, so Emmett or Elijah names the two or three points to take from it before the mockup.
+   - **Ask with the mockup:**
+     - Does the hero keep View Services and Contact Us, the Google rating pill and the hours line, or show only Book Now?
+     - Is "Best" OK as written? The 5.0 Google rating beside it backs it up.
+2. **"Ready to book?" block on the home page (`index.html`, "Start My Booking"): lower friction.**
+   - Keep "See your exact price before you commit".
+   - "Nothing is charged until we confirm your time" becomes "You only pay on site once your detail is complete". That's true: payment is after the detail, no deposit (`BUSINESS-CONTEXT.md`).
+   - "Add more than one vehicle and save 10% on each extra" goes. In its place, something like "Learn about each package before you book", linking to Services. That also removes a typed business number.
+   - Rework the intro line the same way.
+3. **The same payment wording in the booking form.**
+   - Change the booking lines: `funnel.js` "Nothing is charged today" on the last step, and any other line about a booked time.
+   - Leave the request and quote lines ("nothing is charged until you agree to it"). They are about agreeing to a price, which is still true.
+   - Check the terms and the FAQ say the same.
+4. **Services page on phones still shows Showroom Ready at $395.**
+   - Elijah wants it to match the new structure: Showroom Ready Restoration as an add-on "starts at $445", +3 h, Elijah only.
+   - That conflicts with the decision that the new prices wait until today's convert. **Ask Elijah:** move only Showroom Ready now, at today's other prices, or wait for the whole restructure?
+5. **Contact form: compact on phones.** The boxes are long and the form fills the screen.
+   - Fewer text box rows, and side-by-side fields where they fit at 375.
+   - Mockup at 375 and 1440 first.
+   - The A2P quote wording and the consent boxes stay word for word.
+   - The Send button must stay visible at 1440×790.
+6. **FAQ questions need updating** (he knows it's coming). This is the queued FAQ program below. Get his list of questions.
+7. **Later, not Monday:**
+   - **Booking form, fewer page changes:** for example, Vehicle, Service and Package on one screen. Mockups first, and nothing that changes booking behaviour.
+   - **Results photos:** Elijah picks the images himself; swap them in when he sends them (photo pipeline below).
+
 ## Elijah's follow-up answers (November 13): what changes
 
 - **Steam pricing now (Elijah, November 13):**
