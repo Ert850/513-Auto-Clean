@@ -28,3 +28,19 @@ From a research and site audit (Twilio and GoHighLevel guidance). The site is fr
 - **Business email:** the site and the form use 513autoclean@gmail.com. Twilio prefers an email on the business domain (for example one at 513autoclean.com). That's a submission-form field; the site can keep Gmail.
 - **Legal name and address:** use the exact registered legal name, and the address on file, in the form. The site says "513 Auto Clean" and "Cincinnati, OH" only. If the registered name differs, the reviewer may flag the mismatch.
 - **Proof of consent:** each Contact form and booking email records "SMS consent: yes/no". Keep those emails as the consent record.
+
+## Live validation before the freeze (November 13, after PR #10)
+
+- **Pages:** 11 live pages at 1440, 375 and 320 wide. All return 200 with no console errors and no sideways scroll. All show (866) 371-5948, with no trace of the old number. The home-page form sits between the reviews and the gallery.
+- **Quote forms:** the home page and Contact page forms were submitted on live (the Contact one with the SMS box ticked). Both showed the thank-you message.
+- **Booking form on live:**
+  - steam is $80 with Full Interior and $115 with Basic Interior;
+  - travel is measured from the address ($20 for Mason), and tax and total are right;
+  - real times are offered, including Kris's 6 PM weekday times;
+  - Escape opens the leave dialog, and Back returns to the booking.
+- **Real bookings through the booking endpoint:**
+  - 4 events were written. Each reply had calendar ok, and a retry with the same key returned "duplicate" with no second event.
+  - Kris's booking landed on his bookings calendar. (Sending his display name instead of his id booked the owner. That was the test's mistake: the form sends the id, `detailerParam()`.)
+  - All 4 events were deleted, and the times were offered again afterwards.
+- **Not re-read live:** the event description format (guarded by `jobs-sync-contract.test.ts` on the same code, and checked on a real event on November 13), and a time disappearing while booked (the same read path that brought the times back after deletion).
+- **For the queue, not now:** on the Package step, Continue goes straight to checkout, and Extras is reached through its chip. The week picker opens on the current week, with past days greyed.
