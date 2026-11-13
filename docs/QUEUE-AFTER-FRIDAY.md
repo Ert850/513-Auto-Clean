@@ -2,6 +2,40 @@
 
 Work that's agreed but deliberately not started before Friday. Newest first.
 
+## From the final pre-release review (November 13): fix after launch
+
+Full reports are in that session; the screenshots are in the session scratchpad (`review/shots/`). Fixed before launch: see `SESSION-CHANGES-pipeline.md`, "Final pre-release review".
+- **Booking and calendar:**
+  - **The job length never reaches the drive measure,** on either side. The browser sends `service=` while `travel.mjs` reads `serviceMin`, and `_routes.mjs` reads `cart.serviceDurationMin`, which the cart never has. Both measure the drive home at the start time, so they agree today. Fix both together: the drive home is measured at the finish, and the screen and the receipt use the same value.
+  - **A server-side free/busy check** before writing an event, for two people taking the same time.
+  - **Turnstile:** render it for every booking before setting `TURNSTILE_SECRET_KEY`, or every booking fails.
+  - **Multi-day:** send the browser's day plan to the server, and the emails list every day.
+  - **Typed numbers to move into settings:** 24 h short notice, the 30 min drive fallback, `[0, 6]` correction days, "within the hour", promo labels, and the 365/400 booking horizon.
+  - **Browser-local dates in request days and `verifySlot`:** a visitor outside Eastern time sees them shifted.
+- **UI (each needs a mockup first):**
+  - **Checkout header:** Back and × cover text at 820 px with long package names, and at 320. With two vehicles it shows vehicle 2's size.
+  - **The travel fee box is styled like an error** (pink and red; the color rule says red means brand or error).
+  - **Help me decide:** the bar shows the travel fee as if it were a price; "4 hours covers our longest single-vehicle detail" is false (Showroom Ready is 7 to 8 h); and the Time step's first screen is all text.
+  - **"Add a vehicle"** opens a bare restart: no "Vehicle 2" label, no Back.
+  - **A 6am pick is steered to 6pm** (`steerFor` assumes suggestions are fee-free).
+  - **Tax appears unlabelled** in the bar once the ZIP is in.
+  - **Hover styles stick after a tap on phones:** wrap them in `@media (hover: hover)`.
+  - **The time picker on short screens:** nothing visible at 320×568, and a cramped calendar view at 1440×790.
+  - **Layout shift at 820 px:** the home page (reviews ticker) and Range & Travel.
+  - **Landing pages on phones:** no Book button on the first screen.
+- **Smaller:**
+  - "Tap" on desktop;
+  - the close dialog says "Cancel my booking" before any booking exists;
+  - the multi-vehicle saving wording, and two different saving figures;
+  - "10:00 AM" vs "10am";
+  - recommended-time labels;
+  - the calendar opens on past days;
+  - "No extra cost" wraps on `/booking.html`;
+  - the phone menu's names, and Contact Us twice;
+  - Contact placeholders cut, and the heading repeated;
+  - the Exterior tab fold;
+  - exterior times after dark (a business question).
+
 ## Elijah's answers (voice recording, November 12): what to build
 
 Each answer is on its question in `QUESTIONS-FOR-ELIJAH-PACKAGES.md`.
