@@ -10,6 +10,26 @@ Work that's agreed but deliberately not started before Friday. Newest first.
   - Check that no page carries 371-5948 afterwards.
   - Emails pick it up from the same deploy.
 
+## Monday: a design spec for one Google calendar (Imperion, November 14)
+
+- **Imperion's ask:** they will do the GoHighLevel integration themselves, later. Their main worry is syncing several calendars, and they'd prefer the booking backend to read and write **one** Google calendar.
+- **Today:** each detailer has an availability calendar (OPEN, `OPEN +20%`, BEST, DNS) and a bookings calendar, plus 513 Auto Clean. The site reads them all (`_detailers.mjs`, `web/lib/availability/`, `crew.ts`), and JobsSync reads the bookings calendars.
+- **Emmett's read:** one calendar means significant rewrites and new bugs, so it's not before the number verification.
+- **Task:** draft a design spec that fits both Imperion's and Elijah's priorities. Elijah's priorities:
+  - Kris and Elijah each see and cancel their own jobs;
+  - per-detailer hours, fees and priority;
+  - JobsSync and accounting.
+- **The spec gives 2 to 4 concepts.** For each:
+  - an example of what the Google calendar would look like: the event titles, colours and a sample week with OPEN hours, fees, bookings and DNS for Kris and Elijah;
+  - what GoHighLevel would sync;
+  - what changes in the code and in JobsSync;
+  - pros and cons, the migration steps and the risk to live bookings.
+- **Concepts to include, at least:**
+  - (a) today's calendars, with GoHighLevel syncing each one;
+  - (b) one calendar, with the detailer named in each event (title prefix or colour);
+  - (c) one bookings calendar plus per-detailer availability calendars.
+- **Nothing is built until Elijah and Imperion pick one.**
+
 ## Monday: Elijah's walkthrough of the live site on a phone (November 13)
 
 He checked every page. Results, Meet the Team, Reviews and Range & Travel are fine as they are. The results slider "works great" on mobile, and the booking section at the bottom of the home page "should work well".
