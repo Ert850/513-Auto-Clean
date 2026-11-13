@@ -2509,6 +2509,7 @@
     });
   }
 
+  var eachTimer = null;
   function measureTravel() {
     clearTimeout(travelTimer);
     if (!addressComplete()) {
@@ -2517,7 +2518,11 @@
       }
       return;
     }
-    if (crew().length > 1) measureEachDetailer();
+    // Each detailer's drive, after the same pause as the main measure: called
+    // on every keystroke it sent two billed lookups per key, and correcting
+    // an address could hit the 30 a minute limit (final review, November 13).
+    clearTimeout(eachTimer);
+    if (crew().length > 1) eachTimer = setTimeout(measureEachDetailer, 600);
 
     // The slot is part of the key: the same address at 8am and at 5pm is a
     // different drive, and that is the whole point of measuring it. So is
