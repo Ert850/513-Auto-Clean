@@ -83,7 +83,7 @@ He checked every page. Results, Meet the Team, Reviews and Range & Travel are fi
   - the add-on needs a per-package price (`web/lib/catalog/addons.ts`, priced on both browser and server, and rendered into the cards and the price list);
   - **built November 13** (`tierPriceFor`, `withPackage`; `steam-price.test.ts`).
 - **Cancelling = deleting the event (Elijah):** the website already treats a deleted event as free time. Still needed:
-  - Kris needs "Make changes to events" on 513 Kris Bookings: **already set** (checked November 14, edit level without sharing rights; Emmett to confirm the address is Kris's);
+  - Kris needs "Make changes to events" on 513 Kris Bookings: **already set** (checked November 14, edit level without sharing rights, Kris's account confirmed by Emmett);
   - JobsSync marks rows whose event is gone as "Cancelled" (today they stay "Upcoming");
   - the customer isn't told automatically: GoHighLevel's cancellation message, once connected.
 - **Accounting:** a job counts only when it's marked done **and** paid, and GoHighLevel takes over the bookkeeping (pipeline stages Booked → Done → Paid). Until then, JobsSync marks deleted events Cancelled only.
