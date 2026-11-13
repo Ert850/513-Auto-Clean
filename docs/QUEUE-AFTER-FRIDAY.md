@@ -40,7 +40,12 @@ He checked every page. Results, Meet the Team, Reviews and Range & Travel are fi
    - The A2P quote wording and the consent boxes stay word for word.
    - The Send button must stay visible at 1440×790.
 6. **FAQ questions need updating** (he knows it's coming). This is the queued FAQ program below. Get his list of questions.
-7. **Later, not Monday:**
+7. **"You are booked in" reads oddly (Emmett, November 13).** Pick new wording and use it everywhere it appears:
+   - the booking email's title, "Thanks {name}, you are booked in." (`send-confirmation.mjs` `customerEmail`);
+   - its subject, "Booked in for {when}";
+   - the Done screen's title, "You are booked in" (`funnel.js`, `bkTitle`).
+   - Candidates for Elijah to pick from: "Thanks {name}, you're all set." / "You're booked, {name}!" / "See you {day}, {name}!".
+8. **Later, not Monday:**
    - **Booking form, fewer page changes:** for example, Vehicle, Service and Package on one screen. Mockups first, and nothing that changes booking behaviour.
    - **Results photos:** Elijah picks the images himself; swap them in when he sends them (photo pipeline below).
 
