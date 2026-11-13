@@ -34,6 +34,23 @@ window.AC_CONFIG = {
     ],
 
     /*
+     * Other detailers, in booking order, as JSON text from the DETAILERS
+     * setting in Netlify. Empty means it is just Elijah, exactly as before.
+     * Each needs an availability calendar (OPEN blocks) and a bookings
+     * calendar. See docs/ADD-A-DETAILER.md. The booking function reads the
+     * same setting, so this is the only place it is ever typed.
+     */
+    detailers: '{{DETAILERS}}',
+
+    /*
+     * Calendars of Elijah's that hold JOBS and are shared as free/busy only,
+     * comma separated. They are read for busy time alone, never titles, so
+     * customer names and addresses stay private. Empty: read in full, as
+     * before. See docs/ADD-A-DETAILER.md, "Make the jobs calendar private".
+     */
+    googleBusyOnlyCalendarIds: '{{GOOGLE_BUSY_ONLY_CALENDAR_IDS}}',
+
+    /*
      * TWO Google keys, not one, because they cost different amounts.
      *
      * The Calendar API is a Workspace API. It needs a Google Cloud project
@@ -74,5 +91,11 @@ window.AC_CONFIG = {
 
     // Cloudflare Turnstile site key. Empty means no bot check, which is
     // fine until the first bot.
-    turnstileSiteKey: '{{TURNSTILE_SITE_KEY}}'
+    turnstileSiteKey: '{{TURNSTILE_SITE_KEY}}',
+
+    // Analytics ids, public by design: they appear in every page that runs
+    // them. Empty means no consent banner and no analytics. js/analytics.js
+    // loads neither until a visitor presses Accept.
+    ga4MeasurementId: '{{GA4_MEASUREMENT_ID}}',
+    clarityProjectId: '{{CLARITY_PROJECT_ID}}'
 };

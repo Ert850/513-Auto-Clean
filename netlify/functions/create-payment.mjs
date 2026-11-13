@@ -1,5 +1,6 @@
 import Stripe from "stripe";
 import { MAX_BOOKING_CENTS, driveTooFar, priceFromWire, validateWire } from "./_pricing.mjs";
+import { blockFeeFor, detailerFor, homeFor, timeFeeWaived } from "./_detailers.mjs";
 import { measuredOneWayMinutes } from "./_routes.mjs";
 import { limited } from "./_ratelimit.mjs";
 import { verifyTurnstile } from "./_turnstile.mjs";
@@ -87,12 +88,18 @@ export async function handler(event) {
   const bot = await verifyTurnstile(payload?.turnstileToken, event);
   if (bot) return json(400, { error: bot, message: "Please complete the check and try again." });
 
-  const measured = await measuredOneWayMinutes(cart);
+  const who = detailerFor(payload?.detailer, cart);
+  const measured = await measuredOneWayMinutes(cart, homeFor(who));
   if (driveTooFar(measured)) {
     return json(400, { error: "too_far", message: "That address is further than we can drive for a mobile detail." });
   }
 
-  const priced = priceFromWire(cart, { measuredOneWayMinutes: measured, nowMs: Date.now(), payInFull });
+  // The detailer's fee-free hours, as this deploy knows them, so the charge
+  // matches the booking email (both use _detailers.mjs).
+  // ...and the fee its OPEN block sets in their calendar (fee standard B).
+  const timeOfDayWaived = timeFeeWaived(who, cart.slot);
+  const blockFeeBp = await blockFeeFor(who, cart.slot, payload?.timeFeeBp);
+  const priced = priceFromWire(cart, { measuredOneWayMinutes: measured, nowMs: Date.now(), payInFull, timeOfDayWaived, blockFeeBp });
   if (priced.rejected.length) {
     return json(400, { error: "unknown_items", rejected: priced.rejected });
   }

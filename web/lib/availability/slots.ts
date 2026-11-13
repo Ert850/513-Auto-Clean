@@ -6,6 +6,14 @@
  * the exclusion constraint and is transactionally correct, while Google is a
  * mirror with eventual consistency and rate limits.
  */
+import { localWeekday } from "../time/zone.js";
+
+/**
+ * Days and weekdays are Cincinnati's, never the visitor's. new Date().getDay()
+ * reads the browser's own zone, so a visitor in another one saw Saturday's
+ * weekend rules land on the wrong day (November 10).
+ */
+const ZONE = "America/New_York";
 
 export interface Interval {
   /** Epoch ms. */
@@ -81,6 +89,25 @@ export interface SlotRequest {
    * two hour drive is a different decision and should still show its cost.
    */
   ignoreOutboundBeforeMin?: number;
+  /**
+   * A start time is an arrival WINDOW: "6pm" means we arrive between 6 and
+   * 7pm (owner, November 11). So the drive may run into that window: a start
+   * is offered when the detailer, leaving the moment they are free (their
+   * OPEN block begins, or their previous job ends), arrives within it. The
+   * job is then planned from that arrival. 0 or absent: the drive must fit
+   * before the start, as before.
+   */
+  arrivalWindowMin?: number;
+  /**
+   * Filled when given: every offered start planned as a late arrival (inside
+   * the arrival window, because the drive from the previous job runs into
+   * it), as minutes after the start. The booking is written from the start to
+   * that arrival plus the work, so the next job is spaced from when this one
+   * really ends (audit, November 12: the event ended at start plus work, and
+   * a third job chained on the same day assumed the detailer free an hour
+   * early).
+   */
+  lateBy?: Map<number, number>;
   /**
    * Restrict to these weekdays, 0 Sun to 6 Sat. Correction work uses it to
    * offer weekend starts only, since it runs across several days.
@@ -203,7 +230,15 @@ export function computeSlots(req: SlotRequest): number[] {
   const free = subtractIntervals(req.openBlocks, req.busy);
   // Where the working day actually opens, as opposed to where a gap happens
   // to open after a job. Only the former lets the drive out sit outside it.
-  const dayOpens = new Set(req.openBlocks.map((b) => b.start));
+  // From the MERGED blocks: two OPEN blocks that touch (a price split at
+  // 10am) are one working stretch, and 10am is not the start of a day
+  // (live-site check, November 11).
+  const stretches = mergeIntervals(req.openBlocks);
+  const dayOpens = new Set(stretches.map((b) => b.start));
+  // And where it closes. The drive home can run past the end of the day, but
+  // not into the next job: with a job booked at 9pm, a 7pm start ending at
+  // 9pm left no time to drive there (engine check, November 10).
+  const dayCloses = new Set(stretches.map((b) => b.end));
   const step = Math.max(1, req.granularityMin) * MIN;
   const out: number[] = [];
   const wanted = req.preferredStartsMin;
@@ -233,30 +268,41 @@ export function computeSlots(req: SlotRequest): number[] {
     // Earliest the CUSTOMER-FACING start can be. The drive out normally has to
     // fit inside the free interval ahead of it; at the very start of the day
     // it does not, because it happened before the day began.
+    const slack = Math.max(0, req.arrivalWindowMin ?? 0) * MIN;
     const earliest = outboundFree(ceilTo(Math.max(f.start, req.notBefore), step))
       ? Math.max(f.start, req.notBefore)
-      : Math.max(f.start + req.travelBeforeMin * MIN, req.notBefore);
+      : Math.max(f.start + req.travelBeforeMin * MIN - slack, f.start, req.notBefore);
     let t = ceilTo(earliest, step);
 
     while (true) {
-      const commitmentStart = outboundFree(t) ? t : t - req.travelBeforeMin * MIN;
+      // When they arrive: at the start, or later in the arrival window when
+      // the drive from where they were runs into it.
+      const arrival = outboundFree(t) ? t : Math.max(t, f.start + req.travelBeforeMin * MIN);
+      const late = arrival - t;
       // Last job of the day: nobody is waiting on the drive home, so it does
       // not need to fit inside the availability block.
       const returnMin =
         req.ignoreReturnAfterMin !== undefined &&
+        dayCloses.has(f.end) &&
         localMinutesOfDay(t, req.timeZone) >= req.ignoreReturnAfterMin
           ? 0
           : req.travelAfterMin;
-      const commitmentEnd = t + (req.serviceDurationMin + returnMin) * MIN;
-      if (commitmentEnd > f.end) break;
+      const commitmentEnd = arrival + (req.serviceDurationMin + returnMin) * MIN;
+      // The job itself no longer fits: nothing later will.
+      if (arrival + req.serviceDurationMin * MIN > f.end) break;
+      // The drive home does not fit, but from 6pm it is not needed, so a
+      // later start can still fit where this one does not. Breaking here
+      // lost every 6pm start in a block ending 8pm (engine check, November 10).
+      if (commitmentEnd > f.end) { t += step; continue; }
       if (t > req.notAfter) break;
       if (
-        commitmentStart >= f.start &&
-        (!req.allowedWeekdays || req.allowedWeekdays.includes(new Date(t).getDay())) &&
-        withinBookingWindow(t, req.serviceDurationMin, win, req.timeZone, req.hasExterior) &&
+        late <= slack &&
+        (!req.allowedWeekdays || req.allowedWeekdays.includes(localWeekday(t, req.timeZone ?? ZONE))) &&
+        withinBookingWindow(t, req.serviceDurationMin + late / MIN, win, req.timeZone, req.hasExterior) &&
         matchesPreferred(t, wanted, req.timeZone)
       ) {
         out.push(t);
+        if (req.lateBy && late > 0) req.lateBy.set(t, late / MIN);
       }
       t += step;
     }
@@ -321,6 +367,9 @@ export interface TimeBand {
  * what stops the oldest bug in this feature coming back: a time sold inside
  * a band labelled standard, then billed at the premium rate.
  */
+/** The arrival window customers are told: "we arrive between 6 and 7pm". */
+export const ARRIVAL_WINDOW_MIN = 60;
+
 export const TIME_BANDS: TimeBand[] = [
   {
     id: "early",
@@ -446,7 +495,7 @@ function matchesPreferred(
 ): boolean {
   if (!wanted) return true;
   const mins = localMinutesOfDay(ms, timeZone);
-  const day = new Date(ms).getDay();
+  const day = localWeekday(ms, timeZone ?? ZONE);
   const list = day === 0 || day === 6 ? wanted.weekend : wanted.weekday;
   return list.includes(mins);
 }
@@ -581,7 +630,7 @@ export function recommendStarts(req: {
   }
 
   // 3. The anchors for this weekday.
-  const day = new Date(starts[0]!).getDay();
+  const day = localWeekday(starts[0]!, req.timeZone ?? ZONE);
   const anchors = day === 0 || day === 6 ? DAY_ANCHORS_MIN.weekend : DAY_ANCHORS_MIN.weekday;
   for (const mins of anchors) {
     const hit = starts.find((s2) => localMinutesOfDay(s2, req.timeZone) === mins);

@@ -40,6 +40,12 @@
 
   // Thresholds are set so every band actually holds ZIPs. Wider bands would
   // paint most of the map one colour, which is the same as not colouring it.
+  //
+  // Colours: a traffic light, green (free) through red (dearest). The owner
+  // chose it on November 10 over a one-hue amber-to-brown ramp: in brown,
+  // the top bands were hard to tell apart, while orange next to red reads at
+  // a glance. The legend and the popups carry the exact amounts,
+  // so nobody has to tell two greens apart by colour alone.
   var BANDS = [
     { id: 0, max: 0, label: 'No travel fee', color: '#2f9e5e' },
     { id: 1, max: 1000, label: 'About $5 to $10', color: '#7cb342' },
@@ -209,8 +215,11 @@
 
     var time = 'roughly ' + d.minMin + ' to ' + d.maxMin + ' minutes from us';
 
+    // The price is plain ink: in red it read as an error. The dot beside it
+    // is the band colour, so the answer points at its place on the map.
+    var band = bandOf(feeCents(Math.round((d.minMin + d.maxMin) / 2)));
     out.innerHTML =
-      '<b>' + esc(d.range) + '</b>' +
+      '<b><i class="fee-dot" style="background:' + band.color + '"></i>' + esc(d.range) + '</b>' +
       '<span>' + where + ', ' + time + '. ' +
       (d.hiCents === 0
         ? 'That is inside our free radius.'
@@ -263,6 +272,11 @@
     map = L.map(host, {
       center: [39.14, -84.5],
       zoom: 9,
+      // Quarter steps, so fitBounds below can land between whole levels.
+      // With whole levels, a map 20px shorter (to keep the legend on a
+      // 1280x720 screen) dropped from zoom 9 to 8 and every dot shrank into
+      // a knot around Cincinnati.
+      zoomSnap: 0.25,
       // Off at the start. A map that eats the page scroll the moment your
       // cursor crosses it is the most hated widget on the internet. Clicking
       // the map arms it.
@@ -292,13 +306,11 @@
     function armWheel() {
       if (map.scrollWheelZoom.enabled()) return;
       map.scrollWheelZoom.enable();
-      host.classList.add('zoom-on');
       if (zoomHint) zoomHint.textContent = 'Scroll to zoom. Move off the map to scroll the page again.';
     }
 
     function disarmWheel() {
       map.scrollWheelZoom.disable();
-      host.classList.remove('zoom-on');
       if (zoomHint) zoomHint.textContent = idleZoomHint();
     }
 
@@ -334,8 +346,10 @@
 
     POINTS.forEach(function (p) {
       var m = L.circleMarker([p.lat, p.lon], {
+        // Solid, not 0.92: see-through dots took on the colour of the road
+        // or park under them, so no dot quite matched its legend key.
         radius: 8, color: '#ffffff', weight: 2,
-        fillColor: p.band.color, fillOpacity: 0.92
+        fillColor: p.band.color, fillOpacity: 1
       }).addTo(map);
 
       m.bindTooltip(p.area + ': ' + p.range, { direction: 'top' });

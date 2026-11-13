@@ -116,12 +116,17 @@ const cfg = await get("/js/config.js");
 if (cfg.status !== 200) {
   fail("js/config.js did not load", `HTTP ${cfg.status}`);
 } else {
+  // Either quote: the published config.js is minified, which turns the
+  // template's single quotes into double ones. Matching only ' made every key
+  // read "not set" on the live site, which has them.
   for (const [label, re, why] of [
-    ["Stripe publishable", /stripePublishableKey:\s*'(pk_(live|test)_[^']+)'/, "card capture"],
-    ["Google Calendar", /googleCalendarApiKey:\s*'(AIza[^']+)'/, "real openings"],
-    ["Google Places", /googlePlacesApiKey:\s*'(AIza[^']+)'/, "address autocomplete"],
-    ["PayPal client", /paypalClientId:\s*'([^']+)'/, "PayPal and Venmo"],
-    ["Turnstile site", /turnstileSiteKey:\s*'([^']+)'/, "bot check"],
+    ["Stripe publishable", /stripePublishableKey:\s*["'](pk_(live|test)_[^"']+)["']/, "card capture"],
+    ["Google Calendar", /googleCalendarApiKey:\s*["'](AIza[^"']+)["']/, "real openings"],
+    ["Google Places", /googlePlacesApiKey:\s*["'](AIza[^"']+)["']/, "address autocomplete"],
+    ["PayPal client", /paypalClientId:\s*["']([^"']+)["']/, "PayPal and Venmo"],
+    ["Turnstile site", /turnstileSiteKey:\s*["']([^"']+)["']/, "bot check"],
+    ["Google Analytics", /ga4MeasurementId:\s*["'](G-[^"']+)["']/, "Google Analytics"],
+    ["Clarity", /clarityProjectId:\s*["']([^"']+)["']/, "Clarity"],
   ]) {
     const m = re.exec(cfg.text);
     if (m) pass(`${label} key present`, `${m[1].slice(0, 12)}...`);

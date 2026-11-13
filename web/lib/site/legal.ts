@@ -29,8 +29,25 @@ export const LEGAL = {
    * terms describe taking a card again, and the privacy policy names two
    * more processors.
    */
-  termsEffective: "2026-09-14",
-  privacyEffective: "2026-09-14",
+  termsEffective: "2026-11-12",
+  // 2026-11-09: Google Analytics and Microsoft Clarity behind a consent
+  // banner, and the arrival source kept for the visit.
+  // 2026-11-10: a question started mid-booking is carried to the question
+  // form (now on faq.html) for one page load.
+  // 2026-11-10: the booking form checks the National Weather Service forecast
+  // at the detail's approximate location (weatherCheck). Same day as the
+  // entry above and neither was live yet, so the date stands.
+  // 2026-11-10 (round 15): checkout details of a booking left unfinished
+  // reach the owner for one follow-up (checkoutFollowUp), and "where you
+  // heard about us" is collected. Same day again, nothing live yet, so the
+  // date stands.
+  // 2026-11-11 (session audit): bookings are written to our private booking
+  // calendar (Google Calendar), answers given after booking ("Help us get
+  // ready") are collected, Resend's role is stated without reminders that do
+  // not exist, and the record of what was agreed names the terms' date.
+  // 2026-11-11 (later): A/B tests (config/experiments.json) remember which
+  // version a visitor saw and send it with a booking. Same day, nothing live.
+  privacyEffective: "2026-11-11",
 } as const;
 
 export function longDate(iso: string): string {

@@ -20,6 +20,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { experimentsForPage } from "./experiments.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const TEMPLATE = path.join(root, "js/config.template.js");
@@ -41,6 +42,8 @@ const COSTS = {
   STRIPE_PUBLISHABLE_KEY: "no card field at all",
   PAYPAL_CLIENT_ID: "no PayPal or Venmo",
   TURNSTILE_SITE_KEY: "no bot check",
+  GA4_MEASUREMENT_ID: "no Google Analytics",
+  CLARITY_PROJECT_ID: "no Clarity heatmaps or recordings",
   GOOGLE_API_KEY: null, // legacy fallback, absence is normal
 };
 
@@ -66,7 +69,31 @@ if (/\{\{[A-Z0-9_]+\}\}/.test(out)) {
   throw new Error("render-config: a placeholder survived substitution");
 }
 
-fs.writeFileSync(OUT, out);
+// The A/B tests (config/experiments.json), checked here so a mistake fails the
+// build. JSON is valid JavaScript, and the ids and version names are limited
+// to letters, digits and dashes, so nothing in it can end the statement.
+const experiments = experimentsForPage();
+
+// The rush fee and discount code files are checked when the pricing code
+// loads. esbuild bundles them without running anything, so load the server
+// bundle here: a mistake in config/rush-fee.json or config/promo-codes.json
+// stops the build instead of shipping a booking function that throws.
+const { parseDetailers } = await import("../../netlify/functions/_pricing.mjs");
+
+// DETAILERS (Netlify) is checked with the same parser the site and the
+// functions use. A typo there used to drop a detailer, or their fee-free
+// starts, with only a warning in a visitor's browser console (audit,
+// November 12). Unset is fine: the owner alone, as before.
+{
+  const { problems } = parseDetailers(process.env.DETAILERS);
+  if (problems.length) {
+    console.error("render-config: DETAILERS has a problem, fix it in Netlify:\n  " + problems.join("\n  "));
+    process.exit(1);
+  }
+}
+const outWithTests = out + "\nwindow.AC_EXPERIMENTS = " + JSON.stringify(experiments) + ";\n";
+
+fs.writeFileSync(OUT, outWithTests);
 
 const shape = (n) => {
   const v = String(process.env[n] ?? DEFAULTS[n] ?? "");
@@ -76,6 +103,7 @@ const shape = (n) => {
 console.log(
   `js/config.js: ${found.length} set${found.length ? " (" + found.map((n) => `${n} ${shape(n)}`).join(", ") + ")" : ""}`,
 );
+console.log(`  A/B tests: ${experiments.map((x) => `${x.id} ${x.status}`).join(", ") || "none"}`);
 if (missing.length) {
   for (const n of missing) console.log(`  not set: ${n}, so ${COSTS[n]}`);
 }

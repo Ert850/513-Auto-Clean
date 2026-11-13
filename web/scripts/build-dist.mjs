@@ -17,6 +17,7 @@ import esbuild from "esbuild";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { stampPhone } from "./phone-stamp.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const dist = path.join(root, "dist");
@@ -26,6 +27,16 @@ const FILES = [
   "terms.html",
   "privacy.html",
   "404.html",
+  "services.html",
+  "about.html",
+  "service-area.html",
+  "faq.html",
+  "contact.html",
+  // Print landing pages (QR codes), not linked from the site and not in the sitemap.
+  "lp-golf.html",
+  "lp-prestige.html",
+  // The Google Business Profile's booking link, /book (A2P plan T7). Not in the sitemap.
+  "booking.html",
   "styles.css",
   "book.css",
   "script.js",
@@ -106,6 +117,13 @@ for (const rel of MINIFY) {
 }
 bytes -= saved;
 
+// The published phone number: BUSINESS_PHONE in Netlify, swapped into every
+// page and script here (A2P plan T1). Unset, nothing changes. See phone-stamp.mjs.
+{
+  const { phone, changed } = stampPhone(dist);
+  if (changed.length) console.log(`phone: ${phone.display} (BUSINESS_PHONE) written into ${changed.length} files`);
+}
+
 /* ---- images: only what the page can reach ---- */
 
 const textFiles = [
@@ -123,7 +141,8 @@ const referenced = new Set([
 ]);
 for (const f of textFiles) {
   const text = fs.readFileSync(path.join(root, f), "utf8");
-  for (const m of text.matchAll(/images\/([A-Za-z0-9._-]+\.(?:jpg|jpeg|png|webp|avif|svg))/g)) {
+  // mp4 and webm: the booking page's video (config/booking-page.json).
+  for (const m of text.matchAll(/images\/([A-Za-z0-9._-]+\.(?:jpg|jpeg|png|webp|avif|svg|mp4|webm))/g)) {
     referenced.add(m[1]);
   }
 }

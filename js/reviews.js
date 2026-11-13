@@ -235,6 +235,11 @@
         '</button>'
       : '';
 
+    // The About page keeps the score beside the section title (#rvScore), so
+    // the rating and the tops of the cards fit the first laptop screen.
+    var scoreSlot = document.getElementById('rvScore');
+    if (scoreSlot) { scoreSlot.innerHTML = head; head = ''; }
+
     mount.innerHTML = head +
       '<div class="rv-stage">' + nav +
         '<div class="rv-grid" id="rvGrid" aria-live="polite"></div>' +
@@ -288,17 +293,47 @@
       return String(full || '').trim().split(/\s+/)[0] || 'Customer';
     }
 
-    function paint(dir) {
-      var r = items[i];
-      if (!r) return;
-      stage.innerHTML =
-        '<article class="rv-tick' + (dir ? ' in-' + dir : '') + '">' +
+    function tickHtml(r, dir) {
+      return '<article class="rv-tick' + (dir ? ' in-' + dir : '') + '">' +
           '<header><b>' + esc(firstName(r.author)) + '</b>' +
           '<span class="rv-tick-stars">&#9733;&#9733;&#9733;&#9733;&#9733; 5 Stars</span>' +
           '<time datetime="' + esc(r.iso) + '" title="' + esc(r.absolute) + '">' + esc(r.relative) + '</time></header>' +
           '<p>' + esc(r.text) + (r.truncated ? '…' : '') + '</p>' +
         '</article>';
+    }
+
+    function paint(dir) {
+      var r = items[i];
+      if (!r) return;
+      stage.innerHTML = tickHtml(r, dir);
       if (count) count.textContent = (i + 1) + ' / ' + items.length;
+    }
+
+    /*
+     * The stage holds ONE height while it rotates, so the page never jumps
+     * every nine seconds. That height used to be a guess in rem (8.4 on
+     * phones, 5.2 from 860px), which at most widths was taller than any
+     * review needed: 31px of dead space at 820px on every review, up to 79px
+     * on short ones. Now it is the tallest review as actually laid out at the
+     * current width, measured off screen, and measured again on resize and
+     * once the web fonts have arrived.
+     */
+    function fitStage() {
+      var w = stage.clientWidth;
+      if (!w) return;
+      var probe = document.createElement('div');
+      probe.setAttribute('aria-hidden', 'true');
+      probe.style.cssText = 'position:absolute;left:-9999px;top:0;visibility:hidden;width:' + w + 'px';
+      document.body.appendChild(probe);
+      var max = 0;
+      items.forEach(function (r) {
+        probe.innerHTML = tickHtml(r);
+        var a = probe.firstChild;
+        a.style.height = 'auto';
+        max = Math.max(max, a.offsetHeight);
+      });
+      document.body.removeChild(probe);
+      if (max) stage.style.height = Math.ceil(max) + 'px';
     }
 
     function restart() {
@@ -315,6 +350,13 @@
 
     wrap.hidden = false;
     paint();
+    fitStage();
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitStage);
+    var fitTimer = null;
+    window.addEventListener('resize', function () {
+      clearTimeout(fitTimer);
+      fitTimer = setTimeout(fitStage, 150);
+    });
     restart();
 
     if (prev) prev.addEventListener('click', function () { step(-1); });
@@ -378,8 +420,10 @@
     var r1 = r.toFixed(1);
     var word = n === 1 ? ' review' : ' reviews';
 
-    var hero = document.querySelector('#google-badge .g-text');
-    if (hero) hero.textContent = 'Rated ' + r1 + ' from ' + n + word + ' on Google & Yelp';
+    // The trust strip's badge and the hero's pill say the same thing.
+    document.querySelectorAll('#google-badge .g-text, .hero-badge .hb-text').forEach(function (el) {
+      el.textContent = 'Rated ' + r1 + ' from ' + n + word + ' on Google';
+    });
 
     var num = document.querySelector('#revFallback .rf-score .num');
     if (num) num.textContent = r1;

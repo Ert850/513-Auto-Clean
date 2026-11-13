@@ -1,0 +1,415 @@
+# Session changes: Results ("Our Work") carousel
+
+Branch: `claude/results-carousel-347a0d`. Not pushed.
+Files: `index.html` (`#gallery` only), `js/gallery.js`, `styles.css` (gallery block, plus one gallery-only line in the 820px block and a 1100px rule after it). `script.js` is unchanged: the carousel drives the existing slider markup.
+
+**Newest round first. Round 6 starts each cycle with the leftmost card on screen. Round 5 makes every card in view wipe in every cycle. Round 4 tied the return to the middle to the shift. Round 3 changed the timings and the step size; everything else from round 2 stands (the button as the state, no hover pause, the endless loop, rAF easing, the edge fades, reduced motion).**
+
+# Round 6
+
+`eNov6` fast-forwarded onto this branch first (80174cf, round 5 merged). Only `js/gallery.js` changed.
+
+The owner: "When a new wiper animation cycle starts, the farthest-left visible card should start, regardless of whether it is new or not."
+
+## Change
+
+| # | Change | Where | How to test |
+|---|---|---|---|
+| 6.1 | **A cycle starts as one group, in on-screen order.** When the track lands, every card in view is taken together, sorted by its on-screen position (`getBoundingClientRect().left`, read once per cycle), and started 2.5 s apart from the leftmost. It doesn't matter whether a card just slid in or was already there, or where it sits in the DOM after a loop rearrangement. The group waits for all its photos before any card starts (handles at rest in the middle, at most 1.5 s), so a card still loading can't be overtaken by the cards to its right. | `js/gallery.js` `run()` (`cycleWait`; the per-card `_wait` is gone) | On a slow connection, click dot 5 then Play at 1440: card 5 (left) moves first, then 6, then 1. |
+
+## Root cause
+
+Each card waited for its own photos, and the stagger only counted cards that had already started. A card whose photos were still loading sat out while the cards to its right started at 0 and 2.5 s; when its photos arrived (or the 1.5 s wait ran out), it started with no stagger at all, and so moved after them.
+
+In the normal forward cycle the leftmost card's photos are always in, so this never showed in the earlier headless runs. It shows whenever the leftmost card is the one still loading: after jumping back with a dot or the Previous arrow, where the cards brought in on the left are lazy photos fetched only at that moment, or with a slow connection at the first cycle. Reproduced in headless Chrome with a slow connection (400 ms latency, 40 KB/s): dot 5, then Play, at 1440. Before the fix the cards on screen, left to right, were 5, 6, 1, and card 1 moved first (3.2 s), then 5 (4.7 s), then 6 (7.2 s).
+
+The order also relied on DOM order matching screen order, which holds only once a loop rearrangement has finished. It is now read from the screen.
+
+Possibly also part of what the owner saw: before round 5 was merged, a card that stayed in view did not wipe again, so only the new card on the right moved.
+
+## Verified (round 6)
+
+- `npm run build` OK; `cd web && TZ=America/New_York npx vitest run`: 416 of 416.
+- Every frame recorded in headless Chrome. For each cycle, the first frame each visible card's handle leaves the middle, against the cards' order on screen. Started from dot 5 so the runs include wraps past the last card:
+  - 1440 (3 in view):
+    - 5,6,1 (DOM 5,6,1,…): 5 at 3.2 s, 6 at 5.7, 1 at 8.2;
+    - 1,2,3: 1, 2, 3;
+    - 3,4,5 (DOM 3,4,5,6,1,2): 3, 4, 5;
+    - 5,6,1 again after the wrap: 5, 6, 1.
+
+    All four cycles left to right.
+  - 820 (2 in view): 5,6, then **6,1 (the wrap)**, then 1,2, then 2,3. All four cycles left to right.
+  - Slow connection, dot 5 then Play: at 1440 5 → 6 → 1 (4.7, 7.2, 9.7 s; the group waited for the photos); at 820 5 → 6.
+- Unchanged from round 5, re-measured at 1440 and 820:
+  - every card in view sweeps in every cycle (100/0);
+  - returns start on the same frame, with the shift 1.1 s later;
+  - largest handle step 1.64% per frame, longest frame 17 ms.
+
+# Round 5
+
+Merged `eNov6` first (a3a275e). Gallery files only.
+
+The owner, in substance: all visible wipers move in the same cycle. With 3 in view a card can wipe twice, and that's fine: one card standing still beside two moving ones looks wrong.
+
+## Changes
+
+| # | Change | Where | How to test |
+|---|---|---|---|
+| 5.1 | **Every card in view wipes in every cycle.** Round 4's "a card wipes once per visit" is gone. After each shift, every card in view starts a new wipe: the ones that stayed and the ones that just slid in. The cards start left to right, 2.5 s apart, as before. | `js/gallery.js` `run()` (the `_done` flag is removed) | At 1440: after each step all three handles move, none sits still. |
+| 5.2 | **Cards that slide in join the very next cycle.** The new cycle starts the moment the track lands, with every card in view in it. The shared return also waits until every card in view has started (none still waiting for its photos), so a card can never be skipped. | `js/gallery.js` `run()` | At 820 the card that slides in on the right wipes in the same cycle as the one beside it. |
+
+Kept: round 4's shared return to the middle right before the shift (1.5 s, the shift starts 1.1 s in), the slower pace, the 1-or-2 card step, the edge fade, the button as the state, the endless loop, reduced motion.
+
+## Timings now
+
+Every cycle runs the full stagger: one card in view, about 15.3 s a cycle; two in view, about 17.8 s; three, about 20.3 s. Full set of 6: about 92 s on a phone, 107 s at 820 (6 steps of 1), 61 s at 1440 (3 steps of 2). The cycle is longer than round 4 at 820 and 1440, because the left card, which used to rest, now wipes too and the stagger spans every card in view. A 1.5 s stagger instead of 2.5 s would take 2 s off at 1440 and 1 s at 820; I left it at 2.5 s, as nobody asked to change it.
+
+## Root cause
+
+Round 4 counted a wipe per visit (`_done`), so a card that stayed in view after a shift rested in the middle while the newcomers wiped. That was meant to avoid repeats, but it left one card visibly idle in a moving row.
+
+## Verified (round 5)
+
+- `npm run build` OK; `cd web && TZ=America/New_York npx vitest run`: 416 of 416.
+- Every frame recorded in headless Chrome (47 s at 1440, 36 s at 820 and 375). For every cycle, each card in view after the track lands must reach the whole before (≥ 99) and the whole after (≤ 1) before the next shift:
+  - 1440: cycle 1, cards 1, 2, 3 all 100/0; cycle 2, cards 3, 4, 5 all 100/0. Card 3 stayed in view and wiped again; 4 and 5 slid in and joined at once.
+  - 820: cycle 1, cards 1 and 2; cycle 2, cards 2 and 3: all 100/0.
+  - 375: card 1, then card 2: 100/0.
+- Returns start on the same frame (1440: cards 1, 2, 3 at 18 400 ms, cards 3, 4, 5 at 38 750 ms; 820: 15 908 and 33 758 ms; 375: 13 399 and 28 766 ms). The shift follows about 1.1 s later each time.
+- No jumps: the largest handle step between frames is 1.64% of the photo, and the largest card move per frame is 38 px (the glide). Longest frame 17 ms.
+- Interactions re-checked at 1440 and 375:
+  - no sideways scroll, and nav jumps land at 73 px;
+  - moving the mouse over a photo does nothing;
+  - a click shows Play, and Pause again after 12 s;
+  - Pause holds through 13 s and through scrolling away and back;
+  - dot 6 then Next wraps forward;
+  - reduced motion stays still.
+
+# Round 4
+
+Merged `eNov6` first (header/footer partials, sub-pages round 2). No header, footer or `CHROME:*` markup touched.
+
+The owner, verbatim: "Sync the return to neutral from disappeared left side after state anim for the wipers in the carousel. Leave the desync for all other anims but sync the last one before carousel shift. Intuitively matches the shifting and speeds up the animation."
+
+## Changes
+
+| # | Change | Where | How to test |
+|---|---|---|---|
+| 4.1 | **The return to the middle is shared and tied to the shift.** Each card still rests, goes to the whole before and wipes to the whole after on its own clock, 2.5 s apart (round 3). It then waits on the whole after (at least 2.5 s). Once every wiping card is there, they all glide back to the middle together (1.5 s), and the track starts moving 1.1 s in, so the handles land in the middle as the glide gets going. | `js/gallery.js` `WIPE` (no return step any more), `run()` (`homing`), `RETURN_MS`, `OVERLAP_MS` | At 1440: three handles move at different times, but all three come back to the middle at the same moment, and the row slides on as they arrive. |
+| 4.2 | **The track's own 16.3 s clock is gone.** The shift now comes right after the shared return, so nothing waits on a fixed timer, and no card restarts a wipe that the shift would cut off. | `js/gallery.js` `run()` | Steps come about every 15 s on phones and at 820, about every 17.9 s at 1440 (two new cards, the second 2.5 s behind the first). |
+| 4.3 | **A card wipes once per visit.** A card still in view after a shift has already had its wipe; it rests in the middle (easy to grab) while only the new arrivals wipe. In round 3 it started a second wipe, which the next shift could cut off mid-way. After a pause, or once a touch pause ends, every card in view gets a fresh wipe. With no more photos than fit in view (no shift possible), the same cards go round again. | `js/gallery.js` `_done`, `halt()`, `restHidden()` | At 820: the left card sits in the middle while the newly arrived right card wipes. |
+
+Kept from rounds 2 and 3: the edge fades, the button as the state, no hover pause, the endless loop, 1 or 2 cards a step, reduced motion, and the slower pace (3 s rest, 4 s wipe).
+
+## Timings now
+
+| Step | Time |
+|---|---|
+| Rest in the middle | 3 s |
+| To the right edge (whole before) | 1.8 s |
+| Look at the before | 2 s |
+| Wipe to the whole after | 4 s |
+| Look at the after | 2.5 s at least, until the last card in view gets there |
+| **Return to the middle, all together** | 1.5 s; the track starts moving 1.1 s in |
+| Track glide | 0.9 s |
+| **Step** | about 15.3 s with one new card (phones, 820); about 17.9 s with two (1440: the second starts 2.5 s later); the first step at 1440 waits for all three cards, about 20 s |
+| Full cycle of 6 | about 92 s on phones and at 820, about 54 s at 1440 |
+
+Faster than round 3 per step on phones and at 820 (15.3 s against 16.3 s), and no card is left waiting in the middle for its neighbours.
+
+## Root cause
+
+In round 3 the wipes and the track had separate clocks, so the return to the middle happened whenever each card's own wipe ended. The shift came later, on its own timer. The handles came home at three different moments, none of them tied to the movement of the row, and a card that had finished could start a second wipe that the shift then cut off. Tying the last step to the shift fixes both.
+
+## Verified (round 4)
+
+- `npm run build` OK; `cd web && TZ=America/New_York npx vitest run`: 416 of 416.
+- Headless Chrome, every frame recorded for 40 s (handle of every card, the track's computed position), at 1440, 820 and 375:
+  - **The returns start on the same frame:**
+    - 1440: cards 1, 2, 3 at 18 400 ms; cards 4, 5 at 36 249 ms;
+    - 820: cards 1, 2 at 15 910 ms;
+    - 375: one card at 13 400 ms.
+  - **The shift starts 1083 to 1117 ms after each return starts** (1440: 19 483 and 37 332 ms; 820: 17 027 and 32 393; 375: 14 500 and 29 849), and the handles reach 50 as it begins.
+  - **No jumps:** the largest handle step between two frames is 1.63% of the photo, and the largest on-screen card move per frame is 39 px at 1440 (19 px at 375), which is the glide itself, including the frame where the cards are rearranged. Longest frame 17 ms.
+  - The card that stays in view after a shift stays at 50 while the new ones wipe.
+- Behaviour re-checked at 1440, 820 and 375 (375 and 1440 for interactions):
+  - no sideways scroll, and nav jumps land at 73 px;
+  - moving the mouse over a photo does nothing;
+  - a click shows Play, and Pause again after 12 s;
+  - Pause holds through 13 s and through scrolling away and back;
+  - dot 6 then Next wraps forward;
+  - reduced motion stays still.
+
+## For the owner (round 4)
+
+- **A card wipes once per visit.** The card that stays in view after a step rests in the middle instead of wiping again. If you would rather it wiped again, that's a small change.
+- **0.4 s overlap:** the row starts sliding 0.4 s before the handles reach the middle, so the two read as one motion. Set `OVERLAP_MS` to 0 to make the slide wait for the handles.
+
+# Round 3
+
+Merged `eNov6` first (6690e5c and the sub-page fold work). Header and footer markup untouched.
+
+## Changes
+
+| # | Owner's request | Change | Where | How to test |
+|---|---|---|---|---|
+| 3.1 | Slow it down | Wipes are about 60% slower (the reveal is 4 s instead of 2.8 s, a quarter of the photo per second). The track's glide is 0.9 s instead of 0.6 s, on an ease-in-out curve (`cubic-bezier(.65, 0, .35, 1)`) instead of the site's ease-out, so it starts and stops gently. | `js/gallery.js` `WIPE`, `SLIDE_MS`; `styles.css` `.ba-track` | Watch it at 1440: slower handles, a softer glide. |
+| 3.2 | Advance 1 or 2 cards at a time | One card when one or two are in view (phones, 820 px), two when three are (from 1100 px). With three in view, a one-card step changes a third of the view and reads as nothing happening; two refreshes most of it but keeps a card for continuity. | `js/gallery.js` `stepSize()` | 1440: 1-2-3 becomes 3-4-5. 820 and phones: one card. |
+| 3.3 | Wipers on their own timing | Two clocks. Each card in view runs its own wipe, starting when it comes into view; cards in view start 2.5 s apart. The track moves every 16.3 s on its own clock, whatever the wipes are doing. A card that slides in always gets one whole wipe before it can slide out. Cards that slide out stop and wait in the middle, out of sight. | `js/gallery.js` `run()`, `wipe()`, `restHidden()` | At 1440 the three handles are never in the same place; the track still moves on time. |
+| 3.4 | Leave the slider in the middle longer | Every wipe starts with 3 s at rest in the middle (round 2 went straight to the edge). | `WIPE[0]` | When a card arrives, its handle sits still for 3 s. |
+| 3.5 | Keep the edge fades | Unchanged. | `styles.css` `.ba-slider.auto ...` | |
+
+## Timings now, and why
+
+| Step | Round 2 | Round 3 |
+|---|---|---|
+| Rest in the middle | 0 | **3.0 s** |
+| To the right edge (whole before) | 1.2 s | 1.8 s |
+| Look at the before | 1.6 s | 2.0 s |
+| Wipe to the left edge (whole after) | 2.8 s | **4.0 s** |
+| Look at the after | 2.4 s | 2.5 s |
+| Back to the middle | 1.0 s + 0.3 s | 1.5 s (then the next rest) |
+| **One wipe** | 9.3 s | **14.8 s** |
+| Cards in view start apart | together | 2.5 s |
+| Track moves every | 9.9 s | **16.3 s** (the first move after starting waits for every card in view to finish one wipe) |
+| Track glide | 0.6 s ease-out | 0.9 s ease-in-out |
+| Each card in view for | one wipe | at least one whole wipe |
+| Full cycle of the 6 photos | 20 s at 1440, 59 s on a phone | about 49 s at 1440 (3 moves of 2), 98 s at 820 and on phones (6 moves of 1) |
+
+Why these numbers:
+- **The 5 to 10 s per slide guidance** (Bootstrap's 5 s default, the design rules of thumb) is for one message per slide. A comparison is two photos and a movement between them, and the owner asked for calmer, so each one gets about 15 s. Nielsen Norman Group's finding is that people complain carousels move too fast, never too slow, and the pause button covers anyone who wants to stop it (WCAG 2.2.2).
+- **3 s at rest in the middle** is about one reading glance plus the time to move a thumb or mouse to the handle. The fixed middle position is also where the handle is between wipes, so a visitor who reaches for it finds it there.
+- **The 4 s reveal** moves a quarter of the photo per second (about 84 px a second on a phone card), slow enough to compare each part of the car as the line passes it.
+- **A 16.3 s step** is one whole wipe (14.8 s) plus the glide (0.9 s) plus a short rest (0.6 s). That guarantees the card that just came in is shown in full, which matters most on a phone, where it is the only card.
+- **A 2.5 s stagger** is long enough that the three handles never line up, and short enough that all three have moved within 8 s of arriving.
+
+## Root causes (round 3)
+
+- **Too fast:** round 2 sized the timings from the 5 to 10 s per slide guidance, which is for single-message slides. A before/after needs about twice that, and a start at rest.
+- **Moving a whole view:** round 2 advanced by a whole view so no card was wiped twice. At 1440 that replaced three photos every 10 s, which reads as busy. One or two cards at a time, with each card on its own clock, keeps the motion local.
+- **Lockstep:** one shared timeline made every handle move together, so the whole row pulsed at once. Separate clocks with a stagger spread the motion out.
+
+## Verified (round 3)
+
+- `npm run build` OK; `cd web && TZ=America/New_York npx vitest run`: 409 of 409.
+- Headless Chrome over CDP, cache disabled, real mouse and key events, at 1920, 1440, 820, 375 and 320:
+  - `scrollWidth === innerWidth` at every width, and a nav click on Results lands `#gallery` at 73 px;
+  - after moving the mouse over a photo, it keeps going;
+  - each card rests about 3 s in the middle, then wipes on its own clock; the three cards at 1440 start 2.5 s apart (1 s samples: 94/50/50, then 100/64/50, then 99/100/50);
+  - the track moves by 2 at 1920 and 1440 (1→3→5), and by 1 at 820, 375 and 320; the first move comes at about 22 s at 1440 and 18.5 s on a phone (waiting for every card's first wipe), then every 16 to 17 s;
+  - at 1440 and 375:
+    - a click shows Play, and Pause again 12 s later;
+    - Pause holds through 13 s and through scrolling away and back, and Play plays at once;
+    - dot 6 then Next wraps forward to 1;
+    - under reduced motion it shows Play and nothing moves.
+- Frame times, 4× CPU throttling, run alone, 12 s windows, at 1920, 1440 and 375, including a window spanning a track move: p50 16.7 ms, longest 16.8 ms, none over 20 ms. The largest handle step between two frames is 1.37% of the photo's width (round 2: 2.43%). An earlier run showed 150 ms frames at 1440, but a second headless Chrome was running at the same time; run alone, they did not recur.
+
+## For the owner (round 3)
+
+- **Step size:** 2 cards when 3 are in view, otherwise 1. If you would rather it always moved by 1, it is one number (`stepSize()`).
+- **The full set takes about 98 s to come round on a phone.** That's the cost of showing each comparison in full. A visitor who wants to go faster has the arrows and dots.
+- **Cards can leave mid-wipe** at 1440 (the one that has been in view longest), because the wipes no longer wait for the track. Every card is guaranteed one whole wipe first.
+
+# Round 2
+
+Merged `eNov6` first (text-wrap rules, `contact.html`, new lessons).
+
+## Changes
+
+| # | Owner's request | Change | Where | How to test |
+|---|---|---|---|---|
+| R1 | Hover alone must not stop it | The hover pause is gone. Clicking or dragging a photo, a chevron, a dot, typing on a handle, or keyboard focus on a handle still take over. | `js/gallery.js` listeners under "when it runs" | Move the mouse around over the photos: it keeps going. Click a photo: it stops. |
+| R2 | The button shows an automatic pause | The play button is the state (`playing`). A touch sets it to paused, so it shows Play at once. Paused by a touch (`byTouch`), it plays again by itself 12 s after the last touch, or when the carousel has been scrolled out of view and back, and the button flips back to Pause, already while it is out of view. **Play always plays now**, whatever paused it. Pressing Pause yourself is never undone automatically. | `js/gallery.js` `touch()`, `resumeLater()`, `update()`, IntersectionObserver | Click a photo: Play icon. Wait 12 s: Pause icon and it moves. Click a chevron, then press Play: it moves at once. Press Pause, wait, scroll away and back: still paused. |
+| R3 | All visible cards sweep together | Every card in view runs the same sweep at the same time, then the track moves on by a whole view (3 cards at 1440, 2 at 820, 1 on a phone), so no card is swept twice in a row. Chevrons still move one card at a time. | `js/gallery.js` `sweep()` | At 1440 the three handles move as one; then three new cards slide in. |
+| R4 | Smoother motion | One `requestAnimationFrame` loop reads a fixed timeline: no timers between phases, no waiting for photos in the middle of a run. Ease in-out **cubic**. The handle, the before photo's edge and the divider move by `transform`; tags and the handle fade by `opacity`. Per frame only a CSS variable is written. The range input catches up when a handle comes to rest. | `js/gallery.js` `SWEEP`, `tick()`, `sweep()`, `paint()`; `styles.css` `.ba-before-layer`, `.ba-divider` | See "Frame times" below. |
+| R5 | Orphaned Instagram button | Now a small text link (Instagram icon, "See more on Instagram") in the carousel's control row: at the right end of the row from 820 px, centred under the controls on a phone. The link stays in the page's markup for when there are no photos; `js/gallery.js` moves it into the row. Not red: red on this site is the Book button, and a second red button would compete with it. | `index.html` `.gal-foot`; `styles.css` `.ba-controls`, `.ba-nav`, `.ba-insta` | At 1440 the link's right edge lines up with the right card (1246 px). At 375 it sits 43 px under the controls. |
+| R6 | Trim the vertical whitespace | The gallery's own padding is `clamp(32px, 4vw, 56px)` (was the shared 40 to 72 px), and the Instagram row is gone. | `styles.css` `.gallery` | See the measurements below. |
+| R7 | A handle left at the edge | While the carousel moves a handle (`.auto`), the label for the side that is not showing fades out, and the handle fades out within 8% of either edge. At "whole after" you see the after photo and the After label, nothing else. When the motion stops, every handle the carousel moved glides back to the middle (0.45 s); a handle you moved stays where you put it. | `styles.css` `.ba-slider.auto ...`; `js/gallery.js` `halt()`, `settle()` | Pause it during the wipe: handles glide back to the middle. Drag one: that one stays. |
+| L | (user) Loop without an end, like the usual infinite carousels | Past the last comparison it carries on forward into the first, and Previous on the first carries on back to the last, instead of racing back across all of them. The cards that slid out at one end are moved to the other end of the track while out of view, then the track resets without a transition, so nothing on screen moves. No copies of the cards. Dots are now one per comparison (6), and a dot takes the shortest way round. | `js/gallery.js` `move()`, `goTo()` | Click dot 6, then Next: card 1 slides in from the right. Previous: card 6 comes back from the left. |
+
+## Loop: what the libraries do
+
+- **Swiper (v9 on)**: loop mode moves the existing slides from one end to the other instead of cloning them, and needs at least twice as many slides as are in view ([migration guide v9](https://swiperjs.com/migration-guide-v9)).
+- **Embla**: loops by repositioning slides with transforms, no clones, turns looping off when there are not enough slides, and seeks the closest way to a target.
+- **Slick, older Swiper**: clone slides at both ends. Clones would duplicate every photo and every handle (a second, focusable "Compare before and after" for each), so not that.
+
+We follow Swiper and Embla: rearrange, no clones, shortest way to a dot. With 6 comparisons and 3 in view we have exactly the twice-as-many it needs. If a page is ever left with too few (say 4 photos at 3 in view), a move that cannot slide jumps instead, and with no more photos than fit in view, the arrows and dots hide.
+
+## Timings now
+
+| Step | Time |
+|---|---|
+| Handle from wherever it is to the right edge (whole before) | 1.2 s |
+| Look at the before | 1.6 s |
+| Wipe to the left edge (whole after) | 2.8 s |
+| Look at the after | 2.4 s |
+| Back to the middle, short rest | 1.0 s + 0.3 s |
+| Slide to the next view | 0.6 s |
+| **Per view** | **about 9.9 s**: every card in view at once |
+| Full cycle of 6 | about 20 s at 1440 (2 views), 30 s at 820 (3), 59 s on a phone (6) |
+| Restart after the last touch | 12 s |
+
+## Root causes
+
+**The jitter and the strange pauses** came from four things:
+
+1. **The hover pause.** Any mouse movement over the photos stopped the sweep mid-motion, and leaving them started a 12 s hold. For a mouse user, the carousel kept freezing and restarting for no visible reason.
+2. **Gaps between phases.** Each move and hold was its own `setTimeout` or promise, with a 0.4 s timer between cards and another for the slide. Timers do not fire on frame boundaries, so each phase started on whichever frame came next, a little late and unevenly. On wide screens the cards also swept one after another, so two of the three sat still for about 18 s.
+3. **Waiting for photos mid-run.** Before each card's sweep, the code waited up to 4 s for its photos. The card had already slid in, so it sat still, then started. Now the next view's photos are asked for a whole sweep ahead (about 10 s), and the only wait (1.5 s at most) is at the start of a view, with every handle at rest.
+4. **Layout and repaint every frame.** The divider moved by `left` (layout), the before photo was cut by `clip-path` (repaint of the photo), and the range input's value was written every frame (layout of the input). Now it is all `transform` and `opacity`, which the compositor moves without layout or repaint.
+
+**The handle at the far left edge (R7):** at "whole after" the handle sat at 0% for 2.4 s. The stage clips it, so only half the knob (one chevron) showed, and the Before label sat on top of the after photo. Interrupting the sweep also left handles wherever they were (a card at 3% in the round 1 test).
+
+**The whitespace (R6)**, measured from the section's top edge to the bottom of its content:
+
+| Width | Before: section height | After | Top: edge to "Our Work" before / after | Bottom: last item to edge before / after |
+|---|---|---|---|---|
+| 1920 | 714 | 576 | 80 / 64 | 72 / 56 |
+| 1440 | 714 | 576 | 80 / 64 | 72 / 56 |
+| 1280 | 698 | 567 | 72 / 59 | 64 / 51 |
+| 820 | 646 | 524 | 49 / 40 | 41 / 33 |
+| 375 | 624 | 546 | 47 / 39 | 40 / 32 |
+
+The causes, in order of size:
+- The Instagram button had a row of its own: 40 px of margin plus a 62 px button (102 px).
+- The shared section padding (72 px at 1440) is followed by the Services band's own 72 px top padding. The two bands are white and near-white (`--paper-2` and `--paper`), so it reads as one gap of about 150 px. That gap is now 128 px.
+- Above "Our Work", the 72 px padding plus 8 px of line leading. The eyebrow is an inline-flex box in a line of body line-height, which adds 8 px above every section's eyebrow; that is site-wide and unchanged.
+- Removing the subheading did not add space; it only left the head short, so the padding around it is more noticeable.
+- The `text-wrap` rules change nothing here: the heading is one line at every width from 375 up.
+
+## Frame times
+
+Headless Chrome, CPU throttled 4× (about a mid-range phone), 12 s of the automatic sweep:
+
+| | Frames | p50 | p95 | p99 | Longest | Over 20 ms |
+|---|---|---|---|---|---|---|
+| Before, 1440 | 710 | 16.7 | 16.7 | 16.8 | **200 ms** | 1 |
+| Before, 375 | 715 | 16.7 | 16.8 | 16.8 | **133 ms** | 1 |
+| After, 1440 | 721 | 16.7 | 16.7 | 16.8 | 16.8 ms | 0 |
+| After, 375 | 721 | 16.7 | 16.7 | 16.8 | 16.8 ms | 0 |
+
+Headless rendering uses software paint, so it under-states paint costs on a real phone, which is where moving off layout and repaint helps most.
+
+## Verified (round 2)
+
+- `npm run build` OK; `cd web && TZ=America/New_York npx vitest run`: 409 of 409.
+- Headless Chrome over CDP, cache disabled, real mouse and key events, at 1920, 1440, 1280, 820, 375 and 320:
+  - `scrollWidth === innerWidth` and `visualViewport.offsetTop` 0 at every width;
+  - the nav click on Results lands `#gallery` at 73 px, under the 73 px header;
+  - moving the mouse over the photos: still Pause, still moving;
+  - all visible cards hold the same position through the sweep (100, 0, 50 together), then the next view slides in, forward, and after the last view the first comes round again, still forward;
+  - at 1440 and 375:
+    - a click on a photo shows Play and the other cards glide to 50;
+    - 12 s later it shows Pause and sweeps;
+    - after a drag the card stays at 15% and the button shows Play; scrolled out of view the button already shows Pause, and back in view all handles converge on the right edge together;
+    - Next from 6 slides card 1 in from the right, and Previous from 1 brings card 6 in from the left; the largest jump between two frames is 28 px, the slide itself, with no jump when the cards are rearranged;
+    - Right arrow and End on the controls move it;
+    - Play after a touch pause plays at once; Pause stays through 13 s and through scrolling away and back;
+    - a hidden tab stops it and showing the tab continues it;
+    - under reduced motion it shows Play and nothing moves.
+- Screenshots: at whole before and whole after, no stray handle and only the matching label (1440, 375). Controls fit at 320 (276 of 280 px).
+
+## For the owner (round 2)
+
+- **Auto-advance moves a whole view.** At 1440 that's three new photos every 10 s. The chevrons still step one photo at a time.
+- **Instagram is a text link, not a red button.** Red is the Book button's colour, and a second red button in the middle of the page would compete with it. Easy to swap for `btn btn-primary` if you would rather.
+- **Section padding is tighter for this section only** (56 px at 1440). The Services band below still has 72 px above its heading. The extra 8 px above every eyebrow is site-wide and was left alone.
+
+# Round 1
+
+## Setup for testing
+
+```bash
+export PATH=/opt/homebrew/opt/node@22/bin:$PATH && npm run build
+python3 -m http.server 8792 --directory dist
+```
+
+Open http://localhost:8792/index.html with the cache disabled (DevTools, Network, "Disable cache"), at 1440, 820, 375 and 320 wide, and scroll to Results.
+
+## What the industry standards say, and what was followed
+
+Sources: the [WAI-ARIA APG carousel pattern](https://www.w3.org/WAI/ARIA/apg/patterns/carousel/), the [W3C WAI carousel tutorial on animations](https://www.w3.org/WAI/tutorials/carousels/animations/), [Bootstrap 5.3 carousel](https://getbootstrap.com/docs/5.3/components/carousel/), WCAG 2.2 SC 2.2.2 (Pause, Stop, Hide), and common before/after slider components (CodyHouse, react-compare-slider, img-comparison-slider).
+
+| Convention | Source | What we did |
+|---|---|---|
+| A visible control that stops and restarts automatic motion; same button, label changes with state, no `aria-pressed` | WCAG 2.2.2, APG, WAI tutorial | Pause/Play button. Its `aria-label` and icon change; the button is never replaced, so focus stays on it. |
+| Rotation control first in the carousel's tab order | APG | Pause comes first in the control row. The handles come before it in the tab order, but keyboard focus on a handle already stops the motion. |
+| Container `role="region"`, `aria-roledescription="carousel"`, a name without the word "carousel" | APG | `#baCarousel`, named "Before and after photos". |
+| Slides: `role="group"`, `aria-roledescription="slide"`, labelled by position ("3 of 6") | APG | Each `figure.ba-slider`. |
+| Slides wrapper `aria-live="off"` while rotating, `"polite"` otherwise | APG | `#baGrid` switches as the carousel starts and stops. |
+| Previous and next as native buttons; they do not move focus | APG, Bootstrap | Chevron buttons below the photos, "Previous photos" / "Next photos". |
+| Indicators: one button per stop, current one marked | Bootstrap (`aria-current="true"`), APG grouped picker | Dots in a `role="group"` labelled "Choose photos"; the current one has `aria-current="true"`. |
+| Stop on hover, stop on keyboard focus | APG, WAI tutorial, Bootstrap `pause: "hover"` | Superseded in round 2: the owner found the hover pause non-intuitive, so only keyboard focus on a handle, clicks and drags stop it. |
+| Restart only on explicit request | APG | Followed for **Pause**: only Play restarts it. For everything else the owner asked for a restart after idle or after scrolling away and back, which matches Bootstrap and the WAI tutorial (resume on mouse leave or focus leave). |
+| Stop while the page is hidden | Bootstrap (Page Visibility API) | `visibilitychange`. |
+| Wrap from last to first | Bootstrap `wrap: true` | Next on the last stop goes to the first. |
+| Arrow keys step the carousel | Bootstrap `keyboard: true` | Left/Right/Home/End on the control row. On a handle the arrows move the handle, as on every comparison slider. |
+| Reduced motion: no automatic motion | WCAG 2.3.3, Bootstrap | Starts paused with the Play icon, and the track's transition is off (the global reduced-motion rule). Play still works if the visitor asks for it. |
+| Comparison slider: a native range input (role slider), keyboard arrows move it, drag anywhere on the photo | before/after components | Unchanged from before: `.ba-range` over the photo. |
+| Hide off-screen slides from assistive tech | WAI tutorial | Cards out of view are `inert` and `aria-hidden`, so their handles are not in the tab order either. |
+
+Swiping the carousel on a phone is **not** supported: a sideways drag on the photo is the before/after handle, which is what the photo is for. The chevrons and dots move the carousel instead.
+
+## Timings (constants at the top of the carousel in `js/gallery.js`)
+
+| Step | Time | Why |
+|---|---|---|
+| Handle from the middle to the right edge (whole **before**) | 1.2 s | Slow enough to follow, fast enough not to feel like waiting. |
+| Look at the before | 1.6 s | Enough to take in the state of the car, which is a glance, not reading. |
+| Wipe across to the left edge (whole **after**) | 2.8 s | The reveal is the point. At about a third of the photo per second the eye can follow the line and compare each part as it changes. |
+| Look at the after | 2.4 s | The longest hold: it is the result we want remembered. |
+| Back to the middle | 1.0 s | Leaves the card the way a visitor expects to find it. |
+| Pause, then the slide to the next card | 0.4 s + 0.7 s | The track's own transition is 0.6 s. |
+| **Per comparison** | **about 9 s** | Common carousel guidance is 5 to 10 s a slide (Bootstrap's default is 5 s). A comparison is two pictures and a movement, so it sits near the top of that range. |
+| A full cycle of the 6 pairs | about 56 s | |
+| Restart after the visitor stops touching it | 12 s | Long enough to study a photo they stopped on, short enough that it is moving again by the time they look back. |
+
+The handle moves from the middle to the right first (whole before), then wipes leftwards to show the whole after. Before then after is the story the customer should see. Because Before is on the left in our layout, the reveal travels right to left.
+
+## Changes
+
+| # | Change | Where | How to test |
+|---|---|---|---|
+| 1 | Removed the subheading "Real details from around Cincinnati. Drag the slider on any photo..." | `index.html` `#gallery .section-head` | The section starts with "Our Work" and the heading only. |
+| 2 | The grid of cards is now a carousel track: one card in view on phones, two from 820 px, three from 1100 px. It moves by one card. A third of the container is 310 to 330 px, about the size of a phone's card. | `index.html` `#baCarousel` / `.ba-viewport` / `#baGrid.ba-track`; `styles.css` `.ba-viewport`, `.ba-track` (`--ba-per`, `--ba-gap`), 820 px block, new 1100 px rule; `js/gallery.js` `carousel()` | At 1440: 3 cards, 4 dots. At 820: 2 cards, 5 dots. At 375 and 320: 1 card, 6 dots. Resize across 820 and 1100: the dots and cards follow. |
+| 3 | (Superseded in round 2: all visible cards now sweep together.) Automatic sweep and advance. Each card that comes into view sweeps in turn, then the track moves one card along and the newly arrived card sweeps. On the first view all visible cards sweep, left to right. | `js/gallery.js` `loop()`, `sweep()`, `animate()` | Scroll to Results and leave it: the first card shows its whole before, wipes to the whole after, returns to the middle; then the next one does. |
+| 4 | Pause/Play, previous/next, dots, arrow keys. | `js/gallery.js` (controls built with the cards); `styles.css` `.ba-controls`, `.ba-ctl`, `.ba-dots`, `.ba-dot` | Click each. Pause: nothing moves for as long as you wait, even after scrolling away and back. Play: it starts again at once. Tab to the next chevron, then press Right, Left, Home, End. |
+| 5 | (Superseded in round 2: no hover pause; the button shows Play when a touch pauses it.) Taking over: pressing a chevron, a dot or the photo (dragging the handle), typing on a handle, a mouse moving over the photos, or keyboard focus on a handle stops the motion. The handle stays where it is. It starts again 12 s after the last touch (and after the mouse leaves the photos or focus leaves the handles), or when the carousel has been scrolled out of view and back. | `js/gallery.js` `interact()`, `update()`, IntersectionObserver | Drag a handle, keep the mouse there: nothing moves. Move the mouse away: it picks up 12 s later. Or scroll to the top and back: it picks up at once. |
+| 6 | Paused while the tab is hidden, and while the carousel is less than 35% on screen. Nothing animates off screen. | `js/gallery.js` | Switch tabs mid-sweep: the handle stops; it continues when you come back. |
+| 7 | Reduced motion: starts paused (Play icon), no auto sweep or advance, no track slide. | `js/gallery.js` `playing = !reduce.matches`; global reduced-motion rule | DevTools, Rendering, "prefers-reduced-motion: reduce", reload. |
+| 8 | Images: still lazy. The first card is eager as before (`i === 0`). The carousel switches a card's images to eager only when it is about to show it (the cards in view plus one ahead), and waits up to 4 s for a card's photos before sweeping it. `sizes` now says 340px from 1100 px. | `js/gallery.js` `photo()`, `SIZES`, `wake()`, `ready()` | Network panel, throttled: at load only the first card's photos (and on wide screens the other visible cards') are fetched. |
+| 9 | The cards lost their own `.reveal` fade; the carousel as a whole fades up instead. | `js/gallery.js` `card()`; `index.html` `#baCarousel.reveal` | The section fades in once, as one block. |
+
+## Root causes (things that would have gone wrong)
+
+- **Per-card `.reveal` in a carousel.** `.reveal` stays invisible until IntersectionObserver sees the element in the viewport. A card parked off to the side of a clipped track never intersects, so it would have slid in invisible and then faded up late. The fade belongs on the carousel, not on its cards.
+- **Hover from a parked cursor.** Chrome fires pointer events when the page scrolls under a cursor that is not moving. A plain `mouseenter` pause would stop the carousel for anyone who scrolls with the mouse in the middle of the screen, so it would almost never play on desktop. Hover only counts with real movement (`movementX`/`movementY`).
+- **Focus from a click.** Clicking a chevron leaves focus on it. If focus inside the carousel paused it until focus left, one click would stop it for good. Focus only holds it when it is keyboard focus (`:focus-visible`) on a handle; clicks hold it through the idle timer instead.
+- **Lazy images in a sideways track.** A card that is off to the side is not near the viewport, so `loading="lazy"` would not fetch it until it was already sliding in: a grey card. The carousel sets the next card's images to eager just before it is needed, and waits for the photos before sweeping.
+- **Clipping the track without clipping the shadows.** `overflow: hidden` on the track's viewport would cut off the cards' drop shadows at the bottom. `overflow-x: clip; overflow-y: visible` clips sideways only (with `overflow: hidden` first for browsers without `clip`). A track moved by `transform` inside a clip can never scroll the page sideways.
+
+## Verified
+
+- `npm run build`: OK. `cd web && TZ=America/New_York npx vitest run`: 409 of 409 pass, including the gallery lazy-loading checks (`loading="lazy"`, `i === 0`).
+- Headless Chrome over CDP, `dist/` on :8792, cache disabled, real mouse and key events, at 1440, 820, 375 and 320 px:
+  - `scrollWidth === innerWidth`, `visualViewport.offsetTop` 0, at every width, before and after the track has moved.
+  - A nav click on Results (header link, or the phone menu) lands with `#gallery` at 73 px, exactly under the 73 px header.
+  - Auto: the first card goes to 100 (whole before), holds, wipes to 0 (whole after), holds, returns to 50, then the next visible card does the same. Then the track moves one card along and only the new card sweeps. About 9 s per card, as designed.
+  - Chevrons, dot 4, arrow keys and Home: the track moves, `aria-current` follows, `aria-live` becomes `polite`, nothing moves for 12 s, then the sweep starts again with `aria-live="off"`.
+  - Pause: Play label, nothing moves after 14 s, or after scrolling away and back. Play: it starts at once.
+  - Drag: the handle follows the mouse, the sweep stops; with the mouse still on the photo nothing moves for 14 s; after scrolling away and back it sweeps again from where the handle was left.
+  - Tab hidden: stops; visible again: continues.
+  - Reduced motion: Play label, no movement in 4 s.
+  - Scrolling the page under a parked cursor did not pause it. Headless Chrome may not send the hover events a desktop Chrome does on scroll, so this one is worth a look by hand: park the mouse mid-screen and scroll to Results with the wheel. It should keep playing.
+- Screenshots at each width: the controls fit on one row at 320 px (276 of 280 px), and the cards keep their existing look.
+
+The build rewrites `?v=` stamps in every page because `styles.css` changed. They are kept in this commit, so no page loads a stale stylesheet. On merge conflicts in stamps, take either side and rebuild.
+
+## For the owner
+
+- **Cards in view:** 1 on phones, 2 from 820 px, 3 from 1100 px. Three is the most that fit while each card stays as wide as a phone's.
+- **Timings:** about 9 s per comparison, 12 s idle before it restarts. All in one place at the top of the carousel code if they should be faster or slower.
+- **Sweep direction:** whole before first, then the wipe to the whole after (right to left, because Before is on the left). If you meant a literal left-to-right sweep, it would end on the before photo.
+- **On phones:** Nielsen Norman Group advises against auto-advancing carousels on phones, because people scroll past before they read them. It is on, as requested, and it only runs while the carousel is on screen.
+- **No swipe to change cards on phones**, because a sideways drag on the photo moves the before/after handle. Chevrons and dots change cards.
+- **"Drag the slider" hint removed** with the subheading. The handle's arrows and the automatic sweep show what the photo does.

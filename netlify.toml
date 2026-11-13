@@ -36,7 +36,7 @@
   # day an sk_live_ key, a service account JSON or the iCloud calendar URL
   # lands in the repo. SECRETS_SCAN_SMART_DETECTION_ENABLED = false would
   # clear the same error by giving that up entirely.
-  SECRETS_SCAN_OMIT_KEYS = "STRIPE_PUBLISHABLE_KEY,GOOGLE_CALENDAR_API_KEY,GOOGLE_PLACES_API_KEY,GOOGLE_API_KEY,PAYPAL_CLIENT_ID,TURNSTILE_SITE_KEY,GOOGLE_CALENDAR_ID"
+  SECRETS_SCAN_OMIT_KEYS = "STRIPE_PUBLISHABLE_KEY,GOOGLE_CALENDAR_API_KEY,GOOGLE_PLACES_API_KEY,GOOGLE_API_KEY,PAYPAL_CLIENT_ID,TURNSTILE_SITE_KEY,GOOGLE_CALENDAR_ID,GA4_MEASUREMENT_ID,CLARITY_PROJECT_ID"
   SECRETS_SCAN_OMIT_PATHS = "js/config.js,dist/js/config.js"
 
 [functions]
@@ -85,16 +85,39 @@
 # Redirects
 # ---------------------------------------------------------------------------
 
+# PRINTED QR CODES: /golf (golf course booklet) and /prestige (Prestige Living
+# magazine). These two addresses are in print from 2027 for about a year and
+# can never change (marketing/qr/README.md). Never delete them or rename them:
+# printed-qr.test.ts fails if either stops being served. Where they lead CAN
+# change: each goes to its own landing page (owner approved, November 11),
+# tagged so analytics and the booking email name the source. 302, never 301:
+# a browser keeps a 301 forever, so a later change would never reach anyone
+# who had scanned once.
+[[redirects]]
+  from = "/golf"
+  to = "/lp-golf.html?utm_source=golf&utm_medium=print&utm_campaign=qr"
+  status = 302
+
+[[redirects]]
+  from = "/prestige"
+  to = "/lp-prestige.html?utm_source=prestige&utm_medium=print&utm_campaign=qr"
+  status = 302
+
 # The old booking page is a section of the home page now.
 [[redirects]]
   from = "/book.html"
   to = "/#book"
   status = 301
 
+# The booking page for the Google Business Profile (A2P plan T7, November
+# 12, 2026). A 200, so the address stays /book. It was a 301 to /#book until
+# then: a browser that followed that once may keep going to the home page's
+# booking form, which still books. /book.html above is left alone for the
+# same reason.
 [[redirects]]
   from = "/book"
-  to = "/#book"
-  status = 301
+  to = "/booking.html"
+  status = 200
 
 # Friendlier URLs for the API.
 [[redirects]]
@@ -127,6 +150,16 @@
   to = "/.netlify/functions/send-confirmation"
   status = 200
 
+[[redirects]]
+  from = "/api/booking-followup"
+  to = "/.netlify/functions/booking-followup"
+  status = 200
+
+[[redirects]]
+  from = "/api/cart-capture"
+  to = "/.netlify/functions/cart-capture"
+  status = 200
+
 # ---------------------------------------------------------------------------
 # Headers
 # ---------------------------------------------------------------------------
@@ -153,7 +186,26 @@
     # what RUM actually asks for, or switch RUM off. The privacy policy
     # describes it either way, through the performanceMonitoring switch in
     # web/lib/site/capabilities.ts.
-    Content-Security-Policy-Report-Only = "default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://js.stripe.com https://www.paypal.com https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://*.tile.openstreetmap.org https://*.googleusercontent.com https://lh3.googleusercontent.com https://*.paypal.com https://*.paypalobjects.com; connect-src 'self' https://api.web3forms.com https://nominatim.openstreetmap.org https://places.googleapis.com https://www.googleapis.com https://api.stripe.com https://*.paypal.com https://challenges.cloudflare.com; frame-src https://js.stripe.com https://hooks.stripe.com https://www.paypal.com https://*.paypal.com https://challenges.cloudflare.com; base-uri 'self'; form-action 'self' https://api.web3forms.com; object-src 'none'; frame-ancestors 'self'"
+    Content-Security-Policy-Report-Only = "default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://js.stripe.com https://www.paypal.com https://challenges.cloudflare.com https://www.googletagmanager.com https://*.clarity.ms; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://*.tile.openstreetmap.org https://*.googleusercontent.com https://lh3.googleusercontent.com https://*.paypal.com https://*.paypalobjects.com https://*.google-analytics.com https://www.googletagmanager.com https://*.clarity.ms https://c.bing.com; connect-src 'self' https://api.web3forms.com https://nominatim.openstreetmap.org https://places.googleapis.com https://www.googleapis.com https://api.stripe.com https://*.paypal.com https://challenges.cloudflare.com https://*.google-analytics.com https://*.analytics.google.com https://www.googletagmanager.com https://*.clarity.ms https://api.weather.gov; frame-src https://js.stripe.com https://hooks.stripe.com https://www.paypal.com https://*.paypal.com https://challenges.cloudflare.com; base-uri 'self'; form-action 'self' https://api.web3forms.com; object-src 'none'; frame-ancestors 'self'"
+
+# Print landing pages (/golf and /prestige lead here): kept out of search
+# results by a header as well as their meta tag. "/lp-*" also covers the
+# extensionless /lp-golf that Netlify serves for lp-golf.html.
+[[headers]]
+  for = "/lp-*"
+  [headers.values]
+    X-Robots-Tag = "noindex"
+
+# The booking page (/book) is out of search results too, like the landing pages.
+[[headers]]
+  for = "/booking*"
+  [headers.values]
+    X-Robots-Tag = "noindex"
+
+[[headers]]
+  for = "/book"
+  [headers.values]
+    X-Robots-Tag = "noindex"
 
 # Every asset URL carries a content hash (?v=...), so it can be cached hard.
 [[headers]]

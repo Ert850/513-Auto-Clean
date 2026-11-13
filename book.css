@@ -76,6 +76,9 @@ body.bk-open { overflow: hidden; }
   flex: 1; margin: 0; font-family: var(--font-display);
   font-size: 1.06rem; line-height: 1.25; color: var(--text);
 }
+/* The step title, and a short grey line under it where a step has one. */
+.bk-titles { flex: 1; min-width: 0; }
+.bk-titlesub { margin: .15rem 0 0; font-size: .8rem; line-height: 1.4; color: var(--text-soft); }
 .bk-back, .bk-close {
   flex: none; width: 34px; height: 34px; display: grid; place-items: center;
   border: 1px solid var(--line); background: var(--paper); border-radius: 50%;
@@ -85,6 +88,21 @@ body.bk-open { overflow: hidden; }
 .bk-back:hover, .bk-close:hover { border-color: var(--red); color: var(--red); }
 
 .bk-scroll { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+/* "More below": sits over the bottom of the scrolling area, above the footer. */
+.bk-cue { position: relative; height: 0; z-index: 8; flex: none; }
+.bk-cue::before {
+  content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 44px; pointer-events: none;
+  background: linear-gradient(rgba(245,246,243,0), var(--paper));
+}
+.bk-cue button {
+  position: absolute; left: 50%; bottom: .5rem; transform: translateX(-50%);
+  display: inline-flex; align-items: center; gap: .25rem; cursor: pointer;
+  font: inherit; font-size: .78rem; font-weight: 700; color: var(--text-soft);
+  background: var(--paper-2); border: 1px solid var(--line); border-radius: 999px;
+  padding: .3rem .75rem; box-shadow: var(--shadow-sm);
+}
+.bk-cue button:hover { color: var(--red); border-color: var(--red); }
+.bk-cue svg { width: 14px; height: 14px; }
 .bk-body { padding: 1.2rem 1.1rem 1.6rem; }
 
 .bk-foot {
@@ -93,7 +111,7 @@ body.bk-open { overflow: hidden; }
   background: var(--paper-2);
   padding-bottom: calc(.8rem + env(safe-area-inset-bottom));
 }
-.bk-total { display: flex; flex-direction: column; line-height: 1.2; }
+.bk-total { flex: none; display: flex; flex-direction: column; line-height: 1.2; white-space: nowrap; }
 .bk-total-amt { font-family: var(--font-display); font-weight: 800; font-size: 1.25rem; }
 .bk-total-sub { font-size: .76rem; color: var(--text-soft); }
 .bk-nextbtn {
@@ -127,19 +145,6 @@ body.bk-open { overflow: hidden; }
 }
 .bk-fine { font-size: .8rem; color: var(--text-soft); line-height: 1.55; margin-top: 1rem; }
 
-/* ---------- choice cards ---------- */
-.bk-cards { display: grid; gap: .6rem; }
-.bk-card {
-  text-align: left; width: 100%; cursor: pointer; font: inherit;
-  background: var(--paper-2); border: 2px solid var(--line); border-radius: var(--r-md);
-  padding: .95rem 1.05rem; transition: border-color .16s, box-shadow .16s, transform .16s;
-}
-.bk-card:hover { border-color: var(--red); transform: translateY(-1px); }
-.bk-card.on { border-color: var(--red); box-shadow: 0 0 0 3px var(--red-ghost); }
-.bk-card b { display: block; font-family: var(--font-display); font-size: 1.04rem; }
-.bk-card span { display: block; color: var(--text-soft); font-size: .86rem; margin-top: .12rem; line-height: 1.45; }
-.bk-card i { display: block; font-style: normal; font-size: .8rem; font-weight: 700; color: var(--red); margin-top: .35rem; }
-
 /* ---------- packages ---------- */
 .bk-pkgs { display: grid; gap: .6rem; }
 .bk-pkg {
@@ -157,6 +162,14 @@ body.bk-open { overflow: hidden; }
   font-weight: 800; letter-spacing: .07em; text-transform: uppercase; color: #fff;
   background: var(--red); padding: .14rem .4rem; border-radius: 5px; vertical-align: 2px;
 }
+/* The package's level, after its name (owner's pick P2, November 12): four
+   ink segments, `n` filled. Its right margin keeps "Most popular" clear of it. */
+.bk-lvl { display: inline-flex; gap: 2px; margin: 0 .5rem 0 .55rem; vertical-align: 2px; }
+.bk-lvl i { display: block; width: 8px; height: 5px; border-radius: 2px; background: var(--text); opacity: .18; }
+.bk-lvl i.on { opacity: 1; }
+/* "Coming soon" sits right after the meter, inside the name: the meter's own
+   margin spaces it, and when it wraps it starts flush at the left. */
+.bk-lvl + .bk-flag { margin-left: 0; }
 .bk-pkg-tag { display: block; color: var(--text-soft); font-size: .85rem; margin-top: .18rem; }
 .bk-pkg-feat { display: block; color: var(--text-soft); font-size: .77rem; line-height: 1.5; margin-top: .4rem; opacity: .9; }
 .bk-pkg-feat em { font-style: normal; font-weight: 700; color: var(--text); }
@@ -167,7 +180,7 @@ body.bk-open { overflow: hidden; }
 /* ---------- add-ons ---------- */
 .bk-addon {
   background: var(--paper-2); border: 2px solid var(--line); border-radius: var(--r-md);
-  padding: .9rem 1rem; margin-bottom: .6rem; transition: border-color .16s;
+  transition: border-color .16s;
 }
 .bk-addon.on { border-color: var(--red); }
 .bk-addon.off { opacity: .72; }
@@ -246,14 +259,6 @@ body.bk-open { overflow: hidden; }
 .bk-interest span { display: block; font-size: .82rem; color: var(--text-soft); line-height: 1.55; margin-top: .2rem; }
 
 /* ---------- shareable quotes ---------- */
-.bk-quotebar { margin: .5rem 0 0; text-align: right; }
-.bk-copyquote {
-  font: inherit; font-size: .78rem; font-weight: 700; cursor: pointer;
-  background: none; border: 0; padding: .2rem 0; color: var(--text-soft);
-  text-decoration: underline; text-underline-offset: 3px;
-}
-.bk-copyquote:hover { color: var(--red); }
-
 .bk-quotenote {
   background: var(--ink); color: #fff; border-radius: var(--r-md);
   padding: .85rem 1rem; margin: 0 0 .9rem;
@@ -267,48 +272,403 @@ body.bk-open { overflow: hidden; }
 /* ---------- time bands ---------- */
 /* Four parts of the day, then the exact hour inside one. The old flat list
    of six chips read as a menu of appointment windows, which it never was. */
-.bk-starts {
-  font-size: .84rem; color: var(--text-soft); line-height: 1.55;
-  background: var(--paper); border-radius: var(--r-sm); padding: .65rem .8rem;
-  margin: 0 0 .9rem;
+/* ---------- the time step: our recommended times, then the week ----------
+   Same palette as before: the "Standard price" green, amber only for the
+   Rush, Early and Late tags, and red only for "your choice". A fee hour is as
+   bookable as any other, so it looks like one; its fee is quiet grey text. */
+
+/* Our recommended times (option C): one-tap picks, each with its reason.
+   The whole card books (its button's ::after covers it); "More times on
+   Friday" sits above that cover and opens the day's other starts. */
+.bk-recs-h { margin: 0 0 .15rem; font-family: var(--font-display); font-size: 1.12rem; }
+.bk-recs-sub { margin: 0 0 .7rem; font-size: .84rem; color: var(--text-soft); }
+.bk-pickday { margin: 0 0 .5rem; }
+.bk-pick-card {
+  position: relative; display: flex; flex-direction: column; gap: .35rem;
+  background: var(--paper-2); border: 1.5px solid var(--line); border-radius: var(--r-md);
+  padding: .7rem 3rem .7rem 1rem; transition: border-color .16s, box-shadow .16s;
 }
-.bk-starts b { color: var(--text); }
-
-.bk-daygroup { margin-bottom: 1.1rem; }
-.bk-daygroup h4 { font-size: .9rem; font-weight: 800; margin: 0 0 .5rem; }
-
-.bk-band { border: 1.5px solid var(--line); border-radius: var(--r-sm); margin-bottom: .45rem; overflow: hidden; }
-.bk-band.on { border-color: var(--red); }
-
-.bk-band-h {
-  display: flex; align-items: center; justify-content: space-between; gap: .8rem;
-  width: 100%; text-align: left; font: inherit; cursor: pointer;
-  background: var(--paper-2); padding: .7rem .85rem; transition: background .16s;
+.bk-pick-card:hover { border-color: var(--red); box-shadow: 0 0 0 3px var(--red-ghost); }
+.bk-pick-card.on, .bk-pickday.open .bk-pick-card { border-color: var(--red); }
+.bk-pick-go {
+  display: flex; flex-direction: column; gap: .1rem; width: 100%; padding: 0; margin: 0;
+  font: inherit; text-align: left; color: var(--text); background: none; border: 0; cursor: pointer;
 }
-.bk-band-h:hover { background: var(--paper); }
-.bk-band-l b { display: block; font-size: .93rem; font-weight: 700; }
-.bk-band-l i { display: block; font-style: normal; font-size: .76rem; color: var(--text-soft); margin-top: .1rem; }
-.bk-band-r { text-align: right; flex: none; }
-.bk-band-r b { display: block; font-family: var(--font-display); font-size: 1.05rem; }
-.bk-band-r i { display: block; font-style: normal; font-size: .72rem; color: var(--text-soft); margin-top: .1rem; }
-.bk-band-std { display: block; font-style: normal; font-size: .7rem; font-weight: 700; color: #1a8a3f; }
-.bk-band-prem { display: block; font-style: normal; font-size: .7rem; font-weight: 800; color: #7a5209; }
-
-.bk-bandtimes {
-  display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: .4rem;
-  padding: .6rem .7rem .75rem; background: var(--paper); border-top: 1px solid var(--line);
+.bk-pick-go::after { content: ""; position: absolute; inset: 0; border-radius: inherit; }
+.bk-pick-go:focus-visible { outline: none; }
+.bk-pick-card:has(.bk-pick-go:focus-visible) { outline: 2px solid var(--red); outline-offset: 2px; }
+.bk-pick-why { font-size: .7rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--red); }
+.bk-pick-line { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 .6rem; }
+.bk-pick-line b { font-family: var(--font-display); font-size: 1.15rem; }
+.bk-pick-line span { font-weight: 700; }
+.bk-pick-go .bk-rec-go { position: absolute; right: 1rem; top: 50%; transform: translateY(-50%); }
+.bk-pick-foot { display: flex; flex-wrap: wrap; align-items: center; gap: .35rem .5rem; }
+.bk-pick-more {
+  position: relative; z-index: 1; font: inherit; font-size: .8rem; font-weight: 700; cursor: pointer;
+  background: none; border: 0; padding: .2rem 0; color: var(--red);
+  text-decoration: underline; text-underline-offset: 3px;
 }
-.bk-bandtimes .bk-time {
-  display: block; text-align: center; font: inherit; cursor: pointer;
+/* A bigger target than the words (owner, November 10: easy to miss and book
+   the card instead): 10 to 12px more on every side, without moving them. */
+.bk-pick-more::before { content: ""; position: absolute; inset: -10px -12px; }
+.bk-rec-go { flex: none; width: 22px; height: 22px; color: var(--red); }
+.bk-rec-go svg { width: 22px; height: 22px; }
+
+/* The panel under a pick, or under the flexible card: opens in place. */
+.bk-recday-opts { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .25s var(--ease); }
+.bk-pickday.open .bk-recday-opts { grid-template-rows: 1fr; }
+.bk-recday-in {
+  overflow: hidden; min-height: 0; visibility: hidden; transition: visibility 0s .25s;
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: .45rem;
+}
+/* Room for the focus ring: the panel clips to animate, so the buttons sit 4px
+   inside it (and the panel 4px wider) or the ring is cut off. */
+.bk-pickday.open .bk-recday-in { visibility: visible; transition: none; padding: .5rem 4px 4px; margin: 0 -4px; }
+.bk-more-t, .bk-flex-day {
+  display: flex; flex-direction: column; gap: .1rem; font: inherit; text-align: left; cursor: pointer; color: var(--text);
+  background: var(--paper-2); border: 1.5px solid var(--line); border-radius: var(--r-sm); padding: .5rem .7rem;
+}
+.bk-more-t:hover, .bk-flex-day:hover { border-color: var(--red); box-shadow: 0 0 0 3px var(--red-ghost); }
+.bk-more-t b { display: flex; align-items: center; gap: .25rem; font-family: var(--font-display); font-size: .92rem; }
+.bk-more-t b svg { width: 11px; height: 11px; }
+.bk-more-in { grid-template-columns: repeat(4, 1fr); }
+.bk-more-t span { font-size: .72rem; color: var(--text-soft); }
+.bk-flex-in { grid-template-columns: repeat(7, 1fr); }
+.bk-flex-day { align-items: center; text-align: center; padding: .45rem .2rem; }
+.bk-flex-day b { font-size: .66rem; font-weight: 700; color: var(--text-soft); text-transform: uppercase; }
+.bk-flex-day span { font-family: var(--font-display); font-size: .92rem; }
+
+/* Flexible on the time? */
+.bk-flex-card {
+  display: flex; align-items: center; gap: .9rem; padding: .7rem 1rem;
+  border: 1.5px dashed var(--line); border-radius: var(--r-md); background: var(--paper);
+}
+.bk-flex-t { flex: 1; min-width: 0; }
+.bk-flex-t b { display: block; font-size: .95rem; }
+.bk-flex-t span { display: block; font-size: .8rem; color: var(--text-soft); margin-top: .1rem; }
+.bk-flex-b {
+  flex: none; font: inherit; font-size: .84rem; font-weight: 700; cursor: pointer; white-space: nowrap;
+  background: var(--paper-2); color: var(--red); border: 1.5px solid var(--red); border-radius: 999px; padding: .45rem .9rem;
+}
+.bk-flex-b:hover { background: var(--red); color: #fff; }
+@media (max-width: 559.98px) {
+  .bk-recday-in, .bk-more-in { grid-template-columns: repeat(3, 1fr); }
+  .bk-flex-in { grid-template-columns: repeat(4, 1fr); }
+  .bk-flex-card { flex-direction: column; align-items: stretch; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bk-recday-opts { transition: none; }
+}
+.bk-recs-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .5rem 1rem; }
+
+/* The ways on, pinned to the bottom of the window on both time views
+   (owner, November 10): always on screen, and whatever is above them ends
+   cut off when there is more. Full width of the body, over the content. */
+.bk-pinbar {
+  position: sticky; bottom: 0; z-index: 7;
+  margin: .9rem -1.1rem 0; padding: .6rem 1.1rem;
+  background: var(--paper); border-top: 1px solid var(--line);
+  box-shadow: 0 -10px 16px -12px rgba(11, 14, 19, .22);
+}
+.bk-short { display: none; }
+@media (max-width: 559.98px) {
+  .bk-pinbar .bk-long { display: none; }
+  .bk-pinbar .bk-short { display: inline; }
+  .bk-pinbar { flex-wrap: nowrap; }
+}
+.bk-recs-all {
+  font: inherit; font-size: .88rem; font-weight: 700; cursor: pointer;
+  background: var(--paper); color: var(--red); border: 1.5px solid var(--red);
+  border-radius: 999px; padding: .5rem .95rem;
+}
+.bk-recs-all:hover { background: var(--red); color: #fff; }
+.bk-recs-foot .bk-askwhen-link, .bk-wk-gobar .bk-askwhen-link { margin: 0; width: auto; padding: 0; border: 0; }
+
+/* The week. */
+.bk-wk { position: relative; transition: opacity .2s; }
+.bk-wk.busy { opacity: .45; pointer-events: none; }
+.bk-wk-recs { display: inline-flex; align-items: center; gap: .2rem; margin: 0 0 .6rem; padding-left: 0; }
+.bk-wk-recs svg { width: 15px; height: 15px; }
+.bk-wk-h { display: flex; align-items: center; justify-content: space-between; gap: .6rem; margin: 0 0 .6rem; }
+.bk-wk-h h4 { margin: 0; font-family: var(--font-display); font-size: 1.08rem; }
+.bk-wk-tz { display: block; margin-top: .1rem; font-size: .74rem; color: var(--text-soft); }
+.bk-wk-nav { display: flex; align-items: center; gap: .35rem; }
+.bk-wk-arrow {
+  width: 44px; height: 44px; display: grid; place-items: center; cursor: pointer;
+  background: var(--paper-2); border: 1.5px solid var(--line); border-radius: var(--r-sm); color: var(--text);
+}
+.bk-wk-arrow svg { width: 18px; height: 18px; }
+.bk-wk-arrow:hover:not(:disabled) { border-color: var(--red); color: var(--red); }
+.bk-wk-arrow:disabled { opacity: .35; cursor: not-allowed; }
+.bk-wk-today, .bk-wk-more {
+  font: inherit; font-size: .82rem; font-weight: 700; cursor: pointer;
+  color: var(--red); background: none; border: 0; padding: .3rem .2rem;
+  text-decoration: underline; text-underline-offset: 3px;
+}
+
+.bk-wk-legend { display: flex; flex-wrap: wrap; align-items: center; gap: .35rem .9rem; margin: 0 0 .7rem; font-size: .78rem; color: var(--text-soft); }
+.bk-wk-legend span { display: inline-flex; align-items: center; gap: .35rem; }
+/* What makes a fee, one tap away (November 11). */
+.bk-wk-feeq {
+  font: inherit; font-size: .78rem; font-weight: 700; color: var(--text-soft); cursor: pointer;
+  background: none; border: 0; padding: .3rem 0; text-decoration: underline; text-underline-offset: 3px;
+}
+.bk-wk-feeq:hover { color: var(--text); }
+.bk-wk-rules { flex-basis: 100%; margin: 0; font-size: .78rem; line-height: 1.45; color: var(--text-soft); }
+.bk-wk-key {
+  width: 18px; height: 18px; border-radius: 4px; display: inline-grid; place-items: center; flex: none;
+  font-style: normal; font-size: .58rem; font-weight: 800;
+}
+.bk-wk-key svg { width: 12px; height: 12px; }
+.bk-wk-key.sug { color: var(--ink); }
+.bk-wk-key.no, .bk-tl-s.no {
+  background: repeating-linear-gradient(135deg, var(--paper) 0 4px, var(--line) 4px 6px);
+  border: 1px solid var(--line);
+}
+.bk-wk-weather { margin: 0 0 .7rem; font-size: .8rem; line-height: 1.5; color: var(--text-soft); background: var(--paper); border-radius: var(--r-sm); padding: .5rem .7rem; }
+.bk-wk-weather b { color: var(--text); }
+
+/* A time's price, said once per stretch (owner, November 11). "Standard
+   price" is green (owner's call, an exception to "a good answer is ink");
+   a fee is the gold of the Rush tag. */
+.bk-px { font-size: .8rem; font-weight: 700; }
+.bk-px.std { color: #1a8a3f; }
+.bk-px.fee { color: #7a5209; }
+
+/* Wide screens: one day as a timeline, every half hour a row (option C,
+   November 11). Rows are white like the recommended-time cards; taken
+   times are grey hatched. Row height lives in funnel.js too (TL_ROW,
+   TL_GAP): change both together. */
+.bk-tl-day { margin: 0 0 .5rem; font-family: var(--font-display); font-size: 1.02rem; }
+/* Option C (owner, November 11): bigger hour labels, rows only as wide as
+   what they say (full-width rows were mostly empty), and a card beside them
+   with the time's details. Rows are 30px (TL_ROW), 2px apart (TL_GAP). */
+.bk-tl { display: grid; grid-template-columns: 4.6rem minmax(0, 18rem) minmax(12.5rem, 1fr); gap: 2px 0; }
+.bk-tl-t { grid-column: 1; align-self: center; text-align: right; padding-right: .8rem; font-size: 1rem; font-weight: 800; color: var(--ink); white-space: nowrap; }
+.bk-tl-t.half { font-size: .84rem; font-weight: 600; color: var(--text-soft); }
+.bk-tl-s .bk-px { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.bk-tl-len { font-size: .8rem; font-weight: 600; color: var(--text-soft); }
+.bk-tl-card {
+  grid-column: 3; align-self: start; position: sticky; top: .6rem; margin-left: .9rem;
+  background: var(--paper-2); border: 1.5px solid var(--line); border-radius: 10px;
+  padding: .85rem .95rem; font-size: .86rem; line-height: 1.4;
+  display: flex; flex-direction: column; align-items: flex-start; gap: .15rem;
+}
+.bk-tl-card h6 { margin: 0; font-size: .72rem; letter-spacing: .06em; text-transform: uppercase; color: var(--text-soft); }
+.bk-tl-card > b { font-family: var(--font-display); font-size: 1.15rem; margin: .1rem 0 .15rem; }
+.bk-tl-card .bk-px { font-size: .86rem; font-weight: 800; }
+.bk-tl-card .bk-px.fee { background: rgba(240,169,63,.18); padding: .05rem .4rem; border-radius: 4px; }
+.bk-tl-card p { margin: .1rem 0 0; color: var(--text-soft); }
+.bk-tl-card .bk-tl-star { margin-left: 0; }
+.bk-tl-card-go {
+  margin-top: .65rem; width: 100%; min-height: 44px; border: 0; border-radius: 8px; cursor: pointer;
+  background: var(--red); color: #fff; font: inherit; font-weight: 800;
+}
+.bk-tl-card-go:hover { background: var(--red-deep); }
+/* The chosen time, labelled as the bar labels it (red, ticked). */
+.bk-tl-card p.bk-tl-card-mine { display: flex; align-items: center; gap: .25rem; margin-top: .6rem; color: var(--red); font-size: .7rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+.bk-tl-card-mine svg { width: 12px; height: 12px; flex: none; }
+.bk-tl-card-mine + .bk-tl-card-go { margin-top: .35rem; }
+/* Rows past the last start shown: only room for that job's block to finish
+   in (no box, not "not available"). */
+.bk-tl-t.tail { opacity: .4; }
+.bk-tl-s {
+  grid-column: 2; display: flex; align-items: center; gap: .5rem; min-width: 0; padding: 0 .75rem;
+  border-radius: 6px; font: inherit; text-align: left;
+}
+button.bk-tl-s {
+  cursor: pointer; background: var(--paper-2); border: 1.5px solid var(--line); color: var(--text);
+  transition: border-color .14s, box-shadow .14s;
+}
+button.bk-tl-s:hover { border-color: var(--red); box-shadow: 0 0 0 3px var(--red-ghost); }
+.bk-tl-star {
+  margin-left: auto; display: inline-flex; align-items: center; gap: .25rem;
+  font-style: normal; font-size: .72rem; font-weight: 800; color: var(--ink);
+}
+.bk-tl-star svg { width: 11px; height: 11px; }
+/* Rows under a block (chosen or pointed at) keep their outline and hide
+   what is in them, so the block shows its price once. They fade with the
+   block's glide (.14s) rather than blinking out ahead of it (November 12). */
+.bk-tl-s > * { transition: opacity .14s ease-out; }
+.bk-tl-s.under > *, .bk-tl-s.pv > * { opacity: 0; }
+/* ...except the suggested star, which stays on its row above any block, so
+   a block never hides which start we suggest (owner, November 11). */
+.bk-tl-s.under > .bk-tl-star, .bk-tl-s.pv > .bk-tl-star { opacity: 1; position: relative; z-index: 4; }
+.bk-tl.pointing .bk-tl-s.under:not(.pv) > .bk-tl-star { z-index: auto; }
+/* Pointing at another start hides the chosen job, and its rows show again. */
+.bk-tl.pointing .bk-tl-span.mine { visibility: hidden; }
+.bk-tl.pointing .bk-tl-s.under:not(.pv) > * { opacity: 1; }
+/* Each row carries its price both ways; the first row you can see of each
+   stretch says it in words ("+$25 rush fee", "Standard price"). */
+.bk-wk-item .pw-l, .bk-wk-item.lead .pw-s { display: none; }
+.bk-wk-item.lead .pw-l { display: inline; }
+/* On the timeline the two forms share one spot and cross-fade, so the words
+   moving to another row fade rather than jump (owner, November 12). */
+.bk-tl-s .bk-px { display: inline-grid; }
+.bk-tl-s .bk-px > span { grid-area: 1 / 1; white-space: nowrap; transition: opacity .22s ease-out; }
+.bk-tl-s .pw-l, .bk-tl-s.lead .pw-s { opacity: 0; }
+.bk-tl-s.lead .pw-l { opacity: 1; }
+/* The job, start to estimated finish, over the rows it covers. */
+.bk-tl-span { grid-column: 2; position: relative; z-index: 3; pointer-events: none; overflow: hidden; border-radius: 6px; }
+.bk-tl-span > i {
+  position: absolute; top: 0; left: 0; right: 0; font-style: normal;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .15rem;
+  border: 2px solid var(--red); border-radius: 6px;
+  background: linear-gradient(rgba(196,20,20,.10), rgba(196,20,20,.10)), var(--paper-2);
+}
+.bk-tl-span b { font-family: var(--font-display); font-size: 1.05rem; color: var(--text); }
+.bk-tl-span .bk-px { font-size: .84rem; font-weight: 800; }
+.bk-tl-span .bk-px.fee { background: rgba(240,169,63,.18); padding: .05rem .4rem; border-radius: 4px; }
+/* The pointed-at block glides between starts (previewTl moves it by transform);
+   its words dim while it travels and fade up where it settles. */
+.bk-tl-span.preview { transition: transform .14s ease-out; }
+.bk-tl-span.preview > i > * { transition: opacity .22s ease-out; }
+.bk-tl-span.preview.moving > i > * { opacity: .35; transition-duration: .14s; }
+@media (prefers-reduced-motion: reduce) {
+  .bk-tl-span.preview, .bk-tl-span.preview > i > *, .bk-tl-s > *, .bk-tl-s .bk-px > span { transition: none; }
+}
+.bk-tl-span.preview > i { border-style: dashed; background: linear-gradient(rgba(196,20,20,.05), rgba(196,20,20,.05)), var(--paper-2); }
+.bk-tl-span.preview.solid > i { border-style: solid; background: linear-gradient(rgba(196,20,20,.10), rgba(196,20,20,.10)), var(--paper-2); }
+/* "Earlier times" and "Later times": the folded starts, one tap away. */
+.bk-wk-fold {
+  display: flex; align-items: center; gap: .3rem; width: max-content; margin: .3rem auto .5rem;
+  font: inherit; font-size: .76rem; font-weight: 700; color: var(--text); cursor: pointer;
+  background: var(--paper-2); border: 1px solid var(--line); border-radius: 999px; padding: .3rem .8rem;
+}
+.bk-wk-fold:hover { border-color: var(--text-soft); }
+.bk-wk-fold svg { width: 12px; height: 12px; }
+.bk-wk-day em {
+  display: inline-block; font-style: normal; font-weight: 800; letter-spacing: .05em;
+  text-transform: uppercase; color: #7a5209; background: rgba(240,169,63,.16); border-radius: 4px;
+}
+
+/* The seven days over the open one (all widths). */
+.bk-wk-strip { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; margin: 0 0 .8rem; }
+.bk-wk-day {
+  font: inherit; cursor: pointer; text-align: center; padding: .4rem 0 .35rem; min-height: 64px;
+  background: var(--paper-2); border: 1.5px solid var(--line); border-radius: var(--r-sm); color: var(--text);
+  display: flex; flex-direction: column; align-items: center; gap: .15rem;
+}
+.bk-wk-day b { font-size: .66rem; font-weight: 700; color: var(--text-soft); text-transform: uppercase; }
+.bk-wk-day span { font-family: var(--font-display); font-size: 1rem; line-height: 1; }
+.bk-wk-day.on { border-color: var(--red); box-shadow: 0 0 0 3px var(--red-ghost); }
+.bk-wk-day.past > * { opacity: .45; }
+.bk-wk-day em { font-size: .5rem; padding: .02rem .2rem; }
+.bk-wk-bar { display: block; width: 70%; height: 4px; border-radius: 2px; background: var(--line); overflow: hidden; }
+/* Filled to how much of the day is still open (November 11). */
+.bk-wk-bar > i { display: block; height: 100%; border-radius: 2px; }
+.bk-wk-bar > i.ok { background: #1a8a3f; }
+.bk-wk-bar > i.fee { background: #f0a93f; }
+.bk-wk-bar.no { background: repeating-linear-gradient(135deg, var(--paper) 0 3px, var(--line) 3px 5px); }
+.bk-wk-band { display: flex; align-items: center; justify-content: space-between; gap: .4rem; margin: .7rem 0 .35rem; font-size: .76rem; font-weight: 800; color: var(--text-soft); text-transform: uppercase; letter-spacing: .05em; }
+.bk-wk-list > .bk-wk-sec:first-child .bk-wk-band { margin-top: 0; }
+.bk-wk-band .bk-px { text-transform: none; letter-spacing: 0; font-size: .78rem; }
+
+/* Phones (option B, November 11): the week bar and the day strip stay
+   pinned while the times scroll, and each part-of-day heading stays pinned
+   under them while any of its times are on screen (sticky inside its own
+   section, so it leaves with it). pinWeek() measures --wk-h and --wk-strip. */
+.bk-wk.narrow .bk-wk-h, .bk-wk.narrow .bk-wk-strip, .bk-wk.narrow .bk-wk-band {
+  position: sticky; z-index: 6; background: var(--paper);
+  margin-left: -1.1rem; margin-right: -1.1rem; padding-left: 1.1rem; padding-right: 1.1rem;
+}
+.bk-wk.narrow .bk-wk-h { top: 0; margin-bottom: 0; padding-top: .45rem; padding-bottom: .55rem; }
+.bk-wk.narrow .bk-wk-strip { top: var(--wk-h, 0px); margin-bottom: 0; padding-bottom: .6rem; }
+.bk-wk.narrow .bk-wk-band { top: calc(var(--wk-h, 0px) + var(--wk-strip, 0px)); z-index: 5; margin-top: 0; margin-bottom: 0; padding-top: .55rem; padding-bottom: .4rem; }
+/* Too short to pin all three (pinWeek, PIN_ROOM_MIN): the week bar and the
+   strip scroll away, the part-of-day heading stays pinned at the top. */
+.bk-wk.narrow.nopin .bk-wk-h, .bk-wk.narrow.nopin .bk-wk-strip { position: static; }
+.bk-wk.narrow.nopin .bk-wk-band { top: 0; }
+.bk-wk-item {
+  width: 100%; min-height: 48px; display: flex; align-items: center; gap: .7rem; margin-bottom: .35rem;
+  font: inherit; text-align: left; cursor: pointer; padding: .5rem .8rem;
+  background: var(--paper-2); border: 1.5px solid var(--line); border-radius: var(--r-sm); color: var(--text);
+}
+.bk-wk-item:hover { border-color: var(--red); }
+.bk-wk-item b { font-family: var(--font-display); font-size: .98rem; white-space: nowrap; }
+.bk-wk-item .bk-px { flex: 1; font-size: .78rem; }
+.bk-pick-price.fee, .bk-more-t .fee { color: #7a5209; font-weight: 700; font-style: normal; }
+.bk-wk-item em { display: inline-flex; align-items: center; gap: .25rem; font-style: normal; font-size: .72rem; font-weight: 800; color: var(--ink); }
+.bk-wk-item em svg { width: 11px; height: 11px; }
+.bk-wk-item.on { border: 2px solid var(--red); background: var(--red-ghost); box-shadow: 0 0 0 3px var(--red-ghost); }
+/* The hour's other start (usually half past), as its own button. */
+.bk-wk-row { display: flex; gap: .35rem; margin-bottom: .35rem; }
+.bk-wk-row .bk-wk-item { flex: 1; min-width: 0; margin-bottom: 0; }
+.bk-wk-alt {
+  flex: none; display: flex; flex-direction: column; align-items: center; justify-content: center; min-width: 4.4rem;
+  font: inherit; font-size: .8rem; font-weight: 700; cursor: pointer; color: var(--text); padding: .2rem .5rem;
   background: var(--paper-2); border: 1.5px solid var(--line); border-radius: var(--r-sm);
-  padding: .45rem .3rem; font-size: .88rem; font-weight: 700;
-  transition: border-color .16s, background .16s;
 }
-.bk-bandtimes .bk-time:hover { border-color: var(--red); }
-.bk-bandtimes .bk-time.on { border-color: var(--red); background: var(--red-ghost); }
-.bk-bandtimes .bk-time i {
-  display: block; font-style: normal; font-size: .7rem; font-weight: 400;
-  color: var(--text-soft); margin-top: .1rem;
+.bk-wk-alt i { font-style: normal; font-size: .66rem; font-weight: 600; color: var(--text-soft); }
+.bk-wk-alt:hover { border-color: var(--red); }
+.bk-wk-none { font-size: .88rem; color: var(--text-soft); background: var(--paper); border-radius: var(--r-sm); padding: .7rem .85rem; }
+
+.bk-wk-empty {
+  display: flex; flex-wrap: wrap; align-items: center; gap: .3rem .8rem; margin: 0 0 .7rem;
+  background: var(--paper); border-radius: var(--r-sm); padding: .65rem .8rem; font-size: .88rem;
+}
+
+/* The chosen time, start to finish. */
+.bk-wk-sum {
+  margin: 0 0 .8rem; padding: .75rem .9rem; border-radius: var(--r-sm);
+  background: var(--paper-2); border: 1.5px solid var(--red); font-size: .86rem; line-height: 1.5;
+}
+.bk-wk-sum b { display: block; font-family: var(--font-display); font-size: 1rem; }
+.bk-wk-sum span { display: block; color: var(--text-soft); }
+.bk-wk-sum .bk-wk-short { margin-top: .3rem; color: #7a5209; font-weight: 600; }
+.bk-wk-sum.other { border-color: var(--line); }
+.bk-wk-sum.other b { display: inline; font-family: inherit; font-size: inherit; }
+
+/* The chosen time, in the middle of the bottom bar, from Time to the last
+   step. One row, as tall as Continue (it stretches to the row), with the
+   suggested time as its own small button. */
+.bk-pick {
+  flex: 0 1 auto; min-width: 0; margin: 0 auto; align-self: stretch;
+  display: flex; align-items: center; gap: .6rem;
+  padding: .15rem .3rem .15rem .55rem; border: 1.5px solid var(--red); border-radius: var(--r-sm);
+  background: #fdf6f6; /* a faint red, so it reads as the chosen time */
+  font-size: .74rem; line-height: 1.3; color: var(--text-soft);
+}
+.bk-pick-txt { min-width: 0; padding-right: .45rem; }
+.bk-pick-eye { display: flex; align-items: center; gap: .2rem; font-style: normal; font-size: .62rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--red); line-height: 1.2; }
+.bk-pick-eye svg { width: 11px; height: 11px; flex: none; }
+.bk-pick-txt > b { display: block; font-family: var(--font-display); font-size: .86rem; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bk-pick-txt > span { display: flex; gap: .45rem; white-space: nowrap; }
+.bk-pick-price { overflow: hidden; text-overflow: ellipsis; }
+.bk-pick-change {
+  font: inherit; font-weight: 700; color: var(--red); background: none; border: 0; padding: 0; cursor: pointer;
+  text-decoration: underline; text-underline-offset: 2px;
+}
+/* "Change to suggested?": a small grey pill just under the box, apart from
+   it (owner, November 10: the red tab joined to the box read as part of
+   the choice, and its text ran past it when the box was narrow). Neutral,
+   so it offers rather than nags; sized to its own text, centred on the box. */
+.bk-pick { position: relative; }
+.bk-steer {
+  position: absolute; top: calc(100% + 4px); left: 50%; transform: translateX(-50%);
+  display: flex; align-items: center; gap: .25rem;
+  font: inherit; font-size: .66rem; font-weight: 600; line-height: 1.2; white-space: nowrap; cursor: pointer;
+  color: var(--text-soft); background: var(--paper); padding: .15rem .6rem;
+  border: 1px solid var(--line); border-radius: 999px;
+}
+.bk-steer:hover { color: var(--text); border-color: var(--text-soft); }
+.bk-steer svg { width: 9px; height: 9px; flex: none; color: var(--text); }
+.bk-steer b { font-weight: 800; color: var(--text); }
+.bk-foot.steering { padding-bottom: calc(1.5rem + env(safe-area-inset-bottom)); }
+.bk-pick:not([hidden]) ~ .bk-nextbtn { margin-left: 0; }
+@media (max-width: 559.98px) {
+  .bk-foot { flex-wrap: wrap; row-gap: .6rem; }
+  .bk-pick { order: -1; flex-basis: 100%; min-height: 48px; }
+  .bk-pick.has-steer { margin-bottom: 1.2rem; }
+  .bk-pick:not([hidden]) ~ .bk-nextbtn { margin-left: auto; }
+}
+.bk-wk-gobar {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .5rem 1rem;
+}
+.bk-wk-go { display: inline-flex; align-items: center; gap: .5rem; font-size: .8rem; font-weight: 700; color: var(--text-soft); margin: 0; }
+.bk-wk-go input {
+  font: inherit; font-size: .85rem; border: 1.5px solid var(--line); border-radius: var(--r-sm);
+  padding: .35rem .5rem; background: var(--paper-2); color: var(--text);
 }
 
 /* ---------- when we cannot offer a time ---------- */
@@ -406,14 +766,6 @@ body.bk-open { overflow: hidden; }
 }
 .bk-askwhen-link:hover { text-decoration: underline; }
 
-/* "Help me decide", beside the three answers somebody might not have. Set
-   apart from them, because it is a different kind of answer rather than a
-   fourth service. */
-.bk-card-ask { border-style: dashed; background: var(--paper); }
-.bk-card-ask.on { border-style: solid; }
-.bk-intentnote { margin-top: .9rem; }
-.bk-intentnote a { color: var(--red); font-weight: 700; }
-
 .bk-asknote {
   background: var(--ink); color: #fff; border-radius: var(--r-md);
   padding: .9rem 1.05rem; margin-bottom: .9rem;
@@ -421,10 +773,6 @@ body.bk-open { overflow: hidden; }
 .bk-asknote b { display: block; font-family: var(--font-display); font-size: 1.02rem; }
 .bk-asknote span { display: block; font-size: .84rem; color: rgba(255,255,255,.8); line-height: 1.55; margin-top: .25rem; }
 .bk-asknote strong { color: #fff; }
-
-/* The single pay option on a request is a statement, not a choice. */
-.bk-pay.static { cursor: default; }
-.bk-pay.static:hover { transform: none; }
 
 /* ---------- multi day jobs ---------- */
 /* A job across several days is a different kind of commitment from a slot,
@@ -436,7 +784,6 @@ body.bk-open { overflow: hidden; }
 .bk-multiday b { display: block; font-family: var(--font-display); font-size: 1.02rem; }
 .bk-multiday span { display: block; font-size: .84rem; color: rgba(255,255,255,.78); line-height: 1.55; margin-top: .25rem; }
 
-.bk-days { display: grid; gap: .5rem; }
 .bk-day {
   display: block; width: 100%; text-align: left; font: inherit; cursor: pointer;
   background: var(--paper); border: 1.5px solid var(--line); border-radius: var(--r-sm);
@@ -448,16 +795,9 @@ body.bk-open { overflow: hidden; }
 .bk-day span { display: block; font-size: .79rem; color: var(--text-soft); margin-top: .2rem; line-height: 1.5; }
 
 /* ---------- promo code ---------- */
-/* Collapsed to a link until asked for. A visible empty discount box is an
-   invitation to abandon checkout and go looking for a code. */
-.bk-promolink {
-  display: block; margin: .8rem 0 0; padding: 0; font: inherit; font-size: .85rem;
-  color: var(--text-soft); text-decoration: underline; text-underline-offset: 3px;
-  background: none; border: 0; cursor: pointer;
-}
-.bk-promolink:hover { color: var(--red); }
-
-.bk-promo { margin-top: .9rem; }
+/* Room below too: the payment cards that follow have no top margin, and
+   the two touched (owner's screenshot, November 10). */
+.bk-promo { margin: .9rem 0 1.1rem; }
 .bk-promo label { display: block; font-size: .8rem; font-weight: 700; margin-bottom: .35rem; }
 .bk-promo-row { display: flex; gap: .5rem; }
 .bk-promo-row input {
@@ -529,6 +869,7 @@ body.bk-open { overflow: hidden; }
 @media (min-width: 520px) {
   .bk-row2 { grid-template-columns: 1fr 1fr; }
   .bk-row3 { grid-template-columns: 2fr 1fr 1fr; }
+  .bk-row2.bk-contact-row { grid-template-columns: 1fr 1fr 1.3fr; align-items: end; }
 }
 
 .bk-ac {
@@ -555,7 +896,6 @@ body.bk-open { overflow: hidden; }
 }
 .bk-check span { font-size: .91rem; line-height: 1.5; color: var(--text); }
 .bk-check i { display: block; font-style: normal; font-size: .82rem; color: var(--text-soft); margin-top: .2rem; line-height: 1.5; }
-.bk-prio.on { border-color: var(--red); background: var(--red-ghost); }
 
 .bk-panel {
   background: var(--paper-2); border-left: 3px solid var(--red);
@@ -568,12 +908,6 @@ body.bk-open { overflow: hidden; }
 }
 
 /* ---------- second vehicle ---------- */
-.bk-upsell {
-  background: var(--ink); color: #fff; border-radius: var(--r-md);
-  padding: 1rem 1.1rem; margin-bottom: 1rem;
-}
-.bk-upsell b { display: block; font-family: var(--font-display); font-size: 1.02rem; }
-.bk-upsell span { display: block; color: var(--text-inv-soft); font-size: .85rem; margin-top: .2rem; }
 .bk-vehs { display: grid; gap: .5rem; }
 .bk-veh {
   display: flex; align-items: center; justify-content: space-between; gap: .8rem;
@@ -588,48 +922,44 @@ body.bk-open { overflow: hidden; }
   cursor: pointer; text-decoration: underline; text-underline-offset: 3px;
 }
 .bk-addveh:hover { color: var(--red-deep); }
+/* Extras: a second vehicle, as one slim light card at the top. Light on
+   purpose, so it is seen before scrolling without competing with the
+   add-ons or with Continue. */
+.bk-morevehs {
+  display: flex; flex-wrap: wrap; align-items: center; gap: .3rem 1rem;
+  margin: 0 0 1.1rem; padding: .6rem .9rem;
+  background: var(--paper-2); border: 1.5px solid var(--line); border-radius: var(--r-md);
+}
+.bk-morevehs-l { flex: 1; min-width: 14rem; margin: 0; font-size: .86rem; line-height: 1.5; color: var(--text-soft); }
+.bk-morevehs-l b { color: var(--text); }
+.bk-morevehs .bk-addveh { margin-top: 0; flex: none; }
+.bk-morevehs.many { display: block; }
+.bk-morevehs.many .bk-vehs { margin: .6rem 0 .2rem; }
 
 /* ---------- time ---------- */
-.bk-windows { display: flex; flex-wrap: wrap; gap: .45rem; margin-bottom: 1rem; }
-.bk-win {
-  border: 1.5px solid var(--line); background: var(--paper-2); border-radius: var(--r-sm);
-  padding: .5rem .85rem; font: inherit; font-size: .88rem; font-weight: 700; cursor: pointer; color: var(--text);
-}
-.bk-win:hover { border-color: var(--red); }
-.bk-win.on { border-color: var(--red); background: var(--red-ghost); color: var(--red-deep); }
-.bk-win i { font-style: normal; font-weight: 400; font-size: .76rem; color: var(--text-soft); }
-
 .bk-slots { margin-top: 1rem; }
+/* Nothing above the times: the body's own padding is gap enough. */
+.bk-body > .bk-slots:first-child { margin-top: 0; }
 .bk-loading, .bk-empty { color: var(--text-soft); font-size: .9rem; line-height: 1.55; }
 .bk-empty a { color: var(--red); }
 .bk-days { display: grid; gap: 1rem; }
-.bk-day.more { display: none; }
-.bk-day h4 {
-  margin: 0 0 .45rem; font-size: .8rem; font-weight: 800; letter-spacing: .05em;
-  text-transform: uppercase; color: var(--text-soft);
-}
-.bk-times { display: grid; grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); gap: .45rem; }
-.bk-time {
-  border: 1.5px solid var(--line); background: var(--paper-2); border-radius: var(--r-sm);
-  padding: .55rem .6rem; font: inherit; font-size: .92rem; font-weight: 700;
-  cursor: pointer; color: var(--text); text-align: left;
-}
-.bk-time:hover { border-color: var(--red); }
-.bk-time.on { border-color: var(--red); background: var(--red-ghost); }
-.bk-time i { display: block; font-style: normal; font-weight: 400; font-size: .71rem; color: var(--text-soft); margin-top: .1rem; }
 .bk-morelink {
   margin-top: .9rem; border: 0; background: none; color: var(--red);
   font: inherit; font-size: .88rem; font-weight: 700; cursor: pointer;
   text-decoration: underline; text-underline-offset: 3px; padding: 0;
 }
 
-/* ---------- consent, yes/no ---------- */
-.bk-consent {
-  border: 1.5px solid var(--line); border-radius: var(--r-md);
-  background: var(--paper-2); padding: .9rem 1rem; margin-bottom: .8rem;
-}
-.bk-consent-q { margin: 0; font-size: .93rem; font-weight: 700; color: var(--text); line-height: 1.45; }
-.bk-consent-q a { color: var(--red); font-weight: 600; }
+/* ---------- consent: one required tick box, one optional ---------- */
+.bk-consentbox.on { border-color: var(--red); background: var(--red-ghost); }
+.bk-consentbox i b { color: var(--text); }
+.bk-consentbox .bk-readmore { display: block; margin-top: .3rem; }
+/* The texts box in "Your details" is one paragraph, no bold title (A2P plan T3). */
+.bk-consentbox i:empty { display: none; }
+#bkContactForm .bk-consentbox { margin: .9rem 0 .5rem; }
+#bkContactForm .bk-consentbox span { font-size: .82rem; color: var(--text-soft); }
+.bk-terms-line { font-size: .82rem; color: var(--text-soft); margin: 0 0 .4rem; }
+.bk-terms-line a { color: var(--red-deep); font-weight: 600; }
+/* yes/no buttons, still used by the garage question */
 .bk-consent-h { margin: .35rem 0 0; font-size: .83rem; color: var(--text-soft); line-height: 1.55; }
 .bk-consent-h a { color: var(--red); }
 .bk-yn { display: flex; gap: .5rem; margin-top: .7rem; }
@@ -652,7 +982,11 @@ body.bk-open { overflow: hidden; }
 .bk-lines td:last-child { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .bk-lines i { font-style: normal; color: var(--text-soft); font-size: .8rem; }
 .bk-lines .neg td { color: #1a8a3f; }
-.bk-lines .surcharge td { color: #7a5209; }
+.bk-lines .ln-surcharge td { color: #7a5209; }
+/* Extras: a bold heading line with no price, then each extra indented. */
+.bk-lines .ln-extras-h td { font-weight: 700; padding-bottom: .1rem; }
+.bk-lines .ln-addon td:first-child { padding-left: 1rem; }
+.bk-lines .ln-addon td { padding-top: .12rem; padding-bottom: .12rem; }
 .bk-lines .pending td:last-child { color: var(--text-soft); font-style: italic; font-size: .79rem; }
 .bk-lines .tot td { border-top: 1px solid var(--line); padding-top: .55rem; font-weight: 800; font-size: 1rem; }
 .bk-lines .when td { color: var(--red); font-weight: 700; padding-top: .5rem; }
@@ -711,8 +1045,7 @@ body.bk-open { overflow: hidden; }
 
 @media (prefers-reduced-motion: reduce) {
   .bk-scrim, .bk-modal { animation: none; }
-  .bk-card, .bk-pkg, .bk-bar { transition: none; }
-  .bk-card:hover { transform: none; }
+  .bk-pkg, .bk-bar { transition: none; }
 }
 
 /* ---------- browse all options ---------- */
@@ -766,80 +1099,23 @@ body.bk-open { overflow: hidden; }
   color: var(--text-soft); border: 1px solid var(--line);
   padding: .12rem .38rem; border-radius: 5px; vertical-align: 2px;
 }
-.bk-otherslots { margin-top: 1rem; }
-.bk-otherslots h4 {
-  margin: 0 0 .45rem; font-size: .8rem; font-weight: 800; letter-spacing: .05em;
-  text-transform: uppercase; color: var(--text-soft);
-}
 
 /* mechanism explainer, collapsed so it informs without burying the price */
 .bk-how { margin: 0 0 .6rem; }
-.bk-how summary {
+.bk-how summary, .bk-howbtn {
   cursor: pointer; font-size: .81rem; font-weight: 700; color: var(--red);
   list-style: none; display: inline-flex; align-items: center; gap: .3rem;
 }
+.bk-howbtn { font-family: inherit; background: none; border: 0; padding: 0; flex: none; white-space: nowrap; }
 .bk-how summary::-webkit-details-marker { display: none; }
-.bk-how summary::after { content: "+"; font-weight: 800; }
-.bk-how[open] summary::after { content: "\2212"; }
-.bk-how p {
+.bk-how summary::after, .bk-howbtn::after { content: "+"; font-weight: 800; }
+.bk-how[open] summary::after, .bk-howbtn[aria-expanded="true"]::after { content: "\2212"; }
+.bk-how-body, .bk-how-panel { overflow: hidden; }
+.bk-how p, .bk-how-panel p, .bk-how .bk-how-box {
   margin: .5rem 0 0; font-size: .82rem; line-height: 1.6; color: var(--text-soft);
   background: var(--paper); border-left: 2px solid var(--line); padding: .6rem .75rem;
   border-radius: 0 var(--r-sm) var(--r-sm) 0;
 }
-
-/* "Expand to select other times", inside the band box.
-
-   The box itself books the time we recommend. This is the way out for
-   somebody who genuinely needs 11:30, deliberately quieter than the box it
-   sits in: friction, not a wall. */
-.bk-bandmore {
-  width: 100%; font: inherit; font-size: .78rem; font-weight: 700; cursor: pointer;
-  background: none; border: 0; border-top: 1px solid var(--line);
-  color: var(--red); text-align: left; padding: .5rem .9rem;
-  display: flex; align-items: center; gap: .4rem;
-}
-.bk-bandmore::before {
-  content: ""; flex: none; width: 6px; height: 6px; border-right: 2px solid currentColor;
-  border-bottom: 2px solid currentColor; transform: rotate(-45deg);
-}
-.bk-bandmore span {
-  margin-left: auto; font-weight: 600; color: var(--text-soft);
-}
-.bk-bandmore:hover { text-decoration: underline; }
-
-/* premium start times, flagged on the slot itself */
-.bk-time.prem { border-style: dashed; }
-.bk-time em {
-  font-style: normal; font-size: .66rem; font-weight: 800; color: #7a5209;
-  background: rgba(240,169,63,.18); padding: .05rem .28rem; border-radius: 4px; margin-left: .3rem;
-}
-
-/* ---------- time buckets ---------- */
-.bk-bucket { border: 1.5px solid var(--line); border-radius: var(--r-sm); margin-bottom: .45rem; overflow: hidden; }
-.bk-bucket.open { border-color: var(--red); }
-.bk-bucket-h {
-  display: flex; align-items: center; gap: .6rem; width: 100%;
-  background: var(--paper-2); border: 0; padding: .6rem .8rem;
-  font: inherit; font-size: .88rem; font-weight: 700; cursor: pointer; color: var(--text);
-}
-.bk-bucket-h:hover { background: var(--red-ghost); }
-.bk-bucket-h span { flex: 1; text-align: left; }
-.bk-bucket-h em {
-  font-style: normal; font-size: .78rem; font-weight: 700; color: var(--text-soft);
-}
-.bk-bucket-h svg { width: 15px; height: 15px; color: var(--text-soft); transition: transform .2s; }
-.bk-bucket.open .bk-bucket-h svg { transform: rotate(180deg); }
-.bk-bucket .bk-times { padding: .55rem; }
-
-/* slot tone: a price, never a warning */
-.bk-time .bk-t { display: block; font-weight: 800; }
-.bk-time em {
-  display: block; font-style: normal; font-size: .74rem; font-weight: 700; margin-top: .1rem;
-}
-.bk-time.std em.inc { color: #1a8a3f; }
-.bk-time.mid em { color: var(--text-soft); }
-.bk-time.hi em { color: var(--text-soft); }
-.bk-time.std { border-color: rgba(26,138,63,.35); }
 
 /* ---------- payment ---------- */
 .bk-methods { display: flex; gap: .5rem; margin: .8rem 0; }
@@ -869,7 +1145,7 @@ body.bk-open { overflow: hidden; }
 
 /* segmented, clickable step nav */
 .bk-nav {
-  display: flex; gap: .3rem; overflow-x: auto; flex: none;
+  display: flex; overflow-x: auto; flex: none;
   padding: .5rem .7rem; background: var(--paper-2);
   border-bottom: 1px solid var(--line); scrollbar-width: none;
 }
@@ -907,14 +1183,6 @@ body.bk-open { overflow: hidden; }
 .bk-travel.free b { color: #14682f; }
 .bk-travel span { display: block; font-size: .84rem; color: var(--text-soft); line-height: 1.55; margin-top: .2rem; }
 
-.bk-travel { background: var(--red-ghost); border-left: 3px solid var(--red); border-radius: 0 var(--r-sm) var(--r-sm) 0; padding: .8rem .95rem; margin-top: .4rem; }
-.bk-travel.free { background: rgba(26,138,63,.1); border-left-color: #1a8a3f; }
-.bk-travel b { display: block; font-family: var(--font-display); font-size: 1.15rem; color: var(--red); }
-.bk-travel.free b { color: #14682f; }
-.bk-travel span { display: block; font-size: .84rem; color: var(--text-soft); line-height: 1.55; margin-top: .2rem; }
-
-.bk-upsell.saving { background: #14682f; }
-.bk-upsell.saving span { color: rgba(255,255,255,.85); }
 .bk-total-sub s { opacity: .6; margin-right: .3rem; }
 .bk-lines .saved td { color: #14682f; font-weight: 700; font-size: .84rem; }
 .bk-check.bk-split.on { border-color: var(--amber); background: rgba(240,169,63,.1); }
@@ -964,20 +1232,30 @@ body.bk-open { overflow: hidden; }
 }
 .bk-leave-sum li + li { margin-top: .2rem; }
 
-.bk-leave-acts { display: flex; flex-direction: column; gap: .45rem; }
+/* One way back (the funnel's own red Continue), two equal choices side by
+   side, and the way out as quiet text: four stacked buttons in four styles
+   read as noise (owner, November 10). */
+.bk-leave-acts { display: flex; flex-direction: column; gap: .5rem; }
 .bk-leave-acts button {
   font: inherit; font-size: .92rem; font-weight: 700; cursor: pointer;
-  border-radius: var(--r-sm); padding: .72rem .9rem; text-align: center;
-  border: 1.5px solid var(--line); background: var(--paper); color: var(--text);
-  transition: border-color .16s, background .16s;
+  display: inline-flex; align-items: center; justify-content: center; gap: .45rem;
+  border-radius: var(--r-sm); padding: .75rem .9rem; text-align: center;
+  border: 1.5px solid var(--line); background: var(--paper-2); color: var(--text);
+  transition: border-color .16s, background .16s, color .16s;
 }
-.bk-leave-acts button:hover { border-color: var(--red); }
-.bk-leave-go { background: var(--ink) !important; color: #fff !important; border-color: var(--ink) !important; }
-.bk-leave-go:hover { background: var(--ink-2) !important; }
-.bk-leave-keep { border-color: var(--red) !important; color: var(--red) !important; }
-.bk-leave-ask { /* the plain outlined default: a third option, not a third shout */ }
-.bk-leave-drop { color: var(--text-soft) !important; font-weight: 500 !important; border-color: transparent !important; }
-.bk-leave-drop:hover { color: var(--red) !important; }
+.bk-leave-acts svg { width: 16px; height: 16px; flex: none; }
+.bk-leave-acts .bk-leave-go { background: var(--red); border-color: var(--red); color: #fff; }
+.bk-leave-acts .bk-leave-go:hover { background: var(--red-deep); border-color: var(--red-deep); }
+.bk-leave-pair { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; }
+.bk-leave-pair button { flex-direction: column; gap: .3rem; padding: .7rem .5rem; font-size: .86rem; line-height: 1.25; }
+.bk-leave-pair svg { width: 19px; height: 19px; color: var(--red); }
+.bk-leave-pair button:hover { border-color: var(--red); background: var(--paper); }
+.bk-leave-acts .bk-leave-drop {
+  align-self: center; background: none; border-color: transparent; padding: .45rem .8rem;
+  color: var(--text-soft); font-weight: 600; font-size: .86rem;
+  text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--line);
+}
+.bk-leave-acts .bk-leave-drop:hover { color: var(--red); text-decoration-color: currentColor; }
 .bk-leave-note { margin: .85rem 0 0; font-size: .76rem; color: var(--text-soft); line-height: 1.5; }
 
 /* ---------- A word after the modal has gone ---------- */
@@ -1036,30 +1314,13 @@ body.bk-open { overflow: hidden; }
 .bk-promo.early label { color: var(--text-soft); font-weight: 500; }
 .bk-promo.early label i { font-style: normal; }
 
-/* ---------- The soonest days, and the box they tick ---------- */
-.bk-soonest {
-  font-style: normal; font-size: .68rem; font-weight: 800;
-  letter-spacing: .05em; text-transform: uppercase;
-  color: #7a5209; background: rgba(240, 169, 63, .16);
-  padding: .18rem .45rem; border-radius: 5px; margin-left: .5rem;
-  vertical-align: 2px; white-space: nowrap;
-}
-.bk-daygroup.soon > h4 { display: flex; align-items: baseline; flex-wrap: wrap; gap: .1rem; }
-
-/* The checkbox, for the three seconds after it ticks itself. */
-.bk-check.bk-juston {
-  border-color: var(--red);
-  box-shadow: 0 0 0 3px var(--red-ghost);
-  animation: bkNudge .45s var(--ease);
-}
-@media (prefers-reduced-motion: reduce) { .bk-check.bk-juston { animation: none; } }
-
 /* ---------- Getting set up on the day ---------- */
 .bk-accbox {
   background: var(--paper-2); border: 1.5px solid var(--line); border-radius: var(--r-md);
   padding: 1rem 1.05rem; margin: 1.1rem 0;
 }
 .bk-accbox h4 { margin: 0 0 .3rem; font-family: var(--font-display); font-size: 1.02rem; }
+.bk-notes { margin-top: 1.1rem; }
 .bk-accbox > .bk-hint { margin: 0 0 .9rem; }
 .bk-accbox .bk-field { margin-top: .9rem; }
 
@@ -1075,6 +1336,24 @@ body.bk-open { overflow: hidden; }
 }
 .bk-acc-b:hover { border-color: var(--red); }
 .bk-acc-b.on { border-color: var(--red); background: var(--red-ghost); color: var(--red-deep); }
+/* Filming, on the details step: the same white box as the Terms and texts
+   questions above it, with small Yes / No buttons beside the question so the
+   whole step fits a laptop screen. */
+.bk-acc.bk-media {
+  display: flex; align-items: center; gap: .9rem;
+  margin: .3rem 0 .9rem; padding: .8rem .9rem;
+  border: 1.5px solid var(--line); border-radius: var(--r-md); background: var(--paper-2);
+}
+.bk-acc.bk-media:hover { border-color: var(--red); }
+.bk-media-t { flex: 1; min-width: 0; }
+.bk-media .bk-acc-h { margin-bottom: 0; }
+.bk-media .bk-acc-h a { color: var(--red); }
+.bk-media .bk-acc-opts { flex: none; grid-template-columns: repeat(2, 4.2rem); }
+.bk-media .bk-acc-b { padding: .45rem .3rem; font-size: .85rem; }
+@media (max-width: 559.98px) {
+  .bk-acc.bk-media { flex-direction: column; align-items: stretch; gap: .6rem; }
+  .bk-media .bk-acc-opts { grid-template-columns: repeat(2, 1fr); }
+}
 
 /* ---------- The receipt on the confirmation screen ---------- */
 .bk-done-h {
@@ -1116,37 +1395,6 @@ body.bk-open { overflow: hidden; }
   padding: .18rem .45rem; border-radius: 5px; margin-left: .45rem; vertical-align: 2px;
 }
 
-/* ---------- Jump to a date, or ask for a time ---------- */
-.bk-jump {
-  display: grid; grid-template-columns: 1fr 1fr; gap: .6rem;
-  background: var(--paper-2); border: 1.5px solid var(--line); border-radius: var(--r-md);
-  padding: .85rem .9rem; margin: 0 0 1rem;
-}
-.bk-jump-f { min-width: 0; }
-.bk-jump-f label {
-  display: block; font-size: .78rem; font-weight: 700; color: var(--text-soft);
-  margin-bottom: .3rem;
-}
-.bk-jump input, .bk-jump select {
-  width: 100%; font: inherit; font-size: .92rem;
-  border: 1.5px solid var(--line); border-radius: var(--r-sm);
-  padding: .55rem .65rem; background: var(--paper); color: var(--text);
-}
-.bk-jump input:focus, .bk-jump select:focus { border-color: var(--red); outline: none; }
-/* Disabled until a date is picked, because "nearest to 2pm" has to be
-   nearest to 2pm on some particular day to mean anything. */
-.bk-jump select:disabled { color: var(--text-soft); background: var(--paper-2); cursor: not-allowed; }
-.bk-jump-clear, .bk-jump-note { grid-column: 1 / -1; }
-.bk-jump-clear {
-  justify-self: start; font: inherit; font-size: .82rem; font-weight: 700;
-  color: var(--red); background: none; border: 0; padding: 0; cursor: pointer;
-  text-decoration: underline; text-underline-offset: 3px;
-}
-.bk-jump-note {
-  margin: 0; font-size: .85rem; line-height: 1.5; color: var(--text);
-  background: var(--red-ghost); border-radius: var(--r-sm); padding: .5rem .65rem;
-}
-
 /* ---------- Extras, edited from the confirm screen ---------- */
 .bk-extras {
   background: var(--paper-2); border: 1.5px solid var(--line); border-radius: var(--r-md);
@@ -1163,8 +1411,6 @@ body.bk-open { overflow: hidden; }
 .bk-extras.empty select { border-color: rgba(255, 255, 255, .28); background: var(--ink-3); color: #fff; }
 .bk-extras.empty .bk-hint { color: rgba(255, 255, 255, .7); }
 .bk-extras.empty .bk-extra-veh { color: rgba(255, 255, 255, .9); }
-
-.bk-extra-veh { color: rgba(255, 255, 255, .9); }
 
 /* "How it works" on an extra that has already been chosen. Collapsed, one
    line, and only on what they picked: somebody deciding needs a short list,
@@ -1257,3 +1503,312 @@ body.bk-open { overflow: hidden; }
 /* The contact form is a layout-neutral wrapper: it exists so browsers and
    password managers see a form and offer to fill the whole card at once. */
 .bk-form { display: contents; }
+
+
+/* =========================================================================
+   Round 15 (owner, November 10): two pages, picture cards, a checkout.
+   ========================================================================= */
+
+/* The first page: answered questions fold to one line, the next slides up. */
+.bk-donerow {
+  width: 100%; display: flex; align-items: center; gap: .7rem; margin: 0 0 .4rem;
+  font: inherit; text-align: left; cursor: pointer; color: var(--text);
+  background: var(--paper-2); border: 1.5px solid var(--line); border-radius: var(--r-sm); padding: .5rem .8rem;
+}
+.bk-donerow:hover { border-color: var(--red); }
+.bk-donerow span { flex: none; width: 5.2rem; font-size: .7rem; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; color: var(--text-soft); }
+.bk-donerow b { flex: 1; min-width: 0; font-size: .9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bk-donerow em { flex: none; font-style: normal; font-size: .78rem; font-weight: 700; color: var(--red); text-decoration: underline; text-underline-offset: 2px; }
+/* The site's own section padding (styles.css) must not reach these. */
+#bookFunnel .bk-sec { padding: 0; margin: .9rem 0 0; }
+.bk-sec:first-child { margin-top: 0; }
+.bk-sec-h { margin: 0 0 .65rem; font-family: var(--font-display); font-size: 1.12rem; }
+.bk-sec-in { animation: bkSecIn .38s var(--ease) both; }
+@keyframes bkSecIn { from { opacity: 0; transform: translateY(22px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .bk-sec-in { animation: none; } }
+
+/* Picture cards in a row of three: vehicle size, and what it needs. */
+.bk-pics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .55rem; }
+.bk-pic {
+  display: flex; flex-direction: column; align-items: center; text-align: center; gap: .2rem;
+  font: inherit; cursor: pointer; color: var(--text); padding: .85rem .5rem .8rem;
+  background: var(--paper-2); border: 2px solid var(--line); border-radius: var(--r-md);
+  transition: border-color .16s, box-shadow .16s, transform .16s;
+}
+.bk-pic:hover { border-color: var(--red); transform: translateY(-1px); }
+.bk-pic.on { border-color: var(--red); box-shadow: 0 0 0 3px var(--red-ghost); }
+.bk-pic-ic { width: 46px; height: 46px; color: var(--ink); margin-bottom: .15rem; }
+.bk-pic b { font-family: var(--font-display); font-size: 1.02rem; }
+.bk-pic span { font-size: .76rem; line-height: 1.35; color: var(--text-soft); }
+.bk-pic-price {
+  margin-top: .35rem; font-style: normal; font-size: .8rem; font-weight: 800; color: var(--text);
+  background: var(--paper); border: 1px solid var(--line); border-radius: 999px; padding: .12rem .55rem;
+}
+.bk-pic-price.none { font-weight: 600; color: var(--text-soft); }
+/* Register interest on its own (bug, November 11): under a coming-soon card that is
+   ticked while nothing bookable is chosen. */
+.bk-soon-only { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: .8rem;
+  margin: -.15rem 0 .2rem; padding: .7rem .9rem; font-size: .86rem; line-height: 1.45; color: var(--text);
+  background: var(--paper); border: 1px dashed var(--line); border-radius: var(--r-md); }
+.bk-soon-only .btn { padding: .55rem 1rem; font-size: .86rem; white-space: nowrap; }
+@media (max-width: 519.98px) { .bk-soon-only { grid-template-columns: 1fr; } .bk-soon-only .btn { justify-self: start; } }
+/* Exterior paused by the cold (owner, November 11): "From Feb 24". Grey, not gold: gold is a fee. */
+.bk-pic-price.bk-pic-cold { font-weight: 700; color: var(--text-soft); }
+.bk-askrow {
+  width: 100%; display: flex; align-items: center; gap: .7rem; margin-top: .55rem;
+  font: inherit; text-align: left; cursor: pointer; color: var(--text);
+  background: var(--paper); border: 1.5px dashed var(--line); border-radius: var(--r-md); padding: .6rem .9rem;
+}
+.bk-askrow:hover, .bk-askrow.on { border-color: var(--red); border-style: solid; }
+.bk-askrow .bk-pic-ic { width: 26px; height: 26px; margin: 0; color: var(--red); flex: none; }
+.bk-askrow span { flex: 1; }
+.bk-askrow b { display: block; font-size: .92rem; }
+.bk-askrow i { display: block; font-style: normal; font-size: .78rem; color: var(--text-soft); }
+.bk-askrow + .bk-browsebar { margin-top: .5rem; }
+@media (max-width: 380px) {
+  .bk-pic { padding: .7rem .3rem; }
+  .bk-pic-ic { width: 38px; height: 38px; }
+  .bk-pic span { font-size: .7rem; }
+}
+
+/* Package cards: one line each; "How it works" inside, above the card's tap. */
+.bk-pkgcard {
+  background: var(--paper-2); border: 2px solid var(--line); border-radius: var(--r-md);
+  transition: border-color .16s, box-shadow .16s;
+}
+.bk-pkgcard:hover { border-color: var(--red); }
+.bk-pkgcard.on { border-color: var(--red); box-shadow: 0 0 0 3px var(--red-ghost); }
+.bk-pkgcard .bk-pkg { border: 0; background: none; border-radius: var(--r-md); padding: .75rem 1rem .2rem; align-items: center; }
+.bk-pkgcard .bk-pkg:hover { border: 0; }
+/* Phones stack the card, so its text lines up on the left like every other
+   card (final validation, November 11: the rule above outranked the phone
+   rule's stretch and centred "Showroom Ready" and the short taglines). */
+@media (max-width: 560px) { .bk-pkgcard .bk-pkg { align-items: stretch; } }
+.bk-pkgcard .bk-pkg-tag { margin-top: .1rem; }
+.bk-pkgcard .bk-how-pkg { margin: 0; padding: 0 1rem .6rem; }
+.bk-pkgcard .bk-how-pkg p { margin-top: .4rem; }
+.bk-pkgcard .bk-pkg-feat b { color: var(--text); }
+.bk-promo-fold { margin: 0 0 .7rem; }
+.bk-promo-fold > summary { cursor: pointer; list-style: none; font-size: .82rem; font-weight: 700; color: var(--red); display: inline-flex; gap: .3rem; }
+.bk-promo-fold > summary::-webkit-details-marker { display: none; }
+.bk-promo-fold > summary::after { content: "+"; }
+.bk-promo-fold[open] > summary::after { content: "\2212"; }
+.bk-promo-fold .bk-promo { margin: .5rem 0 0; }
+
+/* Extras: behind one button; smaller cards, "How it works" to the side. */
+.bk-extras-open {
+  width: 100%; display: flex; align-items: center; gap: .7rem; margin-top: .4rem;
+  font: inherit; text-align: left; cursor: pointer; color: var(--text);
+  background: var(--paper-2); border: 1.5px solid var(--line); border-radius: var(--r-md); padding: .8rem .95rem;
+}
+.bk-extras-open:hover { border-color: var(--red); }
+.bk-extras-open span { flex: 1; }
+.bk-extras-open b { display: block; font-size: .95rem; }
+.bk-extras-open i { display: block; font-style: normal; font-size: .8rem; color: var(--text-soft); margin-top: .1rem; }
+.bk-addon { padding: .7rem .85rem; margin-bottom: .5rem; }
+.bk-addon-row { display: flex; align-items: flex-start; gap: .8rem; margin: .2rem 0 .5rem; }
+.bk-addon-row .bk-addon-d { flex: 1; margin: 0; }
+.bk-how-panel { margin: -.1rem 0 .55rem; }
+.bk-how-panel p { margin-top: 0; }
+
+/* The checkout: one page, section by section. */
+#bookFunnel .bk-ck { padding: 0 0 1rem; margin: 0 0 1rem; }
+.bk-ck .bk-sub { margin-bottom: .7rem; }
+.bk-ck[data-sec="details"] .bk-form { margin: 0; }
+.bk-heard select {
+  width: 100%; font: inherit; font-size: .92rem; padding: .6rem .7rem; color: var(--text);
+  border: 1.5px solid var(--line); border-radius: var(--r-sm); background: var(--paper-2);
+}
+.bk-readmore.inline { display: inline; margin: 0; }
+
+/* Recommended times: the fee as one quiet line, not a badge. */
+.bk-pick-note { display: block; flex-basis: 100%; font-size: .78rem; color: var(--text-soft); }
+.bk-pick-note.fee { color: #7a5209; font-weight: 700; }
+.bk-more-other { grid-column: 1 / -1; display: flex; align-items: center; gap: .6rem; margin-top: .15rem; font-size: .8rem; color: var(--text-soft); }
+.bk-more-other select {
+  font: inherit; font-size: .82rem; padding: .35rem .5rem; color: var(--text);
+  border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--paper-2);
+}
+
+/* How it works on a package: what is included as a small heading, then the
+   rest of the note under it (round 16). */
+.bk-how-sub { display: block; font-size: .7rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--text); margin-bottom: .15rem; }
+/* Strokes stay even when a pictogram is drawn smaller inside another. */
+.bk-pic-ic * { vector-effect: non-scaling-stroke; }
+/* The way back from Browse, pinned with the search. */
+.bk-browseback {
+  display: inline-flex; align-items: center; gap: .25rem; margin: 0 0 .55rem; padding: 0;
+  font: inherit; font-size: .84rem; font-weight: 700; color: var(--red); background: none; border: 0; cursor: pointer;
+}
+.bk-browseback svg { width: 15px; height: 15px; }
+
+/* The top bar in two groups, YOUR DETAIL and CHECKOUT (round 16): a small
+   label over each group, the steps under it, a thin rule between groups. */
+.bk-nav { align-items: flex-end; gap: .2rem; }
+.bk-navgrp { flex: none; display: flex; flex-direction: column; gap: .05rem; }
+.bk-navgrp + .bk-navgrp { margin-left: .45rem; padding-left: .6rem; border-left: 1px solid var(--line); }
+.bk-navgrp-l { font-size: .58rem; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; color: var(--text-soft); padding: 0 .55rem; opacity: .8; }
+.bk-navgrp-t { display: flex; gap: .2rem; }
+
+/* Required and optional, said once and marked on every field. */
+.bk-req { color: var(--red); font-weight: 800; margin-left: .1rem; }
+.bk-reqnote { margin: 0 0 .5rem; font-size: .74rem; color: var(--text-soft); text-align: right; }
+/* Continue inside a checkout section: the small dark button from before
+   Round 20, back as a second way on (Emmett, November 12). fitCkCont() in
+   funnel.js shows it only where it is on screen and well above the bar. */
+.bk-ckcont {
+  display: inline-flex; align-items: center; gap: .4rem; margin-top: .9rem;
+  font: inherit; font-size: .92rem; font-weight: 800; cursor: pointer; color: #fff;
+  background: var(--ink); border: 0; border-radius: var(--r-sm); padding: .7rem 1.2rem;
+}
+.bk-ckcont:hover { background: var(--ink-2); }
+.bk-ckcont svg { width: 15px; height: 15px; }
+/* Its spot (option A, Emmett, November 12): a quiet line saying what is still
+   missing, which becomes the button once the section is ready. One fixed
+   height for both, so nothing below moves when they swap. */
+.bk-ckgo { display: grid; align-items: center; justify-items: start; margin-top: .9rem; }
+.bk-ckgo[hidden] { display: none; }
+/* Both in one cell, the inactive one kept but invisible (so not clickable or
+   focusable): the spot is always as tall as the taller of the two. */
+.bk-ckgo > * { grid-area: 1 / 1; }
+.bk-ckgo > .bk-off { visibility: hidden; }
+.bk-ckgo .bk-ckcont { margin-top: 0; }
+.bk-ckhint { display: inline-flex; align-items: center; gap: .45rem; margin: 0; font-size: .86rem; line-height: 1.35; color: var(--text-soft); }
+.bk-ckhint svg { width: 15px; height: 15px; flex-shrink: 0; opacity: .75; }
+.bk-swap { animation: bkSwap .15s ease-out; }
+@keyframes bkSwap { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .bk-swap { animation: none; } }
+/* On the open section's heading line (owner, November 12). */
+.bk-ck > .bk-reqnote { float: right; margin: .3rem 0 0 .75rem; }
+/* The address's optional questions, closer together, so the travel fee under
+   them shows on a laptop screen (owner, November 12). */
+#bookFunnel [data-sec="where"] .bk-check { padding-block: .6rem; margin: .2rem 0 .5rem; }
+
+#bookFunnel .bk-ck { border-bottom: 0; padding-bottom: .4rem; }
+.bk-arrive { display: block; font-style: normal; font-size: .76rem; font-weight: 600; color: var(--text-soft); }
+
+/* ---------- Checkout errors under their own fields (checkout review, November 10) ---------- */
+#bookFunnel .bk-field > .bk-err { margin-top: .4rem; padding: .45rem .7rem; font-size: .84rem; }
+#bookFunnel .bk-secnote { margin: 0 0 .85rem; }
+/* The heading takes focus when its section opens; the outline is for keyboards. */
+#bookFunnel .bk-sec-h:focus { outline: none; }
+/* The chosen time is a good answer, so it is ink, not red (CLAUDE.md, Colors). */
+#bookFunnel .bk-lines .when td { color: var(--text); }
+/* The label takes the room, so "Sales tax (7.8%)" and "Travel" do not wrap on a phone. */
+#bookFunnel .bk-lines td:first-child { width: 100%; padding-right: .75rem; }
+/* 24px touch targets at least (WCAG 2.2, target size). */
+#bookFunnel .bk-pick-change { min-height: 24px; padding: .2rem .35rem; margin: -.2rem -.35rem; }
+#bookFunnel .bk-recs-foot .bk-askwhen-link, #bookFunnel .bk-wk-gobar .bk-askwhen-link { min-height: 28px; display: inline-flex; align-items: center; }
+#bookFunnel .bk-err.bk-okmsg { background: var(--paper); color: var(--text); border-left-color: var(--text-soft); }
+/* A summary that does not fit wraps to a second line rather than cutting off the phone number or the time. */
+@media (max-width: 819.98px) {
+  #bookFunnel .bk-donerow b { white-space: normal; overflow: visible; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+}
+/* The answer's picture in a done row, between the step name and the answer (owner, November 11). */
+#bookFunnel .bk-donerow-ic { flex: none; display: grid; place-items: center; width: 26px; height: 26px; margin-right: -.2rem; color: var(--text); }
+#bookFunnel .bk-donerow-ic .bk-pic-ic { width: 24px; height: 24px; margin: 0; }
+@media (max-width: 559.98px) {
+  #bookFunnel .bk-donerow span { width: 4.6rem; }
+  #bookFunnel .bk-donerow-ic { width: 22px; height: 22px; }
+  #bookFunnel .bk-donerow-ic .bk-pic-ic { width: 20px; height: 20px; }
+}
+
+/* Package "How it works", option A (owner, November 11): what is in, what is not. */
+#bookFunnel .bk-incl { list-style: none; margin: .15rem 0 .55rem; padding: 0; display: grid; gap: .2rem; }
+#bookFunnel .bk-incl li { display: flex; gap: .45rem; align-items: flex-start; font-size: .82rem; line-height: 1.45; color: var(--text); }
+#bookFunnel .bk-incl li svg { width: 14px; height: 14px; flex: none; margin-top: .18rem; }
+#bookFunnel .bk-incl.yes svg { color: #1a8a3f; }
+#bookFunnel .bk-incl.no li { color: var(--text-soft); }
+#bookFunnel .bk-incl.no svg { color: var(--text-soft); }
+#bookFunnel .bk-how-tip { display: block; font-size: .8rem; line-height: 1.5; color: var(--text-soft); }
+#bookFunnel .bk-how-tip b { color: var(--text); }
+@media (min-width: 560px) { #bookFunnel .bk-incl { grid-template-columns: 1fr 1fr; column-gap: .9rem; } }
+
+/* ---------- Checkout: one bar (owner, November 11) ----------
+   The title row goes; "Checkout" becomes the bar's own heading, the detail
+   is one chip with Edit, and back and close sit at the bar's two ends,
+   held in place while the tabs scroll on a phone. */
+#bookFunnel .bk-modal.ck .bk-head { display: none; }
+#bookFunnel .bk-modal.ck .bk-nav { align-items: center; padding: .45rem .55rem; }
+#bookFunnel .bk-modal.ck .bk-nav > .bk-back { position: sticky; left: 0; z-index: 2; margin-right: .3rem; box-shadow: 0 0 0 6px var(--paper-2); }
+#bookFunnel .bk-modal.ck .bk-nav > .bk-close { position: sticky; right: 0; z-index: 2; margin-left: auto; box-shadow: 0 0 0 6px var(--paper-2); }
+#bookFunnel .bk-modal.ck .bk-navgrp-ck .bk-navgrp-l {
+  font-family: var(--font-display); font-size: .95rem; font-weight: 700; letter-spacing: 0; text-transform: none;
+  color: var(--text); opacity: 1;
+}
+
+/* Time: the section heading and its sub-heading read as two levels (owner,
+   November 11). "Our recommended times" takes the small group label look
+   that "Interior" and "Exterior" use on the package page. */
+#bookFunnel .bk-recs-h {
+  margin: .2rem 0 .15rem; font-family: inherit; font-size: .74rem; font-weight: 800;
+  letter-spacing: .09em; text-transform: uppercase; color: var(--text-soft);
+}
+@media (max-width: 559.98px) {
+  /* On a phone the bar is Checkout alone; Back reaches the detail. */
+  #bookFunnel .bk-modal.ck .bk-navgrp:not(.bk-navgrp-ck) { display: none; }
+  #bookFunnel .bk-modal.ck .bk-navgrp + .bk-navgrp { margin-left: 0; padding-left: 0; border-left: 0; }
+  #bookFunnel .bk-modal.ck .bk-seg { min-width: 0; padding: .3rem .45rem; }
+  #bookFunnel .bk-modal.ck .bk-nav > .bk-back { box-shadow: -10px 0 0 6px var(--paper-2), 0 0 0 6px var(--paper-2); }
+  #bookFunnel .bk-modal.ck .bk-nav > .bk-close { box-shadow: 10px 0 0 6px var(--paper-2), 0 0 0 6px var(--paper-2); }
+}
+
+/* Air between the last done row and the open section's heading (owner, November 11). */
+#bookFunnel .bk-donerow + .bk-sec { margin-top: 1.1rem; }
+
+/* Side-by-side fields share three tracks: label, box, message (owner's
+   screenshot, November 11). A message under one field no longer lifts that
+   field above its neighbours; labels still align on their bottoms, so one
+   that wraps does not push its box down (CLAUDE.md, form rows). */
+@supports (grid-template-rows: subgrid) {
+  @media (min-width: 520px) {
+    #bookFunnel .bk-row2, #bookFunnel .bk-row3 { grid-template-rows: auto auto auto; row-gap: 0; align-items: stretch; }
+    #bookFunnel .bk-row2 > .bk-field, #bookFunnel .bk-row3 > .bk-field { display: grid; grid-row: span 3; grid-template-rows: subgrid; }
+    #bookFunnel .bk-row2 > .bk-field > label, #bookFunnel .bk-row3 > .bk-field > label { align-self: end; }
+    #bookFunnel .bk-row2 > .bk-field > .bk-err, #bookFunnel .bk-row3 > .bk-field > .bk-err { grid-row: 3; align-self: start; }
+  }
+}
+
+/* ---------- Review, option D (owner, November 11) ---------- */
+/* A code and extras: one row each that opens in place. */
+#bookFunnel .bk-revrow { border: 1.5px solid var(--line); background: var(--paper-2); border-radius: var(--r-sm); margin: .55rem 0; }
+#bookFunnel .bk-revrow > summary { list-style: none; cursor: pointer; display: flex; justify-content: space-between; align-items: center; gap: .6rem; padding: .7rem .9rem; font-weight: 700; font-size: .9rem; }
+#bookFunnel .bk-revrow > summary::-webkit-details-marker { display: none; }
+#bookFunnel .bk-revrow > summary em { font-style: normal; color: var(--red); font-weight: 700; font-size: .84rem; }
+#bookFunnel .bk-revrow > summary em::after { content: " +"; }
+#bookFunnel .bk-revrow[open] > summary em::after { content: " \2212"; }
+#bookFunnel .bk-revrow-in { padding: 0 .9rem .9rem; }
+#bookFunnel .bk-revrow-in .bk-extras, #bookFunnel .bk-revrow-in .bk-promo { margin-top: 0; }
+/* The arrival line has its own row under "Your time", right-aligned. */
+#bookFunnel .bk-lines .when-sub td { text-align: right; padding-top: 0; white-space: normal; }
+
+/* "Help us get ready", after booking. */
+#bookFunnel .bk-prep { background: var(--paper-2); border: 1.5px solid var(--line); border-radius: var(--r-md, 14px); padding: .95rem 1rem; margin: 1rem 0 1.2rem; text-align: left; }
+#bookFunnel .bk-prep h4 { margin: 0 0 .15rem; font-family: var(--font-display); font-size: 1.02rem; }
+#bookFunnel .bk-prep-sub { margin: 0 0 .5rem; font-size: .83rem; color: var(--text-soft); }
+#bookFunnel .bk-prep .bk-acc { display: flex; align-items: center; justify-content: space-between; gap: .6rem; border: 0; border-top: 1px solid var(--line); border-radius: 0; padding: .45rem 0; margin: 0; background: none; box-shadow: none; }
+#bookFunnel .bk-prep .bk-acc-q { margin: 0; font-size: .86rem; font-weight: 700; }
+#bookFunnel .bk-prep .bk-acc-opts { display: flex; gap: .3rem; flex: none; }
+/* 44 px: a thumb-sized target on a phone (validation, November 11: 33 px). */
+#bookFunnel .bk-prep .bk-acc-b { padding: .32rem .62rem; font-size: .8rem; min-height: 44px; }
+/* Done has nothing in the footer, so it takes no room. */
+#bookFunnel .bk-modal.is-done .bk-foot { display: none; }
+#bookFunnel .bk-prep .bk-field { margin: .6rem 0 0; }
+#bookFunnel .bk-prep .bk-field label { font-size: .82rem; }
+/* The one red action on the Done screen (owner, November 11). */
+#bookFunnel .bk-prep-send {
+  margin-top: .9rem; border: 0; cursor: pointer; font: inherit; font-weight: 700; font-size: .95rem;
+  background: var(--red); color: #fff; border-radius: 999px; padding: .7rem 1.25rem; min-height: 44px;
+}
+#bookFunnel .bk-prep-send:hover { background: var(--red-deep); }
+#bookFunnel .bk-prep-send:disabled { opacity: .6; cursor: default; }
+
+/* Phone checkout bar: tab names only, so all four fit beside back and close
+   (the summaries are in the folded rows just below). */
+@media (max-width: 559.98px) {
+  #bookFunnel .bk-modal.ck .bk-navgrp-ck .bk-seg-s { display: none; }
+}
+
+/* Weather limits, said under the heading when they removed days. */
+#bookFunnel .bk-recs-weather { margin: -.35rem 0 .7rem; font-size: .82rem; color: var(--text-soft); }
+#bookFunnel .bk-recs-weather b { color: var(--text); }

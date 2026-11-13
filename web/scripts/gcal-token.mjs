@@ -20,6 +20,8 @@
  * exits. Copy it into Netlify and close the window.
  */
 import crypto from "node:crypto";
+import fs from "node:fs";
+import os from "node:os";
 import http from "node:http";
 import { createInterface } from "node:readline/promises";
 import { spawn } from "node:child_process";
@@ -54,14 +56,62 @@ Before starting, in the Google Cloud console for the 513 Auto Clean project:
      strangers.
 
   3. Credentials, Create credentials, OAuth client ID.
-       Application type: DESKTOP APP.
+       Application type: WEB APPLICATION. The refresh token is kept and
+       used by a server (Netlify), which can keep the secret, so this is
+       a confidential "web server" client in Google's terms.
+       Authorized redirect URIs: http://localhost:${PORT}/callback
+       (exactly; localhost is allowed over plain http).
        Copy the client ID and client secret.
 `);
 
-const clientId = await ask("Client ID:     ");
-const clientSecret = await ask("Client secret: ");
+/*
+ * EASIEST: pass the JSON file Google lets you download when the client is
+ * created, and nothing has to be pasted:
+ *   npm run gcal:token -- ~/Downloads/client_secret_XXXX.json
+ *
+ * Pasting is where it broke (November 11): a pasted ID can carry spaces,
+ * quotes, the secret, or a terminal's invisible paste markers, and Google
+ * answers that with a bare "400. That's an error. ... malformed". So both
+ * values are cleaned, and the ID is checked for its shape before any link
+ * is opened.
+ */
+const clean = (v) => String(v ?? "")
+  .replace(/\x1b\[20[01]~/g, "")        // bracketed-paste markers
+  .replace(/[\x00-\x1f\x7f]/g, "")       // any other control character
+  .trim()
+  .replace(/^["'](.*)["']$/, "$1")
+  .trim();
+const ID_SHAPE = /^\d+-[a-z0-9]+\.apps\.googleusercontent\.com$/;
+
+let clientId = "", clientSecret = "";
+const file = process.argv[2];
+if (file) {
+  try {
+    const j = JSON.parse(fs.readFileSync(file.replace(/^~(?=\/)/, os.homedir()), "utf8"));
+    const c = j.web || j.installed || j;
+    clientId = clean(c.client_id);
+    clientSecret = clean(c.client_secret);
+    if (j.web && !(c.redirect_uris || []).includes(REDIRECT)) {
+      console.error(`\nThis Web client does not list ${REDIRECT} under Authorized redirect URIs.\n` +
+        "Add it exactly in Google Cloud (Clients, this client), save, wait a few minutes, and run this again.");
+      process.exit(1);
+    }
+  } catch (e) {
+    console.error(`\nCould not read ${file}: ${e.message}`);
+    process.exit(1);
+  }
+} else {
+  clientId = clean(await ask("Client ID:     "));
+  clientSecret = clean(await ask("Client secret: "));
+}
 if (!clientId || !clientSecret) {
   console.error("\nBoth are needed. Nothing was sent anywhere.");
+  process.exit(1);
+}
+if (!ID_SHAPE.test(clientId)) {
+  console.error("\nThat Client ID does not look right. It should look like\n" +
+    "  123456789012-abc123def456.apps.googleusercontent.com\n" +
+    "with nothing before or after it. Nothing was sent anywhere. Easiest: pass the downloaded JSON file instead.");
   process.exit(1);
 }
 
@@ -82,18 +132,30 @@ const authUrl =
     // Google returns only an access token on the second and later runs,
     // which looks like the script quietly failing.
     access_type: "offline",
-    prompt: "consent",
+    prompt: "consent select_account",
     code_challenge: challenge,
     code_challenge_method: "S256",
     state,
   });
 
-console.log(`\nOpening your browser. If it does not open, paste this in:\n\n${authUrl}\n`);
-spawn(process.platform === "win32" ? "cmd" : "open", process.platform === "win32" ? ["/c", "start", "", authUrl] : [authUrl], {
-  stdio: "ignore",
-  detached: true,
-  shell: process.platform === "linux",
-}).unref();
+// Never opened automatically: the default browser is often signed in as the
+// wrong Google account (November 11: it opened in another person's profile).
+// The link goes on the clipboard, to paste into the Chrome profile signed in
+// as the calendars' owner, and Google is asked to show the account picker.
+let copied = false;
+if (process.platform === "darwin") {
+  try {
+    const pb = spawn("pbcopy", [], { stdio: ["pipe", "ignore", "ignore"] });
+    pb.on("error", () => {});
+    pb.stdin.end(authUrl);
+    copied = true;
+  } catch { copied = false; }
+}
+console.log(
+  "\nOpen this link in the Chrome profile signed in as the account that owns the calendars" +
+  (copied ? " (it is already on your clipboard: paste it into that profile's address bar):" : ":") +
+  `\n\n${authUrl}\n\nOn Google's page, choose that account, then Allow.\n`,
+);
 
 const code = await new Promise((resolve, reject) => {
   const server = http.createServer((req, res) => {

@@ -177,13 +177,22 @@ describe("priceFromWire after validation", () => {
     expect(later.surchargeBp).toBe(0);
   });
 
-  it("Monday to Thursday is not priority, Wednesday is", () => {
-    const r = DEFAULT_RULES.window;
+  it("Monday to Thursday is not priority, Wednesday is (on a 3-day window)", () => {
+    const r = { minLeadDays: 3 };
     expect(slotNeedsPriority(zonedToUtc(2026, 9, 17, 10, 0, 0, TZ), monday, r)).toBe(false);
     expect(slotNeedsPriority(zonedToUtc(2026, 9, 16, 10, 0, 0, TZ), monday, r)).toBe(true);
     // Tick over to Tuesday 12:01am and Thursday becomes priority.
     const tue = zonedToUtc(2026, 9, 15, 0, 1, 0, TZ);
     expect(slotNeedsPriority(zonedToUtc(2026, 9, 17, 10, 0, 0, TZ), tue, r)).toBe(true);
+  });
+
+  it("drops the late fee only when the server says the detailer waives it", () => {
+    // Kris works 6 to 7pm anyway (DETAILERS noFeeStarts). A 6:30pm start a
+    // week out carries the 20% late fee, unless the server waives it.
+    const wire = { vehicles: [{ sizeId: "small", packageIds: ["full-interior"] }], zip: "45220",
+      slot: zonedToUtc(2026, 9, 21, 18, 30, 0, TZ) };
+    expect(priceFromWire(wire, { nowMs: monday }).surchargeBp).toBe(DEFAULT_RULES.surcharge.timeOfDayBp);
+    expect(priceFromWire(wire, { nowMs: monday, timeOfDayWaived: true }).surchargeBp).toBe(0);
   });
 
   it("pay in full comes only from the option", () => {
@@ -210,5 +219,24 @@ describe("priceFromWire after validation", () => {
     expect(q.rejected.filter((r) => !/pet-hair|engine-bay/.test(r)).length).toBe(0);
     expect(q.totalCents).toBeLessThan(MAX_BOOKING_CENTS);
     expect(q.totalCents).toBeGreaterThan(200_000 * 0.4);
+  });
+});
+
+describe("validateWire: the planned late arrival (audit, November 12)", () => {
+  it("keeps a sensible figure on the cart, rounded, and drops 0", () => {
+    const b = good();
+    b.cart.arrivalLateMin = 59.6;
+    const r = validateWire(b, { nowMs: NOW, mode: "card_only" });
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.booking.cart.arrivalLateMin).toBe(60);
+    const z = good();
+    z.cart.arrivalLateMin = 0;
+    const r0 = validateWire(z, { nowMs: NOW, mode: "card_only" });
+    expect(r0.ok && r0.booking.cart.arrivalLateMin).toBe(undefined);
+  });
+  it("refuses garbage and anything past the limit", () => {
+    rejects((b) => { b.cart.arrivalLateMin = -5; }, "bad_arrival");
+    rejects((b) => { b.cart.arrivalLateMin = WIRE_LIMITS.maxArrivalLateMin + 1; }, "bad_arrival");
+    rejects((b) => { b.cart.arrivalLateMin = "an hour"; }, "bad_arrival");
   });
 });

@@ -1,0 +1,27 @@
+{
+  "_read_me": [
+    "The rush fee: +20% on bookings for the next few days. This file decides how many days.",
+    "rushDays counts days from today, today included: 3 = today, tomorrow and the day after; 2 = today and tomorrow; 1 = today only; 0 = no rush fee.",
+    "Rules are checked top to bottom and the FIRST one that matches wins. A booking no rule matches gets defaultRushDays.",
+    "A rule's 'when' can name any of these (leave one out to match everything):",
+    "  sources: where the visit came from, the address it arrived through: \"golf\" (513autoclean.com/golf), \"prestige\".",
+    "  kinds: \"interior\", \"exterior\" or \"both\": what the whole booking is. \"exterior\" means exterior work only.",
+    "  packages: package ids; matches when ANY of them is booked (maintenance-interior, basic-interior, full-interior, showroom-interior, express-exterior, basic-exterior, full-exterior, showroom-exterior).",
+    "  from / until: dates (YYYY-MM-DD, Cincinnati time, both included). Leave them out and the rule never ends on its own.",
+    "The browser and the booking functions both read this file. A change goes live on the next deploy, and a mistake in it fails the build instead of reaching customers.",
+    "The exterior-only rule gives the same 2 days as the default today. It stays so that exterior-only bookings keep their own setting if the default changes again.",
+    "Change log: November 11, 2026, the owner: exterior-only bookings pay the rush fee for today and tomorrow only; then the default went from 3 days to 2 for every booking. The owner decided golf booklet readers pay the normal rush fee; to waive it for them later, add first: {\"name\": \"Golf booklet readers: no rush fee\", \"when\": {\"sources\": [\"golf\"]}, \"rushDays\": 0}."
+  ],
+  "defaultRushDays": 2,
+  "rules": [
+    {
+      "name": "Exterior-only bookings: rush fee for today and tomorrow only",
+      "when": {
+        "kinds": [
+          "exterior"
+        ]
+      },
+      "rushDays": 2
+    }
+  ]
+}
