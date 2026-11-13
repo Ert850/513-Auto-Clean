@@ -2721,7 +2721,8 @@
       ? '<p class="bk-sub">Pick a time and we hold it for you (a time within the next day is a request until a detailer accepts it). We will work out the right package with you ' +
         'before we start, so nothing is priced yet.</p>' +
         '<p class="bk-note">We are holding <b>' + Math.round(P.ADVICE_HOLD_MIN / 60) + ' hours</b>, ' +
-        'which covers our longest single-vehicle detail. If the package we recommend needs less, we ' +
+        // Not "our longest detail": Showroom Ready runs 7 to 8 hours (final review, November 13).
+        'which covers most single-vehicle details. If the package we recommend needs less, we ' +
         'finish earlier and you pay less. If it needs more, we will say so before the day.</p>'
       : '';
 
