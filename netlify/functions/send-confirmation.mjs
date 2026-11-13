@@ -121,9 +121,12 @@ function receiptRows(priced) {
   // A drive inside the free minutes is $0, which the quote leaves out as a
   // line, so the email used to say travel would be "added when we confirm"
   // under a total that was already final.
-  const travelKnown = priced.travelSource !== "none";
+  // Only a measured drive is shown as Free: a ZIP band estimate (a request
+  // with no address yet) can still change once the drive is measured.
   const lines = [...priced.lines];
-  if (travelKnown && !lines.some((l) => /travel/i.test(l.label))) {
+  const hasTravel = lines.some((l) => /travel/i.test(l.label));
+  const travelKnown = hasTravel || priced.travelSource === "routes";
+  if (travelKnown && !hasTravel) {
     const at = lines.findIndex((l) => /sales tax/i.test(l.label));
     lines.splice(at < 0 ? lines.length : at, 0, { label: "Travel", amountCents: 0, free: true });
   }
@@ -243,8 +246,8 @@ ${receiptRows(priced)}`,
   const arrival = slot === null
     ? ""
     : windowMin > 0
-      ? `We will arrive between ${clock(slot)} and ${clock(slot + windowMin * 60_000)}.`
-      : `We will arrive at ${clock(slot)}.`;
+      ? `We ${confirmed ? "will" : "would"} arrive between ${clock(slot)} and ${clock(slot + windowMin * 60_000)}.`
+      : `We ${confirmed ? "will" : "would"} arrive at ${clock(slot)}.`;
 
   const shortNotice = soon && !advice
     ? `<p style="margin:0 0 14px;padding:10px 12px;background:#fdf3e3;border-radius:8px;font-size:14px">` +
