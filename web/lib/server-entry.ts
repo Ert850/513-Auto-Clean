@@ -217,7 +217,7 @@ export { legalFingerprint } from "./site/legalFingerprint.js";
 export { parseIcsBusy, mergeBusy } from "./booking/ics.js";
 export { parseDetailers, waivesFeeAt, canDo } from "./availability/crew.js";
 export { loadWindow, blockFeeAt } from "./google/publicCalendar.js";
-export { localMinutesOfDay } from "./availability/slots.js";
+export { localMinutesOfDay, ARRIVAL_WINDOW_MIN } from "./availability/slots.js";
 
 /**
  * The kinds of work a cart needs, the way the booking form works it out

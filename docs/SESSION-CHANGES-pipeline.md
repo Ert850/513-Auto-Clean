@@ -1324,6 +1324,22 @@ From the live calendar (read only), the code, and your voice notes:
 - **How:** an add-on tier can carry `withPackage` (package id to cents); `tierPriceFor(tier, packageIds)` reads it. The server (`server-entry.ts`), the booking form's cart and its displayed prices (`funnel.js`), the Services add-on card (`render-site.mjs`: "$80 with Full Interior, $115 otherwise") and the price list (`price-list.mjs`, PDF regenerated) all go through it, so the browser and the charge agree.
 - **Test it:** in the booking form, pick Full Interior and open Extras: steam shows $80. Switch to Basic Interior: $115. The total on the summary and the booking email match. `steam-price.test.ts` checks the server side.
 
+## The "booked in" email in Elijah's layout, with travel always priced (November 13)
+
+- **What Elijah asked for:**
+  - "Thanks Elijah, you are booked in." with his thank-you line;
+  - an Arrival time, then a Duration ("About N hours", over N days for a multi-day job);
+  - "We will arrive between 10 AM and 11 AM";
+  - Travel as its own row with its exact price, inside the total;
+  - "Please text or call … We are always happy to help."
+- **Bug, root cause:** a drive inside the free minutes prices travel at $0, and `quote()` leaves a $0 travel line out. The email took "no travel line" to mean "not priced yet" and told the customer travel would be "added when we confirm", under a total that was already final. Elijah's own test booking (Basic $135 + tax = $145.53, no travel) hit this.
+  - Fix: `receiptRows()` adds a Travel row whenever the drive is known (`travelSource` isn't "none"), "Free" when it's $0. The "added when we confirm" line is kept only when travel truly is unknown.
+- **Where the numbers come from:**
+  - the arrival window is the detailer's `arrivalWindowMin` (DETAILERS), else `ARRIVAL_WINDOW_MIN`, never typed;
+  - the duration is `priced.serviceDurationMin`, with the day count from the same `multiDayEvents` plan the calendar events use (`planDays()`, now shared).
+- **Not changed:** Elijah's draft had "$10.53 + sales tax from travel amount". Tax is already worked out on the package plus travel, so the email shows one exact tax and one exact total. His " - " became a full stop (no dashes in customer text).
+- **Test it:** `confirmation-email.test.ts` covers a priced drive, a free one, the window from a detailer setting, the duration and no dashes. Sample: `docs/mockups/booking-email-nov13.png`. On live, make a test booking and check the email.
+
 ## Leftovers noticed, not touched
 
 - `book.css` still has `.bk-time`, `.bk-times`, `.bk-bucket` and `.bk-juston` rules from an older slot design. They were unused before tonight.
