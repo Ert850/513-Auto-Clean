@@ -2,6 +2,14 @@
 
 Work that's agreed but deliberately not started before Friday. Newest first.
 
+## Swap the phone number back (due November 18 to 21)
+
+- **What's live:** since November 14, the site shows the temporary A2P verification number, (866) 371-5948. `BUSINESS_PHONE` is set in Netlify (all scopes and contexts) and production was redeployed (deploy 6af707e0).
+  - Checked live: 12 pages, the scripts, `tel:`/`sms:` links and the structured data all carry it, with no trace of (513) 279-2915.
+- **To swap back** when Imperion says verification is done: delete `BUSINESS_PHONE` in Netlify (or set it to the permanent new number), then Deploys → Trigger deploy → Deploy site.
+  - Check that no page carries 371-5948 afterwards.
+  - Emails pick it up from the same deploy.
+
 ## Monday: Elijah's walkthrough of the live site on a phone (November 13)
 
 He checked every page. Results, Meet the Team, Reviews and Range & Travel are fine as they are. The results slider "works great" on mobile, and the booking section at the bottom of the home page "should work well".
