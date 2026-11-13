@@ -29,7 +29,8 @@ export const LEGAL = {
    * terms describe taking a card again, and the privacy policy names two
    * more processors.
    */
-  termsEffective: "2026-11-12",
+  termsEffective: "2026-11-14",
+  // 2026-11-14: section 11 describes the text program for the toll-free number verification.
   // 2026-11-09: Google Analytics and Microsoft Clarity behind a consent
   // banner, and the arrival source kept for the visit.
   // 2026-11-10: a question started mid-booking is carried to the question
@@ -47,7 +48,8 @@ export const LEGAL = {
   // not exist, and the record of what was agreed names the terms' date.
   // 2026-11-11 (later): A/B tests (config/experiments.json) remember which
   // version a visitor saw and send it with a booking. Same day, nothing live.
-  privacyEffective: "2026-11-11",
+  privacyEffective: "2026-11-14",
+  // 2026-11-14: opt-in data "will not be shared with any third parties or affiliates" (no carve-out), and a text messaging provider in the list.
 } as const;
 
 export function longDate(iso: string): string {
