@@ -33,7 +33,7 @@ Generated from the website's own catalog on November 12, 2026 (`web/scripts/pric
 | Pet Hair Removal | $50 | about 1 h |
 | Stain Treatment: Surface stain treatment | $50 | about 1 h |
 | Stain Treatment: Deep stain treatment | $100 | about 2 h |
-| Full Vehicle Steam Treatment | $75 | about 1 h 30 min |
+| Full Vehicle Steam Treatment | $115 ($80 with Full Interior) | about 1 h 30 min |
 | Ozone Odor Reset | $50 | about 1 h |
 | Seat Removal | $100 | about 2 h |
 | Headlight Restoration | $75 | about 1 h 30 min |
@@ -57,7 +57,7 @@ With any interior package they are booked online as add-ons:
 | Single stains on seats or carpet | Stain treatment, surface or deep | $50 to $100 |
 | Smoke, mildew or lingering odors | Ozone Odor Reset | $50 |
 | Pet hair | Pet Hair Removal | $50 |
-| Germs and allergens (sanitizing) | Full Vehicle Steam Treatment | $75 |
+| Germs and allergens (sanitizing) | Full Vehicle Steam Treatment | $115 ($80 with Full Interior) |
 | Under the front seats | Seat Removal | $100 |
 
 Say "treat", "lift" or "reduce", never "remove" or "eliminate": results depend on the fabric and how long the stain has set.
@@ -75,7 +75,7 @@ Each Google service name with the matching service on the site and the price to 
 | Full body wash | Express Exterior / Basic Exterior | from $75 |
 | Headlight polishing | Headlight Restoration (add-on) | $75 |
 | Seat shampooing | Full Interior (shampoo scrub of the upholstery); single stains: Stain Treatment | from $225; stains from $50 |
-| Steam cleaning | Full Vehicle Steam Treatment (add-on to an interior package) | $75 |
+| Steam cleaning | Full Vehicle Steam Treatment (add-on to an interior package) | $115 ($80 with Full Interior) |
 | Vehicle interior vacuuming | Basic Interior | from $135 |
 | Wheel washing | Hubcaps scrubbed in Express Exterior; wheels, tires and wells in Basic and Full Exterior; Tire and Rim Shine add-on | from $75; shine $45 |
 

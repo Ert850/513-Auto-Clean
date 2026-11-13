@@ -7,7 +7,7 @@ Work that's agreed but deliberately not started before Friday. Newest first.
 - **Steam pricing now (Elijah, November 13):**
   - steam is $80 when added to Full Interior (Full + Steam $305 at today's $225), and $115 on any other package;
   - the add-on needs a per-package price (`web/lib/catalog/addons.ts`, priced on both browser and server, and rendered into the cards and the price list);
-  - not built yet.
+  - **built November 13** (`tierPriceFor`, `withPackage`; `steam-price.test.ts`).
 - **Cancelling = deleting the event (Elijah):** the website already treats a deleted event as free time. Still needed:
   - Kris needs "Make changes to events" on 513 Kris Bookings;
   - JobsSync marks rows whose event is gone as "Cancelled" (today they stay "Upcoming");

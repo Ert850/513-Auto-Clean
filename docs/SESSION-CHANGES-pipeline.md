@@ -1318,6 +1318,12 @@ From the live calendar (read only), the code, and your voice notes:
   - keyboard arrow-key movement around the grid (Tab works; arrow keys aren't built);
   - any real send.
 
+## Steam priced by package (November 13, Elijah)
+
+- **What:** steam is $80 when the vehicle also has Full Interior, $115 with any other package (was $75 everywhere).
+- **How:** an add-on tier can carry `withPackage` (package id to cents); `tierPriceFor(tier, packageIds)` reads it. The server (`server-entry.ts`), the booking form's cart and its displayed prices (`funnel.js`), the Services add-on card (`render-site.mjs`: "$80 with Full Interior, $115 otherwise") and the price list (`price-list.mjs`, PDF regenerated) all go through it, so the browser and the charge agree.
+- **Test it:** in the booking form, pick Full Interior and open Extras: steam shows $80. Switch to Basic Interior: $115. The total on the summary and the booking email match. `steam-price.test.ts` checks the server side.
+
 ## Leftovers noticed, not touched
 
 - `book.css` still has `.bk-time`, `.bk-times`, `.bk-bucket` and `.bk-juston` rules from an older slot design. They were unused before tonight.
