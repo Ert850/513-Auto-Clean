@@ -19,7 +19,6 @@ import {
   addonBlockedReason,
   addonsFor,
   findAddon,
-  isUnpriced,
   isSelectable,
   unavailableReason,
   COATING_COVERAGE,
@@ -29,82 +28,63 @@ import {
   CORRECTION_TIERS,
   findCoatingTerm,
   findCorrectionTier,
-  MAINTENANCE_PLAN,
-  SERVICE_LEVELS,
 } from "./catalog/addons.js";
-import { SEED_TAX_TABLE, computeTax, lookupRate } from "./pricing/tax.js";
 import {
-  DEFAULT_HOURS,
-  businessHoursWindows,
   isConfigured as calendarConfigured,
+  blockFeeAt,
   loadWindow,
-  resolveWindow,
   unconfiguredWindow,
 } from "./google/publicCalendar.js";
 import {
-  DEFAULT_BOOKING_WINDOW,
   IGNORE_RETURN_AFTER_MIN,
   IGNORE_OUTBOUND_BEFORE_MIN,
-  recommendStarts,
-  DAY_ANCHORS_MIN,
+  ARRIVAL_WINDOW_MIN,
   TIME_BANDS,
   bandOf,
-  groupIntoBands,
   travelBufferMin,
   computeSlots,
   localMinutesOfDay,
-  mergeIntervals,
-  subtractIntervals,
 } from "./availability/slots.js";
-import {
-  addableComponents,
-  componentsOf,
-  removableComponents,
-  unpricedComponents,
-} from "./catalog/types.js";
-import { averageOneWayMinutes, mileageFeeCents, travelCommitmentMinutes } from "./pricing/mileage.js";
+import { addWeeks, buildWeek, daySuggestions, dayOpenShare, lastRowForSlots, stretchStarts, timelineRange, recommendBestDays, TIME_RECOMMENDATION_RULES, weekStartOf } from "./availability/week.js";
+import { coldPause, parseGridpoint, WEATHER_RULES, weatherVerdict } from "./availability/weather.js";
+import { assignStarts, canDo, parseDetailers, waivesFeeAt } from "./availability/crew.js";
+import { componentsOf } from "./catalog/types.js";
+import { mileageFeeCents } from "./pricing/mileage.js";
 import { LEGAL } from "./site/legal.js";
-import { CAPABILITIES, IN_PERSON, isLive } from "./site/capabilities.js";
-import {
-  cancellationLadder,
-  computeCancellation,
-  computeReschedule,
-} from "./pricing/cancellation.js";
+import { DRAFT_KEEP_DAYS, IN_PERSON, isLive } from "./site/capabilities.js";
 import { DEFAULT_RULES } from "./pricing/rules.js";
 import {
   computeSurcharge,
   earliestBookableDate,
   minutesOfDay,
-  requiresPriorityBooking,
   slotNeedsPriority,
 } from "./pricing/surcharge.js";
 import { quote } from "./pricing/quote.js";
+import { rushWindow } from "./pricing/rush.js";
 import {
   QUOTE_TTL_HOURS,
   decodeQuote,
-  encodeQuote,
-  hoursRemaining,
   quoteUrl,
 } from "./booking/quoteLink.js";
 import {
   LONGEST_DAY,
   LONG_JOB_STARTS,
-  dayCapacityMin,
   describePlan,
   findMultiDayStarts,
   fitsOneDay,
+  multiDayStillFits,
   planDays,
 } from "./availability/multiDay.js";
-import { PROMOS, findPromo, normalisePromo, promoDiscountCents, promoMessage } from "./pricing/promos.js";
-import { ADDON_ICONS, addonIcon } from "./catalog/icons.js";
+import { findPromo, normalisePromo, promoDiscountCents, promoMessage } from "./pricing/promos.js";
+import { addonIcon } from "./catalog/icons.js";
 import { popularityOf } from "./catalog/popularity.js";
+import { recommendAddons } from "./catalog/recommend.js";
 import { ZIP_GEO, zipGeo } from "./travel/zipGeo.js";
 // How long a "help me decide" visit holds. The funnel fits slots to it and
 // the confirmation function ends the calendar event with it. One definition.
 import { ADVICE_HOLD_MIN } from "./pricing/wire.js";
 import {
   MAX_ONE_WAY_MINUTES,
-  ZIP_RANGES,
   estimateOneWayMinutes,
   lookupZip,
 } from "./travel/zipRanges.js";
@@ -121,6 +101,7 @@ export function formatCents(cents: number): string {
 
 const api = {
   RULES: DEFAULT_RULES,
+  DRAFT_KEEP_DAYS,
   CATALOG: SEED_CATALOG,
   ADDONS,
   VEHICLE_SIZES,
@@ -129,7 +110,6 @@ const api = {
   findPackage,
   addonsFor,
   findAddon,
-  isUnpriced,
   isSelectable,
   unavailableReason,
   addonBlockedReason,
@@ -140,49 +120,52 @@ const api = {
   CORRECTION_RULES,
   findCorrectionTier,
   findCoatingTerm,
-  MAINTENANCE_PLAN,
-  SERVICE_LEVELS,
-  TAX_TABLE: SEED_TAX_TABLE,
-  computeTax,
-  lookupRate,
-  DEFAULT_HOURS,
-  businessHoursWindows,
   calendarConfigured,
   loadWindow,
-  resolveWindow,
   unconfiguredWindow,
-  DEFAULT_BOOKING_WINDOW,
   IGNORE_RETURN_AFTER_MIN,
   IGNORE_OUTBOUND_BEFORE_MIN,
-  recommendStarts,
-  DAY_ANCHORS_MIN,
+  ARRIVAL_WINDOW_MIN,
   TIME_BANDS,
   bandOf,
-  groupIntoBands,
   travelBufferMin,
   computeSlots,
   LONGEST_DAY,
   LONG_JOB_STARTS,
-  dayCapacityMin,
   describePlan,
   findMultiDayStarts,
   fitsOneDay,
+  multiDayStillFits,
   planDays,
   localMinutesOfDay,
-  mergeIntervals,
-  subtractIntervals,
+  weekStartOf,
+  addWeeks,
+  buildWeek,
+  dayOpenShare,
+  stretchStarts,
+  timelineRange,
+  recommendBestDays,
+  daySuggestions,
+  TIME_RECOMMENDATION_RULES,
+  lastRowForSlots,
+  parseGridpoint,
+  WEATHER_RULES,
+  weatherVerdict,
+  coldPause,
+  parseDetailers,
+  canDo,
+  assignStarts,
+  waivesFeeAt,
+  blockFeeAt,
+  recommendAddons,
   quote,
   QUOTE_TTL_HOURS,
   decodeQuote,
-  encodeQuote,
-  hoursRemaining,
   quoteUrl,
-  PROMOS,
   findPromo,
   normalisePromo,
   promoDiscountCents,
   promoMessage,
-  ZIP_RANGES,
   ZIP_GEO,
   MAX_ONE_WAY_MINUTES,
   ADVICE_HOLD_MIN,
@@ -190,27 +173,17 @@ const api = {
   estimateOneWayMinutes,
   lookupZip,
   popularityOf,
-  ADDON_ICONS,
   addonIcon,
   mileageFeeCents,
-  averageOneWayMinutes,
-  travelCommitmentMinutes,
   computeSurcharge,
   minutesOfDay,
   earliestBookableDate,
-  requiresPriorityBooking,
   slotNeedsPriority,
+  rushWindow,
   LEGAL,
-  CAPABILITIES,
   IN_PERSON,
   isLive,
-  computeCancellation,
-  computeReschedule,
-  cancellationLadder,
   componentsOf,
-  removableComponents,
-  addableComponents,
-  unpricedComponents,
   formatCents,
 };
 

@@ -77,7 +77,10 @@
 
 /* ---------- Reset ---------- */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; scroll-padding-top: 90px; }
+/* No scroll-behavior: smooth here. script.js glides in-page link clicks itself,
+   so arriving at page.html#section lands in place instead of sliding there.
+   scroll-padding-top is a fallback; script.js sets it to the header's real height. */
+html { -webkit-text-size-adjust: 100%; scroll-padding-top: 73px; }
 body {
   font-family: var(--font-body);
   color: var(--text);
@@ -96,13 +99,21 @@ ul { list-style: none; }
 
 /* ---------- Type ---------- */
 h1, h2, h3, h4 { font-family: var(--font-display); font-weight: 700; line-height: 1.05; letter-spacing: -.02em; }
+/* NO ORPHANED WORDS. Text used to wrap greedily: each line took as many words
+   as fit and the remainder fell to the last line, often a single word
+   ("Good questions, straight / answers."). It got worse on WIDE screens,
+   because heading sizes grow with the viewport while .section-head stays
+   660px wide. Measured: 156 one-word last lines across 6 pages x 6 widths.
+   Headings balance their lines; running text avoids a lone last word.
+   Browsers without support simply wrap as before. */
+h1, h2, h3, h4, .svc-tag, .eyebrow { text-wrap: balance; }
+p, li, figcaption, label, legend, summary, blockquote { text-wrap: pretty; }
 .eyebrow {
   font-family: var(--font-body);
   font-weight: 700; font-size: .8rem; letter-spacing: .14em; text-transform: uppercase;
   color: var(--red-deep); display: inline-flex; align-items: center; gap: .55rem;
 }
 .eyebrow::before { content: ""; width: 26px; height: 2px; background: var(--red); border-radius: 2px; }
-.eyebrow.on-dark { color: var(--red-bright); }
 
 /* ---------- Layout helpers ---------- */
 .wrap { width: 100%; max-width: var(--maxw); margin-inline: auto; padding-inline: var(--pad); }
@@ -170,24 +181,21 @@ section { padding-block: clamp(40px, 5vw, 72px); position: relative; }
 .nav { display: flex; align-items: center; justify-content: space-between; min-height: 72px; gap: 1rem; }
 
 .brand { display: inline-flex; align-items: center; gap: .6rem; flex-shrink: 0; }
-.brand .mark-img { width: 46px; height: 46px; object-fit: contain; flex-shrink: 0; display: block; }
+/* logo-mark.png is a square with the bottle in its middle third. Cropping the
+   empty sides keeps the bottle the same size and saves 18px, which is what
+   pushed the menu button 4px past a 375px phone and made the phone zoom out
+   (every jump to a section then landed about 9px low). */
+.brand .mark-img { width: 28px; height: 46px; object-fit: cover; flex-shrink: 0; display: block; }
 .mobile-menu .brand .mark-img, .footer .brand .mark-img { width: 40px; height: 40px; }
-.brand .mark {
-  width: 42px; height: 42px; border-radius: 12px; flex-shrink: 0;
-  background: linear-gradient(140deg, var(--ink) 0%, var(--ink-3) 100%);
-  display: grid; place-items: center; color: var(--red-bright);
-  font-family: var(--font-display); font-weight: 800; font-size: .92rem; letter-spacing: -.04em;
-  box-shadow: var(--shadow-sm); position: relative; overflow: hidden;
-}
-.brand .mark::after {
-  content: ""; position: absolute; inset: 0;
-  background: linear-gradient(120deg, transparent 40%, rgba(255,80,80,.5) 50%, transparent 60%);
-  transform: translateX(-100%); animation: shine 5s var(--ease) 1.5s infinite;
-}
 .brand .b-name { font-family: var(--font-display); font-weight: 800; font-size: 1.16rem; letter-spacing: -.03em; line-height: 1; }
 .brand .b-sub { font-size: .68rem; letter-spacing: .12em; text-transform: uppercase; color: var(--text-soft); font-weight: 600; }
+/* On the smallest phones the tag line is what gives way, not the page width. */
+/* 364, not 359: at 360 the tag line made the header 361 px and the phone zoomed out (final validation, November 11). */
+@media (max-width: 364px) { .header .brand .b-sub { display: none; } }
 
-.nav-links { display: none; align-items: center; gap: 0; }
+.nav-mid { display: none; align-items: center; min-width: 0; }
+/* Shrinks with the window and clips; script.js moves what does not fit into More. */
+.nav-links { display: flex; align-items: center; gap: 0; min-width: 0; overflow: hidden; padding: 4px; margin: -4px; } /* room for focus rings inside the clip */
 .nav-links a {
   font-weight: 600; font-size: .9rem; color: var(--text); padding: .5rem .52rem; border-radius: 8px;
   position: relative; transition: color .2s; white-space: nowrap;
@@ -199,6 +207,27 @@ section { padding-block: clamp(40px, 5vw, 72px); position: relative; }
 }
 .nav-links a:hover { color: var(--red-deep); }
 .nav-links a:hover::after { transform: scaleX(1); }
+.nav-links a.pp-off { display: none; }
+.nav-more { position: relative; flex: none; }
+.nav-more[hidden] { display: none; }
+.nav-more > button {
+  display: inline-flex; align-items: center; gap: .25rem; padding: .5rem .52rem; border: 0; border-radius: 8px; background: none;
+  font: inherit; font-weight: 600; font-size: .9rem; color: var(--text); cursor: pointer; white-space: nowrap;
+}
+.nav-more > button:hover, .nav-more > button[aria-expanded="true"] { color: var(--red-deep); }
+.nav-more > button svg { width: 14px; height: 14px; transition: transform .2s; }
+.nav-more > button[aria-expanded="true"] svg { transform: rotate(180deg); }
+.nav-more-menu {
+  position: absolute; top: calc(100% + 10px); right: 0; min-width: 13rem; z-index: 110;
+  display: flex; flex-direction: column; padding: .4rem;
+  background: #fff; border: 1px solid var(--line); border-radius: var(--r-md); box-shadow: var(--shadow-md);
+}
+.nav-more-menu[hidden] { display: none; }
+.nav-more-menu a { padding: .65rem .85rem; border-radius: 9px; font-weight: 600; font-size: .92rem; color: var(--text); }
+.nav-more-menu a:hover, .nav-more-menu a:focus-visible { background: var(--red-ghost); color: var(--red-deep); }
+/* Tight: Contact Us shows its icon only (its words stay for screen readers). */
+.nav.pp-tight .nav-cta .btn-ghost { font-size: 0; gap: 0; padding: .75rem .85rem; }
+.nav.pp-tight .nav-cta .btn-ghost svg { width: 18px; height: 18px; }
 
 .nav-cta { display: none; align-items: center; gap: .5rem; flex-shrink: 0; }
 .nav-cta .btn { padding: .75rem 1.1rem; font-size: .92rem; }
@@ -215,7 +244,7 @@ section { padding-block: clamp(40px, 5vw, 72px); position: relative; }
 .mobile-menu {
   position: fixed; inset: 0 0 0 auto; width: min(360px, 86vw); z-index: 200;
   background: var(--ink); color: var(--text-inv);
-  transform: translateX(100%); transition: transform .4s var(--ease);
+  transform: translateX(100%);
   display: flex; flex-direction: column; padding: 2rem 1.75rem; gap: .25rem;
   box-shadow: var(--shadow-lg);
 }
@@ -267,7 +296,7 @@ section { padding-block: clamp(40px, 5vw, 72px); position: relative; }
   padding: .5rem 1rem .5rem .65rem; border-radius: 999px; font-size: .86rem; font-weight: 600;
   color: #fff; backdrop-filter: blur(8px);
 }
-.hero-badge .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--red-bright); box-shadow: 0 0 0 4px rgba(255,59,59,.25); animation: pulse 2.4s infinite; }
+.hero-badge .hb-stars { color: var(--amber); letter-spacing: .08em; }
 
 .hero h1 {
   font-size: clamp(2.7rem, 8vw, 5rem); font-weight: 800; letter-spacing: -.035em;
@@ -297,12 +326,31 @@ section { padding-block: clamp(40px, 5vw, 72px); position: relative; }
 .hero-scroll span { position: absolute; left: 50%; top: 8px; width: 4px; height: 8px; border-radius: 2px; background: #fff; transform: translateX(-50%); animation: scrolldot 1.8s var(--ease) infinite; }
 @keyframes scrolldot { 0% { opacity: 0; top: 8px; } 40% { opacity: 1; } 80% { opacity: 0; top: 22px; } 100% { opacity: 0; } }
 
-.btn-light { --bg: rgba(255,255,255,.96); --fg: var(--ink); }
-.btn-light:hover { --bg: #fff; }
+/* One primary button in the hero (owner, round 4): Book Now stays solid red,
+   View Services and Contact Us are outlined on the photo, with a light tint so
+   they read over its bright patches. On a phone those two share a row under a
+   full-width Book Now (three stacked buttons took 212px of the screen). */
+.hero-cta .btn-ghost.on-dark { background: rgba(8,8,10,.25); backdrop-filter: blur(6px); }
+@media (max-width: 559.98px) {
+  .hero-cta { display: grid; grid-template-columns: 1fr 1fr; }
+  .hero-cta .btn-primary { grid-column: 1 / -1; }
+  .hero-cta .btn { justify-content: center; padding-inline: .8rem; }
+}
+/* Under 360 the two outlined buttons need 303 px in a 280 px row and ran off
+   the screen (final validation, November 11), so they stack there. */
+@media (max-width: 359.98px) { .hero-cta { grid-template-columns: minmax(0, 1fr); } }
 
 /* trust marquee */
-.trustbar { background: var(--ink-2); color: var(--text-inv-soft); border-top: 1px solid var(--line-dark); }
-.trustbar .wrap { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 1rem 2.2rem; padding-block: 1.1rem; }
+.trustbar { background: var(--ink-2); color: var(--text-inv-soft); border-top: 1px solid var(--line-dark); border-bottom: 1px solid var(--line-dark); }
+.trustbar .wrap { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 1.1rem 3rem; padding-block: 1.3rem; }
+/* The Google badge sits on the left of the strip now, not in the hero. */
+.trustbar .g-badge { margin-top: 0; }
+/* The four promises, 2x2 beside the badge; the badge drops above them when narrow. */
+.trust-items { display: grid; grid-template-columns: repeat(2, auto); gap: .8rem 2.2rem; }
+@media (max-width: 560px) {
+  .trust-items { grid-template-columns: 1fr 1fr; gap: .8rem 1rem; }
+  .trustbar .ti { align-items: flex-start; font-size: .86rem; }
+}
 .trustbar .ti { display: inline-flex; align-items: center; gap: .55rem; font-size: .92rem; font-weight: 600; }
 .trustbar .ti svg { width: 18px; height: 18px; color: var(--red-bright); flex-shrink: 0; }
 
@@ -311,12 +359,16 @@ section { padding-block: clamp(40px, 5vw, 72px); position: relative; }
    ============================================================ */
 .services { background: var(--paper); }
 .svc-tabs { display: inline-flex; padding: 5px; background: var(--paper-2); border: 1px solid var(--line); border-radius: 999px; margin-bottom: 2.5rem; box-shadow: var(--shadow-sm); }
+/* The Interior / Exterior tabs with "See all add-ons" beside them. The row
+   carries the space below; the button wraps under the tabs on narrow screens. */
+.svc-tabs-row { display: flex; flex-wrap: wrap; align-items: center; gap: .8rem 1rem; margin-bottom: 2.5rem; }
+.svc-tabs-row .svc-tabs { margin-bottom: 0; }
 .svc-tab {
   padding: .65rem 1.4rem; border-radius: 999px; font-weight: 700; font-size: .98rem; color: var(--text-soft);
   transition: color .25s, background .25s, box-shadow .25s; display: inline-flex; align-items: center; gap: .5rem;
 }
 .svc-tab svg { width: 18px; height: 18px; }
-.svc-tab.active { color: var(--ink); background: var(--paper); box-shadow: var(--shadow-sm); }
+.svc-tab.active { box-shadow: var(--shadow-sm); }
 .svc-tab.active { color: #ffffff; background: linear-gradient(135deg, var(--red), var(--red-deep)); }
 
 .svc-panel { display: none; }
@@ -337,11 +389,6 @@ section { padding-block: clamp(40px, 5vw, 72px); position: relative; }
   font-size: .84rem; color: #7a5209; background: rgba(240,169,63,.14);
   border-radius: var(--r-sm); padding: .5rem .65rem; margin-bottom: .85rem; line-height: 1.5;
 }
-.corr-soon {
-  font-size: .66rem; font-weight: 800; letter-spacing: .09em; text-transform: uppercase;
-  color: #7a5209; background: rgba(240,169,63,.2); border-radius: 4px;
-  padding: .2rem .45rem; vertical-align: middle; margin-left: .45rem;
-}
 .svc-tag {
   position: absolute; top: -12px; right: 1.5rem; background: linear-gradient(135deg, var(--red), var(--red-deep));
   color: #ffffff; font-size: .72rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase;
@@ -350,7 +397,6 @@ section { padding-block: clamp(40px, 5vw, 72px); position: relative; }
 .svc-card h3 { font-size: 1.35rem; margin-bottom: .2rem; }
 .svc-card .svc-meta { display: flex; align-items: baseline; gap: .6rem; margin-bottom: .75rem; flex-wrap: wrap; }
 .svc-card .price { font-family: var(--font-display); font-weight: 800; font-size: 1.85rem; color: var(--ink); letter-spacing: -.03em; }
-.svc-card .price s { color: var(--text-soft); font-size: 1.1rem; font-weight: 500; opacity: .7; }
 .svc-card .dur { font-size: .85rem; color: var(--text-soft); font-weight: 600; display: inline-flex; align-items: center; gap: .35rem; }
 .svc-card .dur svg { width: 14px; height: 14px; }
 .svc-card .svc-desc { color: var(--text-soft); font-size: .92rem; margin-bottom: .85rem; }
@@ -359,16 +405,21 @@ section { padding-block: clamp(40px, 5vw, 72px); position: relative; }
 .svc-card ul.feat li svg { width: 17px; height: 17px; color: var(--red-deep); flex-shrink: 0; margin-top: .18rem; }
 .svc-card .svc-foot { margin-top: auto; }
 
+/* No flex-wrap: the text's flex-basis is its full one-line width, so with
+   wrapping on it always dropped to a row of its own under the icon. */
 .svc-note {
-  margin-top: 1.8rem; display: flex; flex-wrap: wrap; gap: .75rem 1.5rem; align-items: center;
+  margin-top: 1.8rem; display: flex; gap: .75rem; align-items: flex-start;
   background: var(--red-ghost); border: 1px dashed rgba(200,20,20,.4); border-radius: var(--r-md);
   padding: 1rem 1.3rem; font-size: .95rem; color: var(--red-deep); font-weight: 600;
 }
-.svc-note svg { width: 20px; height: 20px; flex-shrink: 0; }
+.svc-note svg { width: 20px; height: 20px; flex-shrink: 0; margin-top: .15rem; }
+/* Two offers, two lines, split by the banner's own dashed rule. */
+.svc-offers { flex: 1; min-width: 0; }
+.svc-offers p { margin: 0; line-height: 1.5; }
+.svc-offers p + p { margin-top: .55rem; padding-top: .55rem; border-top: 1px dashed rgba(200,20,20,.3); }
 
 /* add-ons */
 .addons { margin-top: 1.6rem; }
-.addons h3 { font-size: 1.2rem; margin-bottom: .8rem; }
 /* auto-fill against a minimum width rather than a fixed column count: six
    columns of a paragraph plus a price gave one word per line. */
 .addon-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(245px, 1fr)); gap: .7rem; }
@@ -379,38 +430,16 @@ section { padding-block: clamp(40px, 5vw, 72px); position: relative; }
   display: flex; align-items: flex-start; gap: .75rem; height: 100%;
   transition: border-color .25s, transform .25s;
 }
-.addon .ad-body { display: flex; flex-direction: column; flex: 1; min-width: 0; }
-.addon .ad-price, .addon .ad-soon { margin-top: auto; }
-.addon .ad-soon + .ad-how, .addon .ad-price + .ad-how { margin-top: .35rem; }
+.addon .addon-body { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+.addon .addon-price, .addon .addon-soon { margin-top: auto; }
+.addon .addon-soon + .addon-how, .addon .addon-price + .addon-how { margin-top: .35rem; }
 .addon:hover { border-color: var(--red); transform: translateY(-2px); }
-.addon .ad-ic { width: 36px; height: 36px; border-radius: 10px; background: var(--ink); color: var(--red-bright); display: grid; place-items: center; flex-shrink: 0; }
-.addon .ad-ic svg { width: 19px; height: 19px; }
-.addon .ad-price { margin-top: auto; padding-top: .4rem; }
-.addon .ad-ast { display: block; font-style: normal; font-size: .72rem; color: var(--text-soft); line-height: 1.45; margin-top: .3rem; }
+.addon .addon-ic { width: 36px; height: 36px; border-radius: 10px; background: var(--ink); color: var(--red-bright); display: grid; place-items: center; flex-shrink: 0; }
+.addon .addon-ic svg { width: 19px; height: 19px; }
+.addon .addon-price { padding-top: .4rem; }
+.addon .addon-ast { display: block; font-style: normal; font-size: .72rem; color: var(--text-soft); line-height: 1.45; margin-top: .3rem; }
 .addon b { font-size: .93rem; display: block; line-height: 1.25; }
 .addon span { font-size: .79rem; color: var(--text-soft); line-height: 1.45; display: block; margin-top: .15rem; }
-
-/* ============================================================
-   PROCESS
-   ============================================================ */
-.process { background: var(--ink); color: var(--text-inv); }
-.process .section-head h2 { color: #fff; }
-.process .section-head p { color: var(--text-inv-soft); }
-.steps { display: grid; gap: 1rem; counter-reset: step; }
-.step {
-  position: relative; background: var(--ink-2); border: 1px solid var(--line-dark); border-radius: var(--r-lg);
-  padding: 2rem 1.7rem; transition: transform .3s var(--ease), border-color .3s;
-}
-.step:hover { transform: translateY(-5px); border-color: rgba(255,80,80,.4); }
-.step .step-num {
-  font-family: var(--font-display); font-weight: 800; font-size: 1rem; color: #ffffff;
-  width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; margin-bottom: 1.2rem;
-  background: linear-gradient(135deg, var(--red-bright), var(--red-deep));
-}
-.step h3 { font-size: 1.2rem; color: #fff; margin-bottom: .4rem; }
-.step p { color: var(--text-inv-soft); font-size: .92rem; line-height: 1.55; }
-.step .step-ic { position: absolute; top: 1.9rem; right: 1.7rem; color: rgba(255,255,255,.14); }
-.step .step-ic svg { width: 40px; height: 40px; }
 
 /* ============================================================
    ABOUT / OWNER
@@ -437,30 +466,56 @@ section { padding-block: clamp(40px, 5vw, 72px); position: relative; }
 /* ============================================================
    GALLERY
    ============================================================ */
-.gallery { background: var(--paper-2); }
-.gal-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: .8rem; }
-.gal-item {
-  position: relative; overflow: hidden; border-radius: var(--r-md); aspect-ratio: 1/1;
-  background: var(--ink-2); cursor: pointer;
-}
-.gal-item img { width: 100%; height: 100%; object-fit: cover; transition: transform .6s var(--ease); }
-.gal-item:hover img { transform: scale(1.07); }
-.gal-item .gal-cap {
-  position: absolute; left: 0; right: 0; bottom: 0; padding: 1.5rem 1rem .9rem;
-  background: linear-gradient(to top, rgba(8,10,14,.85), transparent);
-  color: #fff; font-weight: 600; font-size: .9rem; transform: translateY(8px); opacity: 0; transition: .3s var(--ease);
-}
-.gal-item:hover .gal-cap { transform: translateY(0); opacity: 1; }
-.gal-item .gal-badge {
-  position: absolute; top: .7rem; left: .7rem; background: rgba(8,10,14,.7); color: #fff; backdrop-filter: blur(4px);
-  font-size: .68rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; padding: .3rem .6rem; border-radius: 6px;
-}
-.gal-item .gal-badge.after { background: var(--red-deep); color: #ffffff; }
-.gallery .gal-foot { margin-top: 2.5rem; text-align: center; }
+/* Tighter than the shared section padding (40 to 72 px): with only an
+   eyebrow and a heading above the photos, and the near-white Services band
+   below, the full padding left about 150 px of blank page under the
+   photos at 1440 (this section's bottom padding plus the next one's top). */
+.gallery { background: var(--paper-2); padding-block: clamp(32px, 4vw, 56px); }
+.gallery .gal-foot { margin-top: 1rem; text-align: center; }
 
 /* before / after sliders */
-.ba-grid { display: grid; gap: 1.5rem; grid-template-columns: 1fr; }
+/* The carousel: a track of cards moved with a transform, never scrolled, so
+   nothing can scroll the page sideways. The cards' shadows fall below them;
+   clip only sideways so the shadows are not cut off at the bottom
+   (overflow: hidden first for browsers without clip). */
+.ba-viewport { overflow: hidden; overflow-x: clip; overflow-y: visible; }
+/* --ba-per is how many cards are in view; js/gallery.js reads it. */
+.ba-track { --ba-per: 1; --ba-gap: 1.5rem; position: relative; display: flex; gap: var(--ba-gap); transition: transform 1.333s cubic-bezier(.65, 0, .35, 1); }
+.ba-track > .ba-slider { flex: 0 0 calc((100% - (var(--ba-per) - 1) * var(--ba-gap)) / var(--ba-per)); min-width: 0; }
 .ba-slider { margin: 0; }
+/* The control row: carousel controls in the middle, the Instagram link
+   under them on a phone and at the right end of the row from 820px. */
+.ba-controls { display: grid; justify-items: center; align-items: center; gap: .2rem; margin-top: 1rem; }
+.ba-nav { display: flex; align-items: center; justify-content: center; gap: .25rem; }
+.ba-controls.single [data-step], .ba-controls.single .ba-dots { display: none; }
+.ba-insta {
+  display: inline-flex; align-items: center; gap: .45rem; min-height: 40px; padding-inline: .2rem;
+  font-weight: 600; font-size: .92rem; color: var(--text);
+  text-decoration: underline; text-decoration-color: var(--line); text-underline-offset: .25em; text-decoration-thickness: 1.5px;
+  transition: color .25s var(--ease), text-decoration-color .25s var(--ease);
+}
+.ba-insta:hover { color: var(--red-deep); text-decoration-color: currentColor; }
+.ba-insta svg { width: 18px; height: 18px; flex: none; }
+@media (min-width: 820px) {
+  .ba-controls { grid-template-columns: 1fr auto 1fr; }
+  .ba-nav { grid-column: 2; }
+  .ba-insta { justify-self: end; }
+}
+.ba-ctl {
+  width: 40px; height: 40px; flex: none; padding: 0; border: 0; border-radius: 50%; cursor: pointer;
+  display: grid; place-items: center; background: transparent; color: var(--text);
+  box-shadow: inset 0 0 0 1.5px var(--line); transition: box-shadow .25s var(--ease);
+}
+.ba-ctl:hover { box-shadow: inset 0 0 0 1.5px var(--ink); }
+.ba-ctl svg { width: 18px; height: 18px; }
+.ba-dots { display: flex; flex-wrap: wrap; justify-content: center; min-width: 0; }
+.ba-dot { width: 24px; height: 40px; padding: 0; border: 0; background: none; cursor: pointer; display: grid; place-items: center; }
+.ba-dot::before {
+  content: ""; width: 10px; height: 10px; border-radius: 5px; box-shadow: inset 0 0 0 1.5px var(--text-soft);
+  transition: background .25s var(--ease), box-shadow .25s var(--ease);
+}
+.ba-dot:hover::before { box-shadow: inset 0 0 0 1.5px var(--ink); }
+.ba-dot[aria-current="true"]::before { background: var(--ink); box-shadow: none; }
 .ba-stage {
   position: relative; aspect-ratio: 4/3; border-radius: var(--r-lg); overflow: hidden;
   background: var(--ink-2); box-shadow: var(--shadow-md); user-select: none; touch-action: pan-y;
@@ -471,7 +526,12 @@ section { padding-block: clamp(40px, 5vw, 72px); position: relative; }
    against the stage anyway, but only if the wrapper does not lay out first. */
 .ba-stage picture { position: absolute; inset: 0; display: block; }
 .ba-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; pointer-events: none; }
-.ba-before-layer { position: absolute; inset: 0; clip-path: inset(0 calc(100% - var(--pos)) 0 0); will-change: clip-path; }
+/* The before photo is cut off at --pos by sliding a clipping box left and
+   the photo inside it right by the same amount, and the divider rides on
+   the same transform. Transforms move on the compositor: no layout and no
+   repaint of the photo on every frame, which clip-path and left needed. */
+.ba-before-layer { position: absolute; inset: 0; overflow: hidden; transform: translateX(calc(var(--pos) - 100%)); will-change: transform; }
+.ba-before-layer > picture { transform: translateX(calc(100% - var(--pos))); will-change: transform; }
 .ba-tag {
   position: absolute; top: .8rem; z-index: 3; font-size: .7rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase;
   padding: .32rem .7rem; border-radius: 6px; backdrop-filter: blur(4px); pointer-events: none;
@@ -479,11 +539,16 @@ section { padding-block: clamp(40px, 5vw, 72px); position: relative; }
 .ba-tag.b { left: .8rem; background: rgba(8,10,14,.72); color: #fff; }
 .ba-tag.a { right: .8rem; background: var(--red-deep); color: #ffffff; }
 .ba-divider {
-  position: absolute; top: 0; bottom: 0; left: var(--pos); width: 3px; transform: translateX(-50%);
-  background: #fff; box-shadow: 0 0 12px rgba(0,0,0,.4); z-index: 4; pointer-events: none;
+  position: absolute; inset: 0; transform: translateX(calc(var(--pos) - 100%)); will-change: transform;
+  z-index: 4; pointer-events: none;
+}
+/* The line, on the divider box's right edge, which is where --pos is. */
+.ba-divider::before {
+  content: ""; position: absolute; top: 0; bottom: 0; right: 0; width: 3px; transform: translateX(50%);
+  background: #fff; box-shadow: 0 0 12px rgba(0,0,0,.4);
 }
 .ba-knob {
-  position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
+  position: absolute; top: 50%; left: 100%; transform: translate(-50%,-50%);
   width: 44px; height: 44px; border-radius: 50%; background: #fff; color: var(--ink);
   display: grid; place-items: center; box-shadow: var(--shadow-md);
 }
@@ -494,8 +559,14 @@ section { padding-block: clamp(40px, 5vw, 72px); position: relative; }
 }
 .ba-range::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 48px; height: 100vh; cursor: ew-resize; }
 .ba-range::-moz-range-thumb { width: 48px; height: 600px; border: none; background: transparent; cursor: ew-resize; }
-.ba-range:focus-visible + .ba-divider,
-.ba-slider:focus-within .ba-divider { box-shadow: 0 0 0 2px var(--red), 0 0 12px rgba(0,0,0,.4); }
+.ba-slider:focus-within .ba-divider::before { box-shadow: 0 0 0 2px var(--red), 0 0 12px rgba(0,0,0,.4); }
+/* While the carousel moves a handle (class .auto, set by js/gallery.js),
+   the label of a side that is not showing fades out, and so does the handle
+   at either edge: at 0 the whole photo is the after, and a "Before" tag or
+   half a knob there only confuses. --p is --pos without the % sign. */
+.ba-slider.auto .ba-tag.b { opacity: clamp(0, calc((var(--p) - 6) / 10), 1); }
+.ba-slider.auto .ba-tag.a { opacity: clamp(0, calc((94 - var(--p)) / 10), 1); }
+.ba-slider.auto .ba-divider { opacity: clamp(0, calc(min(var(--p), 100 - var(--p)) / 8), 1); }
 .ba-slider figcaption { margin-top: .9rem; font-weight: 600; font-size: .96rem; color: var(--text); text-align: center; }
 
 /* ============================================================
@@ -521,49 +592,60 @@ section { padding-block: clamp(40px, 5vw, 72px); position: relative; }
 /* ============================================================
    SERVICE AREAS
    ============================================================ */
-.areas { background: var(--ink); color: var(--text-inv); }
-.areas .section-head h2 { color: #fff; }
-.areas .section-head p { color: var(--text-inv-soft); }
+/* Light, like the About and FAQ pages. It was the dark band from the home
+   page, which on a page of its own sat between a light header and a dark
+   footer with nothing to tell the page from the footer. On paper, the
+   footer is a clear end. */
+.areas { background: var(--paper); padding-block: clamp(32px, 4vw, 56px) clamp(48px, 6vw, 80px); }
+.areas .section-head { max-width: 760px; }
+main > .areas:first-child .section-head { margin-bottom: 18px; }
 /* ---------- combined service area + travel ---------- */
 /* Offset so the #travel anchor does not land under the sticky header. */
 .anchor-alias { position: absolute; margin-top: -80px; }
 
-.areas-tool { display: grid; gap: 1.1rem; }
-.at-label { display: block; font-size: .85rem; font-weight: 700; color: #fff; margin-bottom: .45rem; }
+/* minmax(0, 1fr): an auto column grew to the estimator row's 303 px at 320 (final validation, November 11). */
+.areas-tool { display: grid; gap: 1.1rem; grid-template-columns: minmax(0, 1fr); grid-template-areas: "side" "map" "states" "extra"; }
+.at-side { grid-area: side; }
+.at-map { grid-area: map; }
+.at-extra { grid-area: extra; }
+.at-label { display: block; font-size: .85rem; font-weight: 700; color: var(--text); margin-bottom: .45rem; }
 .at-side { position: relative; }
 .at-row { display: flex; gap: .55rem; }
 .at-row input {
   flex: 1; min-width: 0; font: inherit; font-size: .95rem;
-  background: rgba(255,255,255,.06); color: #fff;
-  border: 1.5px solid var(--line-dark); border-radius: var(--r-sm); padding: .8rem .9rem;
+  background: var(--paper-2); color: var(--text);
+  border: 1.5px solid var(--line); border-radius: var(--r-sm); padding: .8rem .9rem;
 }
-.at-row input::placeholder { color: var(--text-inv-soft); }
-.at-row input:focus { outline: 2px solid var(--red-bright); outline-offset: 1px; border-color: transparent; }
+.at-row input::placeholder { color: #9aa1ac; }
+.at-row input:focus { outline: 2px solid var(--red); outline-offset: 1px; border-color: transparent; }
 
 /* Suggestions float rather than pushing the map down the page as you type. */
 .at-suggest {
   position: absolute; z-index: 5; left: 0; right: 0; margin-top: .35rem;
-  background: var(--ink-3); border: 1px solid var(--line-dark);
+  background: var(--paper-2); border: 1px solid var(--line);
   border-radius: var(--r-sm); overflow: hidden; box-shadow: var(--shadow-lg);
 }
 .at-sg {
   display: flex; align-items: center; gap: .6rem; width: 100%; text-align: left;
-  padding: .55rem .75rem; color: var(--text-inv); font: inherit; font-size: .88rem;
-  border-bottom: 1px solid var(--line-dark);
+  padding: .55rem .75rem; color: var(--text); font: inherit; font-size: .88rem;
+  border-bottom: 1px solid var(--line);
 }
 .at-sg:last-child { border-bottom: 0; }
-.at-sg:hover { background: rgba(255,255,255,.07); }
-.sg-dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+.at-sg:hover { background: var(--paper); }
 .sg-name { flex: 1; font-weight: 700; }
-.sg-name i { font-style: normal; font-weight: 400; color: var(--text-inv-soft); margin-left: .4rem; }
-.sg-fee { color: var(--red-bright); font-weight: 700; font-size: .84rem; flex: none; }
-.at-sg-note { padding: .6rem .75rem; margin: 0; font-size: .85rem; color: var(--text-inv-soft); }
+.sg-name i { font-style: normal; font-weight: 400; color: var(--text-soft); margin-left: .4rem; }
+/* Ink, not red: a column of red prices in a dropdown looked like errors. The
+   dot beside each row carries the band colour. */
+.sg-fee { color: var(--text); font-weight: 700; font-size: .84rem; flex: none; }
+.at-sg-note { padding: .6rem .75rem; margin: 0; font-size: .85rem; color: var(--text-soft); }
 
 .at-map { min-width: 0; }
 .at-canvas {
   height: 340px; border-radius: var(--r-md); overflow: hidden;
-  border: 1px solid var(--line-dark); background: var(--ink-3);
+  border: 1px solid var(--line); background: var(--line); box-shadow: var(--shadow-sm);
 }
+/* It had no rule at all, so it sat flush against the bottom of the map. */
+.at-zoomhint { margin-top: .55rem; font-size: .78rem; color: var(--text-soft); line-height: 1.5; }
 /* Leaflet stacks its own furniture high: panes to 600, popups to 700, and the
    zoom control to 1000. `.leaflet-container` sets position without a z-index,
    so it never becomes a stacking context and all of that escapes into the
@@ -573,7 +655,7 @@ section { padding-block: clamp(40px, 5vw, 72px); position: relative; }
    One stacking context keeps the map's layering to itself, at the map's own
    place in the page, and fixes the popups and markers for the same reason. */
 .leaflet-container {
-  font-family: var(--font-body); background: var(--ink-3);
+  font-family: var(--font-body); background: var(--line);
   isolation: isolate;
 }
 
@@ -592,27 +674,46 @@ section { padding-block: clamp(40px, 5vw, 72px); position: relative; }
 }
 .leaflet-marker-draggable:active .ac-pin-body { cursor: grabbing; }
 
-.at-pin { margin-top: .8rem; gap: .5rem; }
+.at-pin { gap: .5rem; }
 .at-pin svg { width: 17px; height: 17px; }
-.at-pinhint { margin: .45rem 0 .8rem; font-size: .76rem; color: var(--text-inv-soft); line-height: 1.5; }
+.at-pinhint { margin: .45rem 0 .8rem; font-size: .76rem; color: var(--text-soft); line-height: 1.5; }
+/* Empty until a search has run; without this its margins were a gap of
+   blank space above "Get an exact quote". */
+.at-pinhint:empty { display: none; }
 .leaflet-popup-content { margin: .6rem .8rem; font-size: .85rem; line-height: 1.5; }
-.leaflet-popup-content .lp-fee { color: var(--red-deep); font-weight: 800; }
+.leaflet-popup-content .lp-fee { color: var(--text); font-weight: 800; }
 .leaflet-popup-content .lp-min { color: var(--text-soft); font-size: .78rem; }
 
 /* The town lists stay in the HTML: this is the text that actually ranks for
-   "mobile detailing in <town>". Set as prose rather than ninety pills. */
-.area-lists { display: grid; gap: 1rem; margin-top: 1.6rem; }
+   "mobile detailing in <town>". Set as prose rather than ninety pills.
+   Round 2: the three states are compact cards in the estimator's left column
+   (.at-states), each with its area codes and counties on show and every town
+   behind "All N towns". As a block of their own under the map, Indiana and
+   most of the towns were below a laptop screen. */
+.at-states { grid-area: states; display: grid; gap: .45rem; }
 .area-col {
-  background: rgba(255,255,255,.03); border: 1px solid var(--line-dark);
-  border-radius: var(--r-md); padding: 1rem 1.1rem;
+  background: var(--paper-2); border: 1px solid var(--line);
+  border-radius: var(--r-md); padding: .7rem 1rem .72rem;
 }
-.area-col h3 { color: #fff; font-size: 1.02rem; display: flex; align-items: center; gap: .5rem; margin-bottom: .35rem; }
-.area-col h3 svg { width: 17px; height: 17px; color: var(--red-bright); }
-.area-col .codes { font-size: .74rem; color: var(--red-bright); font-weight: 700; letter-spacing: .05em; margin-bottom: .5rem; }
-.area-col p { font-size: .82rem; color: var(--text-inv-soft); line-height: 1.6; margin: 0; }
+.area-top { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: .1rem .8rem; }
+.area-col h3 { color: var(--ink); font-size: 1.05rem; display: flex; align-items: center; gap: .5rem; margin: 0; }
+.area-col h3 svg { width: 17px; height: 17px; color: var(--red); align-self: center; }
+.area-col .codes { font-size: .72rem; color: var(--red-deep); font-weight: 700; letter-spacing: .05em; }
+.area-col .area-sum { margin-top: .2rem; color: var(--text-soft); }
+.area-more { margin-top: 0; }
+.area-more summary + .area-grp { margin-top: .5rem; }
+.area-col p { font-size: .88rem; color: var(--text); line-height: 1.6; margin: 0; }
+/* A small titled divider between groups of towns: the group's name, then a
+   dotted rule to the edge of the card. Same type as the add-on group labels. */
+.area-grp {
+  display: flex; align-items: center; gap: .6rem; margin: .95rem 0 .3rem;
+  font-family: var(--font-body); font-size: .7rem; font-weight: 800; letter-spacing: .09em;
+  text-transform: uppercase; color: var(--text-soft); line-height: 1.2;
+}
+.area-grp::after { content: ""; flex: 1; border-top: 1.5px dotted #c5c9c2; }
 
-.areas .area-note { margin-top: 1.2rem; text-align: center; color: var(--text-inv-soft); font-size: .95rem; }
-.areas .area-note b { color: var(--red-bright); }
+.areas .area-note { margin-top: 1.6rem; text-align: center; color: var(--text-soft); font-size: .95rem; }
+.areas .area-note b { color: var(--red-deep); }
 
 /* ============================================================
    FAQ
@@ -621,8 +722,10 @@ section { padding-block: clamp(40px, 5vw, 72px); position: relative; }
 .faq-list { display: grid; gap: .8rem; max-width: 820px; }
 .faq-item { background: var(--paper-2); border: 1px solid var(--line); border-radius: var(--r-md); overflow: hidden; transition: box-shadow .3s; }
 .faq-item[open] { box-shadow: var(--shadow-md); }
+/* 1.1rem, not 1.25rem: six questions at 1.25rem ended just below a 1280x720
+   laptop screen. */
 .faq-item summary {
-  list-style: none; cursor: pointer; padding: 1.25rem 1.4rem; display: flex; align-items: center; justify-content: space-between;
+  list-style: none; cursor: pointer; padding: 1.1rem 1.4rem; display: flex; align-items: center; justify-content: space-between;
   gap: 1rem; font-family: var(--font-display); font-weight: 600; font-size: 1.12rem; color: var(--ink);
 }
 .faq-item summary::-webkit-details-marker { display: none; }
@@ -630,37 +733,6 @@ section { padding-block: clamp(40px, 5vw, 72px); position: relative; }
 .faq-item summary .q-ic svg { width: 15px; height: 15px; }
 .faq-item[open] summary .q-ic { transform: rotate(45deg); background: var(--red); color: #ffffff; }
 .faq-item .faq-a { padding: 0 1.4rem 1.3rem; color: var(--text-soft); font-size: 1rem; }
-
-/* ============================================================
-   SCHEDULE / AVAILABILITY CALENDAR
-   ============================================================ */
-.schedule { background: var(--paper-2); }
-.cal-card { background: var(--paper-2); border: 1px solid var(--line); border-radius: var(--r-lg); padding: clamp(.9rem, 3vw, 1.6rem); box-shadow: var(--shadow-md); max-width: 1000px; margin-inline: auto; }
-.cal-legend { display: flex; gap: 1.4rem; justify-content: flex-end; margin-bottom: 1rem; font-size: .85rem; font-weight: 600; color: var(--text-soft); }
-.cal-legend i { width: 13px; height: 13px; border-radius: 3px; display: inline-block; margin-right: .4rem; vertical-align: -1px; }
-.cal-legend .dot-open { background: #fff; border: 1px solid var(--line); }
-.cal-legend .dot-busy { background: var(--red); }
-.cal-foot { text-align: center; margin-top: 1.6rem; }
-.cal-card iframe { border-radius: var(--r-md); display: block; }
-
-/* FullCalendar theming (red/black) */
-#schedule-cal {
-  --fc-border-color: var(--line);
-  --fc-today-bg-color: rgba(224,26,26,.05);
-  --fc-now-indicator-color: var(--red);
-  --fc-page-bg-color: #fff;
-  font-family: var(--font-body); font-size: .92rem;
-}
-#schedule-cal .fc-event, #schedule-cal .fc-timegrid-event { border: none; background: var(--red); box-shadow: none; }
-#schedule-cal .fc-unavail { font-size: .72rem; font-weight: 800; color: #fff; padding: 2px 5px; letter-spacing: .02em; line-height: 1.2; }
-#schedule-cal .fc .fc-button-primary { background: var(--ink); border-color: var(--ink); font-weight: 600; }
-#schedule-cal .fc .fc-button-primary:hover { background: var(--red); border-color: var(--red); }
-#schedule-cal .fc .fc-button-primary:not(:disabled).fc-button-active,
-#schedule-cal .fc .fc-button-primary:not(:disabled):active { background: var(--red); border-color: var(--red); }
-#schedule-cal .fc .fc-toolbar-title { font-family: var(--font-display); font-size: 1.15rem; letter-spacing: -.02em; }
-#schedule-cal .fc .fc-toolbar.fc-header-toolbar { margin-bottom: 1rem; flex-wrap: wrap; gap: .6rem; }
-#schedule-cal .fc-col-header-cell-cushion, #schedule-cal .fc-timegrid-slot-label-cushion { color: var(--text-soft); text-decoration: none; }
-#schedule-cal .fc-col-header-cell-cushion { font-weight: 700; }
 
 /* ============================================================
    CONTACT / QUOTE FORM
@@ -719,8 +791,18 @@ section { padding-block: clamp(40px, 5vw, 72px); position: relative; }
    ============================================================ */
 .footer { background: var(--ink); color: var(--text-inv-soft); padding-block: clamp(48px, 6vw, 72px) 2rem; }
 .footer-grid { display: grid; gap: 2.5rem; margin-bottom: 3rem; }
-.footer .brand .b-name, .footer .brand .mark { color: var(--red-bright); }
 .footer .brand .b-name { color: #fff; }
+/* logo-mark.png is a square with the bottle in its middle third, so at 40px
+   the bottle drew 13px wide with 13px of empty space each side. Larger, with
+   the empty sides cropped, it sits beside the name at a matching weight. */
+.footer .brand .mark-img { width: 30px; height: 54px; object-fit: cover; }
+/* The bottle's trigger is black, so on the dark footer and menu it vanished.
+   A light rounded tile behind it, like an app icon, keeps the whole logo visible. */
+.footer .brand .mark-img, .mobile-menu .brand .mark-img {
+  box-sizing: border-box; width: 44px; height: 54px; padding: 4px 7px;
+  object-fit: cover; object-position: center 47%;
+  background: #f5f6f3; border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,.35);
+}
 .footer .f-about { margin-top: 1.1rem; font-size: .95rem; max-width: 300px; }
 .footer .f-socials { display: flex; gap: .7rem; margin-top: 1.3rem; }
 .footer .f-socials a { width: 40px; height: 40px; border-radius: 12px; background: var(--ink-2); border: 1px solid var(--line-dark); display: grid; place-items: center; transition: background .25s, transform .25s, color .25s; }
@@ -750,13 +832,71 @@ section { padding-block: clamp(40px, 5vw, 72px); position: relative; }
 .mobile-bar a svg { width: 19px; height: 19px; }
 .mobile-bar .mb-call { background: var(--ink); color: #fff; }
 .mobile-bar .mb-quote { background: linear-gradient(135deg, var(--red), var(--red-deep)); color: #ffffff; }
+/* Room under the footer for the fixed bar (58 px), wherever the bar can show:
+   at the bottom of a page it covered the Privacy, Terms and Cancellation links. */
+.footer { padding-bottom: calc(2rem + 58px); }
+
+/* Print landing pages (lp-golf.html, lp-prestige.html): the About layout for
+   the story, then three options. Built from the site's own tokens. */
+.lp-rating { display: flex; align-items: center; gap: .5rem; font-weight: 600; color: var(--text); margin: 0 0 .4rem; }
+.lp-rating .hb-stars { color: var(--amber); letter-spacing: .08em; }
+/* The offer line (A/B test "golf-code"): text, then a quiet ink "Copy code" pill.
+   Ink, not red: red is Book Now and "that did not work". */
+.lp-code { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: .8rem;
+  background: #fff; border: 1px dashed var(--line); border-radius: var(--r-sm); padding: .55rem .55rem .55rem .9rem; }
+.lp-code p { margin: 0; }
+.lp-code b { letter-spacing: .04em; }
+.lp-copy { display: inline-flex; align-items: center; gap: .4rem; white-space: nowrap; font: inherit; font-size: .86rem; font-weight: 700;
+  color: #fff; background: var(--ink); border: 0; border-radius: 999px; padding: .5rem .85rem; cursor: pointer; transition: background .2s, transform .1s; }
+.lp-copy:hover { background: #262b34; }
+.lp-copy:active { transform: scale(.97); }
+.lp-copy:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.lp-copy svg { width: 16px; height: 16px; flex: none; }
+.lp-copy .ic-done, .lp-copy.copied .ic-copy { display: none; }
+.lp-copy.copied .ic-done { display: block; }
+@media (max-width: 419.98px) { .lp-code { grid-template-columns: 1fr; padding: .7rem .9rem; } .lp-copy { justify-self: start; } }
+.lp-cta { display: flex; gap: .7rem; flex-wrap: wrap; margin-top: 1.4rem; }
+.lp-options { background: #fff; }
+.lp-grid { display: grid; gap: 1rem; grid-template-columns: 1fr; }
+@media (min-width: 820px) { .lp-grid { grid-template-columns: repeat(3, 1fr); } }
+.lp-opt { background: var(--paper); border: 1px solid var(--line); border-radius: var(--r-md); padding: 1.4rem 1.3rem; display: flex; flex-direction: column; }
+.lp-opt h3 { margin: 0 0 .5rem; font-size: 1.2rem; }
+.lp-opt p { color: var(--text-soft); margin: 0 0 1rem; flex: 1; }
+.lp-link { font-weight: 700; color: var(--text); text-decoration: underline; text-underline-offset: 3px; }
+.lp-soon { font-weight: 700; color: var(--amber-ink); }
+.lp-cta-end { justify-content: center; margin-top: 2rem; }
+#story .about-copy p + p { margin-top: .7rem; }
+/* The About page drops this padding because its reviews follow; here the options do, so keep it. */
+#story { padding-bottom: clamp(40px, 5vw, 72px); }
+/* Nearly every visitor arrives by scanning on a phone: the story first, then
+   the portrait, so the first screen says what this is. One column only, so
+   the order changes no grid track. */
+@media (max-width: 959.98px) { #story .about-photo { order: 2; } }
+
+/* A/B tests (config/experiments.json): an element for one version only, data-exp="test:version",
+   stays hidden until js/analytics.js picks that version. !important beats a component's own display. */
+[data-exp]:not(.exp-on) { display: none !important; }
+
+/* Analytics consent banner (js/analytics.js). Sits above the mobile bar. */
+.consent {
+  position: fixed; left: 12px; right: 12px; bottom: 76px; z-index: 95;
+  max-width: 520px; margin: 0 auto; padding: 1rem 1.1rem;
+  background: #fff; color: var(--text); border: 1px solid var(--line);
+  border-radius: var(--r-md); box-shadow: var(--shadow-lg);
+  font-size: .92rem; line-height: 1.5;
+}
+.consent[hidden] { display: none; }
+.consent p { margin: 0 0 .8rem; }
+.consent a { text-decoration: underline; }
+.consent-btns { display: flex; gap: .6rem; justify-content: flex-end; }
+.consent-btns .btn { padding: .6rem 1.1rem; font-size: .92rem; }
+@media (min-width: 720px) { html:not(.nav-burger) .consent { bottom: 20px; left: 20px; right: auto; margin: 0; } }
+.linklike { background: none; border: 0; padding: 0; font: inherit; color: inherit; cursor: pointer; text-decoration: underline; }
+.linklike[hidden] { display: none; }
 
 /* ============================================================
    ANIMATIONS
    ============================================================ */
-@keyframes shine { 0% { transform: translateX(-120%); } 60%,100% { transform: translateX(120%); } }
-@keyframes pulse { 0%,100% { box-shadow: 0 0 0 0 var(--red-ghost); } 50% { box-shadow: 0 0 0 6px transparent; } }
-@keyframes floaty { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-9px); } }
 @keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
 
 .reveal { opacity: 0; transform: translateY(28px); transition: opacity .7s var(--ease), transform .7s var(--ease); }
@@ -764,7 +904,6 @@ section { padding-block: clamp(40px, 5vw, 72px); position: relative; }
 .reveal[data-d="1"] { transition-delay: .08s; }
 .reveal[data-d="2"] { transition-delay: .16s; }
 .reveal[data-d="3"] { transition-delay: .24s; }
-.reveal[data-d="4"] { transition-delay: .32s; }
 
 /* THE HERO DOES NOT WAIT FOR JAVASCRIPT.
    .reveal holds an element invisible until script.js adds .in, and script.js
@@ -779,7 +918,6 @@ section { padding-block: clamp(40px, 5vw, 72px); position: relative; }
 .hero .reveal[data-d="1"] { animation-delay: .06s; }
 .hero .reveal[data-d="2"] { animation-delay: .12s; }
 .hero .reveal[data-d="3"] { animation-delay: .18s; }
-.hero .reveal[data-d="4"] { animation-delay: .24s; }
 
 /* Fast scrubbing: when the user flicks quickly, drop the fade + stagger so no
    element is ever caught mid-transition. Specificity (0,2,1) beats the
@@ -797,38 +935,67 @@ html.scrolling-fast .reveal { transition: none; transition-delay: 0s; }
 @media (min-width: 560px) {
   .tb-hide { display: inline; }
   .field-row { grid-template-columns: 1fr 1fr; }
-  .gal-grid { grid-template-columns: repeat(3, 1fr); }
 }
+/* Three package columns only from 1000px: at 820px each card was 230px wide
+   and three-word checklist items left one word alone on a line. */
+@media (min-width: 1000px) { .svc-grid { grid-template-columns: repeat(3, 1fr); } }
 @media (min-width: 820px) {
-  .svc-grid { grid-template-columns: repeat(3, 1fr); }
-  .areas-tool { grid-template-columns: 22rem 1fr; gap: 1.6rem; align-items: start; }
-  .at-canvas { height: 430px; }
-  .area-lists { grid-template-columns: repeat(3, 1fr); }
+  /* The search, the three states and the extras stack on the left, the map
+     down the right. 24rem, not 22: at 22 the Ohio counties line wrapped. */
+  .areas-tool {
+    grid-template-columns: 24rem 1fr; grid-template-rows: auto auto 1fr;
+    grid-template-areas: "side map" "states map" "extra map"; gap: .7rem 1.6rem; align-items: start;
+  }
+  /* Up to 380px, less on a short laptop screen so the legend under the map
+     stays on the first screen (it ended 21px below at 1280x720, and again
+     once the states column narrowed the map and the legend took two rows). */
+  .at-canvas { height: clamp(320px, calc(100vh - 385px), 380px); }
   /* The correction package spans the row underneath, laid out sideways so a
      full width card does not become a tall empty box. */
   /* The correction package spans the row underneath: the package on the
      left, the correction tiers on the right, so the "+" on the price has its
      explanation next to it instead of a screen away. */
-  .svc-card.wide { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1.05fr; gap: 2rem; align-items: start; }
+  /* Stretch, not start: with start the left column ended wherever its text
+     did, so the Register button floated short of the card's bottom edge and
+     left a ragged empty block in the bottom-left corner. Stretched, the
+     button's margin-top: auto pins it to the bottom, level with the tier box. */
+  .svc-card.wide { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1.05fr; gap: 2rem; align-items: stretch; }
   .svc-card.wide .svc-foot { max-width: 22rem; }
-  .steps { grid-template-columns: repeat(3, 1fr); }
-  .rev-grid { grid-template-columns: repeat(3, 1fr); }
-  .area-grid { grid-template-columns: repeat(3, 1fr); }
-  .ba-grid { grid-template-columns: repeat(2, 1fr); gap: 1.8rem; }
+  .svc-card.wide .svc-corr { align-self: start; }
+  .ba-track { --ba-per: 2; --ba-gap: 1.8rem; }
   .footer-grid { grid-template-columns: 1.6fr 1fr 1fr 1.2fr; }
-  .gal-grid { grid-template-columns: repeat(4, 1fr); }
+}
+/* Three cards in view: a third of the container is still about a phone's
+   card (310 to 330 points). Kept after the 820px block so it wins there. */
+@media (min-width: 1100px) { .ba-track { --ba-per: 3; } }
+/* One column (under 960px): "Ready to book?" comes straight after the intro,
+   above call, text and email (owner, November 10), to steer people into the
+   booking form. Phones always have the Contact Us button anyway. The
+   contact-info column joins the grid so the card can sit inside it; the
+   grid gap becomes margins so the spacing inside the text stays as it was. */
+@media (max-width: 959.98px) {
+  .contact-grid { gap: 0; }
+  .contact-info { display: contents; }
+  .contact-info > .eyebrow { justify-self: start; }
+  .contact-grid > .book-cta { order: 1; margin-bottom: 2.5rem; }
+  .contact-info > .contact-quick, .contact-info > .contact-hours { order: 2; }
 }
 @media (min-width: 960px) {
   .about-grid { grid-template-columns: .9fr 1.1fr; }
   .contact-grid { grid-template-columns: 1fr 1.1fr; }
   .hero-scroll { display: block; }
 }
-/* Full top nav only appears once there is room for all links + CTAs */
-@media (min-width: 1040px) {
-  .nav-links { display: flex; }
-  .nav-cta { display: flex; }
-  .nav-toggle { display: none; }
-  .mobile-bar { display: none !important; }
+/* The top nav, from tablet width up. Links that do not fit go into More
+   (script.js); the menu button and the bottom bar are for phones only
+   (owner, November 12: from 1040 to 1089 px Book Now ran off the window). */
+/* html.nav-burger: fewer than Results, Services and Meet the Team fit, so
+   the phone header is used instead (owner, November 12). */
+@media (min-width: 720px) {
+  html:not(.nav-burger) .nav-mid { display: flex; }
+  html:not(.nav-burger) .nav-cta { display: flex; }
+  html:not(.nav-burger) .nav-toggle { display: none; }
+  html:not(.nav-burger) .mobile-bar { display: none !important; }
+  html:not(.nav-burger) .footer { padding-bottom: 2rem; }
 }
 
 /* ============================================================
@@ -883,7 +1050,129 @@ html.scrolling-fast .reveal { transition: none; transition-delay: 0s; }
    QUESTION / INQUIRY SECTION
    ============================================================ */
 .inquiry { background: var(--paper); padding-block: clamp(56px, 9vh, 96px); }
-.inq-grid { display: grid; grid-template-columns: 1fr; gap: 1.8rem; margin-top: 2.4rem; }
+.inq-grid { display: grid; grid-template-columns: 1fr; gap: 1.8rem; margin-top: 1.6rem; }
+/* Sub-pages (everything wrapped in <main>): the first section sits right
+   under the sticky header. Its usual top padding (56 to 81px) exists to
+   separate stacked sections on the home page; here it only pushed the title
+   60 to 90px down and, on Contact, the bottom of the form off a laptop
+   screen. */
+main > section:first-child { padding-top: clamp(20px, 2vw, 24px); }
+/* A sub-page's title is a compact page header, the size Contact already used
+   (.inq-head). The home page's 2.7 to 3rem section titles took two or three
+   lines and 140px of a laptop screen before any of the page's content. */
+main > section:first-child .section-head h2,
+main > section:first-child .about-copy h2 { font-size: clamp(1.7rem, 2.6vw, 2.3rem); margin: .35rem 0 .5rem; }
+/* :where() keeps this at one class, so a layout rule such as .svc-intro's
+   can still take the margin away. */
+main > section:first-child :where(.section-head) { margin-bottom: clamp(18px, 2vw, 26px); }
+
+/* Services page: the tabs and "See all add-ons" on their own row under the
+   title, as before (round 2: beside the title, stacked at the top right, the
+   owner found the corner "unnecessarily dense"). The title block may run to
+   46rem so the intro stays two lines; the gaps above and below the tabs are
+   tighter than a home-page section's so the Book buttons stay on a 1440x790
+   screen. */
+.svc-intro .section-head { max-width: 46rem; margin-bottom: 12px; }
+main > section:first-child .svc-intro .section-head h2 { margin: 0 0 .4rem; }
+.svc-intro .svc-tabs-row { margin-bottom: 14px; }
+@media (min-width: 1000px) { main > #services { padding-top: 12px; } }
+/* Two sections on the same paper with no rule between them stacked both
+   paddings, 72 + 72px, under the offers banner: a blank band that read as
+   the end of the page (a "false floor"), so the Additionals heading sat a
+   long scroll away. One gap instead. */
+main > #services { padding-bottom: clamp(16px, 1.6vw, 24px); }
+main > #services + #addons { padding-top: 0; }
+/* The offers banner follows the cards closely (1.8rem was a home-page gap)
+   and is compact (no rule between the two offers), so the whole banner is on
+   a 1440x790 screen under the Book buttons: the offers are read, and its
+   "Add-ons for any package" link says the page goes on. */
+main .svc-note, body > #services .svc-note { margin-top: .6rem; padding: .75rem 1.2rem; align-items: center; }
+main .svc-offers p + p, body > #services .svc-offers p + p { margin-top: .3rem; padding-top: 0; border-top: 0; }
+/* "Add-ons for any package" with the same down arrow as "See all add-ons":
+   the banner is the last thing on the first screen, so it says what follows. */
+.svc-next { margin-left: auto; align-self: flex-start; white-space: nowrap; font-weight: 800; color: var(--red-deep); display: inline-flex; align-items: center; gap: .35rem; text-decoration: underline; text-underline-offset: 3px; }
+.svc-next svg { width: 1.05em; height: 1.05em; }
+/* Narrow: the offers keep the full width (basis) and the link takes its own
+   line under them, lined up with the text. Without the basis the link stayed
+   beside the offers and squeezed them to one word a line. */
+@media (max-width: 699.98px) {
+  main .svc-note { flex-wrap: wrap; align-items: flex-start; }
+  main .svc-note .svc-offers { flex: 1 1 calc(100% - 20px - .75rem); }
+  .svc-next { margin-left: calc(20px + .75rem); white-space: normal; }
+}
+/* The package lists past the fourth item fold behind "N more included"
+   (services.html only; render-site.mjs). It shares a row with "How it
+   works", in that toggle's look (see .svc-how); whichever is opened takes
+   the full width, so an opened list continues the checklist above it. */
+.svc-card ul.feat:has(+ .svc-toggles) { margin-bottom: 0; }
+.svc-toggles { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 0 1.2rem; margin: .3rem 0 .6rem; }
+/* main .svc-card prefix: "main .svc-card .svc-how { margin-bottom: 1rem }"
+   outranked a plain ".svc-toggles > details" and stacked 16px on top of the
+   row's own margin, making every folded card (the tallest) 16px taller. */
+main .svc-card .svc-toggles > details, .svc-toggles > details { margin: 0; }
+.svc-toggles > details[open] { flex-basis: 100%; }
+.svc-more ul.feat { margin: .38rem 0 .3rem; }
+/* A screen tall enough for the full lists (script.js sets .svc-full): no
+   toggle, and the folded items carry straight on from the list above at the
+   list's own spacing. */
+.svc-full .svc-more > summary { display: none; }
+.svc-full .svc-toggles { margin-top: 0; }
+.svc-full .svc-more ul.feat { margin-top: .32rem; }
+/* Sub-page card density. The price line was set at the body's 1.6 line
+   height, so a 1.85rem price made a 47px row; the tagline, at 1.6 too, ran
+   five lines on Full Exterior. */
+/* 1.2rem sides, not 1.4rem: at 1280px the Full Exterior tagline needed 3px
+   more to fit four lines instead of five. */
+/* Round 3: the home page's cards (body > #services) get the same density.
+   Only space changes there: every checklist item stays on show. */
+main .svc-card, body > #services .svc-card { padding: 1rem 1.2rem; }
+main .svc-card .svc-meta, body > #services .svc-card .svc-meta { line-height: 1.2; margin-bottom: .55rem; }
+main .svc-card .svc-desc, body > #services .svc-card .svc-desc { line-height: 1.5; margin-bottom: .6rem; }
+main .svc-card ul.feat, body > #services .svc-card ul.feat { gap: .32rem; }
+main .svc-card .svc-how, body > #services .svc-card .svc-how { margin: .4rem 0 .85rem; }
+
+/* Home page, below the hero (round 3). The hero is untouched. Section
+   padding was the home-page default, 72px a side at 1440: under the Results
+   band and over the booking band that stacked into 128 and 144px of blank
+   paper, and a jump to Services opened on 72px of nothing. The Services
+   title block runs to 46rem so the title and intro take two lines each, not
+   three, and the gaps around the tabs are a sub-page's. The cards keep every
+   checklist item (owner: the growing lists are how the packages show their
+   price steps); only space is trimmed, and the offers banner is the compact
+   one, so on a desktop screen a jump to Services shows the title, the tabs,
+   all three cards with their Book buttons and the offers together. */
+body > #services { padding-block: clamp(20px, 1.8vw, 28px) clamp(28px, 2.8vw, 40px); }
+body > #services .section-head { max-width: 46rem; margin-bottom: 14px; }
+body > #services .section-head h2 { margin: .3rem 0 .45rem; }
+body > #services .svc-tabs-row { margin-bottom: 16px; }
+body > #quote { padding-block: clamp(40px, 4.4vw, 64px); }
+/* About, from 1000px (round 2, toned back): the portrait keeps its 4:5 frame
+   at 22rem wide, between the original 445px and round 1's 15rem strip; the
+   story is held to about 70 characters a line at 1.7 line height. The reviews
+   title shares a row with the Google score (#rvScore, js/reviews.js) so the
+   score stays on a 1440x790 screen; the cards may start below it. */
+.rv-intro .section-head h2 { font-size: clamp(1.7rem, 2.6vw, 2.3rem); margin: .35rem 0 .5rem; }
+@media (min-width: 1000px) {
+  .about { padding-bottom: 0; }
+  .about-grid { grid-template-columns: 20rem minmax(0, 1fr); gap: clamp(40px, 4.5vw, 64px); }
+  .about-copy h2 { margin-bottom: .7rem; }
+  .about-copy > p { max-width: 40rem; line-height: 1.65; margin-bottom: 0; }
+  .about-copy .promises { margin: 1rem 0 1.25rem; gap: .5rem; }
+  /* Transparent (the body is the same paper): with no gap between the two
+     sections, its own background cut the portrait's shadow off in a hard line. */
+  .reviews { padding-top: 24px; background: transparent; }
+  .rv-intro { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 0 2rem; margin-bottom: 1rem; }
+  .rv-intro .section-head { margin: 0; text-align: left; }
+  .rv-intro .section-head .eyebrow { justify-content: flex-start; }
+  .rv-intro .rv-head { margin: 0; }
+}
+/* Contact page: the heading sits at the top of the side column, so the form
+   starts right under the header (a full-width heading band put the bottom of
+   the form below a laptop screen). */
+.inq-head { margin-bottom: 1.4rem; }
+.inq-grid:has(.inq-head) { margin-top: 0; }
+.inq-head h2 { font-size: clamp(1.7rem, 2.6vw, 2.3rem); }
+@media (max-width: 999px) { .inq-head { flex: 1 1 100%; margin-bottom: .2rem; } }
 
 .inq-side { align-self: start; }
 .inq-side h3 { font-family: var(--font-display); font-size: 1.3rem; margin: 0 0 .3rem; }
@@ -911,14 +1200,18 @@ html.scrolling-fast .reveal { transition: none; transition-delay: 0s; }
 .phone-copy svg { width: 15px; height: 15px; }
 .phone-copy.copied { color: #1a8a3f; }
 
+/* The email reads as a button, in the phone chip's style, so it is
+   obvious it can be clicked rather than looking like a caption. */
 .inq-email {
-  display: inline-flex; align-items: center; gap: .5rem; margin-top: .9rem;
-  color: var(--text-soft); font-size: .95rem; text-decoration: none; word-break: break-all;
+  display: inline-flex; align-items: center; gap: .5rem; margin-top: .7rem;
+  color: var(--text); font-size: .95rem; font-weight: 600; text-decoration: none; word-break: break-all;
+  border: 1px solid var(--line); background: var(--paper-2); border-radius: var(--r-sm);
+  box-shadow: var(--shadow-sm); padding: .6rem .95rem; transition: color .2s, background .2s;
 }
-.inq-email:hover { color: var(--red); }
-.inq-email svg { width: 17px; height: 17px; flex: none; }
+.inq-email:hover { color: var(--red); background: rgba(224,26,26,.04); }
+.inq-email svg { width: 17px; height: 17px; flex: none; color: var(--red); }
 
-.inq-points { list-style: none; margin: 1.5rem 0 0; padding: 0; display: grid; gap: .6rem; }
+.inq-points { list-style: none; margin: 1.1rem 0 0; padding: 0; display: grid; gap: .5rem; }
 .inq-points li {
   display: flex; gap: .55rem; align-items: flex-start;
   color: var(--text-soft); font-size: .92rem; line-height: 1.5;
@@ -940,8 +1233,64 @@ html.scrolling-fast .reveal { transition: none; transition-delay: 0s; }
 .pref input { accent-color: var(--red); margin: 0; }
 .pref:has(input:checked) { border-color: var(--red); background: var(--red-ghost); font-weight: 700; }
 
-@media (min-width: 820px) {
-  .inq-grid { grid-template-columns: 0.8fr 1.2fr; gap: 2.4rem; align-items: start; }
+/* Two columns only where the card is wide enough for its rows of three.
+   Between 820 and 999px the old 0.8fr / 1.2fr split, combined with the
+   form-first ordering below, put the FORM in the narrow column and squeezed
+   every field to a few words. */
+@media (min-width: 1000px) {
+  .inq-grid { grid-template-columns: minmax(250px, .5fr) 1.5fr; gap: 2.4rem; align-items: start; }
+}
+/* Rows of the question form line up on their boxes, not their labels, so a
+   label that wraps cannot push its box below its neighbour's. */
+.field-row.pair-wide, .field-row.three { align-items: end; }
+.field-row.pair-wide textarea { height: 6.25rem; min-height: 6.25rem; }
+/* `.field label { display: block }` is more specific than `.pref`, so the
+   pills went block and stacked the radio over its word in a narrow column.
+   Restated here, and sized to match the text inputs beside them. */
+.contact-pref .pref { display: inline-flex; margin: 0; padding: .78rem .85rem; white-space: nowrap; }
+/* `.field input` is written for text boxes (width 100%, padding, border,
+   background) and matched these radios too: each radio stretched to the full
+   pill and pushed its word out of it. Radios are reset to their own size. */
+.contact-pref .pref input { width: auto; padding: 0; border: 0; background: none; box-shadow: none; flex: none; }
+@media (min-width: 560px) and (max-width: 999px) {
+  /* Two columns here, so the third field of a row of three takes the full width. */
+  .field-row.three > :last-child { grid-column: 1 / -1; }
+}
+@media (min-width: 1000px) {
+  .field-row.pair-wide { grid-template-columns: 1.3fr 1fr; }
+  .field-row.three { grid-template-columns: repeat(3, 1fr); }
+  /* The contact pills take the width they need; the two inputs share the rest. */
+  .field-row.three:has(.contact-pref) { grid-template-columns: 1fr 1fr auto; }
+}
+/* "Request a quote" (config/contact-form.json, mode "quote"): the two optional
+   tick boxes for texting approval, and the terms line under them. */
+.inq-ticks { display: grid; gap: .55rem; margin-top: .2rem; }
+.inq-tick {
+  display: flex; gap: .7rem; align-items: flex-start; cursor: pointer;
+  padding: .65rem .85rem; border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--paper);
+  font-size: .8rem; line-height: 1.45; color: var(--text-soft);
+}
+.inq-tick input { appearance: auto; accent-color: var(--red); width: 17px; height: 17px; flex: none; margin: .05rem 0 0; }
+.inq-terms { font-size: .8rem; color: var(--text-soft); margin: .15rem 0 0; }
+.inq-terms a { color: var(--red-deep); font-weight: 600; }
+/* Quote mode adds two boxes and a line, which put Request Quote 63 px below a
+   1440x790 window (measured). The owner's test needs the button on the first
+   screen, so this mode trims its own spacing and the two text boxes. */
+#inquiryCard:has(.inq-quote) .fc-sub { margin-bottom: 1.1rem; }
+.inq-quote .field { margin-bottom: .75rem; }
+.inq-quote .field-row.pair-wide textarea { height: 4.6rem; min-height: 4.6rem; }
+.inq-quote .inq-tick { padding: .45rem .8rem; }
+.inq-quote .inq-ticks { gap: .4rem; }
+.inq-quote .form-foot { margin-top: .9rem; }
+/* Short windows only (owner's pick, November 13): at 1280x720 Request Quote
+   ended at 774 px. Under 760 px tall the card drops its grey sub-line and the
+   boxes tighten; 1440x790 is unchanged. */
+@media (max-height: 759.98px) {
+  #inquiryCard:has(.inq-quote) { padding-top: 1.4rem; }
+  #inquiryCard:has(.inq-quote) .fc-sub { display: none; }
+  .inq-quote .field-row.pair-wide textarea { height: 3.2rem; min-height: 3.2rem; }
+  .inq-quote .inq-tick { padding: .35rem .7rem; font-size: .74rem; }
+  .inq-quote .field label { margin-bottom: .3rem; }
 }
 
 /* Booking CTA panel (replaces the old quote form in the contact section) */
@@ -981,7 +1330,10 @@ html.scrolling-fast .reveal { transition: none; transition-delay: 0s; }
    whole page every nine seconds. Sized for the longest review and held
    there; the text clamps rather than the box moving. */
 .rv-tick-stage { height: 8.4rem; overflow: hidden; }
-.rv-tick { height: 100%; display: flex; flex-direction: column; }
+/* js/reviews.js replaces that height with the tallest review measured at the
+   current width. A shorter review sits centred in it, so the spare space reads
+   as balance, not as a gap at the bottom. */
+.rv-tick { height: 100%; display: flex; flex-direction: column; justify-content: center; }
 .rv-tick header { display: flex; flex-wrap: wrap; align-items: baseline; gap: .5rem; margin-bottom: .35rem; }
 .rv-tick header b { font-family: var(--font-display); font-size: 1rem; }
 .rv-tick-stars { color: var(--amber); font-size: .8rem; letter-spacing: .05em; }
@@ -1002,6 +1354,14 @@ html.scrolling-fast .reveal { transition: none; transition-delay: 0s; }
 }
 .rv-tick-nav button:hover { border-color: var(--red-bright); color: var(--red-bright); }
 .rv-tick-count { font-size: .75rem; color: var(--text-inv-soft); font-variant-numeric: tabular-nums; }
+/* Narrow screens: the arrows sit beside the "Verified Google reviews" label
+   instead of on a row of their own under the review. */
+@media (max-width: 859px) {
+  .rv-tick-inner { grid-template-columns: 1fr auto; grid-template-areas: "badge nav" "stage stage"; row-gap: .45rem; align-items: center; }
+  .rv-tick-badge { grid-area: badge; align-self: center; }
+  .rv-tick-nav { grid-area: nav; }
+  .rv-tick-stage { grid-area: stage; }
+}
 @media (min-width: 860px) {
   .rv-tick-inner { grid-template-columns: auto 1fr auto; gap: 1.4rem; align-items: center; }
   .rv-tick-stage { height: 5.2rem; }
@@ -1068,14 +1428,21 @@ html.scrolling-fast .reveal { transition: none; transition-delay: 0s; }
 }
 /* Opened: the same box, now scrollable. The card never changes size. */
 .rv-card blockquote.open {
-  display: block; overflow-y: auto; -webkit-line-clamp: unset;
-  scrollbar-width: thin;
+  display: block; overflow-y: scroll; -webkit-line-clamp: unset; padding-right: .5rem;
 }
-.rv-more {
-  display: block; margin-top: .3rem; padding: 0; font: inherit; font-size: .8rem;
-  font-weight: 700; color: var(--red); background: none; border: 0; cursor: pointer;
-  text-decoration: underline; text-underline-offset: 2px;
+/* ALWAYS-VISIBLE SCROLLBAR on an opened review. macOS hides scrollbars until
+   you scroll, so an opened review gave no sign that the rest of the text was
+   inside it. A styled WebKit scrollbar is drawn permanently (Chrome, Edge,
+   Safari). Do NOT add scrollbar-width / scrollbar-color to this rule: in
+   Chrome 121+ either one switches the ::-webkit-scrollbar styling off and the
+   hiding overlay bar comes back. Firefox gets them on its own, below. */
+.rv-card blockquote.open::-webkit-scrollbar { width: 6px; }
+.rv-card blockquote.open::-webkit-scrollbar-track { background: var(--line); border-radius: 3px; }
+.rv-card blockquote.open::-webkit-scrollbar-thumb { background: var(--text-soft); border-radius: 3px; }
+@supports (-moz-appearance: none) {
+  .rv-card blockquote.open { scrollbar-width: thin; scrollbar-color: var(--text-soft) var(--line); }
 }
+.rv-more { display: block; margin-top: .3rem; text-decoration: underline; text-underline-offset: 2px; }
 .rv-more { border: 0; background: none; color: var(--red); font: inherit; font-size: .85rem; font-weight: 700; cursor: pointer; padding: 0 0 0 .3rem; }
 /* The date and the "read in full" link ran together into "2 days agoRead in
    full". Two items with a separator, not two strings jammed end to end. */
@@ -1094,8 +1461,8 @@ html.scrolling-fast .reveal { transition: none; transition-delay: 0s; }
 
 /* ============================================================
    TRAVEL FEE READOUT AND SCHEMATIC MAP
-   Lives inside the dark Service Area section. The schematic only renders
-   when Leaflet fails to load; colours come from the band data in
+   Lives inside the Service Area section. The schematic only renders
+   when Leaflet fails to load, and keeps its own dark card; colours come from the band data in
    js/travel.js rather than from classes here, so there is one list of
    thresholds rather than two.
    ============================================================ */
@@ -1110,74 +1477,108 @@ html.scrolling-fast .reveal { transition: none; transition-delay: 0s; }
   fill: var(--text-inv-soft); font-family: var(--font-body); font-size: 15px; font-weight: 700;
   text-anchor: middle;
 }
-.tmap-dot { stroke: var(--ink-3); stroke-width: 2; cursor: pointer; transition: r .12s var(--ease); }
+.tmap-dot { stroke: #fff; stroke-width: 2; cursor: pointer; transition: r .12s var(--ease); }
 .tmap-dot:hover { r: 11; }
 .tmap-basering { fill: none; stroke: #fff; stroke-width: 2.5; }
 .tmap-basedot { fill: #fff; }
 .tmap-baselab { fill: #fff; font-family: var(--font-display); font-size: 17px; font-weight: 800; }
 
 .tmap-legend { display: flex; flex-wrap: wrap; gap: .5rem 1.1rem; margin-top: .9rem; }
-.tmap-key { display: inline-flex; align-items: center; gap: .4rem; font-size: .8rem; color: var(--text-inv-soft); font-weight: 600; }
-.tmap-key i { width: 11px; height: 11px; border-radius: 50%; flex: none; }
+.tmap-key { display: inline-flex; align-items: center; gap: .4rem; font-size: .8rem; color: var(--text-soft); font-weight: 600; }
+/* One fee dot everywhere it appears: the legend, the suggestions and the
+   answer. Drawn exactly like a map dot (Leaflet radius 8 with a 2px white
+   stroke centred on it is 18px across with a 14px fill), so a key and the
+   dot it explains are the same object. The legend's keys used to be 13px
+   with an extra dark outline the map's dots do not have. */
+.tmap-key i, .sg-dot, .fee-dot {
+  box-sizing: border-box; width: 18px; height: 18px; border-radius: 50%;
+  flex: none; border: 2px solid #fff;
+}
 
-.travel-out { margin-top: .9rem; min-height: 1.5rem; }
-.travel-out.ok b { display: block; font-family: var(--font-display); font-size: 1.7rem; color: var(--red-bright); }
-.travel-out.ok span { display: block; font-size: .86rem; color: var(--text-inv-soft); line-height: 1.55; margin-top: .2rem; }
+.travel-out { margin-top: .9rem; }
+.travel-out:empty { margin-top: 0; }
+/* Ink, not red. The price was the same red as the error message under it
+   and as the dearest band, so a good answer looked like a failed one. */
+.travel-out.ok b {
+  display: flex; align-items: center; gap: .5rem;
+  font-family: var(--font-display); font-size: 1.7rem; color: var(--text);
+}
+.travel-out.ok span { display: block; font-size: .86rem; color: var(--text-soft); line-height: 1.55; margin-top: .2rem; }
 .travel-out .travel-approx { font-style: italic; margin-top: .35rem; }
-.travel-out.err { color: var(--red-bright); font-size: .88rem; }
+.travel-out.err { color: var(--red); font-size: .88rem; }
 .travel-out.err b { display: block; font-family: var(--font-display); font-size: 1.25rem; margin-bottom: .25rem; }
-.travel-out.err span { display: block; color: var(--text-inv-soft); font-size: .84rem; line-height: 1.55; }
-.travel-fine { margin: .9rem 0; font-size: .78rem; color: var(--text-inv-soft); line-height: 1.55; }
+.travel-out.err span { display: block; color: var(--text-soft); font-size: .84rem; line-height: 1.55; }
+.travel-fine { margin: 0 0 .9rem; font-size: .78rem; color: var(--text-soft); line-height: 1.55; }
 
 /* ============================================================
    CATALOG-RENDERED EXTRAS
    ============================================================ */
-.addon-grp { font-size: .74rem; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; color: var(--text-soft); margin: 1.15rem 0 .55rem; }
-.addon .ad-price { display: block; font-style: normal; font-weight: 800; color: var(--red); font-size: .88rem; margin-top: .35rem; }
+.addon-grp { font-size: .95rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--text-soft); margin: 1.4rem 0 .65rem; }
+.addons > .addon-grp:first-child { margin-top: 0; }
+.addon .addon-price { display: block; font-style: normal; font-weight: 800; color: var(--red); font-size: .88rem; margin-top: .35rem; }
 .swide-main { display: flex; flex-direction: column; min-width: 0; }
+/* Stacked on a phone the tier box came straight after the Register button,
+   with nothing between them; the grid gap only exists from 820px up. */
+@media (max-width: 819.98px) { .svc-card.wide .svc-corr { margin-top: 1.4rem; } }
 .svc-corr {
   min-width: 0; background: var(--paper); border: 1px solid var(--line);
   border-radius: var(--r-md); padding: 1.1rem 1.2rem;
 }
 .svc-corr h4 { font-family: var(--font-display); font-size: 1.1rem; margin: 0 0 .7rem; }
-.svc-corr .corr-tiers { list-style: none; margin: 0; padding: 0; display: grid; gap: .6rem; }
-.svc-corr .corr-tiers li { display: block; font-size: .9rem; color: var(--text-soft); line-height: 1.45; }
-.svc-corr .corr-tiers li svg { display: none; }
+/* Each tier is a two-column row: name on the left, price right-aligned in a
+   column of its own so the four prices line up; the two meta lines sit under
+   the name. Equal padding and a hairline between tiers keep them evenly spaced
+   however many lines a name wraps to. */
+.svc-corr .corr-tiers { list-style: none; margin: 0; padding: 0; }
+.svc-corr .corr-tiers li {
+  display: grid; grid-template-columns: 1fr auto; column-gap: 1rem; align-items: baseline;
+  padding: .7rem 0; font-size: .9rem; color: var(--text-soft); line-height: 1.45;
+}
+.svc-corr .corr-tiers li + li { border-top: 1px solid var(--line); }
 .svc-corr .corr-tiers strong { color: var(--text); }
-.svc-corr .corr-price { color: var(--red); font-family: var(--font-display); font-weight: 800; margin-left: .35rem; }
-.svc-corr .corr-meta { display: block; font-size: .8rem; color: var(--text-soft); margin-top: .12rem; }
+.svc-corr .corr-price { color: var(--red); font-family: var(--font-display); font-weight: 800; text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.svc-corr .corr-meta { grid-column: 1; font-size: .8rem; color: var(--text-soft); margin-top: .12rem; }
+.svc-corr .corr-meta + .corr-meta { margin-top: 0; }
 
 /* add-ons that are listed but not bookable yet */
-.addon.ad-off { opacity: .78; }
-.addon.ad-off b sup { color: var(--amber-ink); }
-.addon .ad-soon {
+.addon.addon-off { opacity: .78; }
+.addon.addon-off b sup { color: var(--amber-ink); }
+.addon .addon-soon {
   display: block; font-style: normal; color: var(--amber-ink);
   font-weight: 700; font-size: .76rem; line-height: 1.4; margin-top: .2rem;
 }
-.ad-how { margin-top: .5rem; }
-.ad-how summary { cursor: pointer; font-size: .78rem; font-weight: 700; color: var(--red); list-style: none; }
-.ad-how summary::-webkit-details-marker { display: none; }
-.ad-how summary::after { content: " +"; font-weight: 800; }
-.ad-how[open] summary::after { content: " \2212"; }
-.ad-how p { margin: .45rem 0 0; font-size: .8rem; line-height: 1.6; color: var(--text-soft); }
+.addon-how { margin-top: .5rem; }
 
 .svc-coverage { margin-top: .9rem; margin-bottom: 0; font-size: .8rem; color: var(--text-soft); font-style: italic; }
 
 /* how it works, on a front page package card */
-.svc-how { margin: .9rem 0 0; }
-.svc-how summary { cursor: pointer; font-size: .8rem; font-weight: 700; color: var(--red); list-style: none; }
-.svc-how summary::-webkit-details-marker { display: none; }
-.svc-how summary::after { content: " +"; font-weight: 800; }
-.svc-how[open] summary::after { content: " -"; }
-.svc-how p { margin: .5rem 0 0; font-size: .82rem; line-height: 1.65; color: var(--text-soft); background: var(--paper); border-left: 2px solid var(--line); padding: .65rem .8rem; border-radius: 0 var(--r-sm) var(--r-sm) 0; }
+/* The card is a flex column, so margins add up instead of collapsing: the
+   list's 1.05rem plus this toggle's .9rem put it 31px under the last item, and
+   with no bottom margin an opened panel sat flush on the Book button (the
+   button's margin-top: auto is 0 once the card is the tallest in its row).
+   The toggle now hangs .65rem under the list and always keeps 1.1rem clear of
+   the button. */
+.svc-card ul.feat:has(+ .svc-how) { margin-bottom: 0; }
+.svc-how { margin: .65rem 0 1.1rem; }
+.svc-how summary, .svc-more summary, .area-more summary { display: inline-block; padding: .2rem 0; cursor: pointer; font-size: .8rem; font-weight: 700; color: var(--red); list-style: none; }
+.svc-how summary::-webkit-details-marker, .svc-more summary::-webkit-details-marker, .area-more summary::-webkit-details-marker { display: none; }
+.svc-how summary::after, .svc-more summary::after, .area-more summary::after { content: " +"; font-weight: 800; }
+.svc-how[open] summary::after, .svc-more[open] summary::after, .area-more[open] summary::after { content: " -"; }
+.svc-how p { margin: .45rem 0 0; font-size: .82rem; line-height: 1.65; color: var(--text-soft); background: var(--paper); border-left: 2px solid var(--line); padding: .8rem .95rem; border-radius: 0 var(--r-sm) var(--r-sm) 0; }
+/* ONE "How it works" look on every card. The package cards' style above is
+   the agreed standard; the add-on cards and the coating explainer used to have
+   their own (plain text; a boxed display-font heading). Same toggle, same panel. */
+.addon-how summary, .svc-explain summary { display: inline-block; padding: .2rem 0; cursor: pointer; font-family: inherit; font-size: .8rem; font-weight: 700; color: var(--red); list-style: none; }
+.addon-how summary::-webkit-details-marker, .svc-explain summary::-webkit-details-marker { display: none; }
+.addon-how summary::after, .svc-explain summary::after { content: " +"; font-weight: 800; color: var(--red); }
+.addon-how[open] summary::after, .svc-explain[open] summary::after { content: " -"; }
+.addon-how p, .svc-explain .how-body { margin: .45rem 0 0; font-size: .82rem; line-height: 1.65; color: var(--text-soft); background: var(--paper); border-left: 2px solid var(--line); padding: .8rem .95rem; border-radius: 0 var(--r-sm) var(--r-sm) 0; }
+/* The explainer sits in the grey tier box, so its panel is the lighter tone. */
+.svc-explain .how-body { background: var(--paper-2); }
+.svc-explain .how-body > p:first-child { margin-top: 0; }
 
-.svc-explain { background: var(--paper-2); border: 1px solid var(--line); border-radius: var(--r-sm); padding: .8rem .9rem; margin-bottom: 1rem; }
-.svc-explain summary { font-size: .95rem; }
-.svc-explain summary { cursor: pointer; font-family: var(--font-display); font-size: 1.05rem; font-weight: 800; list-style: none; }
-.svc-explain summary::-webkit-details-marker { display: none; }
-.svc-explain summary::after { content: " +"; color: var(--red); }
-.svc-explain[open] summary::after { content: " -"; color: var(--red); }
-.svc-explain p { font-size: .88rem; line-height: 1.65; color: var(--text-soft); margin: .7rem 0 0; }
+.svc-explain { margin: 0 0 1rem; }
+.svc-explain p { margin: .7rem 0 0; }
 .svc-explain .ex-h { font-weight: 800; color: var(--text); font-size: .78rem; letter-spacing: .05em; text-transform: uppercase; margin-top: 1rem; }
 .svc-explain ul { margin: .4rem 0 0; padding-left: 1.2rem; }
 .svc-explain li { font-size: .86rem; line-height: 1.6; color: var(--text-soft); margin-bottom: .35rem; }
@@ -1207,20 +1608,99 @@ html.scrolling-fast .reveal { transition: none; transition-delay: 0s; }
    they came for. On a phone the form goes first now and the aside becomes
    one compact row underneath it.
    --------------------------------------------------------------- */
-@media (max-width: 899px) {
+@media (max-width: 999px) {
+  /* One column: "Prefer to talk?", the phone and the email as one compact
+     row ABOVE the form, which gets the full width. The row is short enough
+     now that it no longer pushes the form off the screen. */
   .inq-grid { gap: 1.2rem; }
-  .inq-grid .form-card { order: 1; }
-  .inq-side { order: 2; }
-
+  .inq-side { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem 1rem; }
+  .inq-side-head { flex: 1 1 100%; }
   .inq-side h3 { font-size: 1.05rem; margin-bottom: .15rem; }
-  .inq-side-sub { font-size: .86rem; margin-bottom: .7rem; }
+  .inq-side-sub { font-size: .86rem; margin-bottom: 0; }
 
-  /* Call, copy and email on one line instead of three stacked blocks. */
-  .inq-side .phone-chip { margin-right: .5rem; }
   .inq-side .phone-chip .phone-num { font-size: 1.02rem; padding: .55rem .75rem; }
-  .inq-email { margin-top: .6rem; font-size: .88rem; }
+  .inq-email { margin-top: 0; font-size: .88rem; }
 
   /* Reassurance, not information. It has already been made on the way down
      the page, so it does not need to push the form off the screen twice. */
   .inq-points { display: none; }
+}
+
+/* ============================================================
+   BOOKING PAGE (booking.html, served at /book; A2P plan T7)
+   Imperion's layout for the Google Business Profile link: a 9:16 video
+   slot beside a card that holds the booking form's own first step.
+   ============================================================ */
+/* The red location pill: in the dark top bar on this page from 720 px
+   (chrome.mjs locpill; owner's pick, November 13: in the header it pushed two
+   links into More), and in the page itself on phones. */
+.loc-pill {
+  display: inline-flex; align-items: center; gap: .4rem; flex: none;
+  padding: .3rem .75rem; border-radius: 999px;
+  background: var(--red); color: #fff; font-size: .78rem; font-weight: 700; white-space: nowrap;
+}
+.loc-pill i { width: 7px; height: 7px; border-radius: 50%; background: #fff; }
+.tb-loc { display: none; }
+@media (min-width: 720px) {
+  .topbar .tb-loc { display: inline-flex; font-size: .72rem; padding: .15rem .6rem; }
+  .bp-loc { display: none; }
+}
+
+.bookpage { position: relative; isolation: isolate; overflow: hidden; background: var(--ink); color: var(--text); }
+main > .bookpage:first-child { padding-block: clamp(16px, 2.2vw, 30px); }
+.bp-bg {
+  position: absolute; inset: -24px; z-index: -1;
+  background: linear-gradient(rgba(8,10,14,.55), rgba(8,10,14,.7)), url("images/hero-exterior-960.jpg") center / cover;
+  filter: blur(14px);
+}
+.bp-grid { display: grid; gap: 1rem; justify-items: center; }
+.bp-video {
+  width: min(100%, 15rem); aspect-ratio: 9 / 16; border-radius: var(--r-lg); overflow: hidden;
+  background: var(--ink-2); box-shadow: var(--shadow-lg);
+}
+.bp-video picture { display: block; height: 100%; }
+.bp-media { display: block; width: 100%; height: 100%; object-fit: cover; }
+.bp-rating {
+  display: inline-flex; gap: .45rem; align-items: center; margin: 0;
+  padding: .55rem 1rem; border-radius: 999px; background: var(--paper-2); font-size: .85rem; font-weight: 600;
+}
+.bp-rating .hb-stars { color: var(--amber); letter-spacing: .08em; }
+.bp-card {
+  width: 100%; display: grid; gap: 1.2rem; padding: clamp(1.1rem, 2.4vw, 1.6rem);
+  background: var(--paper); border-radius: var(--r-xl); box-shadow: var(--shadow-lg);
+}
+.bp-info h1 { font-size: clamp(1.5rem, 2.2vw, 1.8rem); line-height: 1.15; margin: 0 0 .5rem; }
+.bp-lead { color: var(--text-soft); font-size: .92rem; margin: 0 0 1rem; }
+.bp-areas { list-style: none; margin: 0 0 1.1rem; padding: 0; display: flex; flex-wrap: wrap; gap: .4rem; }
+.bp-areas a {
+  display: inline-flex; align-items: center; gap: .4rem; padding: .3rem .7rem; border-radius: 999px;
+  background: var(--paper-2); border: 1px solid var(--line); font-size: .8rem; font-weight: 600; color: var(--text);
+}
+.bp-areas a::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--red); }
+.bp-contact { margin: 0; display: grid; gap: .1rem; font-size: .9rem; }
+.bp-contact dt { font-size: .74rem; color: var(--text-soft); }
+.bp-contact dt + dd + dt { margin-top: .5rem; }
+.bp-contact dd { margin: 0; font-weight: 600; }
+.bp-step { background: var(--paper-2); border: 1px solid var(--line); border-radius: var(--r-lg); padding: clamp(1rem, 2vw, 1.4rem); }
+.bp-step h2 { font-size: 1.1rem; margin: 0 0 .9rem; }
+.bp-cta { display: none; }
+
+@media (min-width: 1000px) {
+  .bp-grid { grid-template-columns: 17rem minmax(0, 1fr); align-items: center; gap: 1.8rem; max-width: 1120px; margin-inline: auto; }
+  .bp-video { width: 100%; }
+  .bp-rating { display: none; }
+  .bp-card { grid-template-columns: 14rem minmax(0, 1fr); align-items: start; gap: 1.6rem; }
+  .bp-areas { flex-direction: column; align-items: flex-start; }
+}
+/* Phones: the video, the rating, then one big Book Now held at the bottom,
+   in place of the usual Contact / Book Now bar. */
+@media (max-width: 719.98px) {
+  .page-book .mobile-bar { display: none !important; }
+  .bp-cta {
+    display: block; position: fixed; left: 0; right: 0; bottom: 0; z-index: 90;
+    padding: .7rem 1rem calc(.7rem + env(safe-area-inset-bottom, 0px));
+    background: linear-gradient(rgba(11,14,19,0), rgba(11,14,19,.55));
+  }
+  .bp-cta .btn { text-transform: uppercase; letter-spacing: .04em; }
+  .bp-loc { justify-self: start; }
 }

@@ -27,7 +27,7 @@
  */
 
 import { localDayStart, localTimeOnDay, localWeekday } from "../time/zone.js";
-import type { Interval } from "./slots.js";
+import { mergeIntervals, type Interval } from "./slots.js";
 
 /** Earliest arrival and latest finish, local minutes past midnight. */
 export interface DayWindow {
@@ -267,8 +267,13 @@ export interface MultiDayOption {
   blocks: Interval[];
 }
 
+/** A drive out of up to an hour happens before the working day (as computeSlots). */
+export const OUTBOUND_BEFORE_DAY_MAX_MIN = 60;
+
+// Touching OPEN blocks are one stretch: a day split at 10am and 6pm for
+// prices is still one working day (live-site check, November 11).
 const covered = (block: Interval, open: Interval[]): boolean =>
-  open.some((o) => o.start <= block.start && o.end >= block.end);
+  mergeIntervals(open).some((o) => o.start <= block.start && o.end >= block.end);
 
 const clashes = (block: Interval, busy: Interval[]): boolean =>
   busy.some((b) => b.start < block.end && b.end > block.start);
@@ -296,7 +301,11 @@ export function findMultiDayStarts(req: MultiDaySearch): MultiDayOption[] {
   for (let guard = 0; guard < 400 && cursor <= req.notAfter && out.length < limit; guard++) {
     const nextDay = localTimeOnDay(cursor, 1, 0, tz);
 
-    if (req.allowedWeekdays && !req.allowedWeekdays.includes(localWeekday(cursor, tz))) {
+    // Every day of the plan on an allowed weekday, not only the first: a
+    // weekend-only correction started on a Sunday ran into Monday (review,
+    // November 13).
+    if (req.allowedWeekdays && req.plan.days.some((d) =>
+      !req.allowedWeekdays!.includes(localWeekday(localTimeOnDay(cursor, d.index, 12 * 60, tz), tz)))) {
       cursor = nextDay;
       continue;
     }
@@ -311,7 +320,18 @@ export function findMultiDayStarts(req: MultiDaySearch): MultiDayOption[] {
         end: localTimeOnDay(cursor, day.index, day.blockEndMin, tz),
       };
 
-      if (block.start < req.notBefore || !covered(block, req.openBlocks) || clashes(block, req.busy)) {
+      // OPEN has to hold the WORK. The drive out happens before the day, as
+      // in computeSlots (ignoreOutboundBeforeMin, for a drive of up to an
+      // hour), and the drive home after it: testing the whole block refused
+      // every plan when OPEN began later than the start minus the drive
+      // (review, November 13). Nothing may clash with the whole block.
+      const outbound = day.startMin - day.blockStartMin;
+      const work: Interval = {
+        start: localTimeOnDay(cursor, day.index, day.startMin - (outbound > OUTBOUND_BEFORE_DAY_MAX_MIN ? outbound : 0), tz),
+        end: localTimeOnDay(cursor, day.index, day.endMin, tz),
+      };
+
+      if (block.start < req.notBefore || !covered(work, req.openBlocks) || clashes(block, req.busy)) {
         fits = false;
         break;
       }
@@ -332,4 +352,49 @@ export function findMultiDayStarts(req: MultiDaySearch): MultiDayOption[] {
   }
 
   return out;
+}
+
+/**
+ * Is the multi-day option starting at `startMs` still free? The same search
+ * that offered it, run on the calendar as it is now (review, November 13:
+ * the "still free?" check ran the one-day slot search, which no multi-day
+ * job can pass, so every one was refused as taken).
+ */
+export function multiDayStillFits(req: Omit<MultiDaySearch, "notBefore" | "notAfter" | "limit"> & { startMs: number }): boolean {
+  const tz = req.timeZone ?? "America/New_York";
+  const day0 = localDayStart(req.startMs, tz);
+  return findMultiDayStarts({ ...req, notBefore: day0, notAfter: day0 + 1, limit: 1 })
+    .some((o) => Math.abs(o.startMs - req.startMs) < 60_000);
+}
+
+/**
+ * The calendar events for a job booked to start at `slotMs`: one per working
+ * day, as planDays plans it and as the customer was shown. Null when the job
+ * fits one day (one event, as always) or cannot be planned.
+ *
+ * Written as one event per day because one long event (review, November 13)
+ * ran from Saturday 8am to Sunday 4am: Saturday night blocked for nothing,
+ * and Sunday's real working hours left open to be sold again.
+ */
+export function multiDayEvents(req: {
+  slotMs: number;
+  serviceMinutes: number;
+  travelMin: number;
+  preferredStartsMin?: number[];
+  timeZone?: string;
+}): { startMs: number; endMs: number }[] | null {
+  const tz = req.timeZone ?? "America/New_York";
+  if (fitsOneDay(req.serviceMinutes, LONGEST_DAY, req.travelMin, req.travelMin)) return null;
+  const plan = planDays({
+    serviceMinutes: req.serviceMinutes,
+    travelBeforeMin: req.travelMin,
+    travelAfterMin: req.travelMin,
+    ...(req.preferredStartsMin ? { preferredStartsMin: req.preferredStartsMin } : {}),
+  });
+  if (!plan.ok) return null;
+  const day0 = localDayStart(req.slotMs, tz);
+  return plan.days.map((d) => {
+    const start = d.index === 0 ? req.slotMs : localTimeOnDay(day0, d.index, d.startMin, tz);
+    return { startMs: start, endMs: start + d.workMin * 60_000 };
+  });
 }

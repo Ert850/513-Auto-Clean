@@ -176,6 +176,11 @@ export async function createBookingEvent({
   startMs,
   endMs,
   key,
+  // A detailer's own bookings calendar (DETAILERS). Empty means the default.
+  calendarId,
+  // The customer's ten phone digits, kept privately on the event, so a
+  // follow-up (booking-followup.mjs) must name the same phone as the booking.
+  phone,
 }) {
   if (!gcalConfigured()) return { ok: false, reason: "unconfigured" };
   if (!startMs || !endMs || endMs <= startMs) return { ok: false, reason: "bad_times" };
@@ -196,11 +201,11 @@ export async function createBookingEvent({
     transparency: "opaque",
     // The booking key, so a retry can be recognised as the same job rather
     // than written twice.
-    ...(key ? { extendedProperties: { private: { bookingKey: String(key).slice(0, 120) } } } : {}),
+    ...(key ? { extendedProperties: { private: { bookingKey: String(key).slice(0, 120), ...(phone ? { phone: String(phone).slice(0, 10) } : {}) } } } : {}),
   };
 
   const url =
-    `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(bookedCalendarId())}/events`;
+    `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId || bookedCalendarId())}/events`;
   const res = await fetch(url, {
     method: "POST",
     headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
@@ -215,4 +220,48 @@ export async function createBookingEvent({
   }
   const j = await res.json();
   return { ok: true, id: j.id ?? null, link: j.htmlLink ?? null };
+}
+
+function eventsUrl(calendarId) {
+  return `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId || bookedCalendarId())}/events`;
+}
+
+/**
+ * The event a booking wrote, found by its booking key within a day of its
+ * start, or null. Only events this site wrote carry the key.
+ */
+export async function findBookingEvent({ key, calendarId, aroundMs }) {
+  if (!gcalConfigured() || !key || !aroundMs) return null;
+  const token = await accessToken();
+  if (!token) return null;
+  const q = new URLSearchParams({
+    privateExtendedProperty: `bookingKey=${String(key).slice(0, 120)}`,
+    timeMin: new Date(aroundMs - 86_400_000).toISOString(),
+    timeMax: new Date(aroundMs + 86_400_000).toISOString(),
+    singleEvents: "true",
+    maxResults: "5",
+  });
+  const res = await fetch(`${eventsUrl(calendarId)}?${q}`, { headers: { Authorization: `Bearer ${token}` } });
+  if (!res.ok) {
+    console.error("gcal find", res.status, (await res.text()).slice(0, 300));
+    return null;
+  }
+  const j = await res.json();
+  return (j.items ?? []).find((e) => e.status !== "cancelled") ?? null;
+}
+
+/** Replace an event's description. */
+export async function setEventDescription({ calendarId, eventId, description }) {
+  const token = await accessToken();
+  if (!token) return { ok: false, reason: "auth_failed" };
+  const res = await fetch(`${eventsUrl(calendarId)}/${encodeURIComponent(eventId)}`, {
+    method: "PATCH",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ description: String(description ?? "").slice(0, 8000) }),
+  });
+  if (!res.ok) {
+    console.error("gcal patch", res.status, (await res.text()).slice(0, 300));
+    return { ok: false, reason: `http_${res.status}` };
+  }
+  return { ok: true };
 }

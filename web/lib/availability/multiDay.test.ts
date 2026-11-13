@@ -202,6 +202,23 @@ describe("finding consecutive free days", () => {
     expect(found.map((f) => fmt(f.startMs))).toEqual(["Oct 3, 8 AM", "Oct 4, 8 AM"]);
   });
 
+  it("a day split into price blocks at 10am and 6pm is still one open day (live-site check, November 11)", () => {
+    const split = (d: number) => [
+      { start: at(d, 6 * H), end: at(d, 10 * H) },
+      { start: at(d, 10 * H), end: at(d, 18 * H) },
+      { start: at(d, 18 * H), end: at(d + 1, 2 * H) },
+    ];
+    const found = findMultiDayStarts({
+      plan,
+      openBlocks: [...split(3), ...split(4), ...split(5)],
+      busy: [],
+      notBefore: at(3, 0),
+      notAfter: at(6, 0),
+      timeZone: TZ,
+    });
+    expect(found.map((f) => fmt(f.startMs))).toEqual(["Oct 3, 8 AM", "Oct 4, 8 AM"]);
+  });
+
   it("refuses a start whose SECOND day is booked", () => {
     // One appointment in the middle of the 4th takes out BOTH candidates:
     // the 3rd needs the 4th as its second day, and the 4th needs it as its

@@ -19,6 +19,7 @@
 import { findAddon, findCoatingTerm, findCorrectionTier, isSelectable } from "../catalog/addons.js";
 import { findPackage, vehicleSize } from "../catalog/seed.js";
 import { MAX_ONE_WAY_MINUTES } from "../travel/zipRanges.js";
+import { sourceKey } from "./rush.js";
 
 /* ---------------- shapes ---------------- */
 
@@ -46,6 +47,12 @@ export interface WireCart {
   /** Epoch ms of the chosen slot, or null for a request without a time. */
   slot?: number | null;
   /**
+   * Minutes after `slot` the detailer is planned to arrive (inside the
+   * arrival window), so the calendar event ends at that arrival plus the
+   * work. 0 or absent for an on-time start.
+   */
+  arrivalLateMin?: number;
+  /**
    * IGNORED on the server. Priority is derived from the slot. Kept on the
    * type so an old browser sending it is not a validation failure.
    */
@@ -55,6 +62,12 @@ export interface WireCart {
   /** IGNORED on the server. Derived from the payment mode. */
   payInFull?: boolean;
   promoCode?: string | null;
+  /**
+   * Where the visit arrived from, "golf" for 513autoclean.com/golf. Only the
+   * rush fee rules read it (config/rush-fee.json). Anyone can type the
+   * address, so a rule keyed on a source is a courtesy, never a secret.
+   */
+  source?: string | null;
   address?: WireAddress | null;
   /**
    * What the customer settled.
@@ -109,7 +122,14 @@ export const WIRE_LIMITS = {
   maxCity: 60,
   maxRegion: 30,
   maxPromo: 32,
-  /** How far ahead a slot may be. Past this it is a conversation, not a form. */
+  /** Planned minutes into the arrival window. The window is an hour; twice that is plainly wrong. */
+  maxArrivalLateMin: 120,
+  /**
+   * How far ahead a slot may be. Past this it is a conversation, not a form.
+   * The same as the live site (November 11): the form offers 365 days
+   * (MAX_BOOK_DAYS in js/funnel.js), and this leaves a month of slack. If the
+   * owner shortens the form's limit (owner question 17), shorten this with it.
+   */
   maxDaysAhead: 400,
   /**
    * ZIPs we will price. Ohio is 43000 to 45999, Kentucky 40000 to 42799,
@@ -310,6 +330,14 @@ export function validateWire(body: unknown, opts: ValidateOptions): WireValidati
   if (kind === "inquiry" && slot !== null) {
     return fail("inquiry_has_slot", "A request cannot carry a fixed time.");
   }
+  let arrivalLateMin = 0;
+  const rawLate = cart["arrivalLateMin"];
+  if (rawLate !== undefined && rawLate !== null && rawLate !== 0) {
+    if (typeof rawLate !== "number" || !Number.isFinite(rawLate) || rawLate < 0 || rawLate > WIRE_LIMITS.maxArrivalLateMin) {
+      return fail("bad_arrival", "That time was not understood.");
+    }
+    if (slot !== null) arrivalLateMin = Math.round(rawLate);
+  }
 
   /* ---- payment mode drives payInFull, nothing else does ---- */
   const payInFull = opts.mode === "pay_now";
@@ -340,6 +368,10 @@ export function validateWire(body: unknown, opts: ValidateOptions): WireValidati
     if (code === null) return fail("bad_promo", "That promo code is too long to be one of ours.");
     promoCode = code || null;
   }
+
+  /* ---- arrival source, for the rush fee rules ---- */
+  let source: string | null = null;
+  if (typeof cart["source"] === "string") source = sourceKey(cart["source"]) || null;
 
   /* ---- address, and the ZIP that tax and travel come from ---- */
   let address: WireAddress | null = null;
@@ -402,8 +434,10 @@ export function validateWire(body: unknown, opts: ValidateOptions): WireValidati
     zip,
     slot,
     kind,
+    ...(arrivalLateMin ? { arrivalLateMin } : {}),
     ...(visits !== undefined ? { visits } : {}),
     ...(promoCode ? { promoCode } : {}),
+    ...(source ? { source } : {}),
     ...(address ? { address } : {}),
     payInFull,
   };

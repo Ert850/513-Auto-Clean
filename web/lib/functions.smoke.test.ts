@@ -13,7 +13,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { resetRateLimits } from "../../netlify/functions/_ratelimit.mjs";
 
 const FUNCS = [
-  "travel", "create-payment", "paypal-order", "personal-busy", "reviews", "send-confirmation",
+  "travel", "create-payment", "paypal-order", "personal-busy", "reviews", "send-confirmation", "booking-followup",
 ] as const;
 
 const ENV: Record<string, string> = {
@@ -181,6 +181,126 @@ describe("every function survives hostile input with its key present", () => {
     expect(JSON.parse(r.body).sent).toBe(false);
   }, 30_000);
 
+  it("send-confirmation: writes a detailer's job to their own calendar, and only theirs", async () => {
+    // DETAILERS is read here as well as in the browser. The browser names who
+    // took the time; the server writes there only if that name is in its own
+    // setting, so a sender cannot pick a calendar.
+    const KRIS_JOBS = "kris-jobs@group.calendar.google.com";
+    const env = {
+      GOOGLE_OAUTH_CLIENT_ID: "id", GOOGLE_OAUTH_CLIENT_SECRET: "secret", GOOGLE_OAUTH_REFRESH_TOKEN: "refresh",
+      DETAILERS: JSON.stringify([{ name: "Kris", does: "interior", noFeeStarts: "18:00-19:00",
+        availability: "kris-open@group.calendar.google.com", bookings: KRIS_JOBS }]),
+    };
+    const before = Object.fromEntries(Object.keys(env).map((k) => [k, process.env[k]]));
+    Object.assign(process.env, env);
+    const writes: { url: string; summary: string }[] = [];
+    const realFetch = globalThis.fetch;
+    globalThis.fetch = (async (url: string, init?: { body?: string }) => {
+      const u = String(url);
+      if (u.startsWith("https://oauth2.googleapis.com/token")) {
+        return new Response(JSON.stringify({ access_token: "t", expires_in: 3600 }), { status: 200 });
+      }
+      if (u.includes("googleapis.com/calendar/v3/calendars/")) {
+        writes.push({ url: decodeURIComponent(u), summary: JSON.parse(String(init?.body ?? "{}")).summary });
+        return new Response(JSON.stringify({ id: "e1" }), { status: 200 });
+      }
+      return new Response("{}", { status: 500 });
+    }) as typeof fetch;
+    try {
+      const { handler } = await load("send-confirmation");
+      const book = (detailer: string) => handler({
+        httpMethod: "POST",
+        headers: {},
+        body: JSON.stringify({
+          cart: {
+            vehicles: [{ sizeId: "small", packageIds: ["basic-interior"] }],
+            address: { line1: "1 Main St", city: "Cincinnati", region: "OH", zip: "45220" },
+            slot: Date.now() + 5 * 86_400_000,
+          },
+          contact: { name: "Ada", phone: "5135551212" },
+          mode: "card_only",
+          detailer,
+        }),
+      });
+      await book("kris");
+      await book("somebody-else");
+      expect(writes).toHaveLength(2);
+      expect(writes[0]!.url).toContain(KRIS_JOBS);
+      expect(writes[0]!.summary).toMatch(/^Kris: /);
+      expect(writes[1]!.url, "an unknown name books the default calendar").not.toContain(KRIS_JOBS);
+      expect(writes[1]!.summary).not.toMatch(/^Kris/);
+    } finally {
+      globalThis.fetch = realFetch;
+      for (const [k, v] of Object.entries(before)) {
+        if (v === undefined) delete process.env[k];
+        else process.env[k] = v;
+      }
+    }
+  }, 30_000);
+
+  it("every booking function shares one view of detailers and their fee-free hours", async () => {
+    // send-confirmation, create-payment and paypal-order all price through
+    // _detailers.mjs, so a card charge cannot add a late fee the email waived.
+    const before = process.env.DETAILERS;
+    process.env.DETAILERS = JSON.stringify([{ name: "Kris", does: "interior", noFeeStarts: "18:00-19:00",
+      availability: "a@group.calendar.google.com", bookings: "b@group.calendar.google.com" }]);
+    try {
+      const { detailerFor, timeFeeWaived } = (await import(`../../netlify/functions/${"_detailers"}.mjs`)) as {
+        detailerFor: (id: unknown, cart?: unknown) => { id: string } | null;
+        timeFeeWaived: (d: unknown, ms: number) => boolean;
+      };
+      const kris = detailerFor("kris");
+      expect(kris?.id).toBe("kris");
+      expect(detailerFor("owner"), "the owner is never a detailer entry").toBeNull();
+      expect(detailerFor("someone-else")).toBeNull();
+      expect(detailerFor({ id: "kris" }), "only a string id counts").toBeNull();
+      // Only for a job he does: a request naming Kris for an exterior job
+      // gets neither his calendar nor his fee-free 6pm (engine check, November 10).
+      expect(detailerFor("kris", { vehicles: [{ packageIds: ["full-exterior"], addons: [] }] })).toBeNull();
+      expect(detailerFor("kris", { vehicles: [{ packageIds: ["basic-interior"], addons: [] }] })?.id).toBe("kris");
+      const at = (h: number, m = 0) => Date.parse(`2026-11-20T${String(h + 5).padStart(2, "0")}:${String(m).padStart(2, "0")}:00Z`);
+      expect(timeFeeWaived(kris, at(18, 30))).toBe(true);
+      expect(timeFeeWaived(kris, at(19, 30))).toBe(false);
+      expect(timeFeeWaived(null, at(18, 30))).toBe(false);
+    } finally {
+      if (before === undefined) delete process.env.DETAILERS;
+      else process.env.DETAILERS = before;
+    }
+  });
+
+  it("with no calendar to read, the server keeps the fee shown, never more than the clock rule", async () => {
+    const before = { k: process.env.GOOGLE_CALENDAR_API_KEY, g: process.env.GOOGLE_API_KEY };
+    delete process.env.GOOGLE_CALENDAR_API_KEY; delete process.env.GOOGLE_API_KEY;
+    try {
+      const { blockFeeFor } = (await import(`../../netlify/functions/${"_detailers"}.mjs`)) as {
+        blockFeeFor: (d: unknown, ms: number, shown: unknown) => Promise<number | null>;
+      };
+      const at = (h: number) => Date.parse(`2026-11-20T${String(h + 5).padStart(2, "0")}:00:00Z`);
+      expect(await blockFeeFor(null, at(19), 2000), "7pm, shown 20%").toBe(2000);
+      expect(await blockFeeFor(null, at(19), 0), "7pm, shown standard").toBe(0);
+      expect(await blockFeeFor(null, at(12), 2000), "noon: more than the clock, so the clock").toBeNull();
+      expect(await blockFeeFor(null, at(19), "junk")).toBeNull();
+    } finally {
+      if (before.k !== undefined) process.env.GOOGLE_CALENDAR_API_KEY = before.k;
+      if (before.g !== undefined) process.env.GOOGLE_API_KEY = before.g;
+    }
+  });
+
+  it("each detailer drives from their own home, kept server-side in DETAILER_HOMES", async () => {
+    const before = process.env.DETAILER_HOMES;
+    process.env.DETAILER_HOMES = JSON.stringify({ Kris: "1 Test Rd, Mason, OH 45040" });
+    try {
+      const { homeFor } = (await import(`../../netlify/functions/${"_detailers"}.mjs`)) as { homeFor: (d: unknown) => string | null };
+      expect(homeFor({ id: "kris", name: "Kris", owner: false })).toBe("1 Test Rd, Mason, OH 45040");
+      expect(homeFor({ id: "owner", name: "Elijah", owner: true }), "the owner uses the shop address").toBeNull();
+      expect(homeFor({ id: "sam", name: "Sam", owner: false }), "not listed: the shop address").toBeNull();
+      process.env.DETAILER_HOMES = "not json";
+      expect(homeFor({ id: "kris", name: "Kris", owner: false })).toBeNull();
+    } finally {
+      if (before === undefined) delete process.env.DETAILER_HOMES; else process.env.DETAILER_HOMES = before;
+    }
+  });
+
   it("paypal-order: refuses an order id that is not an order id", async () => {
     const { handler } = await load("paypal-order");
     const r = await handler({
@@ -193,4 +313,36 @@ describe("every function survives hostile input with its key present", () => {
     expect([400, 502]).toContain(r.statusCode);
     expect(r.body).not.toContain("userinfo");
   }, 30_000);
+});
+
+describe("cart-capture (a checkout left unfinished, round 15)", () => {
+  const load = async () =>
+    (await import(`../../netlify/functions/${"cart-capture"}.mjs`)) as {
+      captureFrom: (p: unknown) => Record<string, string> | null;
+      handler: (e: unknown) => Promise<{ statusCode: number; body: string }>;
+    };
+
+  it("needs a name and a way to reach them, and keeps what they picked", async () => {
+    const { captureFrom } = await load();
+    expect(captureFrom({ contact: { name: "Ada" } })).toBeNull();
+    expect(captureFrom({ contact: { name: "", phone: "5135551212" } })).toBeNull();
+    expect(captureFrom({ contact: { name: "Ada", phone: "123" } })).toBeNull();
+    const c = captureFrom({ contact: { name: "Ada", phone: "+1 (513) 555-1212" }, summary: "Small, Basic Interior", heard: "Instagram" })!;
+    expect(c.phone).toBe("5135551212");
+    expect(c.picked).toBe("Small, Basic Interior");
+    expect(c.heard).toBe("Instagram");
+    expect(captureFrom({ contact: { name: "Ada", email: "ada@example.com" } })!.email).toBe("ada@example.com");
+  });
+
+  it("sends nothing without the email key, and only ever to the owner", async () => {
+    const { handler } = await load();
+    const prev = process.env.RESEND_API_KEY;
+    delete process.env.RESEND_API_KEY;
+    const r = await handler({ httpMethod: "POST", headers: {}, body: JSON.stringify({ contact: { name: "Ada", phone: "5135551212", email: "someone@else.com" } }) });
+    expect(JSON.parse(r.body)).toEqual({ captured: false, reason: "unconfigured" });
+    if (prev) process.env.RESEND_API_KEY = prev;
+    const src = (await import("node:fs")).readFileSync(new URL("../../netlify/functions/cart-capture.mjs", import.meta.url), "utf8");
+    expect(src, "the recipient is the owner's own address").toContain("to: [owner]");
+    expect((await handler({ httpMethod: "GET" })).statusCode).toBe(405);
+  });
 });

@@ -12,21 +12,16 @@ import {
   ADDONS,
   COATING_COVERAGE,
   COATING_EXPLAINER,
-  COATING_TERMS,
   CORRECTION_RULES,
   CORRECTION_TIERS,
-  MAINTENANCE_PLAN,
   addonsFor,
   findAddon,
   findCoatingTerm,
   findCorrectionTier,
-  isSelectable,
-  isUnpriced,
   unavailableReason,
 } from "./catalog/addons.js";
 import {
   SEED_CATALOG,
-  VEHICLE_SIZES,
   findPackage,
   packagesFor,
   vehicleSize,
@@ -35,6 +30,7 @@ import { componentsOf } from "./catalog/types.js";
 import { DEFAULT_RULES } from "./pricing/rules.js";
 import { SEED_TAX_TABLE } from "./pricing/tax.js";
 import { minutesOfDay, slotNeedsPriority } from "./pricing/surcharge.js";
+import { rushWindow } from "./pricing/rush.js";
 import { localMinutesOfDay } from "./availability/slots.js";
 import { estimateOneWayMinutes } from "./travel/zipRanges.js";
 import { quote, type AddonRef, type CartInput, type PackageRef } from "./pricing/quote.js";
@@ -58,6 +54,17 @@ export interface PriceOptions {
    * get the discount without the payment.
    */
   payInFull?: boolean;
+  /**
+   * No early or late fee: the detailer taking this start works those hours
+   * anyway. Decided by the server from its own DETAILERS setting, never from
+   * a request body.
+   */
+  timeOfDayWaived?: boolean;
+  /**
+   * The fee the detailer's calendar sets for this start (the OPEN block's
+   * "+N%"), read by the server itself (_detailers.mjs). Null: clock rule.
+   */
+  blockFeeBp?: number | null;
 }
 
 export interface PricedCart {
@@ -138,6 +145,7 @@ export function priceFromWire(wire: WireCart, opts: PriceOptions = {}): PricedCa
     return {
       label: wv.label ?? "Vehicle",
       sizeUpchargeCents: size?.upchargeCents ?? 0,
+      sizeExtraMin: size?.extraMin ?? 0,
       sizeLabel: size?.label ?? "",
       packages,
       addons,
@@ -146,7 +154,13 @@ export function priceFromWire(wire: WireCart, opts: PriceOptions = {}): PricedCa
   });
 
   const nowMs = opts.nowMs ?? Date.now();
-  const priority = wire.slot ? slotNeedsPriority(wire.slot, nowMs, DEFAULT_RULES.window) : false;
+  // How many days carry the rush fee depends on the booking and where the
+  // visit came from (config/rush-fee.json), judged exactly as the browser does.
+  const rushWin = rushWindow(
+    { source: wire.source ?? null, packageIds: wire.vehicles.flatMap((v) => v.packageIds ?? []) },
+    nowMs,
+  );
+  const priority = wire.slot ? slotNeedsPriority(wire.slot, nowMs, rushWin) : false;
   const payInFull = opts.payInFull ?? false;
 
   const cart: CartInput = {
@@ -160,7 +174,9 @@ export function priceFromWire(wire: WireCart, opts: PriceOptions = {}): PricedCa
     // and this trusted it, which was a 20% discount for anyone who edited one
     // word of the request. Without a slot there is no window to be inside.
     surchargeContext: wire.slot
-      ? { startMinutesLocal: localMinutesOfDay(wire.slot), priorityBooking: priority }
+      ? { startMinutesLocal: localMinutesOfDay(wire.slot), priorityBooking: priority,
+          ...(opts.timeOfDayWaived ? { timeOfDayWaived: true } : {}),
+          ...(typeof opts.blockFeeBp === "number" ? { blockFeeBp: opts.blockFeeBp } : {}) }
       : null,
     zip: wire.zip ?? null,
     ...(payInFull ? { payInFull: true } : {}),
@@ -193,20 +209,40 @@ export function priceFromWire(wire: WireCart, opts: PriceOptions = {}): PricedCa
 import { addonIcon } from "./catalog/icons.js";
 
 export { MAX_ONE_WAY_MINUTES } from "./travel/zipRanges.js";
-export { validateWire, driveTooFar, normalisePhone, WIRE_LIMITS, ADVICE_HOLD_MIN } from "./pricing/wire.js";
+export { validateWire, driveTooFar, ADVICE_HOLD_MIN } from "./pricing/wire.js";
 export { MAX_BOOKING_CENTS } from "./pricing/rules.js";
-export { slotNeedsPriority } from "./pricing/surcharge.js";
 export { LEGAL, longDate } from "./site/legal.js";
 export { legalFingerprint } from "./site/legalFingerprint.js";
-export { PROMOS, findPromo, normalisePromo, promoDiscountCents, promoMessage } from "./pricing/promos.js";
 export { parseIcsBusy, mergeBusy } from "./booking/ics.js";
-export { averageOneWayMinutes, mileageFeeCents } from "./pricing/mileage.js";
-export {
-  computeCancellation,
-  computeReschedule,
-  cancellationLadder,
-} from "./pricing/cancellation.js";
-export { CAPABILITIES, GATED_COPY, PROCESSORS, copyFor, dormantProcessors, isLive, liveProcessors, pending } from "./site/capabilities.js";
+export { parseDetailers, waivesFeeAt, canDo } from "./availability/crew.js";
+export { loadWindow, blockFeeAt } from "./google/publicCalendar.js";
+export { localMinutesOfDay } from "./availability/slots.js";
+
+/**
+ * The kinds of work a cart needs, the way the booking form works it out
+ * (js/funnel.js jobNeeds), so the server can check that the detailer named
+ * in a request does every part of it before giving them the job or their
+ * fee-free hours (engine check, November 10: a cart naming Kris for an
+ * exterior job got his 6pm waiver).
+ */
+export function wireNeeds(wire: WireCart): string[] {
+  if ((wire as { kind?: string }).kind === "advice") return ["interior", "exterior", "correction", "coating"];
+  const vs = wire.vehicles ?? [];
+  const pkgIn = (cat: string) => vs.some((v) => (v.packageIds ?? []).some((id) => findPackage(id)?.category === cat));
+  const addIn = (scope: string) => vs.some((v) => (v.addons ?? []).some((a) => (findAddon(a.addonId) as { scope?: string } | undefined)?.scope === scope));
+  const addId = (ids: string[]) => vs.some((v) => (v.addons ?? []).some((a) => ids.includes(a.addonId)));
+  const needs: string[] = [];
+  if (pkgIn("interior") || addIn("interior")) needs.push("interior");
+  if (pkgIn("exterior") || addIn("exterior")) needs.push("exterior");
+  if (vs.some((v) => Boolean(v.correction)) || addId(["paint-correction", "paint-polish"])) needs.push("correction");
+  if (addId(["ceramic-coating"])) needs.push("coating");
+  return needs;
+}
+export { mileageFeeCents } from "./pricing/mileage.js";
+export { cancellationLadder } from "./pricing/cancellation.js";
+export { CAPABILITIES, DRAFT_KEEP_DAYS, copyFor, isLive, liveProcessors } from "./site/capabilities.js";
+export { LONG_JOB_STARTS, multiDayEvents } from "./availability/multiDay.js";
+export { HOURS, REPO_PHONE, businessPhone, hoursText, parsePhone, phoneTrace, swapPhone } from "./site/business.js";
 export { estimateOneWayMinutes } from "./travel/zipRanges.js";
 
 export {
@@ -214,21 +250,15 @@ export {
   addonIcon,
   COATING_COVERAGE,
   COATING_EXPLAINER,
-  COATING_TERMS,
   CORRECTION_RULES,
   CORRECTION_TIERS,
   DEFAULT_RULES,
-  MAINTENANCE_PLAN,
   SEED_CATALOG,
-  VEHICLE_SIZES,
   addonsFor,
   componentsOf,
   findAddon,
   findPackage,
-  isSelectable,
-  isUnpriced,
   packagesFor,
-  quote,
   unavailableReason,
   vehicleSize,
 };

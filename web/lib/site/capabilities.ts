@@ -15,6 +15,10 @@
  * depends on the feature. They sit here rather than in the HTML so that the
  * claim and the switch controlling it cannot end up in different files.
  */
+import { DEFAULT_RULES } from "../pricing/rules.js";
+
+/** How long a booking the visitor chose to keep stays in their browser. The form and the privacy policy both read this. */
+export const DRAFT_KEEP_DAYS = 14;
 
 export interface Capability {
   id: string;
@@ -71,7 +75,7 @@ export const CAPABILITIES: Capability[] = [
      * caused this cannot silently return. Test the mobile mount first.
      */
     id: "payInFull",
-    what: "Paying the whole detail online at booking, for 5% off",
+    what: `Paying the whole detail online at booking, for ${DEFAULT_RULES.payInFullDiscountBp / 100}% off`,
     live: false,
     blockedBy: "The Stripe pay-now path does not complete reliably on mobile",
   },
@@ -109,7 +113,7 @@ export const CAPABILITIES: Capability[] = [
     // arrive. Tying email to that would hold back a working feature for
     // weeks for no reason.
     id: "automatedEmail",
-    what: "Automatic confirmation and reminder emails",
+    what: "Automatic confirmation emails",
     /*
      * Live, and verified: POST /api/send-confirmation returned
      * {sent:true, owner:true} from production, and the domain is verified so
@@ -166,10 +170,48 @@ export const CAPABILITIES: Capability[] = [
     live: true,
   },
   {
+    /*
+     * GA4 AND MICROSOFT CLARITY, behind a consent banner (js/analytics.js).
+     *
+     * Live because the code ships now. Neither loads until a visitor presses
+     * Accept, and with no ids in js/config.js the banner never even shows, so
+     * the policy's "we ask first" is true either way. Ads storage and Google
+     * Signals are off, which is what lets the banner say "never used for
+     * advertising". Linking Google Ads changes that sentence first.
+     */
+    id: "siteAnalytics",
+    what: "Google Analytics and Microsoft Clarity, loaded only after the visitor accepts",
+    live: true,
+    blockedBy: "GA4_MEASUREMENT_ID and CLARITY_PROJECT_ID in Netlify",
+  },
+  {
     id: "botCheck",
     what: "Cloudflare Turnstile in front of the payment step",
     live: false,
     blockedBy: "TURNSTILE_SECRET_KEY in Netlify and turnstileSiteKey in js/config.js",
+  },
+  {
+    id: "weatherCheck",
+    what: "Checking the forecast at the detail's location before offering weather-affected times and offers",
+    // Live: the booking form asks the National Weather Service for the
+    // forecast at the approximate location of the detail (address pick or
+    // ZIP centre, rounded to two decimals, about a kilometre). The privacy
+    // policy names it while this is on, and the form fetches nothing while
+    // it is off, so the two cannot drift.
+    live: true,
+    blockedBy: "nothing: api.weather.gov is free and needs no key",
+  },
+  {
+    id: "checkoutFollowUp",
+    what: "Following up once on a booking left unfinished at checkout",
+    // Live (owner, November 10, round 15: "capture now, send via GHL later"):
+    // someone who types their name and a phone number or email at the top of
+    // the checkout and leaves without booking is sent to the owner by email
+    // (netlify/functions/cart-capture.mjs), so they can be followed up once.
+    // The privacy policy says so while this is on, and the form sends
+    // nothing while it is off.
+    live: true,
+    blockedBy: "nothing: it uses the booking email service",
   },
 ];
 
@@ -199,17 +241,23 @@ export const PROCESSORS: Processor[] = [
   { name: "cdnjs (Cloudflare)", does: "serves the map library, so Cloudflare receives your IP address when the map loads." },
   { name: "Google Places", does: "suggests addresses as you type in the booking form. What you type in that box goes to Google.", capability: "placesAutocomplete" },
   { name: "Google Maps (Routes)", does: "measures the drive to your address so we can price travel. This happens from our server, with your address, not from your browser.", capability: "measuredTravel" },
-  { name: "Google Calendar", does: "holds our availability. Your browser reads our open times from it.", capability: "liveCalendar" },
+  // Bookings are written to it too (send-confirmation.mjs, _gcal.mjs), on a
+  // calendar shared as free/busy only, so the public sees busy times and
+  // never a booking's details (session audit, November 11).
+  { name: "Google Calendar", does: "holds our availability and our schedule. When you book, the job goes onto our booking calendar with your name, phone, email, address and notes, so we know where to be. That calendar is private: anyone else sees only that the time is taken. Your browser reads only our open times.", capability: "liveCalendar" },
   { name: "Stripe", does: "takes card payments and keeps your card on file. Card details go straight to Stripe over an encrypted connection; we never see or store the card number.", capability: "cardOnFile" },
   { name: "PayPal", does: "takes PayPal and Venmo payments.", capability: "digitalWallets" },
   { name: "Twilio", does: "sends our appointment text messages.", capability: "automatedTexts" },
-  { name: "Resend", does: "sends our confirmation and reminder emails.", capability: "automatedEmail" },
+  { name: "Resend", does: "sends our booking confirmation emails, and the emails we receive about bookings and unfinished checkouts.", capability: "automatedEmail" },
   // Named separately from the hosting row on purpose. "Netlify hosts the
   // website" does not tell a reader that a script is running in their
   // browser and reporting back, and that is the part worth knowing.
   { name: "Netlify Real User Monitoring", does: "measures how quickly pages load for real visitors. A small script times the page and sends those timings to Netlify. It uses no cookie and carries nothing that identifies you.", capability: "performanceMonitoring" },
+  { name: "Google Analytics", does: "counts visits, the pages viewed, and how people found us, only if you accept analytics. It sets cookies to tell one visit from the next. We have turned off Google's advertising features for it.", capability: "siteAnalytics" },
+  { name: "Microsoft Clarity", does: "records how pages are used, such as clicks, scrolling and where people leave, only if you accept analytics. It sets cookies to do so. What you type into forms is hidden from it, and we have told it not to use anything for advertising.", capability: "siteAnalytics" },
   { name: "Neon", does: "stores bookings in our database so your booking link works.", capability: "bookingLink" },
   { name: "Cloudflare Turnstile", does: "checks that a booking is being made by a person, before payment. It may set a cookie to do so.", capability: "botCheck" },
+  { name: "National Weather Service", does: "provides the forecast we check before offering times and offers for weather-affected work. Your browser sends it the approximate location of the detail, rounded to within about a kilometre, never your name, contact details or street address. Like any website, it receives your IP address.", capability: "weatherCheck" },
 ];
 
 export function liveProcessors(): Processor[] {

@@ -51,6 +51,8 @@ export interface CartVehicle {
   label: string;
   /** Flat upcharge for this vehicle's size, applied ONCE, not per package. */
   sizeUpchargeCents?: number;
+  /** Extra minutes for a bigger vehicle, once per vehicle. */
+  sizeExtraMin?: number;
   sizeLabel?: string;
   packages: PackageRef[];
   addons: AddonRef[];
@@ -170,11 +172,20 @@ export interface Quote {
  * reading "Premium time" against a mid-morning slot is a line that invites
  * an argument, and deserves one.
  */
-export function surchargeLabel(bd: { timeOfDayBp: number; priorityBp: number; appliedBp: number }): string {
-  const pct = "+" + bd.appliedBp / 100 + "%";
-  if (bd.priorityBp > 0 && bd.timeOfDayBp > 0) return "Rush booking and premium time, " + pct;
-  if (bd.priorityBp > 0) return "Rush booking, " + pct;
-  return "Premium time, " + pct;
+/*
+ * One set of names everywhere (owner's approval, November 10): "Rush fee",
+ * "Early start fee", "Late start fee", or both, e.g. "Rush and late start
+ * fee". Five different names for one fee read as five different fees.
+ */
+export function surchargeLabel(
+  bd: { timeOfDayBp: number; priorityBp: number; appliedBp: number },
+  startMinutesLocal?: number,
+): string {
+  const pct = " (" + bd.appliedBp / 100 + "%)";
+  const hour = startMinutesLocal !== undefined && startMinutesLocal < 12 * 60 ? "early start" : "late start";
+  if (bd.priorityBp > 0 && bd.timeOfDayBp > 0) return "Rush and " + hour + " fee" + pct;
+  if (bd.priorityBp > 0) return "Rush fee" + pct;
+  return hour.charAt(0).toUpperCase() + hour.slice(1) + " fee" + pct;
 }
 
 export function quote(
@@ -235,7 +246,7 @@ export function quote(
         label: "Size, " + (vehicle.sizeLabel ?? "vehicle").toLowerCase() + " vehicle",
         vehicleIndex: vi,
         amountCents: vehicle.sizeUpchargeCents,
-        durationMin: 0,
+        durationMin: vehicle.sizeExtraMin ?? 0,
       });
     }
 
@@ -326,7 +337,7 @@ export function quote(
   const surchargeCents = applySurchargeCents(serviceSubtotalCents, bd.appliedBp);
   if (surchargeCents > 0) {
     lines.push({
-      kind: "surcharge", label: surchargeLabel(bd),
+      kind: "surcharge", label: surchargeLabel(bd, cart.surchargeContext?.startMinutesLocal),
       vehicleIndex: null, amountCents: surchargeCents, durationMin: 0,
     });
   }

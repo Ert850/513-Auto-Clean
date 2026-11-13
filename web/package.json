@@ -15,7 +15,8 @@
     "build:stamp": "node scripts/stamp-assets.mjs",
     "build:dist": "node scripts/build-dist.mjs",
     "lock:legal": "node scripts/lock-legal.mjs",
-    "build:legal": "node scripts/render-legal.mjs"
+    "build:legal": "node scripts/render-legal.mjs",
+    "build:chrome": "node scripts/render-chrome.mjs"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",

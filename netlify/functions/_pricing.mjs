@@ -1,3 +1,255 @@
+// lib/catalog/seed.ts
+var VEHICLE_SIZES = [
+  { id: "small", label: "Small", examples: "Sedan, coupe, hatchback", upchargeCents: 0, extraMin: 0 },
+  { id: "medium", label: "Medium", examples: "SUV, truck, crossover", upchargeCents: 1e3, extraMin: 15 },
+  { id: "large", label: "Large", examples: "3 row SUV, 7+ passenger van", upchargeCents: 2500, extraMin: 30 }
+];
+var c = (id, name, category, durationMin, removable = true) => ({
+  id,
+  name,
+  category,
+  durationMin,
+  valueCents: null,
+  materialsCostCents: null,
+  removable
+});
+var COMPONENTS = [
+  /* ---- interior: basic ---- */
+  c("int-blowout", "Blowout and vacuum of seats, carpet and trunk", "interior", 45, false),
+  c("int-mats-clean", "Clean floor mats", "interior", 15),
+  c("int-surfaces", "Clean surfaces", "interior", 20),
+  c("int-grime", "Remove major interior grime", "interior", 30),
+  /* ---- interior: full ---- */
+  c("int-vac-deep", "Thorough vacuum of seats, carpet and trunk", "interior", 45, false),
+  c("int-engrained", "Remove engrained particles", "interior", 40),
+  c("int-shampoo", "Shampoo scrub upholstery", "interior", 60),
+  c("int-mats-dress", "Wash and dress floor mats", "interior", 20),
+  c("int-leather", "Condition leather", "interior", 30),
+  c("int-glass", "Clean glass", "interior", 15),
+  c("int-jams", "Clean door jams", "interior", 15),
+  c("int-crevice", "Brush detail every crack and crevice", "interior", 45),
+  /* ---- interior: showroom ---- */
+  c("int-steam-full", "Full upholstery and applicable trim steam treatment", "interior", 60),
+  c("int-fiber-removal", "Individual removal of engrained fibers in upholstery", "interior", 90),
+  c("int-mat-protect", "Floor mat water resistant protection", "interior", 20),
+  c("int-trim-ceramic", "Full trim ceramic sealant coating and protection", "interior", 45),
+  c("int-metal-ceramic", "Ceramic sealant protection of all interior metal and paint", "interior", 45),
+  /* ---- exterior ---- */
+  c("ext-rinse-hubcaps", "Rinse exterior and scrub hubcaps", "exterior", 15, false),
+  c("ext-prewash", "Pre-wash", "exterior", 15, false),
+  c("ext-bug", "Bug removal", "exterior", 20),
+  c("ext-handwash-gentle", "Gentle hand wash", "exterior", 25, false),
+  c("ext-handwash", "Hand wash", "exterior", 30, false),
+  c("ext-windows", "Clean windows and mirrors", "exterior", 10),
+  c("ext-towel-dry", "Towel dry all surfaces", "exterior", 15),
+  c("ext-blow-towel", "Blow dry and towel dry", "exterior", 20),
+  c("ext-wheels", "Wheels: hubcaps, tires and wheel wells scrubbed", "exterior", 30),
+  c("ext-tire-dress", "Tire dressing", "exterior", 10),
+  c("ext-paint-decon", "Paint decontamination", "exterior", 45),
+  c("ext-clay-towel", "Clay towel", "exterior", 30),
+  c("ext-water-spot", "Hard water spot treatment", "exterior", 30),
+  c("ext-engine-bay", "Engine bay clean and protect", "exterior", 30),
+  c("ext-ceramic", "Ceramic wax sealant applied", "exterior", 45)
+];
+var BASIC_INT_IDS = ["int-blowout", "int-mats-clean", "int-surfaces", "int-grime"];
+var FULL_INT_IDS = [
+  "int-vac-deep",
+  "int-engrained",
+  "int-shampoo",
+  "int-mats-dress",
+  "int-leather",
+  "int-glass",
+  "int-jams",
+  "int-crevice"
+];
+var BASIC_EXT_IDS = [
+  "ext-prewash",
+  "ext-bug",
+  "ext-handwash",
+  "ext-blow-towel",
+  "ext-wheels",
+  "ext-tire-dress"
+];
+var PACKAGES = [
+  /* ---------------- interior ---------------- */
+  {
+    id: "maintenance-interior",
+    slug: "maintenance-interior",
+    name: "Maintenance",
+    category: "interior",
+    tagline: "Keeps a already-detailed car right, at a lower price.",
+    note: "The same work as a Basic Interior, priced lower because a car detailed a month or two ago has far less built up in it. It resets the everyday mess: crumbs, dust, fingerprints, mats. It does NOT include shampooing, stain work or anything deep, because there should not be anything deep left. If it has been longer than three months, or something has been spilled since, start from Basic or Full instead.",
+    notIncluded: ["Shampoo or stain work", "Anything deep: there should be nothing deep left"],
+    tip: "Been longer than three months, or a spill since? Start from Basic or Full instead.",
+    priceCents: 9500,
+    durationMin: 105,
+    componentIds: [...BASIC_INT_IDS],
+    featured: false,
+    sortOrder: 0,
+    /** Returning customers only, 1 to 3 months after a previous detail. */
+    requiresPriorDetail: { minMonths: 1, maxMonths: 3 }
+  },
+  {
+    id: "basic-interior",
+    slug: "basic-interior",
+    name: "Basic Interior",
+    category: "interior",
+    tagline: "A solid clean that gets the everyday grime out.",
+    note: "A blowout and thorough vacuum through the seats, carpet and trunk, mats cleaned, surfaces wiped down, and the visible grime taken off. The car looks and feels clean when you get back in it. It does NOT shampoo or extract the upholstery, treat set-in stains, condition leather, or brush out every seam and crevice. A vacuum and air compressor blow out alone does not lift what has worked its way down into the upholstery, so engrained fibers, pet hair and grit in the carpet will not all come out, and stains already in the fabric will still be there. Most will come out with a Full Interior, or with Basic plus pet hair removal, a stain treatment, or both.",
+    notIncluded: ["Shampooing or extracting the upholstery", "Treating set-in stains", "Leather conditioning", "Every seam and crevice brushed out"],
+    tip: "Pet hair or stains? Add pet hair removal or a stain treatment, or pick Full Interior.",
+    priceCents: 13500,
+    durationMin: 120,
+    componentIds: [...BASIC_INT_IDS],
+    featured: false,
+    sortOrder: 1
+  },
+  {
+    id: "full-interior",
+    slug: "full-interior",
+    name: "Full Interior",
+    category: "interior",
+    tagline: "A deep, top to bottom detail that makes it feel new again.",
+    note: "Everything in Basic, then the deep work: engrained particles pulled out of the carpet, upholstery shampooed and scrubbed, mats washed and dressed, leather conditioned, glass and door jams cleaned, and every crack and crevice brush detailed. Stain reduction is part of it. It does NOT guarantee a stain comes out completely, steam sanitize the whole vehicle, or remove the seats to get underneath them. Most engrained fibers and pet hair come out at this level, but the truly stubborn ones woven deep into the carpet backing need the individual fiber lifting in Showroom Ready. Deep set stains want the Stain Treatment extra and lingering smells want the Ozone Odor Reset.",
+    notIncluded: ["A promise every stain comes out completely", "Steam sanitizing the whole vehicle", "Taking the seats out to clean underneath"],
+    tip: "Deep stains or smells? Add a Stain Treatment or the Ozone Odor Reset. The most stubborn pet hair needs Showroom Ready.",
+    priceCents: 22500,
+    durationMin: 240,
+    componentIds: [...FULL_INT_IDS],
+    featured: true,
+    sortOrder: 2
+  },
+  {
+    id: "showroom-interior",
+    slug: "showroom-interior",
+    name: "Showroom Ready",
+    category: "interior",
+    tagline: "Everything in Full, taken to its limit.",
+    note: "Everything in Full, then taken as far as an interior goes: the whole cabin steamed and sanitized, engrained fibers lifted out individually rather than vacuumed at, floor mats given a water resistant treatment, and a ceramic coating on the trim and on the interior metal and paint so it stays this way. It does NOT repair damage. Tears, burns, cracked trim and worn out material are still tears, burns, cracked trim and worn out material. This makes everything that is there as good as it can get.",
+    notIncluded: ["Repairing tears, burns, cracked trim or worn out material"],
+    tip: "It makes everything that is there as good as it can get.",
+    priceCents: 39500,
+    durationMin: 420,
+    // 6 to 8 hours, quoted at 7
+    durationMaxMin: 480,
+    componentIds: [
+      ...FULL_INT_IDS,
+      "int-steam-full",
+      "int-fiber-removal",
+      "int-mat-protect",
+      "int-trim-ceramic",
+      "int-metal-ceramic"
+    ],
+    featured: false,
+    sortOrder: 3,
+    supersetOf: "full-interior",
+    pricePlus: true
+  },
+  /* ---------------- exterior ---------------- */
+  {
+    id: "express-exterior",
+    slug: "express-exterior",
+    name: "Express Exterior",
+    category: "exterior",
+    tagline: "A clean hand wash and dry to bring back the shine.",
+    note: "A rinse, hubcaps scrubbed, a gentle hand wash and a towel dry, with the windows and mirrors cleaned. It takes the surface dirt off and it is quick. It does NOT decontaminate or clay the paint, dress the tires, touch the engine bay, or leave any protection behind. The paint will still feel rough to the touch afterwards, because a wash cannot remove what is bonded to it.",
+    notIncluded: ["Decontaminating or claying the paint", "Tire dressing", "The engine bay", "Any lasting protection"],
+    tip: "Paint still rough to the touch? A wash cannot remove what is bonded to it. Basic or Full can.",
+    priceCents: 7500,
+    durationMin: 75,
+    componentIds: ["ext-rinse-hubcaps", "ext-handwash-gentle", "ext-windows", "ext-towel-dry"],
+    featured: false,
+    sortOrder: 1
+  },
+  {
+    id: "basic-exterior",
+    slug: "basic-exterior",
+    name: "Basic Exterior",
+    category: "exterior",
+    tagline: "A thorough hand wash with wheels and tires done properly.",
+    note: "A pre-wash to lift the loose grit before anything touches the paint, bug removal, a proper hand wash, blow dry and towel dry, and the wheels done properly: hubcaps, tires and wheel wells scrubbed, then tires dressed. It does NOT decontaminate or clay the paint, remove water spotting, clean the engine bay, or leave a ceramic wax sealant on it. The paint is clean but still not smooth, and there is no lasting protection. That is the step up to Full.",
+    notIncluded: ["Decontaminating or claying the paint", "Removing water spotting", "The engine bay", "A ceramic wax sealant"],
+    tip: "Want smooth, protected paint? That is the step up to Full Exterior.",
+    priceCents: 12500,
+    durationMin: 120,
+    componentIds: [...BASIC_EXT_IDS],
+    featured: true,
+    sortOrder: 2
+  },
+  {
+    id: "full-exterior",
+    slug: "full-exterior",
+    name: "Full Exterior",
+    category: "exterior",
+    tagline: "Strips what a wash cannot reach, then protects the paint underneath. Decontaminated, clayed, engine bay cleaned and finished with a ceramic wax sealant.",
+    note: "Everything in Basic, then the paint is actually decontaminated: iron and fallout dissolved chemically, a clay towel to shear off what is left, hard water spotting treated, the engine bay cleaned and protected, and a ceramic wax sealant applied so water beads and dirt struggles to stick. It does NOT correct the paint. Swirl marks, scratches and etching stay exactly as they are, and the sealant goes on over the top of them. Removing those means machine polishing, which is Showroom Ready.",
+    notIncluded: ["Correcting swirl marks, scratches or etching"],
+    tip: "Want those gone? That takes machine polishing, which is Showroom Ready.",
+    priceCents: 24500,
+    durationMin: 240,
+    componentIds: [
+      ...BASIC_EXT_IDS,
+      "ext-paint-decon",
+      "ext-clay-towel",
+      "ext-water-spot",
+      "ext-engine-bay",
+      "ext-ceramic"
+    ],
+    featured: false,
+    sortOrder: 3,
+    supersetOf: "basic-exterior"
+  },
+  {
+    id: "showroom-exterior",
+    slug: "showroom-exterior",
+    // Spelled out because "Showroom Ready" alone reads as a deeper wash next
+    // to the interior package of the same name, and this is neither the same
+    // work nor the same order of price.
+    name: "Showroom Ready (Paint Correction and Protection)",
+    category: "exterior",
+    // Everything in Full Exterior, then a required correction or coating
+    // tier on top. The base here is the Full Exterior work; the tier adds its
+    // own price and hours. See CORRECTION_TIERS in ./addons.ts.
+    tagline: "Everything in Full Exterior, then the swirls come out and a real ceramic coating goes on. Pick how far to take it below.",
+    note: "Everything in Full Exterior, then the paint is machine corrected and a durable ceramic coating goes on the paint, wheels, plastic trim and glass. How much correction depends on the tier you pick below. It does NOT repair physical damage. Dents, rock chips and any scratch deep enough to have gone through the clear coat cannot be polished out, because correction removes a little clear coat, it does not add any. We will tell you what will and will not come out before we start.",
+    notIncluded: ["Repairing dents, rock chips or scratches through the clear coat"],
+    tip: "We will tell you what will and will not come out before we start.",
+    priceCents: 24500,
+    durationMin: 240,
+    requiresCorrectionTier: true,
+    // Not taking these yet. Listed with a price and an explanation so people
+    // can see it is coming and say they want it.
+    comingSoon: true,
+    comingSoonNote: "We are building up to correction work. Register your interest and we will come to you first when it opens.",
+    schedulingDurationMin: 480,
+    componentIds: [
+      ...BASIC_EXT_IDS,
+      "ext-paint-decon",
+      "ext-clay-towel",
+      "ext-water-spot",
+      "ext-engine-bay",
+      "ext-ceramic"
+    ],
+    featured: false,
+    sortOrder: 4,
+    supersetOf: "full-exterior",
+    pricePlus: true
+  }
+];
+var SEED_CATALOG = {
+  components: Object.fromEntries(COMPONENTS.map((x) => [x.id, x])),
+  packages: PACKAGES
+};
+function packagesFor(category) {
+  return SEED_CATALOG.packages.filter((p) => p.category === category).sort((a, b) => a.sortOrder - b.sortOrder);
+}
+function findPackage(id) {
+  return SEED_CATALOG.packages.find((p) => p.id === id);
+}
+function vehicleSize(id) {
+  return VEHICLE_SIZES.find((v) => v.id === id);
+}
+
 // lib/catalog/addons.ts
 var CORRECTION_ADD_CENTS = {
   coatingOnly: 55e3,
@@ -33,21 +285,24 @@ var ADDONS = [
     scope: "interior",
     icon: "droplet",
     description: "Two levels. Pick the one that matches what you are dealing with.",
-    note: "A stain is either sitting on the fibers or has soaked into them. Treatment breaks the bond so it can be agitated loose and wiped away, which handles anything on the surface. Removal goes further: heat and moisture pull what has soaked in back up out of the padding, and an extractor takes it away rather than pushing it deeper. That is why the deeper option costs more time, not just more product.",
+    note: "A stain is either sitting on the fibers or has soaked into them. Treatment breaks the bond so it can be agitated loose and wiped away, which deals with what is on the surface. The deep treatment goes further: heat and moisture draw what has soaked in back up out of the padding, and an extractor takes it away rather than pushing it deeper. That is why the deeper option costs more time, not just more product. How much of a stain lifts depends on what it is, how long it has set and the fabric, so we never promise it all comes out.",
     tiers: [
       {
         id: "minor",
-        label: "Minor to moderate treatment",
+        label: "Surface stain treatment",
         priceCents: 5e3,
         durationMin: 60,
-        description: "Treatment, scrubbing and wipe reduction. Removes 70 to 90% of the stain."
+        // No removal promises (Elijah, team brief 7.1, November 11): it said
+        // "Removes 70 to 90% of the stain".
+        description: "Treatment, scrubbing and wiping, to lift as much of the stain as the fabric allows."
       },
       {
         id: "major",
-        label: "Moderate to major removal",
+        label: "Deep stain treatment",
         priceCents: 1e4,
         durationMin: 120,
-        description: "Treatment, scrubbing, upholstery extraction, 250 degree steaming and wipe removal. Removes 90 to 100% of the stain."
+        // It said "Removes 90 to 100% of the stain" (team brief 7.1).
+        description: "Treatment, scrubbing, upholstery extraction and 250 degree steam, to lift as much of a set-in stain as the fabric allows."
       }
     ]
   },
@@ -320,15 +575,27 @@ var COATING_EXPLAINER = {
    * the price is hours, and correction cannot be rushed: it is levelling
    * paint by hand, in passes, checking under lights between each one.
    */
-  timing: [
-    "Coating only, about 9 hours. Wash, decontaminate, clay, panel wipe, then apply and level the coating by hand and let it cure.",
-    "1 step correction, about 16 hours, usually across two days.",
-    "2 step correction, about 22 hours, two to three days.",
-    "3 to 4 step correction, about 34 hours, three to four days."
-  ],
+  // The hours are the Full Exterior base plus each tier's addMin, read when
+  // used (a getter: CORRECTION_TIERS is defined below). They were typed in as
+  // 9, 16, 22 and 34, which matched only until either number moved.
+  get timing() {
+    const h = correctionHours;
+    return [
+      `Coating only, about ${h("coating-only")} hours. Wash, decontaminate, clay, panel wipe, then apply and level the coating by hand and let it cure.`,
+      `1 step correction, about ${h("one-step")} hours, usually across two days.`,
+      `2 step correction, about ${h("two-step")} hours, two to three days.`,
+      `3 to 4 step correction, about ${h("three-step")} hours, three to four days.`
+    ];
+  },
   timingNote: "Nearly all of that is labour. Correction is levelling paint by hand, one pass at a time, checking under inspection lighting between each, and hard paint can add another 20 to 30% on top. The coating itself then has to be applied and levelled panel by panel before it flashes.",
   why: "Worth it if you keep your vehicles a while, park outside, or are tired of the paint looking tired. If you are about to sell, or the car lives in a garage and rarely gets dirty, a sealant is usually the better value."
 };
+function correctionHours(id) {
+  const base = SEED_CATALOG.packages.find((p) => p.id === "full-exterior");
+  const tier = CORRECTION_TIERS.find((t) => t.id === id);
+  if (!base || !tier) throw new Error(`correction hours: no ${base ? id : "full-exterior"}`);
+  return Math.round((base.durationMin + tier.addMin) / 60);
+}
 var CORRECTION_TIERS = [
   {
     id: "coating-only",
@@ -345,7 +612,10 @@ var CORRECTION_TIERS = [
     addCents: CORRECTION_ADD_CENTS.oneStep,
     addMin: 12 * 60,
     result: "Looks perfect from about 5 feet away",
-    detail: "One cutting and finishing pass lifts most light swirling and haze, then the coating goes on. Removes roughly 60 to 70% of visible defects.",
+    detail: (
+      // No removal percentages (team brief 7.1): it said "Removes roughly 60 to 70% of visible defects".
+      "One cutting and finishing pass for light swirling and haze, then the coating goes on. Deeper scratches can stay."
+    ),
     asterisk: true
   },
   {
@@ -354,7 +624,10 @@ var CORRECTION_TIERS = [
     addCents: CORRECTION_ADD_CENTS.twoStep,
     addMin: 18 * 60,
     result: "Looks perfect from about 2 feet away",
-    detail: "A compounding pass to cut deeper defects, then a refining pass to bring the gloss back, then the coating. Removes roughly 80 to 90%.",
+    detail: (
+      // It said "Removes roughly 80 to 90%" (team brief 7.1).
+      "A compounding pass to cut deeper defects, then a refining pass to bring the gloss back, then the coating. How much comes out depends on the paint."
+    ),
     asterisk: true
   },
   {
@@ -362,7 +635,8 @@ var CORRECTION_TIERS = [
     label: "3 to 4 step paint correction, then coating",
     addCents: CORRECTION_ADD_CENTS.threeStep,
     addMin: 30 * 60,
-    result: "Removes 90%+ of all defects, reflective trim included",
+    // It said "Removes 90%+ of all defects" (team brief 7.1).
+    result: "Our most thorough correction, reflective trim included",
     detail: "Heavy cut, refine, then a final jewelling pass under inspection lighting before coating, with a fourth pass where the paint needs it. Reflective trim is corrected and coated alongside the paint. This is show car work and runs across several days.",
     asterisk: false
   }
@@ -415,246 +689,39 @@ function findCoatingTerm(id) {
   return COATING_TERMS.find((t) => t.id === id);
 }
 
-// lib/catalog/seed.ts
-var VEHICLE_SIZES = [
-  { id: "small", label: "Small", examples: "Sedan, coupe, hatchback", upchargeCents: 0 },
-  { id: "medium", label: "Medium", examples: "SUV, truck, crossover", upchargeCents: 1e3 },
-  { id: "large", label: "Large", examples: "3 row SUV, 7+ passenger van", upchargeCents: 2500 }
-];
-var c = (id, name, category, durationMin, removable = true) => ({
-  id,
-  name,
-  category,
-  durationMin,
-  valueCents: null,
-  materialsCostCents: null,
-  removable
-});
-var COMPONENTS = [
-  /* ---- interior: basic ---- */
-  c("int-blowout", "Blowout and vacuum of seats, carpet and trunk", "interior", 45, false),
-  c("int-mats-clean", "Clean floor mats", "interior", 15),
-  c("int-surfaces", "Clean surfaces", "interior", 20),
-  c("int-grime", "Remove major interior grime", "interior", 30),
-  /* ---- interior: full ---- */
-  c("int-vac-deep", "Thorough vacuum of seats, carpet and trunk", "interior", 45, false),
-  c("int-engrained", "Remove engrained particles", "interior", 40),
-  c("int-shampoo", "Shampoo scrub upholstery", "interior", 60),
-  c("int-mats-dress", "Wash and dress floor mats", "interior", 20),
-  c("int-leather", "Condition leather", "interior", 30),
-  c("int-glass", "Clean glass", "interior", 15),
-  c("int-jams", "Clean door jams", "interior", 15),
-  c("int-crevice", "Brush detail every crack and crevice", "interior", 45),
-  /* ---- interior: showroom ---- */
-  c("int-steam-full", "Full upholstery and applicable trim steam treatment", "interior", 60),
-  c("int-fiber-removal", "Individual removal of engrained fibers in upholstery", "interior", 90),
-  c("int-mat-protect", "Floor mat water resistant protection", "interior", 20),
-  c("int-trim-ceramic", "Full trim ceramic sealant coating and protection", "interior", 45),
-  c("int-metal-ceramic", "Ceramic sealant protection of all interior metal and paint", "interior", 45),
-  /* ---- exterior ---- */
-  c("ext-rinse-hubcaps", "Rinse exterior and scrub hubcaps", "exterior", 15, false),
-  c("ext-prewash", "Pre-wash", "exterior", 15, false),
-  c("ext-bug", "Bug removal", "exterior", 20),
-  c("ext-handwash-gentle", "Gentle hand wash", "exterior", 25, false),
-  c("ext-handwash", "Hand wash", "exterior", 30, false),
-  c("ext-windows", "Clean windows and mirrors", "exterior", 10),
-  c("ext-towel-dry", "Towel dry all surfaces", "exterior", 15),
-  c("ext-blow-towel", "Blow dry and towel dry", "exterior", 20),
-  c("ext-wheels", "Wheels: hubcaps, tires and wheel wells scrubbed", "exterior", 30),
-  c("ext-tire-dress", "Tire dressing", "exterior", 10),
-  c("ext-paint-decon", "Paint decontamination", "exterior", 45),
-  c("ext-clay-towel", "Clay towel", "exterior", 30),
-  c("ext-water-spot", "Hard water spot treatment", "exterior", 30),
-  c("ext-engine-bay", "Engine bay clean and protect", "exterior", 30),
-  c("ext-ceramic", "Ceramic wax sealant applied", "exterior", 45)
-];
-var BASIC_INT_IDS = ["int-blowout", "int-mats-clean", "int-surfaces", "int-grime"];
-var FULL_INT_IDS = [
-  "int-vac-deep",
-  "int-engrained",
-  "int-shampoo",
-  "int-mats-dress",
-  "int-leather",
-  "int-glass",
-  "int-jams",
-  "int-crevice"
-];
-var BASIC_EXT_IDS = [
-  "ext-prewash",
-  "ext-bug",
-  "ext-handwash",
-  "ext-blow-towel",
-  "ext-wheels",
-  "ext-tire-dress"
-];
-var PACKAGES = [
-  /* ---------------- interior ---------------- */
-  {
-    id: "maintenance-interior",
-    slug: "maintenance-interior",
-    name: "Maintenance",
-    category: "interior",
-    tagline: "Keeps a already-detailed car right, at a lower price.",
-    note: "The same work as a Basic Interior, priced lower because a car detailed a month or two ago has far less built up in it. It resets the everyday mess: crumbs, dust, fingerprints, mats. It does NOT include shampooing, stain work or anything deep, because there should not be anything deep left. If it has been longer than three months, or something has been spilled since, start from Basic or Full instead.",
-    priceCents: 9500,
-    durationMin: 105,
-    componentIds: [...BASIC_INT_IDS],
-    featured: false,
-    sortOrder: 0,
-    /** Returning customers only, 1 to 3 months after a previous detail. */
-    requiresPriorDetail: { minMonths: 1, maxMonths: 3 }
-  },
-  {
-    id: "basic-interior",
-    slug: "basic-interior",
-    name: "Basic Interior",
-    category: "interior",
-    tagline: "A solid clean that gets the everyday grime out.",
-    note: "A blowout and thorough vacuum through the seats, carpet and trunk, mats cleaned, surfaces wiped down, and the visible grime taken off. The car looks and feels clean when you get back in it. It does NOT shampoo or extract the upholstery, treat set-in stains, condition leather, or brush out every seam and crevice. A vacuum and air compressor blow out alone does not lift what has worked its way down into the upholstery, so engrained fibers, pet hair and grit in the carpet will not all come out, and stains already in the fabric will still be there. Most will come out with a Full Interior, or with Basic plus pet hair removal, a stain treatment, or both.",
-    priceCents: 12500,
-    durationMin: 120,
-    componentIds: [...BASIC_INT_IDS],
-    featured: false,
-    sortOrder: 1
-  },
-  {
-    id: "full-interior",
-    slug: "full-interior",
-    name: "Full Interior",
-    category: "interior",
-    tagline: "A deep, top to bottom detail that makes it feel new again.",
-    note: "Everything in Basic, then the deep work: engrained particles pulled out of the carpet, upholstery shampooed and scrubbed, mats washed and dressed, leather conditioned, glass and door jams cleaned, and every crack and crevice brush detailed. Stain reduction is part of it. It does NOT guarantee a stain comes out completely, steam sanitize the whole vehicle, or remove the seats to get underneath them. Most engrained fibers and pet hair come out at this level, but the truly stubborn ones woven deep into the carpet backing need the individual fiber lifting in Showroom Ready. Deep set stains want the extraction add-on and lingering smells want ozone.",
-    priceCents: 21500,
-    durationMin: 240,
-    componentIds: [...FULL_INT_IDS],
-    featured: true,
-    sortOrder: 2
-  },
-  {
-    id: "showroom-interior",
-    slug: "showroom-interior",
-    name: "Showroom Ready",
-    category: "interior",
-    tagline: "Everything in Full, taken to its limit.",
-    note: "Everything in Full, then taken as far as an interior goes: the whole cabin steamed and sanitized, engrained fibers lifted out individually rather than vacuumed at, floor mats given a water resistant treatment, and a ceramic coating on the trim and on the interior metal and paint so it stays this way. It does NOT repair damage. Tears, burns, cracked trim and worn out material are still tears, burns, cracked trim and worn out material. This makes everything that is there as good as it can get.",
-    priceCents: 39500,
-    durationMin: 420,
-    // 6 to 8 hours, quoted at 7
-    durationMaxMin: 480,
-    componentIds: [
-      ...FULL_INT_IDS,
-      "int-steam-full",
-      "int-fiber-removal",
-      "int-mat-protect",
-      "int-trim-ceramic",
-      "int-metal-ceramic"
-    ],
-    featured: false,
-    sortOrder: 3,
-    supersetOf: "full-interior",
-    pricePlus: true
-  },
-  /* ---------------- exterior ---------------- */
-  {
-    id: "express-exterior",
-    slug: "express-exterior",
-    name: "Express Exterior",
-    category: "exterior",
-    tagline: "A clean hand wash and dry to bring back the shine.",
-    note: "A rinse, hubcaps scrubbed, a gentle hand wash and a towel dry, with the windows and mirrors cleaned. It takes the surface dirt off and it is quick. It does NOT decontaminate or clay the paint, dress the tires, touch the engine bay, or leave any protection behind. The paint will still feel rough to the touch afterwards, because a wash cannot remove what is bonded to it.",
-    priceCents: 7500,
-    durationMin: 75,
-    componentIds: ["ext-rinse-hubcaps", "ext-handwash-gentle", "ext-windows", "ext-towel-dry"],
-    featured: false,
-    sortOrder: 1
-  },
-  {
-    id: "basic-exterior",
-    slug: "basic-exterior",
-    name: "Basic Exterior",
-    category: "exterior",
-    tagline: "A thorough hand wash with wheels and tires done properly.",
-    note: "A pre-wash to lift the loose grit before anything touches the paint, bug removal, a proper hand wash, blow dry and towel dry, and the wheels done properly: hubcaps, tires and wheel wells scrubbed, then tires dressed. It does NOT decontaminate or clay the paint, remove water spotting, clean the engine bay, or leave a ceramic wax sealant on it. The paint is clean but still not smooth, and there is no lasting protection. That is the step up to Full.",
-    priceCents: 12500,
-    durationMin: 120,
-    componentIds: [...BASIC_EXT_IDS],
-    featured: true,
-    sortOrder: 2
-  },
-  {
-    id: "full-exterior",
-    slug: "full-exterior",
-    name: "Full Exterior",
-    category: "exterior",
-    tagline: "Strips what a wash cannot reach, then protects the paint underneath. Decontaminated, clayed, engine bay cleaned and finished with a ceramic wax sealant.",
-    note: "Everything in Basic, then the paint is actually decontaminated: iron and fallout dissolved chemically, a clay towel to shear off what is left, hard water spotting treated, the engine bay cleaned and protected, and a ceramic wax sealant applied so water beads and dirt struggles to stick. It does NOT correct the paint. Swirl marks, scratches and etching stay exactly as they are, and the sealant goes on over the top of them. Removing those means machine polishing, which is Showroom Ready.",
-    priceCents: 24500,
-    durationMin: 240,
-    componentIds: [
-      ...BASIC_EXT_IDS,
-      "ext-paint-decon",
-      "ext-clay-towel",
-      "ext-water-spot",
-      "ext-engine-bay",
-      "ext-ceramic"
-    ],
-    featured: false,
-    sortOrder: 3,
-    supersetOf: "basic-exterior"
-  },
-  {
-    id: "showroom-exterior",
-    slug: "showroom-exterior",
-    // Spelled out because "Showroom Ready" alone reads as a deeper wash next
-    // to the interior package of the same name, and this is neither the same
-    // work nor the same order of price.
-    name: "Showroom Ready (Paint Correction and Protection)",
-    category: "exterior",
-    // Everything in Full Exterior, then a required correction or coating
-    // tier on top. The base here is the Full Exterior work; the tier adds its
-    // own price and hours. See CORRECTION_TIERS in ./addons.ts.
-    tagline: "Everything in Full Exterior, then the swirls come out and a real ceramic coating goes on. Pick how far to take it below.",
-    note: "Everything in Full Exterior, then the paint is machine corrected and a durable ceramic coating goes on the paint, wheels, plastic trim and glass. How much correction depends on the tier you pick below. It does NOT repair physical damage. Dents, rock chips and any scratch deep enough to have gone through the clear coat cannot be polished out, because correction removes a little clear coat, it does not add any. We will tell you what will and will not come out before we start.",
-    priceCents: 24500,
-    durationMin: 240,
-    requiresCorrectionTier: true,
-    // Not taking these yet. Listed with a price and an explanation so people
-    // can see it is coming and say they want it.
-    comingSoon: true,
-    comingSoonNote: "We are building up to correction work. Register your interest and we will come to you first when it opens.",
-    schedulingDurationMin: 480,
-    componentIds: [
-      ...BASIC_EXT_IDS,
-      "ext-paint-decon",
-      "ext-clay-towel",
-      "ext-water-spot",
-      "ext-engine-bay",
-      "ext-ceramic"
-    ],
-    featured: false,
-    sortOrder: 4,
-    supersetOf: "full-exterior",
-    pricePlus: true
-  }
-];
-var SEED_CATALOG = {
-  components: Object.fromEntries(COMPONENTS.map((x) => [x.id, x])),
-  packages: PACKAGES
-};
-function packagesFor(category) {
-  return SEED_CATALOG.packages.filter((p) => p.category === category).sort((a, b) => a.sortOrder - b.sortOrder);
-}
-function findPackage(id) {
-  return SEED_CATALOG.packages.find((p) => p.id === id);
-}
-function vehicleSize(id) {
-  return VEHICLE_SIZES.find((v) => v.id === id);
-}
-
 // lib/catalog/types.ts
 function componentsOf(pkg, catalog) {
   return pkg.componentIds.map((id) => catalog.components[id]).filter((c2) => c2 !== void 0);
 }
+
+// ../config/rush-fee.json
+var rush_fee_default = {
+  _read_me: [
+    "The rush fee: +20% on bookings for the next few days. This file decides how many days.",
+    "rushDays counts days from today, today included: 3 = today, tomorrow and the day after; 2 = today and tomorrow; 1 = today only; 0 = no rush fee.",
+    "Rules are checked top to bottom and the FIRST one that matches wins. A booking no rule matches gets defaultRushDays.",
+    "A rule's 'when' can name any of these (leave one out to match everything):",
+    '  sources: where the visit came from, the address it arrived through: "golf" (513autoclean.com/golf), "prestige".',
+    '  kinds: "interior", "exterior" or "both": what the whole booking is. "exterior" means exterior work only.',
+    "  packages: package ids; matches when ANY of them is booked (maintenance-interior, basic-interior, full-interior, showroom-interior, express-exterior, basic-exterior, full-exterior, showroom-exterior).",
+    "  from / until: dates (YYYY-MM-DD, Cincinnati time, both included). Leave them out and the rule never ends on its own.",
+    "The browser and the booking functions both read this file. A change goes live on the next deploy, and a mistake in it fails the build instead of reaching customers.",
+    "The exterior-only rule gives the same 2 days as the default today. It stays so that exterior-only bookings keep their own setting if the default changes again.",
+    'Change log: November 11, 2026, the owner: exterior-only bookings pay the rush fee for today and tomorrow only; then the default went from 3 days to 2 for every booking. The owner decided golf booklet readers pay the normal rush fee; to waive it for them later, add first: {"name": "Golf booklet readers: no rush fee", "when": {"sources": ["golf"]}, "rushDays": 0}.'
+  ],
+  defaultRushDays: 2,
+  rules: [
+    {
+      name: "Exterior-only bookings: rush fee for today and tomorrow only",
+      when: {
+        kinds: [
+          "exterior"
+        ]
+      },
+      rushDays: 2
+    }
+  ]
+};
 
 // lib/pricing/rules.ts
 var DEFAULT_RULES = {
@@ -684,8 +751,11 @@ var DEFAULT_RULES = {
     maxTotalBp: 3e3
     // 20% each, +30% when both apply
   },
+  // The rush window now comes from config/rush-fee.json (pricing/rush.ts
+  // rushWindow), per booking. This is that file's default, kept here so
+  // nothing that still reads DEFAULT_RULES.window can disagree with it.
   window: {
-    minLeadDays: 3
+    minLeadDays: rush_fee_default.defaultRushDays
   },
   comboDiscountCents: 2500,
   // $25 for interior and exterior together
@@ -782,6 +852,7 @@ function computeTax(taxableBaseCents, zip, table, currentYear) {
 }
 
 // lib/time/zone.ts
+var DAY_MS = 864e5;
 function zoneOffsetMs(utcMs, timeZone) {
   const dtf = new Intl.DateTimeFormat("en-US", {
     timeZone,
@@ -833,23 +904,128 @@ function localDayStart(ms, timeZone) {
   const { y, mo, d } = localParts(ms, timeZone);
   return zonedToUtc(y, mo, d, 0, 0, 0, timeZone);
 }
+function localTimeOnDay(dayStartMs, daysAhead, minutesOfDay2, timeZone) {
+  const { y, mo, d } = localParts(dayStartMs + daysAhead * DAY_MS + DAY_MS / 2, timeZone);
+  return zonedToUtc(y, mo, d, 0, minutesOfDay2, 0, timeZone);
+}
+function localWeekday(ms, timeZone) {
+  const name = new Intl.DateTimeFormat("en-US", { timeZone, weekday: "short" }).format(new Date(ms));
+  return ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].indexOf(name);
+}
 
 // lib/pricing/surcharge.ts
 function computeSurcharge(ctx, r) {
-  const isEarlyOrLate = ctx.startMinutesLocal < r.earlyBeforeMinutes || ctx.startMinutesLocal >= r.lateFromMinutes;
-  const timeOfDayBp = isEarlyOrLate ? r.timeOfDayBp : 0;
+  const isEarlyOrLate = !ctx.timeOfDayWaived && (ctx.startMinutesLocal < r.earlyBeforeMinutes || ctx.startMinutesLocal >= r.lateFromMinutes);
+  const fromCalendar = typeof ctx.blockFeeBp === "number" && ctx.blockFeeBp >= 0;
+  const timeOfDayBp = fromCalendar ? ctx.blockFeeBp : isEarlyOrLate ? r.timeOfDayBp : 0;
   const priorityBp = ctx.priorityBooking ? r.priorityBp : 0;
   const uncapped = timeOfDayBp + priorityBp;
-  const appliedBp = Math.min(uncapped, r.maxTotalBp);
-  return { timeOfDayBp, priorityBp, appliedBp, capped: uncapped > r.maxTotalBp };
+  const cap = Math.max(r.maxTotalBp, timeOfDayBp, priorityBp);
+  const appliedBp = Math.min(uncapped, cap);
+  return { timeOfDayBp, priorityBp, appliedBp, capped: uncapped > cap };
 }
 function applySurchargeCents(baseCents, appliedBp) {
   return Math.round(baseCents * appliedBp / 1e4);
 }
 function slotNeedsPriority(slotMs, nowMs, r, timeZone = "America/New_York") {
   if (!Number.isFinite(slotMs) || !Number.isFinite(nowMs)) return false;
-  const dayIndex = (ms) => Math.round(localDayStart(ms, timeZone) / 864e5);
-  return dayIndex(slotMs) < dayIndex(nowMs) + r.minLeadDays;
+  const dayIndex2 = (ms) => Math.round(localDayStart(ms, timeZone) / 864e5);
+  return dayIndex2(slotMs) < dayIndex2(nowMs) + r.minLeadDays;
+}
+
+// lib/pricing/rush.ts
+var KINDS = ["interior", "exterior", "both"];
+var SOURCE = /^[a-z0-9_-]{1,40}$/;
+function isRealDate(v) {
+  if (typeof v !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(v)) return false;
+  const [y, m, d] = v.split("-").map(Number);
+  const t = new Date(Date.UTC(y, m - 1, d));
+  return t.getUTCFullYear() === y && t.getUTCMonth() === m - 1 && t.getUTCDate() === d;
+}
+function checkRushSettings(input) {
+  const bad = (where, what) => {
+    throw new Error(`config/rush-fee.json: ${where}: ${what}`);
+  };
+  const days = (v, where) => typeof v === "number" && Number.isInteger(v) && v >= 0 && v <= 30 ? v : bad(where, "rushDays must be a whole number from 0 to 30");
+  const list = (v, where) => {
+    if (v === void 0) return void 0;
+    if (!Array.isArray(v) || !v.length || v.some((s) => typeof s !== "string" || !s.trim())) {
+      bad(where, 'must be a list of words, like ["golf"]');
+    }
+    return v.map((s) => s.trim().toLowerCase());
+  };
+  if (!input || typeof input !== "object" || Array.isArray(input)) bad("the file", "is not a JSON object");
+  const o = input;
+  for (const k of Object.keys(o)) {
+    if (!["_read_me", "defaultRushDays", "rules"].includes(k)) bad("the file", `unknown key "${k}" (use defaultRushDays, rules)`);
+  }
+  const defaultRushDays = days(o["defaultRushDays"], "defaultRushDays");
+  if (!Array.isArray(o["rules"])) bad("rules", "must be a list (it can be empty: [])");
+  const rules = o["rules"].map((r, i) => {
+    if (!r || typeof r !== "object" || Array.isArray(r)) bad(`rule ${i + 1}`, "must be an object");
+    const rr = r;
+    const name = typeof rr["name"] === "string" && rr["name"].trim() ? rr["name"].trim() : `rule ${i + 1}`;
+    for (const k of Object.keys(rr)) {
+      if (!["name", "when", "rushDays", "note"].includes(k)) bad(name, `unknown key "${k}" (use name, when, rushDays, note)`);
+    }
+    const w = rr["when"];
+    if (!w || typeof w !== "object" || Array.isArray(w)) bad(name, "needs a 'when' object with at least one condition");
+    if (!Object.keys(w).length) bad(name, "'when' has no conditions; for every booking, change defaultRushDays instead");
+    const known = ["sources", "kinds", "packages", "from", "until"];
+    for (const k of Object.keys(w)) if (!known.includes(k)) bad(name, `unknown condition "${k}" (use ${known.join(", ")})`);
+    const when = {};
+    const sources = list(w["sources"], `${name}, sources`);
+    if (sources) {
+      for (const src of sources) if (!SOURCE.test(src)) bad(name, `source "${src}": lower case letters, digits, - and _ only, at most 40`);
+      when.sources = sources;
+    }
+    const kinds = list(w["kinds"], `${name}, kinds`);
+    if (kinds) {
+      for (const k of kinds) if (!KINDS.includes(k)) bad(name, `kind "${k}" is not one of ${KINDS.join(", ")}`);
+      when.kinds = kinds;
+    }
+    const packages = list(w["packages"], `${name}, packages`);
+    if (packages) {
+      for (const p of packages) if (!findPackage(p)) bad(name, `no package called "${p}"`);
+      when.packages = packages;
+    }
+    for (const k of ["from", "until"]) {
+      if (w[k] === void 0) continue;
+      if (!isRealDate(w[k])) bad(name, `${k} must be a real date like 2027-06-30`);
+      when[k] = w[k];
+    }
+    if (when.from && when.until && when.from > when.until) bad(name, "from is after until");
+    return { name, when, rushDays: days(rr["rushDays"], `${name}, rushDays`) };
+  });
+  return { defaultRushDays, rules };
+}
+var RUSH_SETTINGS = checkRushSettings(rush_fee_default);
+function sourceKey(source) {
+  return String(source ?? "").split("/")[0].trim().toLowerCase().replace(/[^a-z0-9_-]/g, "").slice(0, 40);
+}
+function bookingSide(packageIds = []) {
+  let inside = false;
+  let outside = false;
+  for (const id of packageIds) {
+    const c2 = findPackage(id)?.category;
+    if (c2 === "interior") inside = true;
+    if (c2 === "exterior") outside = true;
+  }
+  return inside && outside ? "both" : inside ? "interior" : outside ? "exterior" : null;
+}
+function rushRuleFor(b, nowMs, s = RUSH_SETTINGS, timeZone = "America/New_York") {
+  const { y, mo, d } = localParts(nowMs, timeZone);
+  const today = `${y}-${String(mo).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+  const src = sourceKey(b.source);
+  const ids = b.packageIds ?? [];
+  const side = bookingSide(ids);
+  return s.rules.find(
+    ({ when: w }) => (!w.sources || !!src && w.sources.includes(src)) && (!w.kinds || !!side && w.kinds.includes(side)) && (!w.packages || ids.some((id) => w.packages.includes(id))) && (!w.from || today >= w.from) && (!w.until || today <= w.until)
+  ) ?? null;
+}
+function rushWindow(b, nowMs, s = RUSH_SETTINGS, timeZone = "America/New_York") {
+  const rule = rushRuleFor(b, nowMs, s, timeZone);
+  return { minLeadDays: rule ? rule.rushDays : s.defaultRushDays };
 }
 
 // lib/availability/slots.ts
@@ -867,6 +1043,7 @@ var DEFAULT_BOOKING_WINDOW = {
 };
 var IGNORE_RETURN_AFTER_MIN = 18 * 60;
 var IGNORE_OUTBOUND_BEFORE_MIN = 10 * 60;
+var ARRIVAL_WINDOW_MIN = 60;
 var TIME_BANDS = [
   {
     id: "early",
@@ -1035,27 +1212,93 @@ function lookupZip(zip) {
   return null;
 }
 
+// ../config/promo-codes.json
+var promo_codes_default = {
+  _read_me: [
+    "Discount codes customers can type at checkout. The browser and the payment and confirmation functions all read this file, and the server re-checks every code itself, so editing a request can't invent a discount.",
+    "Each code: code (letters and digits, matched however it's typed), label (shown on the price breakdown), percentOff OR dollarsOff, active (true or false), blurb (one short line shown when the code lands).",
+    "Optional: until (YYYY-MM-DD, Cincinnati time; the code works all of that day, then stops). Leave it out and the code NEVER ends on its own, which is the safe choice for anything printed. minServiceDollars (refuse it under this much service). note (for us; never shown).",
+    "To switch a code off at once: active false. To add one: copy a block. A mistake in this file fails the build instead of reaching customers.",
+    "One code per booking. 'One per customer' is NOT checked yet: a customer can use the same code on a second booking."
+  ],
+  codes: [
+    {
+      code: "LIKENEW",
+      label: "LIKENEW, 10% off",
+      percentOff: 10,
+      active: true,
+      blurb: "10% off your service."
+    },
+    {
+      code: "FRIANDFAM",
+      label: "FRIANDFAM, 25% off",
+      percentOff: 25,
+      active: true,
+      blurb: "Friends and family rate, 25% off your service.",
+      note: "Not advertised anywhere. Elijah hands it to friends, family and anyone working for him. If it leaks, set active to false and it stops on the next deploy."
+    },
+    {
+      code: "GOLF10",
+      label: "GOLF10, 10% off",
+      percentOff: 10,
+      active: false,
+      blurb: "10% off your service.",
+      note: "For the golf booklet (owner, November 11, 2026). Off until the owner decides to show it; the plan is an A/B test of showing it or not (config/experiments.json). Owner wants one per customer, which isn't enforced yet."
+    },
+    {
+      code: "PRESTIGE10",
+      label: "PRESTIGE10, 10% off",
+      percentOff: 10,
+      active: false,
+      blurb: "10% off your service.",
+      note: "For Prestige Living (owner, November 11, 2026). Off until the owner decides; same as GOLF10."
+    }
+  ]
+};
+
 // lib/pricing/promos.ts
-var PROMOS = [
-  {
-    code: "LIKENEW",
-    label: "LIKENEW, 10% off",
-    percentBp: 1e3,
-    active: true,
-    blurb: "10% off your service."
-  },
-  {
-    // Not advertised anywhere on the site. It works when somebody types it,
-    // which is the point: Elijah hands it out to friends, family and anyone
-    // working for him, and nothing on the page invites a stranger to guess
-    // at it. If it ever leaks, set active to false and it stops that minute.
-    code: "FRIANDFAM",
-    label: "FRIANDFAM, 25% off",
-    percentBp: 2500,
-    active: true,
-    blurb: "Friends and family rate, 25% off your service."
-  }
-];
+function checkPromoCodes(input) {
+  const bad = (where, what) => {
+    throw new Error(`config/promo-codes.json: ${where}: ${what}`);
+  };
+  if (!input || typeof input !== "object" || Array.isArray(input)) bad("the file", "is not a JSON object");
+  for (const k of Object.keys(input)) if (!["_read_me", "codes"].includes(k)) bad("the file", `unknown key "${k}" (use codes)`);
+  const codes = input.codes;
+  if (!Array.isArray(codes)) bad("codes", "must be a list");
+  const seen = /* @__PURE__ */ new Set();
+  const known = ["code", "label", "percentOff", "dollarsOff", "active", "until", "minServiceDollars", "blurb", "note"];
+  return codes.map((c2, i) => {
+    const o = c2 ?? {};
+    const code = typeof o["code"] === "string" ? normalisePromo(o["code"]) : "";
+    const where = code || `code ${i + 1}`;
+    if (!/^[A-Z0-9]{3,32}$/.test(code)) bad(where, "code must be 3 to 32 letters or digits");
+    if (seen.has(code)) bad(where, "this code is listed twice");
+    seen.add(code);
+    for (const k of Object.keys(o)) if (!known.includes(k)) bad(where, `unknown field "${k}" (use ${known.join(", ")})`);
+    if (typeof o["label"] !== "string" || !o["label"].trim()) bad(where, "needs a label");
+    if (typeof o["active"] !== "boolean") bad(where, "active must be true or false");
+    const pct = o["percentOff"];
+    const usd = o["dollarsOff"];
+    if (pct === void 0 === (usd === void 0)) bad(where, "give percentOff OR dollarsOff, not both or neither");
+    if (pct !== void 0 && (typeof pct !== "number" || !(pct > 0 && pct <= 100))) bad(where, "percentOff must be more than 0 and at most 100");
+    if (usd !== void 0 && (typeof usd !== "number" || !(usd > 0))) bad(where, "dollarsOff must be more than 0");
+    const until = o["until"];
+    if (until !== void 0 && !isRealDate(until)) bad(where, "until must be a real date like 2027-06-30");
+    const min = o["minServiceDollars"];
+    if (min !== void 0 && (typeof min !== "number" || min < 0)) bad(where, "minServiceDollars must be 0 or more");
+    return {
+      code,
+      label: o["label"].trim(),
+      ...pct !== void 0 ? { percentBp: Math.round(pct * 100) } : {},
+      ...usd !== void 0 ? { amountCents: Math.round(usd * 100) } : {},
+      active: o["active"],
+      ...until !== void 0 ? { expiresOn: until } : {},
+      ...min !== void 0 ? { minServiceCents: Math.round(min * 100) } : {},
+      ...typeof o["blurb"] === "string" ? { blurb: o["blurb"] } : {}
+    };
+  });
+}
+var PROMOS = checkPromoCodes(promo_codes_default);
 function normalisePromo(code) {
   return String(code ?? "").trim().toUpperCase().replace(/\s+/g, "");
 }
@@ -1066,7 +1309,8 @@ function findPromo(code, opts = {}) {
   if (!hit || !hit.active) return { promo: null, rejected: "unknown" };
   if (hit.expiresOn) {
     const today = opts.today ?? /* @__PURE__ */ new Date();
-    const stamp = today.getFullYear() + "-" + String(today.getMonth() + 1).padStart(2, "0") + "-" + String(today.getDate()).padStart(2, "0");
+    const { y, mo, d } = localParts(today.getTime(), "America/New_York");
+    const stamp = `${y}-${String(mo).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
     if (stamp > hit.expiresOn) return { promo: null, rejected: "expired" };
   }
   if (hit.minServiceCents !== void 0 && opts.serviceCents !== void 0 && opts.serviceCents < hit.minServiceCents) {
@@ -1079,18 +1323,6 @@ function promoDiscountCents(promo, serviceCents) {
   const raw = promo.percentBp ? Math.round(serviceCents * promo.percentBp / 1e4) : promo.amountCents ?? 0;
   return Math.max(0, Math.min(raw, serviceCents));
 }
-function promoMessage(rejected) {
-  switch (rejected) {
-    case "expired":
-      return "That code has expired.";
-    case "too_small":
-      return "That code needs a larger booking.";
-    case "empty":
-      return "Enter a code.";
-    default:
-      return "We do not recognise that code.";
-  }
-}
 
 // lib/pricing/mileage.ts
 function mileageFeeCents(oneWayMinutes, r) {
@@ -1102,16 +1334,14 @@ function mileageFeeCents(oneWayMinutes, r) {
   if (t < r.roundNearestBelowMin) return Math.round(raw / step) * step;
   return Math.ceil(raw / step) * step;
 }
-function averageOneWayMinutes(outboundMinutes, returnMinutes) {
-  return (outboundMinutes + returnMinutes) / 2;
-}
 
 // lib/pricing/quote.ts
-function surchargeLabel(bd) {
-  const pct = "+" + bd.appliedBp / 100 + "%";
-  if (bd.priorityBp > 0 && bd.timeOfDayBp > 0) return "Rush booking and premium time, " + pct;
-  if (bd.priorityBp > 0) return "Rush booking, " + pct;
-  return "Premium time, " + pct;
+function surchargeLabel(bd, startMinutesLocal) {
+  const pct = " (" + bd.appliedBp / 100 + "%)";
+  const hour = startMinutesLocal !== void 0 && startMinutesLocal < 12 * 60 ? "early start" : "late start";
+  if (bd.priorityBp > 0 && bd.timeOfDayBp > 0) return "Rush and " + hour + " fee" + pct;
+  if (bd.priorityBp > 0) return "Rush fee" + pct;
+  return hour.charAt(0).toUpperCase() + hour.slice(1) + " fee" + pct;
 }
 function quote(cart, r, taxTable = SEED_TAX_TABLE, year = (/* @__PURE__ */ new Date()).getFullYear()) {
   const lines = [];
@@ -1170,7 +1400,7 @@ function quote(cart, r, taxTable = SEED_TAX_TABLE, year = (/* @__PURE__ */ new D
         label: "Size, " + (vehicle.sizeLabel ?? "vehicle").toLowerCase() + " vehicle",
         vehicleIndex: vi,
         amountCents: vehicle.sizeUpchargeCents,
-        durationMin: 0
+        durationMin: vehicle.sizeExtraMin ?? 0
       });
     }
     const hasInt = vehicle.packages.some((p) => p.category === "interior");
@@ -1229,7 +1459,7 @@ function quote(cart, r, taxTable = SEED_TAX_TABLE, year = (/* @__PURE__ */ new D
   if (surchargeCents > 0) {
     lines.push({
       kind: "surcharge",
-      label: surchargeLabel(bd),
+      label: surchargeLabel(bd, cart.surchargeContext?.startMinutesLocal),
       vehicleIndex: null,
       amountCents: surchargeCents,
       durationMin: 0
@@ -1341,7 +1571,14 @@ var WIRE_LIMITS = {
   maxCity: 60,
   maxRegion: 30,
   maxPromo: 32,
-  /** How far ahead a slot may be. Past this it is a conversation, not a form. */
+  /** Planned minutes into the arrival window. The window is an hour; twice that is plainly wrong. */
+  maxArrivalLateMin: 120,
+  /**
+   * How far ahead a slot may be. Past this it is a conversation, not a form.
+   * The same as the live site (November 11): the form offers 365 days
+   * (MAX_BOOK_DAYS in js/funnel.js), and this leaves a month of slack. If the
+   * owner shortens the form's limit (owner question 17), shorten this with it.
+   */
   maxDaysAhead: 400,
   /**
    * ZIPs we will price. Ohio is 43000 to 45999, Kentucky 40000 to 42799,
@@ -1473,6 +1710,14 @@ function validateWire(body, opts) {
   if (kind === "inquiry" && slot !== null) {
     return fail("inquiry_has_slot", "A request cannot carry a fixed time.");
   }
+  let arrivalLateMin = 0;
+  const rawLate = cart["arrivalLateMin"];
+  if (rawLate !== void 0 && rawLate !== null && rawLate !== 0) {
+    if (typeof rawLate !== "number" || !Number.isFinite(rawLate) || rawLate < 0 || rawLate > WIRE_LIMITS.maxArrivalLateMin) {
+      return fail("bad_arrival", "That time was not understood.");
+    }
+    if (slot !== null) arrivalLateMin = Math.round(rawLate);
+  }
   const payInFull = opts.mode === "pay_now";
   if (payInFull && slot === null) {
     return fail("inquiry_cannot_prepay", "We do not take payment in full for a time that is not confirmed yet.");
@@ -1494,6 +1739,8 @@ function validateWire(body, opts) {
     if (code === null) return fail("bad_promo", "That promo code is too long to be one of ours.");
     promoCode = code || null;
   }
+  let source = null;
+  if (typeof cart["source"] === "string") source = sourceKey(cart["source"]) || null;
   let address = null;
   let zip = null;
   const rawAddr = cart["address"];
@@ -1549,8 +1796,10 @@ function validateWire(body, opts) {
     zip,
     slot,
     kind,
+    ...arrivalLateMin ? { arrivalLateMin } : {},
     ...visits !== void 0 ? { visits } : {},
     ...promoCode ? { promoCode } : {},
+    ...source ? { source } : {},
     ...address ? { address } : {},
     payInFull
   };
@@ -1576,8 +1825,25 @@ var LEGAL = {
    * terms describe taking a card again, and the privacy policy names two
    * more processors.
    */
-  termsEffective: "2026-09-14",
-  privacyEffective: "2026-09-14"
+  termsEffective: "2026-11-12",
+  // 2026-11-09: Google Analytics and Microsoft Clarity behind a consent
+  // banner, and the arrival source kept for the visit.
+  // 2026-11-10: a question started mid-booking is carried to the question
+  // form (now on faq.html) for one page load.
+  // 2026-11-10: the booking form checks the National Weather Service forecast
+  // at the detail's approximate location (weatherCheck). Same day as the
+  // entry above and neither was live yet, so the date stands.
+  // 2026-11-10 (round 15): checkout details of a booking left unfinished
+  // reach the owner for one follow-up (checkoutFollowUp), and "where you
+  // heard about us" is collected. Same day again, nothing live yet, so the
+  // date stands.
+  // 2026-11-11 (session audit): bookings are written to our private booking
+  // calendar (Google Calendar), answers given after booking ("Help us get
+  // ready") are collected, Resend's role is stated without reminders that do
+  // not exist, and the record of what was agreed names the terms' date.
+  // 2026-11-11 (later): A/B tests (config/experiments.json) remember which
+  // version a visitor saw and send it with a booking. Same day, nothing live.
+  privacyEffective: "2026-11-11"
 };
 function longDate(iso) {
   const [y, m, d] = iso.split("-").map(Number);
@@ -1603,7 +1869,7 @@ function legalFingerprint(html) {
 }
 
 // lib/booking/ics.ts
-var DAY_MS = 864e5;
+var DAY_MS2 = 864e5;
 function parseTime(value, params, fallbackZone) {
   const v = value.trim();
   const dateOnly = /^(\d{4})(\d{2})(\d{2})$/.exec(v);
@@ -1788,7 +2054,7 @@ function expand(startMs, rule, from, to, cap) {
     return true;
   };
   if (rule.freq === "DAILY") {
-    const step = rule.interval * DAY_MS;
+    const step = rule.interval * DAY_MS2;
     let ms = startMs;
     if (rule.count === null && from > startMs) {
       ms = startMs + Math.floor((from - startMs) / step) * step;
@@ -1799,7 +2065,7 @@ function expand(startMs, rule, from, to, cap) {
     return out;
   }
   if (rule.freq === "WEEKLY") {
-    const week = rule.interval * 7 * DAY_MS;
+    const week = rule.interval * 7 * DAY_MS2;
     const days = rule.byDay.length ? rule.byDay : [new Date(startMs).getUTCDay()];
     let anchor = startMs;
     if (rule.count === null && from - week > startMs) {
@@ -1809,7 +2075,7 @@ function expand(startMs, rule, from, to, cap) {
       const base = new Date(anchor);
       for (const d of days) {
         const shift = (d - base.getUTCDay() + 7) % 7;
-        const ms = anchor + shift * DAY_MS;
+        const ms = anchor + shift * DAY_MS2;
         if (ms < startMs) continue;
         if (ms > hardEnd) continue;
         if (!push(ms)) return out;
@@ -1851,8 +2117,8 @@ function parseIcsBusy(text, opts) {
     let lengthMs;
     if (e.end) lengthMs = e.end.ms - e.start.ms;
     else if (e.durationMs !== null) lengthMs = e.durationMs;
-    else lengthMs = e.start.allDay ? DAY_MS : 0;
-    if (lengthMs <= 0) lengthMs = e.start.allDay ? DAY_MS : 30 * 60 * 1e3;
+    else lengthMs = e.start.allDay ? DAY_MS2 : 0;
+    if (lengthMs <= 0) lengthMs = e.start.allDay ? DAY_MS2 : 30 * 60 * 1e3;
     const starts = [];
     if (e.rrule && !e.recurrenceId) {
       const rule = parseRule(e.rrule, zone);
@@ -1883,114 +2149,279 @@ function mergeBusy(list) {
   return out;
 }
 
-// lib/pricing/cancellation.ts
-function chargeBpForNotice(hoursUntilStart, r) {
-  if (hoursUntilStart >= r.refundFullWindowHours) return 0;
-  if (hoursUntilStart >= r.refundMidWindowHours) return r.cancelMidWindowBp;
-  return r.cancelLateWindowBp;
+// lib/availability/crew.ts
+var OWNER = {
+  id: "owner",
+  name: "Elijah",
+  does: ["*"],
+  availabilityCalendarId: "",
+  bookingsCalendarId: "",
+  owner: true,
+  noFeeStarts: null,
+  arrivalWindowMin: ARRIVAL_WINDOW_MIN
+};
+var FULL_DAYS = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
+function dayIndex(word) {
+  if (!/^[a-z]{3,}$/.test(word)) return -1;
+  return FULL_DAYS.findIndex((d) => d.startsWith(word));
 }
-function bucketForNotice(hoursUntilStart, r) {
-  if (hoursUntilStart >= r.refundFullWindowHours) return "gte72h";
-  if (hoursUntilStart >= r.refundMidWindowHours) return "24h_to_72h";
-  return "lt24h";
+function parseDays(text) {
+  const out = /* @__PURE__ */ new Set();
+  for (const part of text.toLowerCase().split(",").map((x) => x.trim()).filter(Boolean)) {
+    const names = part.split("-").map((x) => x.trim());
+    if (names.length > 2) return null;
+    const [a, b] = names.map(dayIndex);
+    if (a === void 0 || a < 0 || b !== void 0 && b < 0) return null;
+    for (let i = a, n = 0; n < 7; i = (i + 1) % 7, n++) {
+      out.add(i);
+      if (b === void 0 || i === b) break;
+    }
+  }
+  return out.size ? [...out].sort((x, y) => x - y) : null;
 }
-function computeCancellation(input, r) {
-  const total = Math.max(0, Math.round(input.totalCents));
-  const paid = Math.max(0, Math.round(input.paidCents ?? 0));
-  const settle = (bucket2, fee2, explanation) => ({
-    bucket: bucket2,
-    feeCents: fee2,
-    dueCents: Math.max(0, fee2 - paid),
-    refundCents: Math.max(0, paid - fee2),
-    explanation
+function parseRanges(text) {
+  const parts = String(text ?? "").split(";").map((x) => x.trim()).filter(Boolean);
+  if (!parts.length) return null;
+  const out = [];
+  for (const part of parts) {
+    const m = /^(?:([A-Za-z,\s-]+?)\s+)?(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})$/.exec(part);
+    if (!m) return null;
+    const days = m[1] ? parseDays(m[1]) : null;
+    if (m[1] && !days) return null;
+    if (Number(m[3]) > 59 || Number(m[5]) > 59) return null;
+    const fromMin = Number(m[2]) * 60 + Number(m[3]);
+    const toMin = Number(m[4]) * 60 + Number(m[5]);
+    if (!(fromMin <= toMin && toMin < 24 * 60)) return null;
+    out.push({ days, fromMin, toMin });
+  }
+  return out;
+}
+function waivesFeeAt(d, startMs) {
+  return waivesTimeFee(d, localMinutesOfDay(startMs), localWeekday(startMs, "America/New_York"));
+}
+function waivesTimeFee(d, startMinutesLocal, weekday) {
+  return Boolean(d?.noFeeStarts?.some((r) => startMinutesLocal >= r.fromMin && startMinutesLocal <= r.toMin && (!r.days || weekday === void 0 || r.days.includes(weekday))));
+}
+var CAL_ID = /^[\w.+-]+@[\w.-]+$/;
+function slug(name) {
+  return name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 30);
+}
+function parseDetailers(raw) {
+  const problems = [];
+  let list = [];
+  const text = String(raw ?? "").trim();
+  if (text) {
+    try {
+      const parsed = JSON.parse(text);
+      if (Array.isArray(parsed)) list = parsed;
+      else problems.push("DETAILERS must be a list, in [ square brackets ]");
+    } catch {
+      problems.push("DETAILERS is not valid JSON");
+    }
+  }
+  const crew = [];
+  let ownerPlaced = false;
+  const seen = /* @__PURE__ */ new Set();
+  list.forEach((entry, i) => {
+    const e = entry ?? {};
+    if (e["owner"] === true) {
+      if (!ownerPlaced) crew.push({ ...OWNER, name: String(e["name"] || OWNER.name).slice(0, 40), arrivalWindowMin: windowOf(e, OWNER.name, problems) });
+      ownerPlaced = true;
+      return;
+    }
+    const name = String(e["name"] ?? "").trim().slice(0, 40);
+    const availability = String(e["availability"] ?? "").trim();
+    const bookings = String(e["bookings"] ?? "").trim();
+    const id = slug(name);
+    if (!name || !id) return problems.push(`entry ${i + 1} has no name`);
+    if (id === OWNER.id || seen.has(id)) return problems.push(`${name} is listed twice`);
+    if (!CAL_ID.test(availability) || !CAL_ID.test(bookings)) {
+      return problems.push(`${name} needs both an availability and a bookings calendar id`);
+    }
+    const does = parseDoes(e["does"]);
+    const noFeeStarts = e["noFeeStarts"] === void 0 ? null : parseRanges(e["noFeeStarts"]);
+    if (e["noFeeStarts"] !== void 0 && !noFeeStarts) problems.push(`${name}: noFeeStarts should look like "18:00-19:00" or "Tue-Sat 18:00-19:00"`);
+    seen.add(id);
+    crew.push({
+      id,
+      name,
+      does,
+      availabilityCalendarId: availability,
+      bookingsCalendarId: bookings,
+      owner: false,
+      noFeeStarts,
+      arrivalWindowMin: windowOf(e, name, problems)
+    });
   });
-  if (input.ownerCancelled) {
-    return settle(
-      "owner_cancelled",
-      0,
-      "We cancelled, so there is no charge and anything you paid comes back in full."
-    );
-  }
-  if (input.waived) return settle("waived", 0, "Cancellation fee waived.");
-  if (!Number.isFinite(input.hoursUntilStart)) {
-    return settle("needs_review", 0, "We could not work out the notice on this booking. Someone will check it by hand before anything is charged.");
-  }
-  const bucket = bucketForNotice(input.hoursUntilStart, r);
-  const fee = Math.round(total * chargeBpForNotice(input.hoursUntilStart, r) / 1e4);
-  if (bucket === "gte72h") {
-    return settle(
-      bucket,
-      0,
-      `Cancelled more than ${r.refundFullWindowHours} hours ahead, so there is no charge.`
-    );
-  }
-  if (bucket === "24h_to_72h") {
-    return settle(
-      bucket,
-      fee,
-      `Cancelled inside ${r.refundFullWindowHours} hours, so ${r.cancelMidWindowBp / 100}% of the booking applies. Rescheduling instead puts the same amount toward your new date.`
-    );
-  }
-  return settle(
-    bucket,
-    fee,
-    `Cancelled inside ${r.refundMidWindowHours} hours, so the booking is charged in full. Rescheduling instead puts the whole amount toward your new date.`
-  );
+  if (!ownerPlaced) crew.push(OWNER);
+  return { crew, problems };
 }
-function computeReschedule(input, r) {
-  const total = Math.max(0, Math.round(input.totalCents));
-  const paid = Math.max(0, Math.round(input.paidCents ?? 0));
-  const priorLate = Math.max(0, Math.floor(input.lateMoves ?? 0));
-  const free = (bucket2, explanation) => ({
-    bucket: bucket2,
-    prepayCents: 0,
-    dueNowCents: 0,
-    creditCents: paid,
-    lateFeeCents: 0,
-    lateFeeBp: 0,
-    creditValidDays: paid > 0 ? r.rescheduleCreditDays : 0,
-    explanation
+function windowOf(e, name, problems) {
+  if (e["arrivalWindow"] === void 0) return ARRIVAL_WINDOW_MIN;
+  const n = Number(e["arrivalWindow"]);
+  if (Number.isInteger(n) && n >= 0 && n <= 120) return n;
+  problems.push(`${name}: arrivalWindow should be minutes, 0 to 120`);
+  return ARRIVAL_WINDOW_MIN;
+}
+function parseDoes(raw) {
+  const list = (Array.isArray(raw) ? raw : [raw ?? "all"]).map((w) => String(w ?? "").trim().toLowerCase()).filter(Boolean);
+  return !list.length || list.includes("all") ? ["*"] : [...new Set(list)];
+}
+function canDo(d, needs) {
+  return d.does.includes("*") || needs.every((n) => d.does.includes(n));
+}
+
+// lib/google/publicCalendar.ts
+var API = "https://www.googleapis.com/calendar/v3/calendars";
+var AVAILABILITY_PREFIX = "OPEN";
+var BEST_PREFIX = "BEST";
+var BLOCK_PREFIX = "DNS";
+function eventTime(s) {
+  const d = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s);
+  return d ? zonedToUtc(Number(d[1]), Number(d[2]), Number(d[3]), 0, 0, 0, "America/New_York") : new Date(s).getTime();
+}
+function titleIs(summary, word) {
+  return new RegExp("^" + word + "\\b", "i").test(summary.trim());
+}
+function parsePriority(description) {
+  const m = /priority\s*[:=]?\s*(\d+)/i.exec(String(description ?? ""));
+  return m ? Number(m[1]) : null;
+}
+function calendarIds(cfg) {
+  const busyOnly = new Set(busyOnlyIds(cfg));
+  const all = [cfg.calendarId ?? "", ...cfg.extraCalendarIds ?? []].map((s) => String(s ?? "").trim()).filter((id) => id && !busyOnly.has(id));
+  return all.filter((id, i) => all.indexOf(id) === i);
+}
+function busyOnlyIds(cfg) {
+  const all = (cfg.busyOnlyIds ?? []).map((s) => String(s ?? "").trim()).filter(Boolean);
+  return all.filter((id, i) => all.indexOf(id) === i);
+}
+async function fetchBusyOnly(apiKey, ids, fromMs, toMs) {
+  if (!ids.length) return [];
+  const res = await fetch(`https://www.googleapis.com/calendar/v3/freeBusy?key=${encodeURIComponent(apiKey)}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    cache: "no-store",
+    body: JSON.stringify({
+      timeMin: new Date(fromMs).toISOString(),
+      timeMax: new Date(toMs).toISOString(),
+      items: ids.map((id) => ({ id }))
+    })
   });
-  if (input.ownerInitiated) {
-    return free("owner_cancelled", "We moved it, so there is nothing to pay and nothing changes.");
+  if (!res.ok) throw new Error(`Google free/busy ${res.status}: ${await res.text()}`);
+  const json = await res.json();
+  const out = [];
+  for (const id of ids) {
+    const c2 = json.calendars?.[id];
+    if (!c2 || c2.errors && c2.errors.length) throw new Error(`Google free/busy: ${id} unreadable`);
+    for (const b of c2.busy ?? []) {
+      out.push({ summary: "Busy", start: Date.parse(b.start), end: Date.parse(b.end), allDay: false, transparent: false });
+    }
   }
-  if (input.waived) return free("waived", "Reschedule charge waived.");
-  if (!Number.isFinite(input.hoursUntilStart)) {
-    return free("needs_review", "We could not work out the notice on this booking. Someone will check it by hand before anything is charged.");
+  return out;
+}
+function openFeeBp(summary) {
+  const m = /^OPEN\b\s*\(?\s*\+?\s*(\d{1,3}(?:\.\d{1,2})?)\s*%/i.exec(summary.trim());
+  return m ? Math.round(Number(m[1]) * 100) : 0;
+}
+function blockFeeAt(win, startMs) {
+  const hits = (win?.fees ?? []).filter((f) => startMs >= f.start && startMs < f.end);
+  return hits.length ? Math.max(...hits.map((f) => f.bp)) : null;
+}
+async function readCalendars(cfg, fromMs, toMs) {
+  const ids = calendarIds(cfg);
+  if (ids.length <= 1) return fetchOne(cfg.apiKey, ids[0] ?? "", fromMs, toMs);
+  const settled = await Promise.all(ids.map((id) => fetchOne(cfg.apiKey, id, fromMs, toMs)));
+  const ranks = settled.map((r) => r.priority).filter((n) => n !== null);
+  return { events: settled.flatMap((r) => r.events), priority: ranks.length ? Math.min(...ranks) : null };
+}
+async function fetchOne(apiKey, calendarId, fromMs, toMs) {
+  const cfg = { calendarId, apiKey };
+  const base = `${API}/${encodeURIComponent(cfg.calendarId)}/events?key=${encodeURIComponent(cfg.apiKey)}&timeMin=${new Date(fromMs).toISOString()}&timeMax=${new Date(toMs).toISOString()}&singleEvents=true&orderBy=startTime&maxResults=2500`;
+  const items = [];
+  let description;
+  let pageToken = "";
+  for (let page = 0; page < 20; page++) {
+    const res = await fetch(base + (pageToken ? `&pageToken=${encodeURIComponent(pageToken)}` : ""), { cache: "no-store" });
+    if (!res.ok) {
+      throw new Error(`Google Calendar ${res.status}: ${await res.text()}`);
+    }
+    const json = await res.json();
+    items.push(...json.items ?? []);
+    description ??= json.description;
+    pageToken = json.nextPageToken ?? "";
+    if (!pageToken) break;
   }
-  const bucket = bucketForNotice(input.hoursUntilStart, r);
-  if (bucket === "gte72h") {
-    return free(
-      "gte72h",
-      `Moved with more than ${r.refundFullWindowHours} hours notice, so there is nothing to pay.`
-    );
-  }
-  const prepay = Math.round(total * chargeBpForNotice(input.hoursUntilStart, r) / 1e4);
-  if (bucket === "24h_to_72h") {
+  if (pageToken) throw new Error(`Google Calendar: ${calendarId} has more than 20 pages in this range`);
+  const events = items.map((e) => {
+    const s = e.start?.dateTime ?? e.start?.date;
+    const t = e.end?.dateTime ?? e.end?.date;
+    if (!s || !t) return null;
     return {
-      bucket,
-      prepayCents: prepay,
-      dueNowCents: Math.max(0, prepay - paid),
-      creditCents: Math.max(prepay, paid),
-      lateFeeCents: 0,
-      lateFeeBp: 0,
-      creditValidDays: r.rescheduleCreditDays,
-      explanation: `Moved inside ${r.refundFullWindowHours} hours, so ${r.cancelMidWindowBp / 100}% is taken now and goes straight onto your new booking. No fee for moving it.`
+      summary: (e.summary ?? "").trim(),
+      start: eventTime(s),
+      end: eventTime(t),
+      allDay: Boolean(e.start?.date && !e.start?.dateTime),
+      // "Free" events are things like reminders that should not block work.
+      transparent: e.transparency === "transparent"
+    };
+  }).filter((e) => e !== null);
+  return { events, priority: parsePriority(description) };
+}
+var DEFAULT_HOURS = {
+  /**
+   * Wider than the bookable window on purpose, at BOTH ends.
+   *
+   * Customers may start as early as 6am, which means leaving before 6am, so
+   * the block has to open earlier than the earliest start. It closes at 1am
+   * because a service finishing at midnight still needs the drive home, and
+   * the whole commitment has to fit inside one availability block. An hour
+   * covers any return leg the fee ladder would realistically produce.
+   *
+   * What a customer can actually pick is bounded separately by
+   * DEFAULT_BOOKING_WINDOW in ../availability/slots.ts, which is the thing to
+   * change if the bookable hours move.
+   */
+  openMin: 5 * 60,
+  closeMin: 25 * 60,
+  days: [0, 1, 2, 3, 4, 5, 6],
+  timeZone: "America/New_York"
+};
+function resolveWindow(events, fromMs, toMs) {
+  const isBest = (e) => titleIs(e.summary, BEST_PREFIX);
+  const best = [...new Set(events.filter((e) => isBest(e) && !e.allDay && e.start >= fromMs && e.start < toMs).map((e) => e.start))].sort((a, b) => a - b);
+  const usable = events.filter((e) => (!e.transparent || titleIs(e.summary, BLOCK_PREFIX)) && !isBest(e));
+  const openEvents = events.filter(
+    (e) => !isBest(e) && titleIs(e.summary, AVAILABILITY_PREFIX)
+  );
+  if (openEvents.length > 0) {
+    const jobs = usable.filter((e) => !openEvents.includes(e));
+    return {
+      mode: "whitelist",
+      open: openEvents.map((e) => ({ start: e.start, end: e.end })),
+      busy: jobs.map((e) => ({ start: e.start, end: e.end })),
+      events,
+      best,
+      fees: openEvents.map((e) => ({ start: e.start, end: e.end, bp: openFeeBp(e.summary) }))
     };
   }
-  const lateFeeBp = r.lateRescheduleFeeBp;
-  const lateFeeCents = Math.round(total * lateFeeBp / 1e4);
   return {
-    bucket,
-    prepayCents: prepay,
-    dueNowCents: Math.max(0, prepay - paid),
-    creditCents: Math.max(prepay, paid),
-    lateFeeCents,
-    lateFeeBp,
-    creditValidDays: r.rescheduleCreditDays,
-    explanation: `Moved inside ${r.refundMidWindowHours} hours, so the booking is taken in full now and held as credit for ${r.rescheduleCreditDays} days. A ${r.lateRescheduleFeeBp / 100}% late move fee applies` + (priorLate > 0 ? `, the same ${lateFeeBp / 100}% as last time. This is late move number ${priorLate + 1}.` : ".")
+    mode: "noOpen",
+    open: [],
+    busy: usable.map((e) => ({ start: e.start, end: e.end })),
+    events,
+    best
   };
 }
+async function loadWindow(cfg, fromMs, toMs) {
+  const [read, busy] = await Promise.all([
+    calendarIds(cfg).length ? readCalendars(cfg, fromMs, toMs) : Promise.resolve({ events: [], priority: null }),
+    fetchBusyOnly(cfg.apiKey, busyOnlyIds(cfg), fromMs, toMs)
+  ]);
+  return { ...resolveWindow(read.events.concat(busy), fromMs, toMs), priority: read.priority };
+}
+
+// lib/pricing/cancellation.ts
 function cancellationLadder(r) {
   return [
     {
@@ -2018,6 +2449,7 @@ function cancellationLadder(r) {
 }
 
 // lib/site/capabilities.ts
+var DRAFT_KEEP_DAYS = 14;
 var CAPABILITIES = [
   {
     id: "cardOnFile",
@@ -2064,7 +2496,7 @@ var CAPABILITIES = [
      * caused this cannot silently return. Test the mobile mount first.
      */
     id: "payInFull",
-    what: "Paying the whole detail online at booking, for 5% off",
+    what: `Paying the whole detail online at booking, for ${DEFAULT_RULES.payInFullDiscountBp / 100}% off`,
     live: false,
     blockedBy: "The Stripe pay-now path does not complete reliably on mobile"
   },
@@ -2102,7 +2534,7 @@ var CAPABILITIES = [
     // arrive. Tying email to that would hold back a working feature for
     // weeks for no reason.
     id: "automatedEmail",
-    what: "Automatic confirmation and reminder emails",
+    what: "Automatic confirmation emails",
     /*
      * Live, and verified: POST /api/send-confirmation returned
      * {sent:true, owner:true} from production, and the domain is verified so
@@ -2159,10 +2591,48 @@ var CAPABILITIES = [
     live: true
   },
   {
+    /*
+     * GA4 AND MICROSOFT CLARITY, behind a consent banner (js/analytics.js).
+     *
+     * Live because the code ships now. Neither loads until a visitor presses
+     * Accept, and with no ids in js/config.js the banner never even shows, so
+     * the policy's "we ask first" is true either way. Ads storage and Google
+     * Signals are off, which is what lets the banner say "never used for
+     * advertising". Linking Google Ads changes that sentence first.
+     */
+    id: "siteAnalytics",
+    what: "Google Analytics and Microsoft Clarity, loaded only after the visitor accepts",
+    live: true,
+    blockedBy: "GA4_MEASUREMENT_ID and CLARITY_PROJECT_ID in Netlify"
+  },
+  {
     id: "botCheck",
     what: "Cloudflare Turnstile in front of the payment step",
     live: false,
     blockedBy: "TURNSTILE_SECRET_KEY in Netlify and turnstileSiteKey in js/config.js"
+  },
+  {
+    id: "weatherCheck",
+    what: "Checking the forecast at the detail's location before offering weather-affected times and offers",
+    // Live: the booking form asks the National Weather Service for the
+    // forecast at the approximate location of the detail (address pick or
+    // ZIP centre, rounded to two decimals, about a kilometre). The privacy
+    // policy names it while this is on, and the form fetches nothing while
+    // it is off, so the two cannot drift.
+    live: true,
+    blockedBy: "nothing: api.weather.gov is free and needs no key"
+  },
+  {
+    id: "checkoutFollowUp",
+    what: "Following up once on a booking left unfinished at checkout",
+    // Live (owner, November 10, round 15: "capture now, send via GHL later"):
+    // someone who types their name and a phone number or email at the top of
+    // the checkout and leaves without booking is sent to the owner by email
+    // (netlify/functions/cart-capture.mjs), so they can be followed up once.
+    // The privacy policy says so while this is on, and the form sends
+    // nothing while it is off.
+    live: true,
+    blockedBy: "nothing: it uses the booking email service"
   }
 ];
 var PROCESSORS = [
@@ -2173,29 +2643,29 @@ var PROCESSORS = [
   { name: "cdnjs (Cloudflare)", does: "serves the map library, so Cloudflare receives your IP address when the map loads." },
   { name: "Google Places", does: "suggests addresses as you type in the booking form. What you type in that box goes to Google.", capability: "placesAutocomplete" },
   { name: "Google Maps (Routes)", does: "measures the drive to your address so we can price travel. This happens from our server, with your address, not from your browser.", capability: "measuredTravel" },
-  { name: "Google Calendar", does: "holds our availability. Your browser reads our open times from it.", capability: "liveCalendar" },
+  // Bookings are written to it too (send-confirmation.mjs, _gcal.mjs), on a
+  // calendar shared as free/busy only, so the public sees busy times and
+  // never a booking's details (session audit, November 11).
+  { name: "Google Calendar", does: "holds our availability and our schedule. When you book, the job goes onto our booking calendar with your name, phone, email, address and notes, so we know where to be. That calendar is private: anyone else sees only that the time is taken. Your browser reads only our open times.", capability: "liveCalendar" },
   { name: "Stripe", does: "takes card payments and keeps your card on file. Card details go straight to Stripe over an encrypted connection; we never see or store the card number.", capability: "cardOnFile" },
   { name: "PayPal", does: "takes PayPal and Venmo payments.", capability: "digitalWallets" },
   { name: "Twilio", does: "sends our appointment text messages.", capability: "automatedTexts" },
-  { name: "Resend", does: "sends our confirmation and reminder emails.", capability: "automatedEmail" },
+  { name: "Resend", does: "sends our booking confirmation emails, and the emails we receive about bookings and unfinished checkouts.", capability: "automatedEmail" },
   // Named separately from the hosting row on purpose. "Netlify hosts the
   // website" does not tell a reader that a script is running in their
   // browser and reporting back, and that is the part worth knowing.
   { name: "Netlify Real User Monitoring", does: "measures how quickly pages load for real visitors. A small script times the page and sends those timings to Netlify. It uses no cookie and carries nothing that identifies you.", capability: "performanceMonitoring" },
+  { name: "Google Analytics", does: "counts visits, the pages viewed, and how people found us, only if you accept analytics. It sets cookies to tell one visit from the next. We have turned off Google's advertising features for it.", capability: "siteAnalytics" },
+  { name: "Microsoft Clarity", does: "records how pages are used, such as clicks, scrolling and where people leave, only if you accept analytics. It sets cookies to do so. What you type into forms is hidden from it, and we have told it not to use anything for advertising.", capability: "siteAnalytics" },
   { name: "Neon", does: "stores bookings in our database so your booking link works.", capability: "bookingLink" },
-  { name: "Cloudflare Turnstile", does: "checks that a booking is being made by a person, before payment. It may set a cookie to do so.", capability: "botCheck" }
+  { name: "Cloudflare Turnstile", does: "checks that a booking is being made by a person, before payment. It may set a cookie to do so.", capability: "botCheck" },
+  { name: "National Weather Service", does: "provides the forecast we check before offering times and offers for weather-affected work. Your browser sends it the approximate location of the detail, rounded to within about a kilometre, never your name, contact details or street address. Like any website, it receives your IP address.", capability: "weatherCheck" }
 ];
 function liveProcessors() {
   return PROCESSORS.filter((p) => !p.capability || isLive(p.capability));
 }
-function dormantProcessors() {
-  return PROCESSORS.filter((p) => p.capability && !isLive(p.capability));
-}
 function isLive(id) {
   return CAPABILITIES.find((c2) => c2.id === id)?.live ?? false;
-}
-function pending() {
-  return CAPABILITIES.filter((c2) => !c2.live);
 }
 var IN_PERSON = "cash, check, card, tap to pay, Venmo, Apple Pay, Cash App or Zelle";
 var GATED_COPY = [
@@ -2306,6 +2776,164 @@ function copyFor(id) {
   return isLive(row.capability) ? row.live : row.notYet;
 }
 
+// lib/availability/multiDay.ts
+var LONGEST_DAY = { startMin: 8 * 60, endMin: 24 * 60 };
+var MAX_DOOR_TO_DOOR_MIN = 17 * 60;
+var LONG_JOB_STARTS = [8 * 60, 10 * 60];
+function dayCapacityMin(window = LONGEST_DAY, travelBeforeMin = 0, travelAfterMin = 0, maxDoorToDoor = MAX_DOOR_TO_DOOR_MIN) {
+  const byClock = window.endMin - window.startMin;
+  const byStamina = maxDoorToDoor - travelBeforeMin - travelAfterMin;
+  return Math.max(0, Math.min(byClock, byStamina));
+}
+function fitsOneDay(serviceMinutes, window = LONGEST_DAY, travelBeforeMin = 0, travelAfterMin = 0) {
+  return serviceMinutes <= dayCapacityMin(window, travelBeforeMin, travelAfterMin);
+}
+function splitEvenly(totalMinutes, days) {
+  const base = Math.floor(totalMinutes / days);
+  const extra = totalMinutes - base * days;
+  return Array.from({ length: days }, (_, i) => base + (i < extra ? 1 : 0));
+}
+function toQuarter(min) {
+  return Math.ceil(min / 15) * 15;
+}
+function planDays(req) {
+  const window = req.window ?? LONGEST_DAY;
+  const before = Math.max(0, req.travelBeforeMin ?? 0);
+  const after = Math.max(0, req.travelAfterMin ?? 0);
+  const maxDoorToDoor = req.maxDoorToDoorMin ?? MAX_DOOR_TO_DOOR_MIN;
+  const maxDays = req.maxDays ?? 5;
+  const service = Number.isFinite(req.serviceMinutes) ? Math.max(0, Math.round(req.serviceMinutes)) : 0;
+  if (service <= 0) return { ok: false, reason: "Nothing to schedule." };
+  const capacity = dayCapacityMin(window, before, after, maxDoorToDoor);
+  if (capacity <= 0) {
+    return { ok: false, reason: "The drive alone fills the day." };
+  }
+  const totalDays = Math.ceil(service / capacity);
+  if (totalDays > maxDays) {
+    return {
+      ok: false,
+      reason: `That is ${Math.round(service / 60)} hours of work, more than ${maxDays} days. Talk to us and we will plan it properly.`
+    };
+  }
+  const raw = splitEvenly(service, totalDays);
+  const perDay = raw.map(toQuarter);
+  const starts = (req.preferredStartsMin ?? LONG_JOB_STARTS).filter((m) => m >= window.startMin).sort((a, b) => a - b);
+  const days = [];
+  for (let i = 0; i < totalDays; i++) {
+    const workMin = perDay[i];
+    const latestStart = window.endMin - workMin;
+    if (latestStart < window.startMin) {
+      return { ok: false, reason: "That day is longer than the working day allows." };
+    }
+    const start = starts.find((m) => m <= latestStart) ?? window.startMin;
+    days.push({
+      index: i,
+      startMin: start,
+      workMin,
+      endMin: start + workMin,
+      blockStartMin: start - before,
+      blockEndMin: start + workMin + after
+    });
+  }
+  const lengths = days.map((d) => d.workMin);
+  const longestDoorToDoor = Math.max(...days.map((d) => d.blockEndMin - d.blockStartMin));
+  return {
+    ok: true,
+    days,
+    totalDays,
+    serviceMinutes: service,
+    balanced: Math.max(...lengths) - Math.min(...lengths) <= 30,
+    longestDoorToDoorMin: longestDoorToDoor
+  };
+}
+function multiDayEvents(req) {
+  const tz = req.timeZone ?? "America/New_York";
+  if (fitsOneDay(req.serviceMinutes, LONGEST_DAY, req.travelMin, req.travelMin)) return null;
+  const plan = planDays({
+    serviceMinutes: req.serviceMinutes,
+    travelBeforeMin: req.travelMin,
+    travelAfterMin: req.travelMin,
+    ...req.preferredStartsMin ? { preferredStartsMin: req.preferredStartsMin } : {}
+  });
+  if (!plan.ok) return null;
+  const day0 = localDayStart(req.slotMs, tz);
+  return plan.days.map((d) => {
+    const start = d.index === 0 ? req.slotMs : localTimeOnDay(day0, d.index, d.startMin, tz);
+    return { startMs: start, endMs: start + d.workMin * 6e4 };
+  });
+}
+
+// ../config/business.json
+var business_default = {
+  _read_me: [
+    "The business's phone number and opening hours. A mistake in this file fails the build.",
+    "phone: today's number, the one every page in the repo is written with. To use a different number, set BUSINESS_PHONE in Netlify (10 US digits, any format) and redeploy: the build swaps it into every published page and script, and the booking emails read the same variable. Leave this value alone unless the pages are rewritten with a new number.",
+    'hours: opens and closes as 24-hour times ("24:00" is midnight), the same every day. The pages say them in words ("6 AM to midnight") and the hidden business data for Google carries them as written here.'
+  ],
+  phone: "(513) 279-2915",
+  hours: {
+    opens: "06:00",
+    closes: "24:00"
+  }
+};
+
+// lib/site/business.ts
+function parsePhone(input) {
+  const text = String(input ?? "").trim();
+  if (!text) return { error: "it is empty" };
+  if (/[^\d\s().+-]/.test(text)) return { error: `"${text}" has characters a phone number does not` };
+  let d = text.replace(/\D/g, "");
+  if (d.length === 11 && d.startsWith("1")) d = d.slice(1);
+  if (d.length !== 10) return { error: `"${text}" is not 10 US digits` };
+  if (/^[01]/.test(d)) return { error: `"${text}" has an area code starting with ${d[0]}` };
+  return {
+    phone: { digits: d, display: `(${d.slice(0, 3)}) ${d.slice(3, 6)}-${d.slice(6)}`, e164: `+1${d}` }
+  };
+}
+function mustParse(input, where) {
+  const r = parsePhone(input);
+  if ("error" in r) throw new Error(`${where}: the phone number ${r.error}.`);
+  return r.phone;
+}
+var REPO_PHONE = mustParse(business_default.phone, "config/business.json phone");
+function businessPhone(env = process.env.BUSINESS_PHONE) {
+  return env === void 0 || env.trim() === "" ? REPO_PHONE : mustParse(env, "BUSINESS_PHONE");
+}
+function swapPhone(text, from, to) {
+  if (from.digits === to.digits) return text;
+  const [a, b, c2] = [from.digits.slice(0, 3), from.digits.slice(3, 6), from.digits.slice(6)];
+  const [x, y, z] = [to.digits.slice(0, 3), to.digits.slice(3, 6), to.digits.slice(6)];
+  const re = new RegExp(
+    `(?<!\\d)(\\+?1[-. ]?)?(\\()?${a}(\\)(?: |&nbsp;|\\u00a0)?|[-. ])?${b}([-. ])?${c2}(?!\\d)`,
+    "g"
+  );
+  return text.replace(
+    re,
+    (_m, cc = "", open = "", mid = "", sep = "") => `${cc}${open}${x}${mid}${y}${sep}${z}`
+  );
+}
+function phoneTrace(text, p) {
+  const [a, b, c2] = [p.digits.slice(0, 3), p.digits.slice(3, 6), p.digits.slice(6)];
+  const m = text.match(new RegExp(`(?<!\\d)(?:1\\D{0,2})?(?:${a}\\D{0,7})?${b}\\D{0,2}${c2}(?!\\d)`));
+  return m ? m[0] : null;
+}
+var HHMM = /^([01]\d|2[0-4]):([0-5]\d)$/;
+function hourWords(t) {
+  const m = HHMM.exec(t);
+  if (!m) throw new Error(`config/business.json hours: "${t}" is not a 24-hour time like 06:00`);
+  const h = Number(m[1]);
+  const min = m[2];
+  if (h === 24 || h === 0 && min === "00") return "midnight";
+  if (h === 12 && min === "00") return "noon";
+  const h12 = h % 12 === 0 ? 12 : h % 12;
+  return `${h12}${min === "00" ? "" : ":" + min} ${h < 12 ? "AM" : "PM"}`;
+}
+var HOURS = { opens: String(business_default.hours?.opens), closes: String(business_default.hours?.closes) };
+function hoursText(h = HOURS) {
+  return `${hourWords(h.opens)} to ${hourWords(h.closes)}`;
+}
+hoursText();
+
 // lib/server-entry.ts
 function priceFromWire(wire, opts = {}) {
   const rejected = [];
@@ -2366,6 +2994,7 @@ function priceFromWire(wire, opts = {}) {
     return {
       label: wv.label ?? "Vehicle",
       sizeUpchargeCents: size?.upchargeCents ?? 0,
+      sizeExtraMin: size?.extraMin ?? 0,
       sizeLabel: size?.label ?? "",
       packages,
       addons,
@@ -2373,7 +3002,11 @@ function priceFromWire(wire, opts = {}) {
     };
   });
   const nowMs = opts.nowMs ?? Date.now();
-  const priority = wire.slot ? slotNeedsPriority(wire.slot, nowMs, DEFAULT_RULES.window) : false;
+  const rushWin = rushWindow(
+    { source: wire.source ?? null, packageIds: wire.vehicles.flatMap((v) => v.packageIds ?? []) },
+    nowMs
+  );
+  const priority = wire.slot ? slotNeedsPriority(wire.slot, nowMs, rushWin) : false;
   const payInFull = opts.payInFull ?? false;
   const cart = {
     vehicles,
@@ -2384,7 +3017,12 @@ function priceFromWire(wire, opts = {}) {
     // Priority is DERIVED from the slot. The browser used to send a boolean
     // and this trusted it, which was a 20% discount for anyone who edited one
     // word of the request. Without a slot there is no window to be inside.
-    surchargeContext: wire.slot ? { startMinutesLocal: localMinutesOfDay(wire.slot), priorityBooking: priority } : null,
+    surchargeContext: wire.slot ? {
+      startMinutesLocal: localMinutesOfDay(wire.slot),
+      priorityBooking: priority,
+      ...opts.timeOfDayWaived ? { timeOfDayWaived: true } : {},
+      ...typeof opts.blockFeeBp === "number" ? { blockFeeBp: opts.blockFeeBp } : {}
+    } : null,
     zip: wire.zip ?? null,
     ...payInFull ? { payInFull: true } : {},
     ...wire.promoCode ? { promoCode: wire.promoCode } : {},
@@ -2405,59 +3043,68 @@ function priceFromWire(wire, opts = {}) {
     rejected
   };
 }
+function wireNeeds(wire) {
+  if (wire.kind === "advice") return ["interior", "exterior", "correction", "coating"];
+  const vs = wire.vehicles ?? [];
+  const pkgIn = (cat) => vs.some((v) => (v.packageIds ?? []).some((id) => findPackage(id)?.category === cat));
+  const addIn = (scope) => vs.some((v) => (v.addons ?? []).some((a) => findAddon(a.addonId)?.scope === scope));
+  const addId = (ids) => vs.some((v) => (v.addons ?? []).some((a) => ids.includes(a.addonId)));
+  const needs = [];
+  if (pkgIn("interior") || addIn("interior")) needs.push("interior");
+  if (pkgIn("exterior") || addIn("exterior")) needs.push("exterior");
+  if (vs.some((v) => Boolean(v.correction)) || addId(["paint-correction", "paint-polish"])) needs.push("correction");
+  if (addId(["ceramic-coating"])) needs.push("coating");
+  return needs;
+}
 export {
   ADDONS,
   ADVICE_HOLD_MIN,
   CAPABILITIES,
   COATING_COVERAGE,
   COATING_EXPLAINER,
-  COATING_TERMS,
   CORRECTION_RULES,
   CORRECTION_TIERS,
   DEFAULT_RULES,
-  GATED_COPY,
+  DRAFT_KEEP_DAYS,
+  HOURS,
   LEGAL,
-  MAINTENANCE_PLAN,
+  LONG_JOB_STARTS,
   MAX_BOOKING_CENTS,
   MAX_ONE_WAY_MINUTES,
-  PROCESSORS,
-  PROMOS,
+  REPO_PHONE,
   SEED_CATALOG,
-  VEHICLE_SIZES,
-  WIRE_LIMITS,
   addonIcon,
   addonsFor,
-  averageOneWayMinutes,
+  blockFeeAt,
+  businessPhone,
+  canDo,
   cancellationLadder,
   componentsOf,
-  computeCancellation,
-  computeReschedule,
   copyFor,
-  dormantProcessors,
   driveTooFar,
   estimateOneWayMinutes,
   findAddon,
   findPackage,
-  findPromo,
+  hoursText,
   isLive,
-  isSelectable,
-  isUnpriced,
   legalFingerprint,
   liveProcessors,
+  loadWindow,
+  localMinutesOfDay,
   longDate,
   mergeBusy,
   mileageFeeCents,
-  normalisePhone,
-  normalisePromo,
+  multiDayEvents,
   packagesFor,
+  parseDetailers,
   parseIcsBusy,
-  pending,
+  parsePhone,
+  phoneTrace,
   priceFromWire,
-  promoDiscountCents,
-  promoMessage,
-  quote,
-  slotNeedsPriority,
+  swapPhone,
   unavailableReason,
   validateWire,
-  vehicleSize
+  vehicleSize,
+  waivesFeeAt,
+  wireNeeds
 };

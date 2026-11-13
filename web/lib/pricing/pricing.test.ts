@@ -116,21 +116,34 @@ describe("premium surcharges", () => {
   });
 });
 
+describe("a detailer who works the late hours anyway", () => {
+  it("waives the early or late fee for that start, and keeps the rush fee", () => {
+    const late = { startMinutesLocal: minutesOfDay(18, 30), priorityBooking: false };
+    expect(computeSurcharge(late, R.surcharge).appliedBp).toBe(2000);
+    expect(computeSurcharge({ ...late, timeOfDayWaived: true }, R.surcharge).appliedBp).toBe(0);
+    const lateRush = { startMinutesLocal: minutesOfDay(18, 30), priorityBooking: true, timeOfDayWaived: true };
+    expect(computeSurcharge(lateRush, R.surcharge)).toMatchObject({ timeOfDayBp: 0, priorityBp: 2000, appliedBp: 2000 });
+  });
+});
+
 describe("booking window", () => {
+  // The date arithmetic, on a 3-day window. How many days the site uses comes
+  // from config/rush-fee.json and is tested in rush.test.ts.
+  const W = { minLeadDays: 3 };
   const mondayMidnight = new Date(2026, 8, 7); // Mon 7 Sep 2026, local midnight
 
   it("puts Monday's earliest booking on Thursday", () => {
-    expect(earliestBookableDate(mondayMidnight, R.window).getDay()).toBe(4); // Thu
+    expect(earliestBookableDate(mondayMidnight, W).getDay()).toBe(4); // Thu
   });
 
   it("shifts to Friday the moment it becomes Tuesday", () => {
     const tuesday = new Date(2026, 8, 8);
-    expect(earliestBookableDate(tuesday, R.window).getDay()).toBe(5); // Fri
+    expect(earliestBookableDate(tuesday, W).getDay()).toBe(5); // Fri
   });
 
   it("flags nearer dates as needing Priority Booking", () => {
     const needs = (dayOffset: number) =>
-      requiresPriorityBooking(new Date(2026, 8, 7 + dayOffset), mondayMidnight, R.window);
+      requiresPriorityBooking(new Date(2026, 8, 7 + dayOffset), mondayMidnight, W);
     expect(needs(0)).toBe(true); // today
     expect(needs(1)).toBe(true);
     expect(needs(2)).toBe(true);
@@ -189,6 +202,18 @@ describe("quote engine", () => {
     const upcharges = q.lines.filter((l) => l.kind === "size_upcharge");
     expect(upcharges).toHaveLength(1);
     expect(upcharges[0]?.amountCents).toBe(2500);
+  });
+
+  it("adds a bigger vehicle's extra time once, so the calendar holds enough", () => {
+    // Owner, November 10: medium takes about 15 minutes more, large about 30.
+    const large = {
+      label: "Tahoe", sizeUpchargeCents: 2500, sizeExtraMin: 30, sizeLabel: "Large",
+      packages: [FULL_INT, FULL_EXT], addons: [],
+    };
+    const small = { ...large, sizeUpchargeCents: 0, sizeExtraMin: 0, sizeLabel: "Small" };
+    const diff = quote(cart({ vehicles: [large] }), R).serviceDurationMin -
+      quote(cart({ vehicles: [small] }), R).serviceDurationMin;
+    expect(diff).toBe(30);
   });
 
   it("does not add a size upcharge to a vehicle with no work on it", () => {
@@ -446,17 +471,18 @@ describe("the surcharge line says what the surcharge is for", () => {
     // 10am is explicitly a standard hour. Charging for it and then labelling
     // the line "Premium time" is the kind of small untruth a customer notices
     // and is right to argue with.
-    expect(at(10, true)).toBe("Rush booking, +20%");
-    expect(at(12, true)).toBe("Rush booking, +20%");
+    expect(at(10, true)).toBe("Rush fee (20%)");
+    expect(at(12, true)).toBe("Rush fee (20%)");
   });
 
   it("calls premium time premium time", () => {
-    expect(at(7, false)).toBe("Premium time, +20%");
-    expect(at(19, false)).toBe("Premium time, +20%");
+    expect(at(7, false)).toBe("Early start fee (20%)");
+    expect(at(19, false)).toBe("Late start fee (20%)");
   });
 
   it("names both when both apply, at the capped rate", () => {
-    expect(at(7, true)).toBe("Rush booking and premium time, +30%");
+    expect(at(7, true)).toBe("Rush and early start fee (30%)");
+    expect(at(19, true)).toBe("Rush and late start fee (30%)");
   });
 
   it("has no surcharge line at a standard hour booked ahead", () => {

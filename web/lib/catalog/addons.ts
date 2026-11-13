@@ -9,6 +9,7 @@
  * and cannot be selected, for the same reason unpriced components cannot be
  * added: a guessed number either overcharges the customer or erodes margin.
  */
+import { SEED_CATALOG } from "./seed.js";
 
 export type AddonScope = "interior" | "exterior";
 
@@ -130,21 +131,24 @@ export const ADDONS: Addon[] = [
     icon: "droplet",
     description: "Two levels. Pick the one that matches what you are dealing with.",
     note:
-      "A stain is either sitting on the fibers or has soaked into them. Treatment breaks the bond so it can be agitated loose and wiped away, which handles anything on the surface. Removal goes further: heat and moisture pull what has soaked in back up out of the padding, and an extractor takes it away rather than pushing it deeper. That is why the deeper option costs more time, not just more product.",
+      "A stain is either sitting on the fibers or has soaked into them. Treatment breaks the bond so it can be agitated loose and wiped away, which deals with what is on the surface. The deep treatment goes further: heat and moisture draw what has soaked in back up out of the padding, and an extractor takes it away rather than pushing it deeper. That is why the deeper option costs more time, not just more product. How much of a stain lifts depends on what it is, how long it has set and the fabric, so we never promise it all comes out.",
     tiers: [
       {
         id: "minor",
-        label: "Minor to moderate treatment",
+        label: "Surface stain treatment",
         priceCents: 5000,
         durationMin: 60,
-        description: "Treatment, scrubbing and wipe reduction. Removes 70 to 90% of the stain.",
+        // No removal promises (Elijah, team brief 7.1, November 11): it said
+        // "Removes 70 to 90% of the stain".
+        description: "Treatment, scrubbing and wiping, to lift as much of the stain as the fabric allows.",
       },
       {
         id: "major",
-        label: "Moderate to major removal",
+        label: "Deep stain treatment",
         priceCents: 10000,
         durationMin: 120,
-        description: "Treatment, scrubbing, upholstery extraction, 250 degree steaming and wipe removal. Removes 90 to 100% of the stain.",
+        // It said "Removes 90 to 100% of the stain" (team brief 7.1).
+        description: "Treatment, scrubbing, upholstery extraction and 250 degree steam, to lift as much of a set-in stain as the fabric allows.",
       },
     ],
   },
@@ -527,12 +531,18 @@ export const COATING_EXPLAINER = {
    * the price is hours, and correction cannot be rushed: it is levelling
    * paint by hand, in passes, checking under lights between each one.
    */
-  timing: [
-    "Coating only, about 9 hours. Wash, decontaminate, clay, panel wipe, then apply and level the coating by hand and let it cure.",
-    "1 step correction, about 16 hours, usually across two days.",
-    "2 step correction, about 22 hours, two to three days.",
-    "3 to 4 step correction, about 34 hours, three to four days.",
-  ],
+  // The hours are the Full Exterior base plus each tier's addMin, read when
+  // used (a getter: CORRECTION_TIERS is defined below). They were typed in as
+  // 9, 16, 22 and 34, which matched only until either number moved.
+  get timing(): string[] {
+    const h = correctionHours;
+    return [
+      `Coating only, about ${h("coating-only")} hours. Wash, decontaminate, clay, panel wipe, then apply and level the coating by hand and let it cure.`,
+      `1 step correction, about ${h("one-step")} hours, usually across two days.`,
+      `2 step correction, about ${h("two-step")} hours, two to three days.`,
+      `3 to 4 step correction, about ${h("three-step")} hours, three to four days.`,
+    ];
+  },
   timingNote:
     "Nearly all of that is labour. Correction is levelling paint by hand, one pass at a time, checking under inspection lighting between each, and hard paint can add another 20 to 30% on top. The coating itself then has to be applied and levelled panel by panel before it flashes.",
   why:
@@ -549,6 +559,14 @@ export interface CorrectionTier {
   result: string;
   detail: string;
   asterisk: boolean;
+}
+
+/** Whole hours for a correction tier: the Full Exterior it builds on, plus the tier's own time. */
+function correctionHours(id: string): number {
+  const base = SEED_CATALOG.packages.find((p) => p.id === "full-exterior");
+  const tier = CORRECTION_TIERS.find((t) => t.id === id);
+  if (!base || !tier) throw new Error(`correction hours: no ${base ? id : "full-exterior"}`);
+  return Math.round((base.durationMin + tier.addMin) / 60);
 }
 
 export const CORRECTION_TIERS: CorrectionTier[] = [
@@ -569,7 +587,8 @@ export const CORRECTION_TIERS: CorrectionTier[] = [
     addMin: 12 * 60,
     result: "Looks perfect from about 5 feet away",
     detail:
-      "One cutting and finishing pass lifts most light swirling and haze, then the coating goes on. Removes roughly 60 to 70% of visible defects.",
+      // No removal percentages (team brief 7.1): it said "Removes roughly 60 to 70% of visible defects".
+      "One cutting and finishing pass for light swirling and haze, then the coating goes on. Deeper scratches can stay.",
     asterisk: true,
   },
   {
@@ -579,7 +598,8 @@ export const CORRECTION_TIERS: CorrectionTier[] = [
     addMin: 18 * 60,
     result: "Looks perfect from about 2 feet away",
     detail:
-      "A compounding pass to cut deeper defects, then a refining pass to bring the gloss back, then the coating. Removes roughly 80 to 90%.",
+      // It said "Removes roughly 80 to 90%" (team brief 7.1).
+      "A compounding pass to cut deeper defects, then a refining pass to bring the gloss back, then the coating. How much comes out depends on the paint.",
     asterisk: true,
   },
   {
@@ -587,7 +607,8 @@ export const CORRECTION_TIERS: CorrectionTier[] = [
     label: "3 to 4 step paint correction, then coating",
     addCents: CORRECTION_ADD_CENTS.threeStep,
     addMin: 30 * 60,
-    result: "Removes 90%+ of all defects, reflective trim included",
+    // It said "Removes 90%+ of all defects" (team brief 7.1).
+    result: "Our most thorough correction, reflective trim included",
     detail:
       "Heavy cut, refine, then a final jewelling pass under inspection lighting before coating, with a fourth pass where the paint needs it. Reflective trim is corrected and coated alongside the paint. This is show car work and runs across several days.",
     asterisk: false,

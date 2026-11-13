@@ -1,0 +1,34 @@
+{
+  "_read_me": [
+    "The Contact page's form (contact.html). One setting decides which wording it shows: mode.",
+    "mode \"quote\": \"Request a quote\", with two optional tick boxes for texts and offers. Needed while the new number goes through texting approval (A2P); Imperion asked for it, November 12, 2026.",
+    "mode \"question\": the form as it was before, \"Got a question first?\". Switch back to this once texting is approved: change the one word and redeploy.",
+    "Both wordings stay in this file. HTML is allowed in the text (links, &rsquo;). {phone} becomes the business number (config/business.json, or BUSINESS_PHONE in Netlify).",
+    "A mistake in this file fails the build."
+  ],
+  "mode": "quote",
+  "modes": {
+    "question": {
+      "heading": "Got a question first?",
+      "intro": "Not ready to book, or not sure which package fits? Ask us anything about your vehicle&rsquo;s condition, what&rsquo;s realistic to fix, pricing, or timing. A real person answers, usually same day.",
+      "cardTitle": "Ask us a question",
+      "cardSub": "Tell us what you&rsquo;re dealing with and we&rsquo;ll point you the right way.",
+      "subject": "QUESTION from 513autoclean.com",
+      "button": "Send My Question",
+      "fineprint": "No spam, ever. We only use your info to answer your question. See our <a href=\"privacy.html\">Privacy Policy</a>."
+    },
+    "quote": {
+      "heading": "Request a quote",
+      "intro": "Tell us about your vehicle and what you need, and we will send you a quote. A real person answers, usually same day.",
+      "cardTitle": "Request a quote",
+      "cardSub": "Tell us what you&rsquo;re dealing with and we&rsquo;ll point you the right way.",
+      "subject": "QUOTE REQUEST from 513autoclean.com",
+      "button": "Request Quote",
+      "fineprint": "No spam, ever. We only use your info to send your quote.",
+      "success": "Thanks, your quote request is in. I'll get back to you shortly, usually the same day.",
+      "smsBox": "I consent to receive SMS notifications, alerts &amp; occasional marketing communication from 513 Auto Clean. Message frequency varies. Message &amp; data rates may apply. Text HELP to {phone} for assistance. You can reply STOP to unsubscribe at any time.",
+      "marketingBox": "I want to receive news, feature updates, discounts &amp; offers from 513 Auto Clean.",
+      "termsLine": "By continuing you agree to our <a href=\"terms.html\">Terms &amp; Conditions</a> and <a href=\"privacy.html\">Privacy Policy</a>."
+    }
+  }
+}
