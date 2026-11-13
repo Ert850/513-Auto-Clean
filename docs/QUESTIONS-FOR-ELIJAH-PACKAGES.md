@@ -129,3 +129,9 @@ Please give the days and times.
 - **Accounting:** in future it should run through GoHighLevel, not the website. He wants payments through a business account and card, and all the accounting sources compiled in one place.
 - **New ask:** cancelling a booking should also remove it from accounting. Perhaps a job reaches accounting only after the detailer confirms it was done.
 
+**Clarified (November 13):**
+- **Steam now, at today's prices:** $80 when added to Full Interior (Full + Steam $305 today), and $115 on any other package.
+- **Deleting a booking's event on the calendar = a cancellation,** and Elijah or Kris must be able to do it.
+- **A job reaches accounting only once it's marked done and payment is collected.**
+- **GoHighLevel takes over the bookkeeping.**
+

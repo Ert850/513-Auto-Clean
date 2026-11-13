@@ -4,6 +4,16 @@ Work that's agreed but deliberately not started before Friday. Newest first.
 
 ## Elijah's follow-up answers (November 13): what changes
 
+- **Steam pricing now (Elijah, November 13):**
+  - steam is $80 when added to Full Interior (Full + Steam $305 at today's $225), and $115 on any other package;
+  - the add-on needs a per-package price (`web/lib/catalog/addons.ts`, priced on both browser and server, and rendered into the cards and the price list);
+  - not built yet.
+- **Cancelling = deleting the event (Elijah):** the website already treats a deleted event as free time. Still needed:
+  - Kris needs "Make changes to events" on 513 Kris Bookings;
+  - JobsSync marks rows whose event is gone as "Cancelled" (today they stay "Upcoming");
+  - the customer isn't told automatically: GoHighLevel's cancellation message, once connected.
+- **Accounting:** a job counts only when it's marked done **and** paid, and GoHighLevel takes over the bookkeeping (pipeline stages Booked → Done → Paid). Until then, JobsSync marks deleted events Cancelled only.
+
 - **Kris arrives at 6pm** (question 16, yes). Build the queued `outboundFree` change so the start of any working stretch counts as the start of the day. His 6pm BEST is then a true 6pm arrival, and long drives no longer drop it.
 - **Package prices are fixed but wait** until today's prices are shown to convert:
   - Maintenance $115, Basic $145, Full $235;
