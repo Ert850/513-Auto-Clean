@@ -234,8 +234,11 @@ function addonsHtml() {
   const card = (a) => {
     const why = unavailableReason(a);
     const priced = a.tiers.filter((t) => t.priceCents !== null);
-    const range =
-      priced.length > 1
+    // A price that depends on the package (steam: $80 with Full Interior).
+    const deal = priced.length === 1 && priced[0].withPackage ? Object.entries(priced[0].withPackage)[0] : null;
+    const range = deal
+      ? `${money(deal[1])} with ${findPackage(deal[0])?.name ?? deal[0]}, ${money(priced[0].priceCents)} otherwise`
+      : priced.length > 1
         ? `${money(priced[0].priceCents)} to ${money(priced[priced.length - 1].priceCents)}`
         : priced.length === 1
           ? money(priced[0].priceCents)

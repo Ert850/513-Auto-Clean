@@ -212,14 +212,15 @@
 
   /* ================= cart ================= */
 
-  function addonRef(a) {
+  function addonRef(a, v) {
     var def = P.findAddon(a.addonId);
     if (!def) return null;
     var tier = def.tiers.filter(function (t) { return t.id === a.tierId; })[0];
     if (!tier || tier.priceCents === null) return null;
     return {
       id: def.id, name: def.name, tierId: tier.id, tierLabel: tier.label,
-      priceCents: tier.priceCents, durationMin: tier.durationMin
+      // Some add-ons cost less with a given package (steam with Full Interior).
+      priceCents: P.tierPriceFor(tier, v ? v.packageIds : []), durationMin: tier.durationMin
     };
   }
 
@@ -259,7 +260,7 @@
               priceCents: p.priceCents, durationMin: p.durationMin
             };
           }),
-          addons: v.addons.map(addonRef).filter(Boolean),
+          addons: v.addons.map(function (a) { return addonRef(a, v); }).filter(Boolean),
           correction: correctionRef(v)
         };
       }),
@@ -2300,7 +2301,7 @@
         html += '<button type="button" class="bk-tier' + (sel ? ' on' : '') + '" data-addon="' + a.id + '" data-tier="' + t.id + '">' +
           '<span class="bk-tier-l">' + esc(t.label) +
           (t.description ? '<i>' + esc(t.description) + '</i>' : '') + '</span>' +
-          '<span class="bk-tier-p">' + svc(t.priceCents, t.asterisk ? '*' : '') + '</span>' +
+          '<span class="bk-tier-p">' + svc(P.tierPriceFor(t, v.packageIds), t.asterisk ? '*' : '') + '</span>' +
           '</button>';
       });
       html += '</div>';
@@ -5141,7 +5142,7 @@
           out.push({
             value: a.id + '|' + t.id,
             label: a.name + (a.tiers.length > 1 ? ', ' + t.label : '') +
-              '  +' + $(t.priceCents) + (t.asterisk ? '*' : ''),
+              '  +' + $(P.tierPriceFor(t, v.packageIds)) + (t.asterisk ? '*' : ''),
           });
         });
       });
@@ -5156,7 +5157,7 @@
       var tier = def.tiers.filter(function (t) { return t.id === a.tierId; })[0];
       return '<li><span>' + esc(def.name) +
         (def.tiers.length > 1 && tier ? ', ' + esc(tier.label) : '') + '</span>' +
-        '<b>' + (tier ? svc(tier.priceCents) : '') + '</b>' +
+        '<b>' + (tier ? svc(P.tierPriceFor(tier, v.packageIds)) : '') + '</b>' +
         '<button type="button" class="bk-extra-x" data-extrarm="' + index + '|' + esc(a.addonId) + '">Remove</button>' +
         // On what they have ALREADY chosen, and collapsed. Somebody deciding
         // needs the list short; somebody who has decided sometimes wants to
