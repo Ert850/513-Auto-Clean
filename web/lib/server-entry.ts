@@ -16,6 +16,7 @@ import {
   CORRECTION_TIERS,
   addonsFor,
   findAddon,
+  tierPriceFor,
   findCoatingTerm,
   findCorrectionTier,
   unavailableReason,
@@ -118,7 +119,7 @@ export function priceFromWire(wire: WireCart, opts: PriceOptions = {}): PricedCa
       }
       addons.push({
         id: def.id, name: def.name, tierId: tier.id, tierLabel: tier.label,
-        priceCents: tier.priceCents, durationMin: tier.durationMin,
+        priceCents: tierPriceFor(tier, wv.packageIds ?? []) as number, durationMin: tier.durationMin,
       });
     }
 
@@ -257,6 +258,7 @@ export {
   addonsFor,
   componentsOf,
   findAddon,
+  tierPriceFor,
   findPackage,
   packagesFor,
   unavailableReason,

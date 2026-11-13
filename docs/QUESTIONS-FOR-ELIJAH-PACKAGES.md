@@ -118,3 +118,20 @@ Please give the days and times.
 
 **Answer:** **Not answered in this recording.** Still open.
 
+## Follow-up answers (Elijah, text message, November 13)
+
+- **2. Full Interior + Steam:** **$315** at the later prices (Full $235 + steam $80). Steam on **any other package** is an add-on at **$115**.
+- **8. Showroom Ready Restoration:** **starts at $445**, estimate **+3 hours**, worded "starts at $445".
+- **16. Kris's evening drive:** **yes, Kris can arrive at 6pm** (his day job ends around 5pm). The site should plan his 6pm as a 6pm arrival.
+- **New prices** (Maintenance $115, Basic $145, Full $235, Full + Steam $315): **later**. Raise them if bookings convert well at today's prices ($135 and $225).
+- **Prestige Living:** assume it prints **January 1** (annual). The landing page must be final by then. He'll check the printer emails; assume they go out.
+- **JobsSync:** he'll install the updated script himself.
+- **Accounting:** in future it should run through GoHighLevel, not the website. He wants payments through a business account and card, and all the accounting sources compiled in one place.
+- **New ask:** cancelling a booking should also remove it from accounting. Perhaps a job reaches accounting only after the detailer confirms it was done.
+
+**Clarified (November 13):**
+- **Steam now, at today's prices:** $80 when added to Full Interior (Full + Steam $305 today), and $115 on any other package.
+- **Deleting a booking's event on the calendar = a cancellation,** and Elijah or Kris must be able to do it.
+- **A job reaches accounting only once it's marked done and payment is collected.**
+- **GoHighLevel takes over the bookkeeping.**
+

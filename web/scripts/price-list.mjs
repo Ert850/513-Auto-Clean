@@ -24,6 +24,10 @@ const pkg = (id) => m.findPackage(id);
 const addon = (id) => m.ADDONS.find((a) => a.id === id);
 const bookable = (a) => a && !m.unavailableReason(a);
 const tierFrom = (a) => usd(Math.min(...a.tiers.map((t) => t.priceCents)));
+// "$115 ($80 with Full Interior)" for a tier whose price depends on the package.
+const tierText = (t) => t.withPackage
+  ? `${usd(t.priceCents)} (${Object.entries(t.withPackage).map(([id, c]) => `${usd(c)} with ${pkg(id).name}`).join(", ")})`
+  : usd(t.priceCents);
 const sizes = [["Small", "sedan, coupe, hatchback", 0], ["Medium", "SUV, truck, crossover", 1000], ["Large", "3 row SUV, 7+ passenger van", 2500]];
 // Cross-check the size table against the catalog's own.
 const SEED_SIZES = { small: 0, medium: 1000, large: 2500 };
@@ -71,7 +75,7 @@ out(`|---|---|---|`);
 for (const a of m.ADDONS.filter(bookable)) {
   for (const t of a.tiers) {
     const label = a.tiers.length > 1 ? `${a.name}: ${t.label}` : a.name;
-    out(`| ${label} | ${usd(t.priceCents)} | about ${hrs(t.durationMin ?? 60)} |`);
+    out(`| ${label} | ${tierText(t)} | about ${hrs(t.durationMin ?? 60)} |`);
   }
 }
 out(`| Extra hands-on time beyond the listed work | ${usd(R.addonRateCents)} an hour | |`);
@@ -100,7 +104,7 @@ for (const [prob, id, how] of spot) {
     ? `${usd(a.tiers.find((t) => /deep/i.test(t.label)).priceCents)} + ${usd(addon("ozone").tiers[0].priceCents)}`
     : a.tiers.length > 1 && /deep/.test(how) && !/surface/.test(how)
       ? usd(a.tiers.find((t) => /deep/i.test(t.label)).priceCents)
-      : a.tiers.length > 1 ? `${tierFrom(a)} to ${usd(Math.max(...a.tiers.map((t) => t.priceCents)))}` : usd(a.tiers[0].priceCents);
+      : a.tiers.length > 1 ? `${tierFrom(a)} to ${usd(Math.max(...a.tiers.map((t) => t.priceCents)))}` : tierText(a.tiers[0]);
   out(`| ${prob} | ${how} | ${price} |`);
 }
 out();
@@ -121,7 +125,7 @@ const gbp = [
   ["Full body wash", "Express Exterior / Basic Exterior", `from ${ext("express-exterior")}`],
   ["Headlight polishing", "Headlight Restoration (add-on)", usd(addon("headlight").tiers[0].priceCents)],
   ["Seat shampooing", "Full Interior (shampoo scrub of the upholstery); single stains: Stain Treatment", `from ${ext("full-interior")}; stains from ${tierFrom(addon("stain"))}`],
-  ["Steam cleaning", "Full Vehicle Steam Treatment (add-on to an interior package)", usd(addon("steam").tiers[0].priceCents)],
+  ["Steam cleaning", "Full Vehicle Steam Treatment (add-on to an interior package)", tierText(addon("steam").tiers[0])],
   ["Vehicle interior vacuuming", "Basic Interior", `from ${ext("basic-interior")}`],
   ["Wheel washing", "Hubcaps scrubbed in Express Exterior; wheels, tires and wells in Basic and Full Exterior; Tire and Rim Shine add-on", `from ${ext("express-exterior")}; shine ${usd(addon("tire-rim-shine").tiers[0].priceCents)}`],
 ];
