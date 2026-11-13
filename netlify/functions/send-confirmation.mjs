@@ -1,4 +1,4 @@
-import { priceFromWire, validateWire, findPackage, findAddon, vehicleSize, isLive, ADVICE_HOLD_MIN, businessPhone, multiDayEvents, LONG_JOB_STARTS, CORRECTION_RULES } from "./_pricing.mjs";
+import { priceFromWire, validateWire, findPackage, findAddon, vehicleSize, isLive, ADVICE_HOLD_MIN, ARRIVAL_WINDOW_MIN, businessPhone, multiDayEvents, LONG_JOB_STARTS, CORRECTION_RULES } from "./_pricing.mjs";
 import { blockFeeFor, detailerFor, homeFor, timeFeeWaived } from "./_detailers.mjs";
 import { createBookingEvent, findBookingEvent, gcalAuthMode, gcalConfigured } from "./_gcal.mjs";
 import { measuredOneWayMinutes } from "./_routes.mjs";
@@ -110,18 +110,31 @@ ${preview ? `<div style="display:none;max-height:0;overflow:hidden;opacity:0;fon
 <h1 style="margin:0 0 16px;font-size:24px;line-height:1.2">${title}</h1>
 ${inner}
 <p style="margin:24px 0 0;padding-top:16px;border-top:1px solid #e2e4df;font-size:13px;color:#5a6069">
-Questions, or need to change something? Text or call
-<a href="sms:${PHONE.e164}" style="color:#c41414;font-weight:700">${PHONE.display}</a>.
+Questions, or need to change something? Please text or call
+<a href="sms:${PHONE.e164}" style="color:#c41414;font-weight:700">${PHONE.display}</a>. We are always happy to help.
 </p>
 </div></body></html>`;
 
 function receiptRows(priced) {
   if (!priced?.lines?.length) return "";
-  const rows = priced.lines
+  // Travel is always its own row with its exact price (Elijah, November 13).
+  // A drive inside the free minutes is $0, which the quote leaves out as a
+  // line, so the email used to say travel would be "added when we confirm"
+  // under a total that was already final.
+  // Only a measured drive is shown as Free: a ZIP band estimate (a request
+  // with no address yet) can still change once the drive is measured.
+  const lines = [...priced.lines];
+  const hasTravel = lines.some((l) => /travel/i.test(l.label));
+  const travelKnown = hasTravel || priced.travelSource === "routes";
+  if (travelKnown && !hasTravel) {
+    const at = lines.findIndex((l) => /sales tax/i.test(l.label));
+    lines.splice(at < 0 ? lines.length : at, 0, { label: "Travel", amountCents: 0, free: true });
+  }
+  const rows = lines
     .map(
       (l) =>
         `<tr><td style="padding:6px 0;color:#5a6069">${esc(l.label)}</td>` +
-        `<td style="padding:6px 0;text-align:right;white-space:nowrap">${$(l.amountCents)}</td></tr>`,
+        `<td style="padding:6px 0;text-align:right;white-space:nowrap">${l.free ? "Free" : $(l.amountCents)}</td></tr>`,
     )
     .join("");
   return `<table style="width:100%;border-collapse:collapse;font-size:14px;margin:16px 0">
@@ -129,18 +142,39 @@ ${rows}
 <tr><td style="padding:10px 0 0;border-top:1px solid #e2e4df;font-weight:800">Total</td>
 <td style="padding:10px 0 0;border-top:1px solid #e2e4df;text-align:right;font-weight:800">${$(priced.totalCents)}</td></tr>
 </table>
-${
-    priced.lines.some((l) => /travel/i.test(l.label))
-      // It is already a line in the table above, measured from the address at
-      // the hour picked. Saying it will be "added when we confirm" underneath
-      // a table that already added it is how a customer starts wondering what
-      // else is going to appear.
-      ? `<p style="margin:0;font-size:13px;color:#5a6069">Travel is the measured drive from us to you at the time you picked, and it is in the total above.</p>`
-      : `<p style="margin:0;font-size:13px;color:#5a6069">Travel is worked out from your address and added when we confirm.</p>`
-  }`;
+${travelKnown ? "" : `<p style="margin:0;font-size:13px;color:#5a6069">Travel is worked out from your address and added when we confirm.</p>`}`;
 }
 
-function customerEmail({ contact, when, priced, kind, slot, textsOk, flex, asked, calendarOk = true }) {
+/** "10 AM", "10:30 AM", in Cincinnati time. */
+function clock(ms) {
+  return new Date(ms)
+    .toLocaleString("en-US", { timeZone: "America/New_York", hour: "numeric", minute: "2-digit" })
+    .replace(":00", "");
+}
+
+/** "About 2 hours", "About 4.5 hours", to the half hour; "…, over 2 days" for a multi-day job. */
+export function durationText(minutes, days = 1) {
+  const h = Math.max(0.5, Math.round(minutes / 30) / 2);
+  return `About ${h} hour${h === 1 ? "" : "s"}${days > 1 ? `, over ${days} days` : ""}`;
+}
+
+/**
+ * The days a booked job runs over: the same plan the calendar events are
+ * written from (null for one day). The measured drive, else 30 minutes
+ * (travelAllowanceMin), and the correction start times.
+ */
+function planDays({ cart, kind, minutes, measuredMin }) {
+  if (kind !== "booking" || !cart?.slot) return null;
+  const corr = (cart.vehicles ?? []).some((v) => v.correction);
+  return multiDayEvents({
+    slotMs: cart.slot,
+    serviceMinutes: minutes,
+    travelMin: Number.isFinite(measuredMin) ? measuredMin : 30,
+    preferredStartsMin: corr ? CORRECTION_RULES.allowedStartsMin : LONG_JOB_STARTS,
+  });
+}
+
+export function customerEmail({ contact, when, priced, kind, slot, cart, detailer, measured, textsOk, flex, asked, calendarOk = true }) {
   const name = esc(String(contact.name || "").split(" ")[0] || "there");
 
   if (kind === "inquiry" || !when) {
@@ -200,8 +234,20 @@ ${receiptRows(priced)}`,
     ? `<p style="margin:0 0 14px">Your time is <strong>${confirmed ? "held" : "requested"}</strong>. What we have not settled yet is which detail you want, which is the part you asked us about.</p>` +
       `<p style="margin:0 0 14px">We will work that out with you: from what you have told us if there is enough to go on, otherwise on the day, looking at the vehicle together. <strong>You hear the price before we start anything</strong>, and if none of it is worth it to you we will leave and there is nothing to pay.</p>`
     : confirmed
-      ? `<p style="margin:0 0 14px">This is <strong>confirmed and booked in</strong>. Nothing else is needed from you, and there is nothing left to accept.</p>`
+      ? `<p style="margin:0 0 14px">Your detail is <strong>fully confirmed and booked</strong>. Thank you for your trust and support. We hope you're as excited as we are!</p>`
       : `<p style="margin:0 0 14px">We will confirm this with you shortly, usually within a few hours. Treat the time as requested until you hear back.</p>`;
+
+  // Elijah's layout (November 13): arrival time, how long, then the window
+  // we arrive in, from the detailer's own window (DETAILERS arrivalWindow).
+  const label = (t) => `<p style="margin:0 0 6px;font-size:13px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#5a6069">${t}</p>`;
+  const minutes = priced?.serviceDurationMin || 0;
+  const days = advice ? null : planDays({ cart, kind, minutes, measuredMin: measured });
+  const windowMin = detailer?.arrivalWindowMin ?? ARRIVAL_WINDOW_MIN;
+  const arrival = slot === null
+    ? ""
+    : windowMin > 0
+      ? `We ${confirmed ? "will" : "would"} arrive between ${clock(slot)} and ${clock(slot + windowMin * 60_000)}.`
+      : `We ${confirmed ? "will" : "would"} arrive at ${clock(slot)}.`;
 
   const shortNotice = soon && !advice
     ? `<p style="margin:0 0 14px;padding:10px 12px;background:#fdf3e3;border-radius:8px;font-size:14px">` +
@@ -223,11 +269,13 @@ ${receiptRows(priced)}`,
         : soon
           ? `Thanks ${name}, we have your request`
           : confirmed
-            ? `Thanks ${name}, you are booked in`
+            ? `Thanks ${name}, you are booked in.`
             : `Thanks ${name}, we have your booking`,
-      `${opening}${shortNotice}<p style="margin:0 0 6px;font-size:13px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#5a6069">When</p>
+      `${opening}${shortNotice}${label("Arrival time")}
 <p style="margin:0 0 16px;font-size:18px;font-weight:700">${esc(when)}</p>
-<p style="margin:0 0 14px">That is a start time, not how long we stay: we arrive within the hour after it. ${textsOk ? "We will text you an ETA before we set off." : "If anything changes we will call or email you."}</p>
+${advice ? "" : `${label("Duration")}
+<p style="margin:0 0 16px;font-size:18px;font-weight:700">${durationText(minutes, days?.length ?? 1)}</p>`}
+<p style="margin:0 0 14px">${arrival} ${textsOk ? "We will text you an ETA before we set off." : "If anything changes we will call or email you."}</p>
 ${
   advice
     ? `<p style="margin:0 0 14px">We have set aside <strong>${Math.round(ADVICE_HOLD_MIN / 60)} hours</strong>, which covers our longest single-vehicle detail. If what you pick needs less, we finish earlier and you pay less.</p>`
@@ -410,17 +458,8 @@ export function bookingEvents({ contact, cart, priced, extras, payInFull, kind, 
   const title = eventTitle({ kind, slotMs: cart.slot, nowMs, detailer, names, contactName: contact.name });
   const description = eventDescription({ contact, cart, priced, extras, payInFull, kind });
 
-  // The same plan the booking form showed: the measured drive, else 30
-  // minutes (travelAllowanceMin), and the correction start times.
-  const corr = (cart.vehicles ?? []).some((v) => v.correction);
-  const days = kind === "booking"
-    ? multiDayEvents({
-        slotMs: cart.slot,
-        serviceMinutes: minutes,
-        travelMin: Number.isFinite(measuredMin) ? measuredMin : 30,
-        preferredStartsMin: corr ? CORRECTION_RULES.allowedStartsMin : LONG_JOB_STARTS,
-      })
-    : null;
+  // The same plan the booking form showed.
+  const days = planDays({ cart, kind, minutes, measuredMin });
 
   if (!days) {
     return [{
@@ -555,7 +594,7 @@ export async function handler(event) {
     blockFeeBp: await blockFeeFor(detailer, cart.slot, payload?.timeFeeBp),
   });
   const when = whenLabel(cart.slot);
-  const ctx = { contact, when, priced, kind, cart, slot: cart.slot ?? null, detailer, textsOk: payload?.consent?.sms === true };
+  const ctx = { contact, when, priced, kind, cart, slot: cart.slot ?? null, detailer, measured, textsOk: payload?.consent?.sms === true };
 
   const rawCart = payload?.cart ?? {};
   const rawAccess = rawCart.access ?? {};
