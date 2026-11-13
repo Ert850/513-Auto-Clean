@@ -1340,6 +1340,23 @@ From the live calendar (read only), the code, and your voice notes:
 - **Not changed:** Elijah's draft had "$10.53 + sales tax from travel amount". Tax is already worked out on the package plus travel, so the email shows one exact tax and one exact total. His " - " became a full stop (no dashes in customer text).
 - **Test it:** `confirmation-email.test.ts` covers a priced drive, a free one, the window from a detailer setting, the duration and no dashes. Sample: `docs/mockups/booking-email-nov13.png`. On live, make a test booking and check the email.
 
+## The Contact form on the home page (Imperion, November 14, for the toll-free verification)
+
+- **What:** the whole "Request a quote" section of `contact.html` (both columns) also sits on the home page, between the review ticker and "Our work". A thin rule marks its bottom edge against the white gallery.
+- **How:** `render-site.mjs` copies the section from `contact.html` into `index.html` between `CONTACT:SECTION` markers at every build, so the two can't differ. `config/contact-form.json` still switches both. The hours stamp on `index.html` now expects 3 matches.
+- **Booking form:** its "ask a question" and "change my booking" fill the form in place on the home page (the path that already existed for a page with `#inquiryForm`) and go to `contact.html` from other pages.
+- **Test it:** submit the home page form on the live site (Web3Forms only accepts the live domain), check the email, and check "ask a question" from the booking form on the home page.
+
+## Legal wording for the toll-free verification (November 14)
+
+- **Root cause:** the terms' text section (`capabilities.ts` "messages", notYet copy) said "no automated messaging behind it yet". That contradicts the automated program Imperion is registering, which is a likely rejection.
+- **Changes:**
+  - the terms describe the program and gain a program paragraph;
+  - privacy drops the "except messaging providers" carve-out (Twilio's wording) and lists a generic text messaging provider;
+  - both legal dates are 2026-11-14, re-locked.
+- **`automatedTexts` stays off on purpose:** turning it on would make the booking form's Done screen promise "a reminder before the day", which nobody sends yet.
+- Notes for Imperion: `docs/TOLL-FREE-VERIFICATION.md`.
+
 ## Leftovers noticed, not touched
 
 - `book.css` still has `.bk-time`, `.bk-times`, `.bk-bucket` and `.bk-juston` rules from an older slot design. They were unused before tonight.

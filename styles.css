@@ -1050,6 +1050,8 @@ html.scrolling-fast .reveal { transition: none; transition-delay: 0s; }
    QUESTION / INQUIRY SECTION
    ============================================================ */
 .inquiry { background: var(--paper); padding-block: clamp(56px, 9vh, 96px); }
+/* On the home page the Contact section sits on the white gallery: a rule marks where it ends (Imperion, November 14). */
+body > #inquiry { border-bottom: 1px solid var(--line); }
 .inq-grid { display: grid; grid-template-columns: 1fr; gap: 1.8rem; margin-top: 1.6rem; }
 /* Sub-pages (everything wrapped in <main>): the first section sits right
    under the sticky header. Its usual top padding (56 to 81px) exists to

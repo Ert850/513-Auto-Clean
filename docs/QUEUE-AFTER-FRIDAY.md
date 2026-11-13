@@ -2,6 +2,34 @@
 
 Work that's agreed but deliberately not started before Friday. Newest first.
 
+## Swap the phone number back (due November 18 to 21)
+
+- **What's live:** since November 14, the site shows the temporary A2P verification number, (866) 371-5948. `BUSINESS_PHONE` is set in Netlify (all scopes and contexts) and production was redeployed (deploy 6af707e0).
+  - Checked live: 12 pages, the scripts, `tel:`/`sms:` links and the structured data all carry it, with no trace of (513) 279-2915.
+- **To swap back** when Imperion says verification is done: delete `BUSINESS_PHONE` in Netlify (or set it to the permanent new number), then Deploys → Trigger deploy → Deploy site.
+  - Check that no page carries 371-5948 afterwards.
+  - Emails pick it up from the same deploy.
+
+## Monday: a design spec for one Google calendar (Imperion, November 14)
+
+- **Imperion's ask:** they will do the GoHighLevel integration themselves, later. Their main worry is syncing several calendars, and they'd prefer the booking backend to read and write **one** Google calendar.
+- **Today:** each detailer has an availability calendar (OPEN, `OPEN +20%`, BEST, DNS) and a bookings calendar, plus 513 Auto Clean. The site reads them all (`_detailers.mjs`, `web/lib/availability/`, `crew.ts`), and JobsSync reads the bookings calendars.
+- **Emmett's read:** one calendar means significant rewrites and new bugs, so it's not before the number verification.
+- **Task:** draft a design spec that fits both Imperion's and Elijah's priorities. Elijah's priorities:
+  - Kris and Elijah each see and cancel their own jobs;
+  - per-detailer hours, fees and priority;
+  - JobsSync and accounting.
+- **The spec gives 2 to 4 concepts.** For each:
+  - an example of what the Google calendar would look like: the event titles, colours and a sample week with OPEN hours, fees, bookings and DNS for Kris and Elijah;
+  - what GoHighLevel would sync;
+  - what changes in the code and in JobsSync;
+  - pros and cons, the migration steps and the risk to live bookings.
+- **Concepts to include, at least:**
+  - (a) today's calendars, with GoHighLevel syncing each one;
+  - (b) one calendar, with the detailer named in each event (title prefix or colour);
+  - (c) one bookings calendar plus per-detailer availability calendars.
+- **Nothing is built until Elijah and Imperion pick one.**
+
 ## Monday: Elijah's walkthrough of the live site on a phone (November 13)
 
 He checked every page. Results, Meet the Team, Reviews and Range & Travel are fine as they are. The results slider "works great" on mobile, and the booking section at the bottom of the home page "should work well".
@@ -19,21 +47,43 @@ He checked every page. Results, Meet the Team, Reviews and Range & Travel are fi
      - **Three bullets below the fold: the three biggest objections, most common first.** Use the "Ready to book?" bullets (item 2). Likely candidates from `BUSINESS-CONTEXT.md` section 4: when do I pay (after, on site), do you need my water or power (no), do I need to be home (no). Elijah confirms the order.
      - **Social proof below, only if needed. Keep everything else empty, the page short and the images compressed.** Anything that doesn't raise qualified bookings gets cut. Ask before cutting home-page sections: the owner kept the full package cards once already.
      - **More than five form fields means steps.** The booking form already works in steps.
-   - **Ask with the mockup:**
-     - Does the hero keep View Services and Contact Us, the Google rating pill and the hours line, or show only Book Now?
-     - Is "Best" OK as written? The 5.0 Google rating beside it backs it up.
+   - **Elijah's decisions (November 13, second message):**
+     - Keep the rating pill and Book Now in the hero.
+     - Move View Services, Contact Us and the hours line lower on the page, below the new service cards (item 1b).
+     - "Best" isn't needed. Mock up "Mobile detailing in Cincinnati" and his alternative "Professional mobile detailing in Cincinnati".
+1b. **New section right under the hero: four big service buttons (Elijah, November 13).**
+   - **The buttons:** Interior, Exterior, Spills and Stains, Paint Correction + Ceramic Coatings. Each opens its service information or the booking form set to it.
+   - **The image behind each:**
+     - **Interior:** a clean interior.
+     - **Exterior:** a clean, glossy exterior.
+     - **Spills and Stains:** split left to right, stained on the left and treated on the right. The words make no removal promise.
+     - **Paint Correction + Ceramic Coatings:** deep, glossy corrected paint, ideally with a DA polisher held on the right of the button.
+   - **Photos:** Elijah's, from the photo pipeline. A DA polisher shot is needed.
+   - **Build static first.** A one-second transformation per button (cleaning, washing, stain fading, polishing) comes later. It uses `transform` and `opacity` only, nothing heavy on phones, and stays still under reduced motion.
+   - Mock up at 375 and 1440 before building; it's a new section on the owner's first screen.
 2. **"Ready to book?" block on the home page (`index.html`, "Start My Booking"): lower friction.**
-   - Keep "See your exact price before you commit".
-   - "Nothing is charged until we confirm your time" becomes "You only pay on site once your detail is complete". That's true: payment is after the detail, no deposit (`BUSINESS-CONTEXT.md`).
-   - "Add more than one vehicle and save 10% on each extra" goes. In its place, something like "Learn about each package before you book", linking to Services. That also removes a typed business number.
+   - Elijah's wording (November 13): "Know your price before you book. Pay on site once your detail is complete." It replaces "See your exact price…" and "Nothing is charged until we confirm your time". That's true: payment is after the detail, no deposit (`BUSINESS-CONTEXT.md`).
+   - "Add more than one vehicle and save 10% on each extra" becomes "Explore our detailing packages and find the right service for your vehicle", linking to Services. That also removes a typed business number.
+   - Where a price needs an inspection or a quote (heavy pet hair, stains, correction), say the final price is agreed before work starts.
    - Rework the intro line the same way.
 3. **The same payment wording in the booking form.**
    - Change the booking lines: `funnel.js` "Nothing is charged today" on the last step, and any other line about a booked time.
    - Leave the request and quote lines ("nothing is charged until you agree to it"). They are about agreeing to a price, which is still true.
    - Check the terms and the FAQ say the same.
-4. **Services page on phones still shows Showroom Ready at $395.**
-   - Elijah wants it to match the new structure: Showroom Ready Restoration as an add-on "starts at $445", +3 h, Elijah only.
-   - That conflicts with the decision that the new prices wait until today's convert. **Ask Elijah:** move only Showroom Ready now, at today's other prices, or wait for the whole restructure?
+4. **Showroom Ready moves to its new form now (Elijah, November 13: "Full price change is $445+. Move to its new form").** The other new prices still wait.
+   - **What changes:**
+     - "Showroom Ready Restoration", starting at $445, about 3 hours on top, Elijah only;
+     - quoted on the vehicle's condition: say clearly that $445 is where it starts, not the final price;
+     - built as the add-on described under the package restructure below (check that section's details before building).
+   - **Where, all from `web/lib/catalog/`, so every place agrees:**
+     - the package cards on the home page and Services, on phones and desktop;
+     - the structured data (`CATALOG:OFFERS`);
+     - the booking form (Package step, Help me decide, the browse list);
+     - the FAQ price block;
+     - the price list and its PDF.
+   - **Remove $395 everywhere:** after the build, `grep -rn 395 dist/` finds nothing price-like.
+   - `js/funnel.js` `caps = [5000, 12500, 21500, 39500]` (the browse list's "Under $X" filters) is a typed price list that tracks the package prices. Derive it from the catalog in the same change.
+   - Re-run the Services fold checks (1440×790 and the 940 px rule): a card's text changes.
 5. **Contact form: compact on phones.** The boxes are long and the form fills the screen.
    - Fewer text box rows, and side-by-side fields where they fit at 375.
    - Mockup at 375 and 1440 first.
@@ -46,7 +96,12 @@ He checked every page. Results, Meet the Team, Reviews and Range & Travel are fi
    - the Done screen's title, "You are booked in" (`funnel.js`, `bkTitle`).
    - Candidates for Elijah to pick from: "Thanks {name}, you're all set." / "You're booked, {name}!" / "See you {day}, {name}!".
 8. **Later, not Monday:**
-   - **Booking form, fewer page changes:** for example, Vehicle, Service and Package on one screen. Mockups first, and nothing that changes booking behaviour.
+   - **Booking form, fewer page changes:** for example, Vehicle, Service and Package on one screen. Mockups first, and nothing that changes booking behaviour. Elijah's notes (November 13):
+     - sections on one page, with one Continue or Confirm at the end;
+     - the Terms and Privacy line and the consent tick must stay visible where they apply (today the line leaves with its sub-step);
+     - a review before submitting;
+     - less automatic page jumping;
+     - phones first.
    - **Results photos:** Elijah picks the images himself; swap them in when he sends them (photo pipeline below).
 
 ## Elijah's follow-up answers (November 13): what changes
@@ -56,10 +111,13 @@ He checked every page. Results, Meet the Team, Reviews and Range & Travel are fi
   - the add-on needs a per-package price (`web/lib/catalog/addons.ts`, priced on both browser and server, and rendered into the cards and the price list);
   - **built November 13** (`tierPriceFor`, `withPackage`; `steam-price.test.ts`).
 - **Cancelling = deleting the event (Elijah):** the website already treats a deleted event as free time. Still needed:
-  - Kris needs "Make changes to events" on 513 Kris Bookings;
+  - Kris needs "Make changes to events" on 513 Kris Bookings: **already set** (checked November 14, edit level without sharing rights, Kris's account confirmed by Emmett);
   - JobsSync marks rows whose event is gone as "Cancelled" (today they stay "Upcoming");
   - the customer isn't told automatically: GoHighLevel's cancellation message, once connected.
 - **Accounting:** a job counts only when it's marked done **and** paid, and GoHighLevel takes over the bookkeeping (pipeline stages Booked → Done → Paid). Until then, JobsSync marks deleted events Cancelled only.
+  - **Elijah's statuses (November 13):** Booked, Confirmed, In Progress, Completed, Paid, Cancelled. Completed and Paid are separate, because a done job may not be paid yet. A cancelled booking stays on record, marked Cancelled, and never counts.
+  - **Marking a job done from a phone:** "DONE" in the event title, or a green event colour, until GoHighLevel holds the status. Ask Kris and Elijah which one; JobsSync reads it.
+  - **Open question for Elijah's accountant:** is the travel charge taxable? The site taxes package plus travel today (`quote.ts` `taxableBase`). Elijah's note says not to assume. Change nothing until an accountant answers for Ohio, Kentucky and Indiana.
 
 - **Kris arrives at 6pm** (question 16, yes). Build the queued `outboundFree` change so the start of any working stretch counts as the start of the day. His 6pm BEST is then a true 6pm arrival, and long drives no longer drop it.
 - **Package prices are fixed but wait** until today's prices are shown to convert:
