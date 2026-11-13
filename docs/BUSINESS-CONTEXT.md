@@ -6,7 +6,7 @@ This repo is public, so this file has **no customer names, phone numbers, addres
 
 ## 1. What we sell and to whom
 
-- **Lead offer:** Full Interior and Full Interior + Steam Clean, as the default package (currently Full Interior plus the $75 steam extra; see `web/lib/catalog/`).
+- **Lead offer:** Full Interior and Full Interior + Steam Clean, as the default package (currently Full Interior plus the steam extra, which costs less with Full Interior than with other packages; see `web/lib/catalog/`).
 - **Heavy-soil work:** welcome, and it's our biggest tickets: pet hair, kids, vomit, urine, smoke, mold, stains. Vans and minivans with heavy soil are the largest jobs.
 - **Not pushing:** exterior in winter, paint correction or coating as a lead offer, or discounts.
 - **Customer:** busy homeowners who want it done right the first time, value trust, and like supporting a local UC student-owned business.

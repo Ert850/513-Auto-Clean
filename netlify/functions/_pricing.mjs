@@ -313,7 +313,9 @@ var ADDONS = [
     icon: "steam",
     description: "Every safe surface sanitized and scrubbed with a steamer.",
     note: "Steam cleans with heat rather than chemicals. It softens grease and grime so it wipes off instead of being scrubbed at, gets into vents, seams and seat rails that no cloth reaches, and the heat kills bacteria on contact. Everything dries in minutes because there is very little water involved.",
-    tiers: [{ id: "std", label: "Full vehicle", priceCents: 7500, durationMin: 90 }]
+    // $80 with Full Interior (Full + Steam $305 at today's $225), $115 on any
+    // other package (Elijah, November 13).
+    tiers: [{ id: "std", label: "Full vehicle", priceCents: 11500, withPackage: { "full-interior": 8e3 }, durationMin: 90 }]
   },
   {
     id: "ozone",
@@ -538,6 +540,12 @@ function fromCents(a) {
 }
 function addonsFor(scope) {
   return ADDONS.filter((a) => a.scope === scope).sort((x, y) => fromCents(x) - fromCents(y));
+}
+function tierPriceFor(tier, packageIds = []) {
+  if (tier.withPackage) {
+    for (const id of packageIds) if (tier.withPackage[id] !== void 0) return tier.withPackage[id];
+  }
+  return tier.priceCents;
 }
 function findAddon(id) {
   return ADDONS.find((a) => a.id === id);
@@ -2968,7 +2976,7 @@ function priceFromWire(wire, opts = {}) {
         name: def.name,
         tierId: tier.id,
         tierLabel: tier.label,
-        priceCents: tier.priceCents,
+        priceCents: tierPriceFor(tier, wv.packageIds ?? []),
         durationMin: tier.durationMin
       });
     }
@@ -3102,6 +3110,7 @@ export {
   phoneTrace,
   priceFromWire,
   swapPhone,
+  tierPriceFor,
   unavailableReason,
   validateWire,
   vehicleSize,
