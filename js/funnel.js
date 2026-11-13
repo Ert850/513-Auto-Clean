@@ -5142,7 +5142,7 @@
           out.push({
             value: a.id + '|' + t.id,
             label: a.name + (a.tiers.length > 1 ? ', ' + t.label : '') +
-              '  +' + $(t.priceCents) + (t.asterisk ? '*' : ''),
+              '  +' + $(P.tierPriceFor(t, v.packageIds)) + (t.asterisk ? '*' : ''),
           });
         });
       });
