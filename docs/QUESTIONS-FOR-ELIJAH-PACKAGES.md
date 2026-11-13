@@ -105,7 +105,7 @@ Please give the days and times.
 
 **Answer:** **6 AM to midnight, 7 days a week**, as the hours for texts, calls and bookings; the booking form shows real job times. Say "midnight" rather than "12 AM". Imperion sets the same on Google. (He also says to ignore the capacity notes in `BUSINESS-CONTEXT.md`: OPEN blocks decide, and adapt as capacity grows.)
 
-**15. The FAQ's "How long does a detail take?"** It opens with "Express details run about 1.25 hours", but there's no Express package. Maintenance (returning customers) is 1 h 45 min. The basic and full hours in the same answer now come from the catalog. Recommended: drop the Express clause, or name the packages new customers can book, once the interior package change (questions 1 to 10) is settled. Which?
+**15. The FAQ's "How long does a detail take?"** It opens with "Express details run about 1.25 hours". Express Exterior does exist ($75, 1 h 15 min, corrected November 13), so the figure is true, but it's typed into the page rather than read from the catalog. Maintenance (returning customers) is 1 h 45 min. The basic and full hours in the same answer now come from the catalog. Recommended: drop the Express clause, or name the packages new customers can book, once the interior package change (questions 1 to 10) is settled. Which?
 
 **Answer:** **The FAQ needs a rewrite.** Draft 50 to 100 questions (what people actually search about detailing, from Google) for him to answer in his own words. Lightly polish his answers. Show about 5 top questions on the FAQ page, with an expanded FAQ or blog index behind them for search. The FAQ page must not feel overwhelming.
 
