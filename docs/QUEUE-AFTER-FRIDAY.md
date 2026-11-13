@@ -2,6 +2,20 @@
 
 Work that's agreed but deliberately not started before Friday. Newest first.
 
+## Elijah's follow-up answers (November 13): what changes
+
+- **Kris arrives at 6pm** (question 16, yes). Build the queued `outboundFree` change so the start of any working stretch counts as the start of the day. His 6pm BEST is then a true 6pm arrival, and long drives no longer drop it.
+- **Package prices are fixed but wait** until today's prices are shown to convert:
+  - Maintenance $115, Basic $145, Full $235;
+  - Full + Steam $315 (steam +$80 on Full);
+  - steam on any other package $115;
+  - Showroom Ready Restoration "starts at $445", +3 h, Elijah only.
+- **Prestige Living:** assume it prints January 1, so its landing page must be final before then.
+- **Cancelling and accounting:**
+  - a cancelled booking must leave the Accounting sheet;
+  - perhaps a job counts only once the detailer confirms it was done (for example, JobsSync counts a job only when its event is marked done, and drops rows whose event was deleted);
+  - longer term, accounting runs through GoHighLevel, with payments to the business account.
+
 ## From the final pre-release review (November 13): fix after launch
 
 Full reports are in that session; the screenshots are in the session scratchpad (`review/shots/`). Fixed before launch: see `SESSION-CHANGES-pipeline.md`, "Final pre-release review".
