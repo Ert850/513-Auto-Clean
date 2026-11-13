@@ -247,7 +247,9 @@ export const PROCESSORS: Processor[] = [
   { name: "Google Calendar", does: "holds our availability and our schedule. When you book, the job goes onto our booking calendar with your name, phone, email, address and notes, so we know where to be. That calendar is private: anyone else sees only that the time is taken. Your browser reads only our open times.", capability: "liveCalendar" },
   { name: "Stripe", does: "takes card payments and keeps your card on file. Card details go straight to Stripe over an encrypted connection; we never see or store the card number.", capability: "cardOnFile" },
   { name: "PayPal", does: "takes PayPal and Venmo payments.", capability: "digitalWallets" },
-  { name: "Twilio", does: "sends our appointment text messages.", capability: "automatedTexts" },
+  // Named generically on purpose (Emmett, November 14): the provider may change
+  // (GoHighLevel's LeadConnector today), and the policy should not need a rewrite.
+  { name: "Our text messaging provider", does: "delivers the text messages we send you. It receives your mobile number and each message, only to deliver it, and may not use them for anything else." },
   { name: "Resend", does: "sends our booking confirmation emails, and the emails we receive about bookings and unfinished checkouts.", capability: "automatedEmail" },
   // Named separately from the hosting row on purpose. "Netlify hosts the
   // website" does not tell a reader that a script is running in their
@@ -451,9 +453,13 @@ export const GATED_COPY: GatedCopy[] = [
       "We ask when you book whether we can text you about your detail. If you say yes we will confirm the " +
       "booking, remind you beforehand and let you know when we are on the way.",
     notYet:
-      "We ask when you book whether we can text you about your detail. If you say yes, those texts are sent " +
-      "by hand: to confirm, to check anything we need to know, and with an ETA before we set off. There is " +
-      "no automated messaging behind it yet, so you are texting a person.",
+      // Toll-free verification (November 14): the old line said "no automated
+      // messaging behind it yet", which contradicts the program being
+      // registered. This says what we text without promising automation the
+      // booking form does not yet deliver (automatedTexts stays off there).
+      "We ask when you book whether we can text you about your detail. If you say yes, we text you about " +
+      "your quote or appointment: to confirm it, to check anything we need to know, and with an ETA before " +
+      "we set off. Some of these texts may be sent automatically, and replying to any of them reaches a person.",
   },
 ];
 

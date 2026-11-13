@@ -1347,6 +1347,16 @@ From the live calendar (read only), the code, and your voice notes:
 - **Booking form:** its "ask a question" and "change my booking" fill the form in place on the home page (the path that already existed for a page with `#inquiryForm`) and go to `contact.html` from other pages.
 - **Test it:** submit the home page form on the live site (Web3Forms only accepts the live domain), check the email, and check "ask a question" from the booking form on the home page.
 
+## Legal wording for the toll-free verification (November 14)
+
+- **Root cause:** the terms' text section (`capabilities.ts` "messages", notYet copy) said "no automated messaging behind it yet". That contradicts the automated program Imperion is registering, which is a likely rejection.
+- **Changes:**
+  - the terms describe the program and gain a program paragraph;
+  - privacy drops the "except messaging providers" carve-out (Twilio's wording) and lists a generic text messaging provider;
+  - both legal dates are 2026-11-14, re-locked.
+- **`automatedTexts` stays off on purpose:** turning it on would make the booking form's Done screen promise "a reminder before the day", which nobody sends yet.
+- Notes for Imperion: `docs/TOLL-FREE-VERIFICATION.md`.
+
 ## Leftovers noticed, not touched
 
 - `book.css` still has `.bk-time`, `.bk-times`, `.bk-bucket` and `.bk-juston` rules from an older slot design. They were unused before tonight.
