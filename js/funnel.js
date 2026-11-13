@@ -6847,7 +6847,7 @@
           input: text,
           sessionToken: acToken,
           includedRegionCodes: ['us'],
-          locationBias: { circle: { center: { latitude: 39.1031, longitude: -84.512 }, radius: 80000 } }
+          locationBias: { circle: { center: { latitude: 39.1031, longitude: -84.512 }, radius: 50000 } }  // Google's maximum: 80000 failed every lookup ("Invalid circle.radius", post-launch check, November 13)
         })
       })
         .then(function (r) { return r.json(); })
