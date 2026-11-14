@@ -10,9 +10,44 @@
   "title": "What does your car need?",
   "linkTo": "book",
   "buttons": [
-    { "label": "Interior", "image": "images/ba-crv-interior-after-760.webp", "alt": "A clean, freshly detailed car interior", "book": { "intent": "interior" }, "page": "services.html#services" },
-    { "label": "Exterior", "image": "images/hero-exterior-960.webp", "alt": "A glossy white SUV after an exterior detail", "book": { "intent": "exterior" }, "page": "services.html#services" },
-    { "label": "Spills and Stains", "split": ["images/ba-sonic-interior-before-760.webp", "images/ba-sonic-interior-after-760.webp"], "alt": "A stained seat before treatment, and after", "book": { "intent": "interior" }, "page": "services.html#addons" },
-    { "label": "Paint Correction + Ceramic Coatings", "image": "images/ba-headlight-after-760.webp", "alt": "Polished, glossy paint after correction", "book": { "interest": "showroom-exterior" }, "page": "services.html#services" }
+    {
+      "label": "Interior",
+      "image": "images/ba-captain-chair-after-760.webp",
+      "alt": "A minivan captain's chair after a Full Interior",
+      "book": {
+        "intent": "interior"
+      },
+      "page": "services.html#services"
+    },
+    {
+      "label": "Exterior",
+      "image": "images/hero-exterior-960.webp",
+      "alt": "A glossy white SUV after an exterior detail",
+      "book": {
+        "intent": "exterior"
+      },
+      "page": "services.html#services"
+    },
+    {
+      "label": "Spills and Stains",
+      "split": [
+        "images/ba-third-row-seat-stains-before-760.webp",
+        "images/ba-third-row-seat-stains-after-760.webp"
+      ],
+      "alt": "A stained third-row seat before treatment, and after",
+      "book": {
+        "intent": "interior"
+      },
+      "page": "services.html#addons"
+    },
+    {
+      "label": "Paint Correction + Ceramic Coatings",
+      "image": "images/ba-headlight-after-760.webp",
+      "alt": "Polished, glossy paint after correction",
+      "book": {
+        "interest": "showroom-exterior"
+      },
+      "page": "services.html#services"
+    }
   ]
 }
