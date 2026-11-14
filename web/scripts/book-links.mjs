@@ -41,7 +41,8 @@ export function routeBookLinks(html) {
     const pkg = /\bdata-book-package="([a-z0-9-]+)"/.exec(tag);
     const interest = /\bdata-book-interest="([a-z0-9-]+)"/.exec(tag);
     const browse = /\bdata-book-browse\b/.test(tag);
-    const q = pkg ? `?package=${pkg[1]}` : interest ? `?interest=${interest[1]}` : browse ? "?browse=1" : "";
+    const side = /\bdata-book-intent="(interior|exterior)"/.exec(tag);
+    const q = pkg ? `?package=${pkg[1]}` : interest ? `?interest=${interest[1]}` : side ? `?intent=${side[1]}` : browse ? "?browse=1" : "";
     return tag.replace(BOOK_HREF, `href="${BOOK_PAGE}${q}"`);
   });
   // Marks the page, so an old address that opens the form here (/#book, the
