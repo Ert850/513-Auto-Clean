@@ -154,8 +154,10 @@ export const DEFAULT_BOOKING_WINDOW: BookingWindow = {
 export const IGNORE_RETURN_AFTER_MIN = 18 * 60;
 
 /**
- * Start at or before this and the drive out is treated as happening before
- * the day, not inside it. 10am, which covers the whole early band.
+ * Set (any value), the drive out to the first start of a working stretch is
+ * treated as happening before the stretch, not inside it. Since November 14
+ * any stretch start counts, not only one before 10am (Kris's 6pm); the
+ * booking form still leaves it unset for a drive over an hour.
  */
 export const IGNORE_OUTBOUND_BEFORE_MIN = 10 * 60;
 
@@ -252,15 +254,24 @@ export function computeSlots(req: SlotRequest): number[] {
      * because a morning job ended is not "the start of the day", and the
      * drive to it genuinely does have to fit.
      */
+    // The start of ANY working stretch counts, not only one before 10am
+    // (Elijah, November 13: Kris's day job ends around 5pm, so his 6pm
+    // stretch is a true 6pm arrival). Before, a 6pm opening was treated like
+    // a gap after a job: his 6pm start moved late into its window, and a long
+    // drive dropped it. `ignoreOutboundBeforeMin` stays the on/off switch.
     const outboundFree = (start: number): boolean =>
       req.ignoreOutboundBeforeMin !== undefined &&
-      localMinutesOfDay(start, req.timeZone) <= req.ignoreOutboundBeforeMin &&
       // This free interval has to BEGIN where availability begins. A gap that
       // opens at 9am because a job finished is not the start of the day, and
       // the drive to the next customer genuinely does have to fit in it:
       // without this check, two jobs could be booked back to back with no
       // time to drive between them.
       dayOpens.has(f.start) &&
+      // Not straight after other work: a separate OPEN block or a job that
+      // ends less than a drive before this stretch opens (review, November
+      // 14) means the detailer is driving from there, inside the day.
+      !stretches.some((b) => b.end < f.start && b.end > f.start - req.travelBeforeMin * MIN) &&
+      !req.busy.some((b) => b.end <= f.start && b.end > f.start - req.travelBeforeMin * MIN) &&
       // And only for a start the drive could not have fitted in front of.
       // 7am with an hour's drive fits inside a 6am opening on its own.
       start - f.start < req.travelBeforeMin * MIN;

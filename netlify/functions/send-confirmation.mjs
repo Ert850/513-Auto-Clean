@@ -234,7 +234,7 @@ ${receiptRows(priced)}`,
     ? `<p style="margin:0 0 14px">Your time is <strong>${confirmed ? "held" : "requested"}</strong>. What we have not settled yet is which detail you want, which is the part you asked us about.</p>` +
       `<p style="margin:0 0 14px">We will work that out with you: from what you have told us if there is enough to go on, otherwise on the day, looking at the vehicle together. <strong>You hear the price before we start anything</strong>, and if none of it is worth it to you we will leave and there is nothing to pay.</p>`
     : confirmed
-      ? `<p style="margin:0 0 14px">Your detail is <strong>fully confirmed and booked</strong>. Thank you for your trust and support. We hope you're as excited as we are!</p>`
+      ? `<p style="margin:0 0 14px">Thank you for your trust and support. We hope you're as excited as we are!</p>`
       : `<p style="margin:0 0 14px">We will confirm this with you shortly, usually within a few hours. Treat the time as requested until you hear back.</p>`;
 
   // Elijah's layout (November 13): arrival time, how long, then the window
@@ -261,7 +261,7 @@ ${receiptRows(priced)}`,
       : soon
         ? `We have your short-notice request for ${when}`
         : confirmed
-          ? `Booked in for ${when}`
+          ? `Confirmed: your detail on ${when}`
           : `We have your booking for ${when}`,
     html: SHELL(
       advice
@@ -269,7 +269,7 @@ ${receiptRows(priced)}`,
         : soon
           ? `Thanks ${name}, we have your request`
           : confirmed
-            ? `Thanks ${name}, you are booked in.`
+            ? `Thanks ${name}, you're fully confirmed for your detail with 513 Auto Clean.`
             : `Thanks ${name}, we have your booking`,
       `${opening}${shortNotice}${label("Arrival time")}
 <p style="margin:0 0 16px;font-size:18px;font-weight:700">${esc(when)}</p>
@@ -306,7 +306,7 @@ export function askedFor(prefer) {
   return [days.join(", "), prefer.flex === true ? "any start that day" : parts.join(", ")].filter(Boolean).join("; ");
 }
 
-function ownerEmail({ contact, when, priced, kind, cart, detailer, asked, notes, calendarFail = "" }) {
+function ownerEmail({ contact, when, priced, kind, cart, detailer, asked, notes, consent = {}, calendarFail = "" }) {
   const a = cart?.address ?? {};
   const where = [a.line1, a.city, a.region, a.zip].filter(Boolean).join(", ");
   const soon = kind === "booking" && cart?.slot && cart.slot - Date.now() < 24 * 60 * 60 * 1000;
@@ -335,6 +335,8 @@ function ownerEmail({ contact, when, priced, kind, cart, detailer, asked, notes,
 <tr><td style="padding:4px 0;color:#5a6069">When</td><td style="padding:4px 0">${esc(when || (asked ? `asked for ${asked}` : "not selected, they asked us to come back with a time"))}</td></tr>
 <tr><td style="padding:4px 0;color:#5a6069">Where</td><td style="padding:4px 0">${esc(where || "not given")}</td></tr>
 ${detailer ? `<tr><td style="padding:4px 0;color:#5a6069">Detailer</td><td style="padding:4px 0">${esc(detailer.name)}</td></tr>` : ""}
+<tr><td style="padding:4px 0;color:#5a6069">SMS consent</td><td style="padding:4px 0">${consent.sms === true ? "yes" : "no"}</td></tr>
+<tr><td style="padding:4px 0;color:#5a6069">Marketing</td><td style="padding:4px 0">${consent.marketing === true ? "yes" : "no"}</td></tr>
 </table>
 ${
   kind === "advice"
@@ -571,7 +573,7 @@ export async function handler(event) {
   const mode = payload?.mode === "pay_now" ? "pay_now" : "card_only";
   const checked = validateWire(payload, { nowMs: Date.now(), mode });
   if (!checked.ok) return json(400, { error: checked.error });
-  const { cart, contact, kind, payInFull } = checked.booking;
+  const { cart, contact, kind, payInFull, consent } = checked.booking;
 
   /*
    * MEASURED, not estimated. This line used to read
@@ -594,7 +596,7 @@ export async function handler(event) {
     blockFeeBp: await blockFeeFor(detailer, cart.slot, payload?.timeFeeBp),
   });
   const when = whenLabel(cart.slot);
-  const ctx = { contact, when, priced, kind, cart, slot: cart.slot ?? null, detailer, measured, textsOk: payload?.consent?.sms === true };
+  const ctx = { contact, when, priced, kind, cart, slot: cart.slot ?? null, detailer, measured, consent, textsOk: consent.sms === true };
 
   const rawCart = payload?.cart ?? {};
   const rawAccess = rawCart.access ?? {};

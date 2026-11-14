@@ -164,6 +164,18 @@ describe("T3: the booking form's texts box", () => {
     expect(text).toBe(want);
   });
 
+  it("the marketing box says exactly what the Contact form's says, and sits under the texts box", () => {
+    const m = /var MARKETING_CONSENT = '([^']*)';/.exec(src);
+    expect(m, "MARKETING_CONSENT in funnel.js").not.toBeNull();
+    expect(m![1]).toBe(loadContactForm().modes.quote.marketingBox);
+    const details = src.slice(src.indexOf("function rDetails()"), src.indexOf("function rAgree()"));
+    const sms = details.indexOf("consentBox('sms', 'bkSms', SMS_CONSENT, '')");
+    const mk = details.indexOf("consentBox('marketing', 'bkMarketing', MARKETING_CONSENT, '')");
+    expect(sms).toBeGreaterThan(-1);
+    expect(mk).toBeGreaterThan(sms);
+    expect(details.indexOf("By continuing you agree to our ")).toBeGreaterThan(mk);
+  });
+
   it("sits in Your details, optional and unticked unless they ticked it, with the terms line", () => {
     const details = src.slice(src.indexOf("function rDetails()"), src.indexOf("function rAgree()"));
     expect(details).toContain("consentBox('sms', 'bkSms', SMS_CONSENT, '')");

@@ -86,6 +86,11 @@ export const ADDON_ICONS: Record<string, string> = {
     '<path d="M6.5 3.5h11l3 5-8.5 12L3.5 8.5z"/>' +
     '<path d="M3.5 8.5h17"/><path d="M9.7 8.5 12 3.7l2.3 4.8L12 20.5"/>',
 
+  /** A seat with sparkles: an interior taken as far as it goes (Showroom Ready Restoration). */
+  restore:
+    '<path d="M6 20.5v-4.5h9.5v4.5"/><path d="M7.5 16V8.8a2 2 0 0 1 2-2h2.6a2 2 0 0 1 2 2V16"/>' +
+    '<path d="M18.5 3.5v4M16.5 5.5h4"/><path d="M19.5 11.5v2.4M18.3 12.7h2.4"/>',
+
   /** A panel with two scratches and a spot being worked. */
   scratch:
     '<rect x="2.5" y="5.5" width="19" height="13" rx="2.5"/>' +

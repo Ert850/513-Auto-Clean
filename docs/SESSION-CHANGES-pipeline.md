@@ -1357,6 +1357,66 @@ From the live calendar (read only), the code, and your voice notes:
 - **`automatedTexts` stays off on purpose:** turning it on would make the booking form's Done screen promise "a reminder before the day", which nobody sends yet.
 - Notes for Imperion: `docs/TOLL-FREE-VERIFICATION.md`.
 
+## /book consent boxes, and Book links to /book (Imperion, November 14)
+
+- **The boxes:** `booking.html` shows the Contact form's two consent boxes and terms line under the size step (`BOOKPAGE:CONSENT`, from `config/contact-form.json` through `bookPageConsent()`). Mockups: `docs/mockups/book-consent-*`.
+  - A tick there pre-ticks the form's SMS box (`takeBookPageConsent()` in `funnel.js`).
+  - The marketing answer goes into the booking as `consent.marketing` (`wire.ts`).
+- **Book links:** `config/booking-page.json` `bookLinks: "page"` rewrites the 54 Book links on the other pages to `/book` in `dist/` (`book-links.mjs`), keeping the package or interest in the query. `funnel.js` lets those links navigate and applies the query on the first open (`applyArrival()`). "inline" restores the old behaviour.
+- **Gap found and fixed:** Elijah's booking email never showed the customer's SMS answer. Only the customer email used it. Both answers are now rows in his email, which is the consent record for the verification.
+- **Calendar event: unchanged** (`jobs-sync-contract.test.ts` passes).
+- **Test it:**
+  - from any page, Book Full Interior lands on `/book?package=full-interior`, and a size opens the form at Full Interior;
+  - a ticked `/book` SMS box shows ticked at checkout;
+  - Elijah's email shows both answers.
+  - Tests: `book-links.test.ts`.
+
+## Package prices and names (Elijah, November 12 and 13; Emmett, November 14)
+
+- **Interior:**
+  - Maintenance $115, Basic $145, Full $235;
+  - **Full Interior + Steam** is a new package at $315, about 5 hours, marked "Most popular";
+  - the $395 Showroom Ready package is retired.
+- **Showroom Ready Restoration** is a new add-on: $445+ in total with Full Interior (+$210), or +$130 on Full + Steam. It includes the steam (the steam extra is blocked once it's added), takes about 3 hours, and is booked with Elijah only (`work: "restoration"`, checked by `wireNeeds` and `jobNeeds`). Its asterisk says the price is agreed on condition before work starts.
+- **The exterior "Showroom Ready (Paint Correction and Protection)"** is renamed "Paint Correction and Protection" (same id, same price).
+- **Old links:** `LEGACY_PACKAGES` and `upgradeLegacy()` turn `showroom-interior`, from an old quote link, a saved draft or a cached page, into Full Interior + Restoration. The server prices it the same way, and nothing is rejected.
+- **Derived instead of typed:** the browse list's "up to $X" steps were typed ($215, $395) and are now read from the catalog. The 10% line left "Ready to book?", so its STAMPS entry went too.
+- **Also updated:**
+  - the reply templates and their test;
+  - the rush-fee read-me;
+  - the landing pages' "Showroom Ready" wording;
+  - the terms (the Basic price stamp, re-locked);
+  - the price list.
+- **Test it:**
+  - Services at 1440×790: the Book buttons end at 698, inside the fold;
+  - the booking form with each package, steam and Restoration;
+  - an old `#q=` link with `showroom-interior`.
+
+## Kris's 6 PM is a true 6 PM arrival (Elijah, question 16; built November 14)
+
+- **Root cause:** `outboundFree` in `slots.ts` let the drive happen before the day only for a start at or before 10am. Kris's evening stretch (OPEN from 6pm) was treated like a gap after a job: his 6pm was planned late in its window, and a long drive dropped it.
+- **Fix:** the start of any working stretch (merged OPEN blocks, `dayOpens`) counts as the start of the day. A gap after a job still needs the drive to fit (tests in `arrival-window.test.ts`). The booking form still leaves this off for a drive over an hour (`myDrive <= 60`).
+- **Each detailer's start location** was already configurable: `DETAILER_HOMES` in Netlify, by name. It's set, but the value is hidden, so whether Kris's entry exists is confirmed by a booking on his calendar.
+
+## Missed Book links (Emmett's check, November 14): root cause
+
+- **What was missed:** with `bookLinks: "page"`, the home hero's Book Now still jumped to "Ready to book?" (`href="#quote"`). The 404 page's "Book a detail" (`/#book`) and the old addresses `/#book` and `#schedule` (and `/book.html`, which redirects to `/#book`) still opened the form in place.
+- **Root cause:** the rewrite was keyed on the booking form's own link pattern (`href="book.html"`, what the form intercepts), and I checked it by counting those links. I never audited by intent: every link whose label says Book, plus every address that opens the form.
+- **Fix:**
+  - `book-links.mjs` also rewrites `#quote`, `#book`, `/#book` and `index.html#book` links, and marks the page (`data-book-links="page"`);
+  - `funnel.js` `toBookPage()` sends the old addresses to `/book`, except on a card payment's return.
+- **Validated both ways:**
+  - "page": every page at 1440 and 375, live DOM after scrolling, has 0 Book links that don't go to `/book`. Real clicks on 7 kinds of link land on `/book` with their package or `?browse=1`.
+  - "inline": a full build has no `/book` link and no marker, and the same 7 clicks open the form in place as before (the hero scrolls to `#quote`).
+  - A permanent test (`book-links.test.ts`) checks both positions and sweeps the built pages by label.
+
+## The marketing box in the booking form (Emmett, November 14)
+
+- **What:** the Contact form's second box ("I want to receive news, feature updates, discounts & offers from 513 Auto Clean.") now sits under the SMS box in checkout's "Your details". It's optional and unticked.
+- **Kept in step:** the wording is `MARKETING_CONSENT` in `funnel.js`, and `a2p.test.ts` checks it matches `config/contact-form.json` `marketingBox` and sits between the SMS box and the terms line.
+- **Where the answer goes:** `consent.marketing` goes with the booking, and Elijah's email shows "Marketing: yes/no". A tick on the `/book` page carries into this box.
+- **Test it:** checkout at 1440 and 375 shows both boxes, and a booking with marketing ticked reads "Marketing: yes" in Elijah's email.
+
 ## Leftovers noticed, not touched
 
 - `book.css` still has `.bk-time`, `.bk-times`, `.bk-bucket` and `.bk-juston` rules from an older slot design. They were unused before tonight.

@@ -4,10 +4,12 @@
     "video.src: the 9:16 video beside the booking card, a path such as \"images/book-montage.mp4\" (put the file in images/). Empty: the slot shows the hero photo, cropped to 9:16.",
     "video.poster: the still shown before the video plays, such as \"images/book-montage-poster.jpg\". Empty: the hero photo.",
     "The video plays muted, looping, inline, on its own; only its first frames load until it plays.",
+    "bookLinks: \"page\" sends every Book link on the other pages to /book, where the consent boxes are, and the form opens from there (Imperion, November 14, for the toll-free verification). \"inline\": Book links open the form in place on every page, as before. Switching back is this one word.",
     "A mistake in this file fails the build."
   ],
   "video": {
     "src": "",
     "poster": ""
-  }
+  },
+  "bookLinks": "page"
 }

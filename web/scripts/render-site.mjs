@@ -33,7 +33,7 @@ import {
   packagesFor,
   unavailableReason,
 } from "../../netlify/functions/_pricing.mjs";
-import { contactCard, contactHead, loadContactForm } from "./contact-form.mjs";
+import { contactCard, contactHead, loadContactForm, bookPageConsent } from "./contact-form.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 // The catalog is split across pages now: packages on the home page, add-ons
@@ -236,7 +236,11 @@ function addonsHtml() {
     const priced = a.tiers.filter((t) => t.priceCents !== null);
     // A price that depends on the package (steam: $80 with Full Interior).
     const deal = priced.length === 1 && priced[0].withPackage ? Object.entries(priced[0].withPackage)[0] : null;
-    const range = deal
+    // Shown as the total with its package (Showroom Ready Restoration: "$445+ with Full Interior").
+    const tw = priced.length === 1 && priced[0].totalWith ? findPackage(priced[0].totalWith) : null;
+    const range = tw
+      ? `${money(tw.priceCents + priced[0].priceCents)}+ with ${tw.name}`
+      : deal
       ? `${money(deal[1])} with ${findPackage(deal[0])?.name ?? deal[0]}, ${money(priced[0].priceCents)} otherwise`
       : priced.length > 1
         ? `${money(priced[0].priceCents)} to ${money(priced[priced.length - 1].priceCents)}`
@@ -436,7 +440,6 @@ for (const f of PAGES) fs.writeFileSync(path.join(root, f), pages[f]);
     ["terms.html", /(counts as a cancellation inside )\d+( hours)/g, [R.refundMidWindowHours], 1],
     ["terms.html", /(A Basic Interior at \$)\d+( is a Basic Interior at \$)\d+()/g,
       [pkg("basic-interior").priceCents / 100, pkg("basic-interior").priceCents / 100], 1],
-    ["index.html", /(save )\d+(% on each extra)/g, [R.additionalVehicleDiscountBp / 100], 1],
     ["faq.html", /(billed at \$)\d+(\/hr)/g, [R.addonRateCents / 100], 2],
     ["faq.html", /(basic details around )[\d.]+( hours, and full details about )[\d.]+( hours)/g,
       [pkg("basic-interior").durationMin / 60, pkg("full-interior").durationMin / 60], 2],
@@ -519,7 +522,7 @@ for (const f of PAGES) fs.writeFileSync(path.join(root, f), pages[f]);
     .map(([, hash, label]) => `          <li><a href="service-area.html${hash}">${label}</a></li>`);
   if (areas.length < 3) throw new Error("render-site: the footer's area list was not found for the booking page");
   let html = pages["booking.html"] ?? read("booking.html");
-  for (const [name, body] of [["VIDEO", media], ["AREAS", areas.join("\n")]]) {
+  for (const [name, body] of [["VIDEO", media], ["AREAS", areas.join("\n")], ["CONSENT", bookPageConsent(loadContactForm())]]) {
     const start = `<!-- BOOKPAGE:${name}:START -->\n`;
     const end = `<!-- BOOKPAGE:${name}:END -->`;
     const i = html.indexOf(start);
