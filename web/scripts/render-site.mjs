@@ -436,7 +436,6 @@ for (const f of PAGES) fs.writeFileSync(path.join(root, f), pages[f]);
     ["terms.html", /(counts as a cancellation inside )\d+( hours)/g, [R.refundMidWindowHours], 1],
     ["terms.html", /(A Basic Interior at \$)\d+( is a Basic Interior at \$)\d+()/g,
       [pkg("basic-interior").priceCents / 100, pkg("basic-interior").priceCents / 100], 1],
-    ["index.html", /(save )\d+(% on each extra)/g, [R.additionalVehicleDiscountBp / 100], 1],
     ["faq.html", /(billed at \$)\d+(\/hr)/g, [R.addonRateCents / 100], 2],
     ["faq.html", /(basic details around )[\d.]+( hours, and full details about )[\d.]+( hours)/g,
       [pkg("basic-interior").durationMin / 60, pkg("full-interior").durationMin / 60], 2],
