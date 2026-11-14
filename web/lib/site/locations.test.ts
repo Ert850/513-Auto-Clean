@@ -24,8 +24,16 @@ describe("city pages", () => {
       expect(read("service-area.html").includes(`href="${l.slug}"`), l.slug).toBe(!draft);
     }
   });
-  it("titles and descriptions fit Google's lengths", () => {
-    for (const l of locs) { expect(l.title.length).toBeLessThanOrEqual(60); expect(l.meta.length).toBeLessThanOrEqual(155); }
+  it("titles and descriptions fit Google's lengths (as rendered, prices filled in)", () => {
+    const un = (s: string) => s.replace(/&amp;/g, "&").replace(/&quot;/g, '"');
+    for (const l of locs) {
+      const html = read(pageFile(l));
+      const title = un(/<title>([^<]*)<\/title>/.exec(html)![1]!);
+      const meta = un(/<meta name="description" content="([^"]*)"/.exec(html)![1]!);
+      expect(title.length, l.slug).toBeLessThanOrEqual(60);
+      expect(meta.length, l.slug).toBeLessThanOrEqual(155);
+      expect(meta, l.slug).not.toMatch(/\{(price|addon):/);
+    }
   });
   it("the duplicate measure: identical text is 1, unrelated text near 0, place names don't count", () => {
     const a = "we come to your driveway and detail the car while you get on with your day".split(" ");
