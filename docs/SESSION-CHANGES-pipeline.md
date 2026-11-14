@@ -1462,6 +1462,15 @@ From the live calendar (read only), the code, and your voice notes:
 - **Measured:** at 375 px, Request Quote moves from 1819 to 1531 px down the page.
 - **Test it:** contact.html at 375 and 320 (no sideways scroll; labels readable), and submit on the test site once it exists.
 
+## eNov14: the logo in the booking emails (Emmett's pick A, November 14)
+
+- **What:** every email (customer and owner) starts with the bottle logo on a white tile, beside "513 AUTO CLEAN" in its original red small-caps style.
+  - `images/email-logo.png` (96 px, 5 KB) is cropped from `logo-mark.png` onto white, so it needs no `object-fit`, which Outlook ignores.
+  - `build-dist.mjs` publishes it, because no page names it.
+  - The address is `process.env.URL` (set by Netlify), else the domain.
+- **The inbox picture beside the sender** (Elijah's question) is a different thing: BIMI, in DNS plus a paid logo certificate. It's in the queue.
+- **Test it:** after deploy, a booking email shows the logo, and the name still shows when images are blocked.
+
 ## Leftovers noticed, not touched
 
 - `book.css` still has `.bk-time`, `.bk-times`, `.bk-bucket` and `.bk-juston` rules from an older slot design. They were unused before tonight.

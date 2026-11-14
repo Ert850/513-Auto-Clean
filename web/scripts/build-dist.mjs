@@ -145,6 +145,9 @@ const referenced = new Set([
   "icon-192.png",
   "icon-512.png",
   "icon-maskable-512.png",
+  // The logo at the top of the booking emails (send-confirmation.mjs SHELL):
+  // no page names it, so the scan below would leave it out.
+  "email-logo.png",
 ]);
 for (const f of textFiles) {
   const text = fs.readFileSync(path.join(root, f), "utf8");
