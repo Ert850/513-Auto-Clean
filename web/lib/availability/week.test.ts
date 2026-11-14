@@ -242,3 +242,37 @@ describe("timelineRange (no dead grey rows, November 11)", () => {
     expect(timelineRange([h(8)], 60, shut, REG)).toBeNull();
   });
 });
+
+describe("calendar fix 4: a detailer's standard-price evening is standard in the week", () => {
+  const weekStart = at(11, 15, 0);
+  const now = at(11, 10, 9);
+  // Kris on Tuesday: 6pm and 6:30pm, standard price on his calendar; 7pm has a fee.
+  const slots = [at(11, 17, 18), at(11, 17, 18, 30), at(11, 17, 19)];
+  const feeFrom7 = (ms: number) => ms >= at(11, 17, 19);
+
+  it("the clock alone calls 6pm a fee and stars nothing", () => {
+    const week = buildWeek({ slots, weekStart, travelGapMin: 60, nowMs: now, needsPriority: () => false });
+    const six = week.days[2]!.cells.find((c) => c.hourMin === 18 * 60)!;
+    expect(six.premium).toBe(true);
+    expect(six.suggested).toBe(false);
+  });
+
+  it("with the calendar's fee, 6pm is standard and can be starred; 7pm keeps its fee", () => {
+    const week = buildWeek({ slots, weekStart, travelGapMin: 60, nowMs: now, needsPriority: () => false, isPremium: feeFrom7 });
+    const tue = week.days[2]!;
+    const six = tue.cells.find((c) => c.hourMin === 18 * 60)!;
+    const seven = tue.cells.find((c) => c.hourMin === 19 * 60)!;
+    expect(six.premium).toBe(false);
+    expect(six.suggested).toBe(true);
+    expect(seven.premium).toBe(true);
+    expect(seven.suggested).toBe(false);
+  });
+
+  it("the form folds by the fee, not by 10am to 6pm", () => {
+    const src = require("node:fs").readFileSync(require("node:path").join(__dirname, "../../../js/funnel.js"), "utf8");
+    expect(src).not.toMatch(/REG_FROM|REG_TO/);
+    expect(src).toContain("isPremium: timeFeeApplies");
+    const folds = src.slice(src.indexOf("function foldsOpen("), src.indexOf("function foldButton("));
+    expect(folds).toContain("timeFeeApplies(");
+  });
+});

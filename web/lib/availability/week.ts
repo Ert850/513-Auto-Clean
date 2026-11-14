@@ -174,9 +174,17 @@ export function buildWeek(req: {
    * round 15). Without it, each day's packing suggestions are starred.
    */
   suggested?: number[];
+  /**
+   * Does this start carry an early or late fee, for whoever would take it?
+   * From the calendars (the funnel's timeFeeApplies), so a detailer's
+   * standard-price 6pm is starred and unfolded like any other (calendar fix
+   * 4, November 14). Without it, the clock's bands, as before.
+   */
+  isPremium?: (ms: number) => boolean;
   timeZone?: string;
 }): Week {
   const tz = req.timeZone ?? TZ;
+  const isPremium = req.isPremium ?? ((ms: number) => Boolean(bandOf(localMinutesOfDay(ms, tz))?.premium));
   const today = localDayStart(req.nowMs, tz);
   const days: WeekDay[] = [];
   let openCount = 0;
@@ -191,15 +199,7 @@ export function buildWeek(req: {
     // 10am and 4pm (and 1pm at weekends). Never an early or late start.
     const suggestedSet = req.suggested
       ? new Set(req.suggested.filter((ms) => ms >= dayStart && ms < next))
-      : new Set(
-          recommendStarts({
-            starts,
-            busy: req.busy ?? [],
-            travelGapMin: req.travelGapMin,
-            limit: weekday === 0 || weekday === 6 ? 3 : 2,
-            timeZone: tz,
-          }).map((r) => r.ms),
-        );
+      : new Set(daySuggestions({ starts, busy: req.busy ?? [], travelGapMin: req.travelGapMin, isPremium, timeZone: tz }));
 
     const byHour = new Map<number, number[]>();
     for (const ms of starts) {
@@ -214,7 +214,7 @@ export function buildWeek(req: {
       const suggested = list.find((ms) => suggestedSet.has(ms));
       // A suggested start wins; otherwise on the hour, otherwise the first.
       const pick = suggested ?? list.find((ms) => localMinutesOfDay(ms, tz) === hourMin) ?? list[0]!;
-      const premium = Boolean(bandOf(hourMin)?.premium);
+      const premium = isPremium(pick);
       cells.push({
         hourMin,
         starts: list,
