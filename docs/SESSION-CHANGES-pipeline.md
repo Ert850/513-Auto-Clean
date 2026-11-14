@@ -1490,6 +1490,15 @@ From the live calendar (read only), the code, and your voice notes:
   - The local jobs and reviews come from Elijah: the job folders are tagged by region, not town.
 - **Tests:** `locations.test.ts`. Mockups: `docs/mockups/eNov14-city-*.png`.
 
+## eNov14: the home page's business data fixed (Emmett, November 14)
+
+- **Root cause:** the JSON-LD used `"@type": "AutoDetailing"`, which isn't a schema.org type (404), so Google most likely ignored the whole business block. It also carried an `aggregateRating` of our own Google rating, which is self-serving and never eligible for stars, with a small manual-action risk. Details: `docs/STRUCTURED-DATA-AUDIT.md`.
+- **Fix:**
+  - `"@type": "AutoWash"`, with `"@id": "https://513autoclean.com/#business"`, the same id the city pages point at;
+  - `aggregateRating` removed, together with the code that kept it up to date: `syncSchema()` in `js/reviews.js`, and the `ratingValue`/`reviewCount` stamps in `render-site.mjs`.
+- **Unchanged:** the visible rating (hero pill, trust badge, ticker).
+- **Check after the unfreeze:** Google's Rich Results Test and validator.schema.org on the live home page.
+
 ## Leftovers noticed, not touched
 
 - `book.css` still has `.bk-time`, `.bk-times`, `.bk-bucket` and `.bk-juston` rules from an older slot design. They were unused before tonight.

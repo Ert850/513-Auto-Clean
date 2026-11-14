@@ -378,8 +378,6 @@ pages["faq.html"] = splice("faq.html", pages["faq.html"], "FAQPRICE_JSON", JSON.
     const r1 = rating.toFixed(1);
     for (const f of PAGES) pages[f] = pages[f]
       .replace(/Rated [0-9.]+ across \d+ Google reviews/g, `Rated ${r1} across ${count} Google reviews`)
-      .replace(/"ratingValue": "[0-9.]+"/g, `"ratingValue": "${r1}"`)
-      .replace(/"reviewCount": "\d+"/g, `"reviewCount": "${count}"`)
       .replace(/<span class="num">[0-9.]+<\/span>/g, `<span class="num">${r1}</span>`)
       .replace(/<b>\d+ reviews<\/b> on Google/g, `<b>${count} reviews</b> on Google`)
       // The hero badge. It said "Rated 5.0 on Google & Yelp" with no count at
