@@ -1589,6 +1589,20 @@ An independent review found nothing that loses or duplicates a normal booking. I
   - `CORRECTION_RULES.weekendOnly` is unused, and the form still says "weekend morning" in words. Both stay true while `correctionWeekdays` is the weekend. Change them together.
 - **Tests:** `still-free.test.ts` and `week.test.ts`; 719 pass. The ranking test fails without the change.
 
+## eNov14: checked on the private preview (Deploy Preview #13, November 15)
+
+- **Private:** without the password, `/`, `/book`, `/api/send-confirmation` and `/js/funnel.js` all return 401; with it they work. Every response carries `noindex`. The live site answers 200 with no password, unchanged.
+- **Fix 1, double bookings:**
+  - **Kris, Wednesday December 9 at 6pm:** the first booking was written to 513 TEST Kris Bookings; a second customer at the same time got 409 and nothing was written.
+  - **Elijah at 2pm:** the same, on 513 TEST Bookings.
+  - **A first try at 10am was refused correctly:** Elijah's personal calendar is busy 11am to 12:30pm. The form doesn't offer that time either.
+  - Both test events were deleted afterwards (Emmett's approval).
+- **Fix 2, time zones:** on a Tokyo clock (already the 15th), the request days start on the 15th, Cincinnati's tomorrow. The week view and timeline draw with no script errors.
+- **Fix 3, drive home:** Mason, a 1pm start, real Routes data. With no job length the drive home is 31 minutes and travel is $25. With a 4-hour job it leaves at 5pm: 45 minutes, $35. This is question 17 for Elijah.
+- **Preview setup added for these checks (calendar session, Emmett's yes):**
+  - both TEST calendars are public as free/busy only;
+  - `GOOGLE_BUSY_ONLY_CALENDAR_IDS` adds 513 TEST Bookings for Deploy Previews only.
+
 ## Leftovers noticed, not touched
 
 - `book.css` still has `.bk-time`, `.bk-times`, `.bk-bucket` and `.bk-juston` rules from an older slot design. They were unused before tonight.

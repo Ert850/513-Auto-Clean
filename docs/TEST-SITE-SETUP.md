@@ -12,6 +12,8 @@
    - `GOOGLE_BOOKED_CALENDAR_ID`: the "513 TEST Bookings" ID. Owner jobs are written here (`_gcal.mjs` `bookedCalendarId()`). `GOOGLE_CALENDAR_ID` stays the real one: it's only read, for real availability.
    - `DETAILERS`: the Production value with Kris's `bookings` set to the "513 TEST Kris Bookings" ID. His availability calendar stays real, because it's only read.
    - `OWNER_EMAIL`: Emmett's own address (given in the session, kept out of this public repo). Elijah gets nothing from testing.
+   - `GOOGLE_BUSY_ONLY_CALENDAR_IDS`: the Production value plus "513 TEST Bookings", so a test booking blocks its own time.
+   - Both TEST calendars are public as "See only free/busy" (like 513 Kris Bookings): the site reads bookings calendars through Google's free/busy API with its key, which needs that. Private, Kris vanished from the preview.
 3. **Open a draft PR from `eNov14` to `main`** (Emmett's approval; never merged without a separate yes). Netlify builds the preview from it.
 4. **Check:**
    - Without the password, `curl -I` returns 401 with `X-Robots-Tag: noindex`; with it, every page works.
