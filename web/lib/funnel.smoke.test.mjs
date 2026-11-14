@@ -995,7 +995,8 @@ describe("what the screen says about money and time", () => {
   });
 
   it("takes bookings up to a year ahead, as the live site does, and no further", () => {
-    expect(src(), "November 11: the same limit as the live site").toContain("var MAX_BOOK_DAYS = 365;");
+    // The year now lives in config/scheduling.json (calendar fix 5; its value is checked in scheduling.test.ts).
+    expect(src(), "November 11: the same limit as the live site").toContain("var MAX_BOOK_DAYS = P.SCHEDULING.bookAheadDays;");
     const code = fn("paintWeek", 1200);
     expect(code, "the forward chevron stops at the cap").toContain("lastBookableMs()");
   });

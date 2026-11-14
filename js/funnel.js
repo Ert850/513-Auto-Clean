@@ -898,10 +898,17 @@
       (holdMinutes() ? ' · about ' + fmtDur(holdMinutes()) + ' detailing' : '');
   }
 
-  /** "10 to 11am": the hour we arrive in, from the start time. */
+  /**
+   * "10 to 11am": the window we arrive in, from the start time. The window of
+   * whoever has the time (DETAILERS arrivalWindow, else arrivalWindowMinutes
+   * in config/scheduling.json), the same one the confirmation email states.
+   */
   function arrivalWindow(ms) {
     var m = localMin(ms);
-    return endLabel(m).replace(/(am|pm)$/, endLabel(m).slice(-2) === endLabel(m + 60).slice(-2) ? '' : '$1') + ' to ' + endLabel(m + 60);
+    var who = crew().filter(function (d) { return d.id === state.detailer; })[0] ||
+      crew().filter(function (d) { return d.owner; })[0];
+    var w = who && typeof who.arrivalWindowMin === 'number' ? who.arrivalWindowMin : P.ARRIVAL_WINDOW_MIN;
+    return endLabel(m).replace(/(am|pm)$/, endLabel(m).slice(-2) === endLabel(m + w).slice(-2) ? '' : '$1') + ' to ' + endLabel(m + w);
   }
 
   /** "(513) 555-0123" from whatever was typed, or what was typed when it is not ten digits. */
@@ -2983,10 +2990,10 @@
   /** The last slot calculation: starts, who takes each, busy time, weather. */
   var lastCalc = null;
 
-  /** Owner, November 10: a booking can start an hour from now, not sooner. */
-  var MIN_NOTICE_MIN = 60;
+  /** Owner, November 10: a booking can start an hour from now, not sooner (config/scheduling.json). */
+  var MIN_NOTICE_MIN = P.SCHEDULING.minNoticeMinutes;
   /** Inside this, a booking is a request until a detailer accepts it. */
-  var SHORT_NOTICE_HOURS = 24;
+  var SHORT_NOTICE_HOURS = P.SCHEDULING.shortNoticeHours;
 
   function shortNotice(ms) {
     return Boolean(ms) && ms - Date.now() < SHORT_NOTICE_HOURS * 3600000;
@@ -3324,12 +3331,12 @@
    * The travel allowance used for scheduling.
    *
    * A measured drive when we have one, otherwise a deliberately generous flat
-   * 30 minutes: a slot we offer has to be one we can keep.
+   * allowance (driveFallbackMinutes): a slot we offer has to be one we can keep.
    */
   function travelAllowanceMin() {
     return state.travel.source === 'routes' && state.travel.minutes !== null
       ? state.travel.minutes
-      : 30;
+      : P.SCHEDULING.driveFallbackMinutes;
   }
 
   /**
@@ -3352,7 +3359,7 @@
       busy: win.busy || [],
       notBefore: from,
       notAfter: to,
-      allowedWeekdays: corr ? [0, 6] : undefined,
+      allowedWeekdays: corr ? P.SCHEDULING.correctionWeekdays : undefined,
       limit: 8
     }).filter(function (opt) {
       // Every day of it has to be workable: a coating cannot stop for rain.
@@ -3560,7 +3567,7 @@
       };
       if (corr) {
         req.preferredStartsMin = { weekday: P.CORRECTION_RULES.allowedStartsMin, weekend: P.CORRECTION_RULES.allowedStartsMin };
-        req.allowedWeekdays = [0, 6];
+        req.allowedWeekdays = P.SCHEDULING.correctionWeekdays;
       }
       return P.computeSlots(req);
     };
@@ -4830,8 +4837,9 @@
    * How far ahead anyone can book: the live site's year (November 11: "keep
    * booking ahead cap equivalent to live site"; it was three months from the
    * November 10 answers). Owner question 17 in docs/OWNER-QUESTIONS-MAGAZINES.md.
+   * config/scheduling.json bookAheadDays.
    */
-  var MAX_BOOK_DAYS = 365;
+  var MAX_BOOK_DAYS = P.SCHEDULING.bookAheadDays;
 
   /** "2026-03-14" as Cincinnati midnight. Built by parts: Date.parse treats a
    *  bare date string as UTC, which lands on the previous evening here. */

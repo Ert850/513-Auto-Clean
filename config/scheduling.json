@@ -1,0 +1,19 @@
+{
+  "_read_me": [
+    "Scheduling numbers the booking form and the booking functions both read. A change goes live on the next deploy; a mistake fails the build instead of reaching customers.",
+    "minNoticeMinutes: the soonest a booking can start, counted from now (owner, November 10: an hour).",
+    "shortNoticeHours: a booking starting sooner than this is a request until a detailer accepts it, in the form, the emails and the calendar title.",
+    "arrivalWindowMinutes: how long after the start time we may arrive (\"we arrive between 6 and 7pm\"). A detailer's own arrivalWindow in DETAILERS overrides it for them.",
+    "driveFallbackMinutes: the one-way drive allowed for when the drive could not be measured.",
+    "correctionWeekdays: the days paint correction may start, 0 Sunday to 6 Saturday.",
+    "bookAheadDays: how far ahead the form offers times. acceptAheadDays: how far ahead the server accepts one; keep it a little above bookAheadDays.",
+    "Moved here from code on November 14, 2026 (calendar fix 5), with no change in behaviour."
+  ],
+  "minNoticeMinutes": 60,
+  "shortNoticeHours": 24,
+  "arrivalWindowMinutes": 60,
+  "driveFallbackMinutes": 30,
+  "correctionWeekdays": [0, 6],
+  "bookAheadDays": 365,
+  "acceptAheadDays": 400
+}

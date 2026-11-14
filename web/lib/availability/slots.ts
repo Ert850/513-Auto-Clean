@@ -7,6 +7,7 @@
  * mirror with eventual consistency and rate limits.
  */
 import { localWeekday } from "../time/zone.js";
+import { SCHEDULING } from "./scheduling.js";
 
 /**
  * Days and weekdays are Cincinnati's, never the visitor's. new Date().getDay()
@@ -378,8 +379,8 @@ export interface TimeBand {
  * what stops the oldest bug in this feature coming back: a time sold inside
  * a band labelled standard, then billed at the premium rate.
  */
-/** The arrival window customers are told: "we arrive between 6 and 7pm". */
-export const ARRIVAL_WINDOW_MIN = 60;
+/** The arrival window customers are told: "we arrive between 6 and 7pm" (config/scheduling.json). */
+export const ARRIVAL_WINDOW_MIN = SCHEDULING.arrivalWindowMinutes;
 
 export const TIME_BANDS: TimeBand[] = [
   {

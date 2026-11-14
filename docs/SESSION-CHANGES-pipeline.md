@@ -1565,6 +1565,14 @@ From the live calendar (read only), the code, and your voice notes:
 - **Tests:** `week.test.ts`, "calendar fix 4".
 - **Test (preview):** with Kris's evening open, choose an interior job and open a day he works. The 6pm start is visible without opening "Later times", reads "Standard price", and can carry the star.
 
+## eNov14: calendar fix 5, the last typed scheduling numbers moved into settings (November 14)
+
+- **Root cause:** the same numbers were typed into several places: 24 hours of short notice (the form, plus three times in `send-confirmation`), the 30 minute drive fallback (form and server), correction's `[0, 6]` weekend days (three places), the hour-long arrival window (the form's "10 to 11am" text and `ARRIVAL_WINDOW_MIN`), the hour's minimum notice, and the 365/400 day horizon (`funnel.js` and `wire.ts`). It's the same trap as the rush-fee days: a change means hunting for every copy.
+- **Fix:** `config/scheduling.json`, checked on load by `web/lib/availability/scheduling.ts`. A bad value fails the build, and so does `acceptAheadDays` set below `bookAheadDays`. Both bundles export `SCHEDULING`; every copy above reads it.
+  - The form's arrival window text now uses the window of whoever has the time, the same window the confirmation email states. It is 60 for everyone today.
+- **No change in behaviour:** `scheduling.test.ts` pins today's values and checks that no copy is left typed.
+- **Tests:** 716 pass.
+
 ## Leftovers noticed, not touched
 
 - `book.css` still has `.bk-time`, `.bk-times`, `.bk-bucket` and `.bk-juston` rules from an older slot design. They were unused before tonight.
