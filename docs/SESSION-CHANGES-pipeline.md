@@ -1573,6 +1573,22 @@ From the live calendar (read only), the code, and your voice notes:
 - **No change in behaviour:** `scheduling.test.ts` pins today's values and checks that no copy is left typed.
 - **Tests:** 716 pass.
 
+## eNov14: the review's findings on fixes 1 to 5 (November 14)
+
+An independent review found nothing that loses or duplicates a normal booking. It did find these, now fixed:
+- **The taken time came back.** After a 409, Time was redrawn from its cache, so the taken time was still offered "as still open". Root cause: `dropSlot` doesn't change the cache key. Now the taken branch clears `lastSlotsKey`, so the calendar is read again.
+- **A customer whose browser couldn't read the calendar was refused in a loop.** The form offers standard hours then. The server could read the calendar, so it refused any of those times outside an OPEN block, and the redraw offered the same times again. The form now sends `standardHours`, and a clash is then a request: nothing is written, and the customer is told we will confirm. The owner email says "NOT ON THE CALENDAR", gives the reason and says to offer another time.
+- **The same request path now covers:**
+  - a booking marked paid;
+  - a retry whose lookup of the first try failed. The clash could be their own first event, so refusing would have led them to book a second job.
+  - Nothing is ever written onto a taken time. A hand-edited request therefore gets, at worst, a request flagged to the owner, never a silent double booking.
+- **The lenient drive was zero minutes,** so a real clash could pass. The second try now uses the drive the form itself allowed for. With several detailers, that is each one's drive measured with no time of day (`measureEachDetailer`), measured the same way by `plainDrive`. With one detailer, the form used the timed drive, so there is no second try. With no measurement, the clash stands.
+- **Recommended times still judged fees by the clock.** `recommendStarts` takes `isPremium` now, and `daySuggestions` passes it.
+- **Reviewed and left alone:**
+  - If the whole server chain took over 15 s, the form would carry on as before. Netlify stops a function at 10 s, so a late 409 can't happen.
+  - `CORRECTION_RULES.weekendOnly` is unused, and the form still says "weekend morning" in words. Both stay true while `correctionWeekdays` is the weekend. Change them together.
+- **Tests:** `still-free.test.ts` and `week.test.ts`; 719 pass. The ranking test fails without the change.
+
 ## Leftovers noticed, not touched
 
 - `book.css` still has `.bk-time`, `.bk-times`, `.bk-bucket` and `.bk-juston` rules from an older slot design. They were unused before tonight.

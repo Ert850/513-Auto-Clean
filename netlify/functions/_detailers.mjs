@@ -110,12 +110,15 @@ function calendarKey(env = process.env) {
  * a request, never silently onto a taken time), or "unconfigured" (nothing
  * to check against, as in the form).
  *
- * The drive: the form allows for its own measurement, made with no time of
- * day, while `job.driveMin` here is measured at the appointment. When only a
- * longer drive makes the time fail, it was offered in good faith and is
- * kept (`tight`): a refusal is only for a real clash with a job or the hours.
+ * The drive: with one detailer the form allows for the drive measured at the
+ * appointment, as `job.driveMin` is here. With several, it allows for each
+ * one's drive measured with no time of day (measureEachDetailer), which
+ * `plainDrive()` measures the same way. When only the longer drive makes the
+ * time fail, it was offered in good faith and is kept (`tight`); a refusal
+ * is only for a real clash on the form's own terms (review, November 14:
+ * a zero-minute retry let a real clash through).
  */
-export async function slotStatus(detailer, job, env = process.env) {
+export async function slotStatus(detailer, job, env = process.env, plainDrive = null) {
   const apiKey = calendarKey(env);
   const busyOnly = String(env.GOOGLE_BUSY_ONLY_CALENDAR_IDS || "").split(",").map((x) => x.trim()).filter(Boolean);
   const cfg = detailer
@@ -136,8 +139,13 @@ export async function slotStatus(detailer, job, env = process.env) {
     const cal = { open: win.open, busy: [...(win.busy || []), ...(personal.body?.busy || [])] };
     const res = slotStillFree(job, cal);
     if (res.free) return { status: "free", lateMin: res.lateMin };
-    const lenient = slotStillFree({ ...job, driveMin: 0 }, cal);
-    if (lenient.free) return { status: "free", lateMin: lenient.lateMin, tight: true };
+    if (plainDrive && parseDetailers(env.DETAILERS).crew.length > 1) {
+      const formDrive = await plainDrive().catch(() => null);
+      if (Number.isFinite(formDrive) && formDrive < job.driveMin) {
+        const lenient = slotStillFree({ ...job, driveMin: formDrive }, cal);
+        if (lenient.free) return { status: "free", lateMin: lenient.lateMin, tight: true };
+      }
+    }
     return { status: "taken" };
   } catch (e) {
     console.error("still free", String(e).slice(0, 200));

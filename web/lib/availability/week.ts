@@ -325,6 +325,7 @@ export function daySuggestions(req: {
     starts: open,
     busy: req.busy ?? [],
     travelGapMin: req.travelGapMin,
+    isPremium: premium,
     limit: weekday === 0 || weekday === 6 ? 3 : 2,
     timeZone: tz,
   }).map((r) => r.ms);
