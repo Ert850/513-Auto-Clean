@@ -14,6 +14,7 @@ import { computeSlots, travelBufferMin, IGNORE_RETURN_AFTER_MIN, IGNORE_OUTBOUND
 import { fitsOneDay, LONGEST_DAY, LONG_JOB_STARTS, multiDayStillFits, planDays } from "./multiDay.js";
 import { CORRECTION_RULES } from "../catalog/addons.js";
 import { localDayStart } from "../time/zone.js";
+import { SCHEDULING } from "./scheduling.js";
 
 const ZONE = "America/New_York";
 const DAY = 86_400_000;
@@ -71,7 +72,7 @@ export function slotStillFree(
       startMs: job.slotMs,
       openBlocks: win.open,
       busy: win.busy,
-      allowedWeekdays: job.correction ? [0, 6] : undefined,
+      allowedWeekdays: job.correction ? SCHEDULING.correctionWeekdays : undefined,
     });
     return { free, lateMin: 0 };
   }

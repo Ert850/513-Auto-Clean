@@ -1,4 +1,9 @@
-import { priceFromWire, validateWire, findPackage, findAddon, vehicleSize, isLive, ADVICE_HOLD_MIN, ARRIVAL_WINDOW_MIN, businessPhone, multiDayEvents, LONG_JOB_STARTS, CORRECTION_RULES, wireNeeds } from "./_pricing.mjs";
+import { priceFromWire, validateWire, findPackage, findAddon, vehicleSize, isLive, ADVICE_HOLD_MIN, ARRIVAL_WINDOW_MIN, businessPhone, multiDayEvents, LONG_JOB_STARTS, CORRECTION_RULES, wireNeeds, SCHEDULING } from "./_pricing.mjs";
+
+/** Inside this, a booking is a request until a detailer accepts it (config/scheduling.json). */
+const SHORT_NOTICE_MS = SCHEDULING.shortNoticeHours * 3_600_000;
+/** The drive allowed for when it could not be measured, as the booking form allows. */
+const DRIVE_FALLBACK_MIN = SCHEDULING.driveFallbackMinutes;
 import { blockFeeFor, detailerFor, homeFor, slotStatus, timeFeeWaived } from "./_detailers.mjs";
 import { createBookingEvent, findBookingEvent, gcalAuthMode, gcalConfigured } from "./_gcal.mjs";
 import { measuredOneWayMinutes } from "./_routes.mjs";
@@ -168,7 +173,7 @@ export function durationText(minutes, days = 1) {
 
 /**
  * The days a booked job runs over: the same plan the calendar events are
- * written from (null for one day). The measured drive, else 30 minutes
+ * written from (null for one day). The measured drive, else the fallback
  * (travelAllowanceMin), and the correction start times.
  */
 function planDays({ cart, kind, minutes, measuredMin }) {
@@ -177,7 +182,7 @@ function planDays({ cart, kind, minutes, measuredMin }) {
   return multiDayEvents({
     slotMs: cart.slot,
     serviceMinutes: minutes,
-    travelMin: Number.isFinite(measuredMin) ? measuredMin : 30,
+    travelMin: Number.isFinite(measuredMin) ? measuredMin : DRIVE_FALLBACK_MIN,
     preferredStartsMin: corr ? CORRECTION_RULES.allowedStartsMin : LONG_JOB_STARTS,
   });
 }
@@ -215,7 +220,7 @@ ${receiptRows(priced)}`,
    * leave. That gets a line saying so rather than a blanket hedge on every
    * booking.
    */
-  const soon = slot !== null && slot - Date.now() < 24 * 60 * 60 * 1000;
+  const soon = slot !== null && slot - Date.now() < SHORT_NOTICE_MS;
   // Short notice is a request until a detailer accepts it, as the booking
   // form says (owner, November 10; session audit, November 11: this email
   // used to tell the same customer it was "confirmed and booked in").
@@ -319,7 +324,7 @@ export function askedFor(prefer) {
 function ownerEmail({ contact, when, priced, kind, cart, detailer, asked, notes, consent = {}, calendarFail = "", unchecked = "" }) {
   const a = cart?.address ?? {};
   const where = [a.line1, a.city, a.region, a.zip].filter(Boolean).join(", ");
-  const soon = kind === "booking" && cart?.slot && cart.slot - Date.now() < 24 * 60 * 60 * 1000;
+  const soon = kind === "booking" && cart?.slot && cart.slot - Date.now() < SHORT_NOTICE_MS;
   return {
     subject:
       // "HELP ME DECIDE" first, because it is the one that needs something
@@ -442,7 +447,7 @@ export function eventDescription({ contact, cart, priced, extras, payInFull, kin
 
 /** The event title (read by JobsSync too: "Kris:" names the detailer). */
 export function eventTitle({ kind, slotMs, nowMs, detailer, names, contactName }) {
-  return (kind === "booking" && slotMs - nowMs < 24 * 60 * 60 * 1000 ? "SHORT NOTICE, accept or decline: " : "") +
+  return (kind === "booking" && slotMs - nowMs < SHORT_NOTICE_MS ? "SHORT NOTICE, accept or decline: " : "") +
     (detailer ? `${detailer.name}: ` : "") + (kind === "advice"
     ? `HELP ME DECIDE, ${contactName}`
     : `${names.join(" + ") || "Detail"}, ${contactName}`);
@@ -512,13 +517,13 @@ export function bookingEvents({ contact, cart, priced, extras, payInFull, kind, 
 /**
  * The job the time check looks at, as the booking form builds it
  * (verifySlot): the hours held, the drive of whoever has the time (else the
- * form's flat 30 minutes), exterior work and correction.
+ * form's fallback, driveFallbackMinutes), exterior work and correction.
  */
 export function stillFreeJob({ cart, priced, kind, measuredMin }) {
   return {
     slotMs: cart.slot,
     serviceMin: priced?.serviceDurationMin || ADVICE_HOLD_MIN,
-    driveMin: Number.isFinite(measuredMin) ? measuredMin : 30,
+    driveMin: Number.isFinite(measuredMin) ? measuredMin : DRIVE_FALLBACK_MIN,
     hasExterior: kind !== "advice" && wireNeeds(cart).includes("exterior"),
     correction: (cart.vehicles ?? []).some((v) => Boolean(v.correction)),
   };

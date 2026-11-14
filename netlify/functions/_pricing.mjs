@@ -1080,6 +1080,55 @@ function rushWindow(b, nowMs, s = RUSH_SETTINGS, timeZone = "America/New_York") 
   return { minLeadDays: rule ? rule.rushDays : s.defaultRushDays };
 }
 
+// ../config/scheduling.json
+var scheduling_default = {
+  _read_me: [
+    "Scheduling numbers the booking form and the booking functions both read. A change goes live on the next deploy; a mistake fails the build instead of reaching customers.",
+    "minNoticeMinutes: the soonest a booking can start, counted from now (owner, November 10: an hour).",
+    "shortNoticeHours: a booking starting sooner than this is a request until a detailer accepts it, in the form, the emails and the calendar title.",
+    `arrivalWindowMinutes: how long after the start time we may arrive ("we arrive between 6 and 7pm"). A detailer's own arrivalWindow in DETAILERS overrides it for them.`,
+    "driveFallbackMinutes: the one-way drive allowed for when the drive could not be measured.",
+    "correctionWeekdays: the days paint correction may start, 0 Sunday to 6 Saturday.",
+    "bookAheadDays: how far ahead the form offers times. acceptAheadDays: how far ahead the server accepts one; keep it a little above bookAheadDays.",
+    "Moved here from code on November 14, 2026 (calendar fix 5), with no change in behaviour."
+  ],
+  minNoticeMinutes: 60,
+  shortNoticeHours: 24,
+  arrivalWindowMinutes: 60,
+  driveFallbackMinutes: 30,
+  correctionWeekdays: [0, 6],
+  bookAheadDays: 365,
+  acceptAheadDays: 400
+};
+
+// lib/availability/scheduling.ts
+function checkScheduling(input) {
+  const o = input ?? {};
+  const bad = (field, what) => {
+    throw new Error(`config/scheduling.json: ${field}: ${what}`);
+  };
+  const whole = (field, min, max) => {
+    const v = o[field];
+    return typeof v === "number" && Number.isInteger(v) && v >= min && v <= max ? v : bad(field, `must be a whole number from ${min} to ${max}`);
+  };
+  const days = o["correctionWeekdays"];
+  if (!Array.isArray(days) || !days.length || days.some((d) => !Number.isInteger(d) || d < 0 || d > 6)) {
+    bad("correctionWeekdays", "must be a list of days, 0 Sunday to 6 Saturday");
+  }
+  const s = {
+    minNoticeMinutes: whole("minNoticeMinutes", 0, 7 * 24 * 60),
+    shortNoticeHours: whole("shortNoticeHours", 0, 14 * 24),
+    arrivalWindowMinutes: whole("arrivalWindowMinutes", 0, 240),
+    driveFallbackMinutes: whole("driveFallbackMinutes", 0, 240),
+    correctionWeekdays: [...new Set(days)].sort(),
+    bookAheadDays: whole("bookAheadDays", 1, 730),
+    acceptAheadDays: whole("acceptAheadDays", 1, 800)
+  };
+  if (s.acceptAheadDays < s.bookAheadDays) bad("acceptAheadDays", "must be at least bookAheadDays, or the server refuses times the form offers");
+  return s;
+}
+var SCHEDULING = checkScheduling(scheduling_default);
+
 // lib/availability/slots.ts
 var ZONE = "America/New_York";
 var DEFAULT_BOOKING_WINDOW = {
@@ -1180,7 +1229,7 @@ function computeSlots(req) {
 function ceilTo(ms, step) {
   return Math.ceil(ms / step) * step;
 }
-var ARRIVAL_WINDOW_MIN = 60;
+var ARRIVAL_WINDOW_MIN = SCHEDULING.arrivalWindowMinutes;
 var TIME_BANDS = [
   {
     id: "early",
@@ -1729,11 +1778,10 @@ var WIRE_LIMITS = {
   maxArrivalLateMin: 120,
   /**
    * How far ahead a slot may be. Past this it is a conversation, not a form.
-   * The same as the live site (November 11): the form offers 365 days
-   * (MAX_BOOK_DAYS in js/funnel.js), and this leaves a month of slack. If the
-   * owner shortens the form's limit (owner question 17), shorten this with it.
+   * config/scheduling.json: acceptAheadDays, kept a little above the form's
+   * bookAheadDays (the build refuses it lower).
    */
-  maxDaysAhead: 400,
+  maxDaysAhead: SCHEDULING.acceptAheadDays,
   /**
    * ZIPs we will price. Ohio is 43000 to 45999, Kentucky 40000 to 42799,
    * Indiana 46000 to 47999. Everything else is outside the twelve hour
@@ -3115,7 +3163,7 @@ function slotStillFree(job, win) {
       startMs: job.slotMs,
       openBlocks: win.open,
       busy: win.busy,
-      allowedWeekdays: job.correction ? [0, 6] : void 0
+      allowedWeekdays: job.correction ? SCHEDULING.correctionWeekdays : void 0
     });
     return { free, lateMin: 0 };
   }
@@ -3508,6 +3556,7 @@ export {
   MAX_BOOKING_CENTS,
   MAX_ONE_WAY_MINUTES,
   REPO_PHONE,
+  SCHEDULING,
   SEED_CATALOG,
   addonIcon,
   addonsFor,

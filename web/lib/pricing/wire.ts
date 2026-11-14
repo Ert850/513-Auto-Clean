@@ -20,6 +20,7 @@ import { findAddon, findCoatingTerm, findCorrectionTier, isSelectable } from "..
 import { LEGACY_PACKAGES, findPackage, upgradeLegacy, vehicleSize } from "../catalog/seed.js";
 import { MAX_ONE_WAY_MINUTES } from "../travel/zipRanges.js";
 import { sourceKey } from "./rush.js";
+import { SCHEDULING } from "../availability/scheduling.js";
 
 /* ---------------- shapes ---------------- */
 
@@ -128,11 +129,10 @@ export const WIRE_LIMITS = {
   maxArrivalLateMin: 120,
   /**
    * How far ahead a slot may be. Past this it is a conversation, not a form.
-   * The same as the live site (November 11): the form offers 365 days
-   * (MAX_BOOK_DAYS in js/funnel.js), and this leaves a month of slack. If the
-   * owner shortens the form's limit (owner question 17), shorten this with it.
+   * config/scheduling.json: acceptAheadDays, kept a little above the form's
+   * bookAheadDays (the build refuses it lower).
    */
-  maxDaysAhead: 400,
+  maxDaysAhead: SCHEDULING.acceptAheadDays,
   /**
    * ZIPs we will price. Ohio is 43000 to 45999, Kentucky 40000 to 42799,
    * Indiana 46000 to 47999. Everything else is outside the twelve hour
