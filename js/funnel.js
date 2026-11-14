@@ -7804,7 +7804,7 @@
    * A package or a "register interest" from a Book link: set it exactly as if
    * it had been picked inside the form. Returns the step to go to, or null.
    */
-  function applyIntent(wanted, id) {
+  function applyIntent(wanted, id, side) {
     if (wanted) {
       if (state.interest.indexOf(wanted) < 0) state.interest.push(wanted);
       var wv = veh();
@@ -7820,6 +7820,12 @@
       v.addons = [];
       return 0;
     }
+    // "Interior" or "Exterior" from the home page's service buttons: that
+    // side chosen, the package still theirs to pick.
+    if (side === 'interior' || side === 'exterior') {
+      veh().intent = side;
+      return 0;
+    }
     return null;
   }
 
@@ -7829,7 +7835,7 @@
    * first time the form opens here. Used once, so a later open starts fresh.
    */
   var arrival = (function () {
-    var m = /[?&](package|interest)=([a-z0-9-]+)/.exec(location.search || '');
+    var m = /[?&](package|interest|intent)=([a-z0-9-]+)/.exec(location.search || '');
     if (m) return { kind: m[1], id: m[2] };
     return /[?&]browse=1\b/.test(location.search || '') ? { kind: 'browse' } : null;
   })();
@@ -7841,6 +7847,7 @@
     if (state.resumed) return null;
     // "View Services": the catalogue, as the link did on its own page.
     if (a.kind === 'browse') { state.step = 1; state.browse = true; return null; }
+    if (a.kind === 'intent') return applyIntent(null, null, a.id);
     return a.kind === 'interest' ? applyIntent(a.id, null) : applyIntent(null, a.id);
   }
 
@@ -8099,7 +8106,7 @@
     });
 
     // Any Book Now link opens the funnel in place rather than navigating.
-    document.querySelectorAll('a[href="book.html"], a[href="./book.html"], [data-book-browse], [data-book-interest]').forEach(function (a) {
+    document.querySelectorAll('a[href="book.html"], a[href="./book.html"], [data-book-browse], [data-book-interest], [data-book-intent]').forEach(function (a) {
       a.addEventListener('click', function (e) {
         // A link the build pointed at /book (config/booking-page.json
         // bookLinks) goes there; the form opens on that page.
@@ -8121,7 +8128,7 @@
         // "Register interest" from the services grid: open the funnel with
         // that box already ticked, so they land on the picker able to carry
         // on and book something they CAN have.
-        var to = applyIntent(a.getAttribute('data-book-interest'), a.getAttribute('data-book-package'));
+        var to = applyIntent(a.getAttribute('data-book-interest'), a.getAttribute('data-book-package'), a.getAttribute('data-book-intent'));
         if (to === null) to = applyArrival();
         if (to !== null) return go(to);
       });

@@ -1417,6 +1417,23 @@ From the live calendar (read only), the code, and your voice notes:
 - **Where the answer goes:** `consent.marketing` goes with the booking, and Elijah's email shows "Marketing: yes/no". A tick on the `/book` page carries into this box.
 - **Test it:** checkout at 1440 and 375 shows both boxes, and a booking with marketing ticked reads "Marketing: yes" in Elijah's email.
 
+## eNov14: the new home hero and the four service buttons (Elijah and Emmett, November 14)
+
+- **Hero:**
+  - "Professional mobile detailing in Greater Cincinnati." (Emmett's pick; the 513 versions are kept for an A/B test later);
+  - Elijah's two lines;
+  - Book Now, View Services and Contact Us on laptops, and Book Now and View Services on phones (the bottom bar has Contact Us).
+  - Mockups: `docs/mockups/eNov14-hero-buttons-*`.
+- **The four buttons** ("What does your car need?": Interior, Exterior, Spills and Stains, Paint Correction + Ceramic Coatings), with the hours line under them. They come from `config/home-services.json` (`HOME:SERVICES` in `render-site.mjs`).
+  - `linkTo: "book"` writes them as Book links carrying `data-book-intent`, `data-book-package` or `data-book-interest`, so `bookLinks` routes them like every other (`/book?intent=interior`).
+  - `"page"` links each to its page (for the service pages in Round B).
+  - A bad value, a missing photo or a wrong package id fails the build. Tests: `home-services.test.ts`.
+- **The form** understands `intent` (Interior or Exterior chosen, the package still theirs to pick), both in place and on arrival at `/book`.
+- **Photos are placeholders** from the site until Elijah's "03 Website" ones arrive; swapping them is a config change.
+- **Measured:**
+  - at 1440×900 the buttons start at 787 px, so their tops show;
+  - at 1440×790 and on a phone (812) they start just under the first screen, because the longer headline takes three lines on a laptop and four on a phone.
+
 ## Leftovers noticed, not touched
 
 - `book.css` still has `.bk-time`, `.bk-times`, `.bk-bucket` and `.bk-juston` rules from an older slot design. They were unused before tonight.

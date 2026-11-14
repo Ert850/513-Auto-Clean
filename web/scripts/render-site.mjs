@@ -533,6 +533,64 @@ for (const f of PAGES) fs.writeFileSync(path.join(root, f), pages[f]);
   fs.writeFileSync(path.join(root, "booking.html"), html);
 }
 
+/* ---------------- the home page's four service buttons, from config/home-services.json ---------------- */
+
+// Elijah, November 13: four big buttons under the hero (Interior, Exterior,
+// Spills and Stains, Paint Correction + Ceramic Coatings). "linkTo" decides
+// where they go: "book" writes them as Book links (book.html with what the
+// form starts with), so config/booking-page.json bookLinks then sends them to
+// /book or opens the form in place, like every other Book link; "page" links
+// each to its own page.
+{
+  const cfg = JSON.parse(read("config/home-services.json"));
+  const bad = (why) => { throw new Error(`config/home-services.json: ${why}`); };
+  if (!["book", "page"].includes(cfg.linkTo)) bad(`linkTo must be "book" or "page", not ${JSON.stringify(cfg.linkTo)}`);
+  if (typeof cfg.title !== "string" || !cfg.title) bad("title is missing");
+  if (!Array.isArray(cfg.buttons) || !cfg.buttons.length) bad("buttons is missing");
+  const img = (src) => {
+    if (typeof src !== "string" || !/^images\/[A-Za-z0-9._-]+$/.test(src) || !fs.existsSync(path.join(root, src))) bad(`"${src}" is not a file in images/`);
+    return src;
+  };
+  const cards = cfg.buttons.map((b, i) => {
+    const where = `buttons[${i}]`;
+    if (typeof b.label !== "string" || !b.label) bad(`${where}.label is missing`);
+    if (typeof b.alt !== "string" || !b.alt) bad(`${where}.alt is missing`);
+    const photo = b.split
+      ? (Array.isArray(b.split) && b.split.length === 2 ? `<span class="pk-split"><img src="${img(b.split[0])}" alt="" loading="lazy" decoding="async" /><img src="${img(b.split[1])}" alt="" loading="lazy" decoding="async" /></span>` : bad(`${where}.split needs two photos`))
+      : `<img src="${img(b.image)}" alt="" loading="lazy" decoding="async" />`;
+    let attrs;
+    if (cfg.linkTo === "page") {
+      if (typeof b.page !== "string" || !b.page) bad(`${where}.page is missing`);
+      attrs = `href="${esc(b.page)}"`;
+    } else {
+      const k = b.book ?? {};
+      if (k.intent && !["interior", "exterior"].includes(k.intent)) bad(`${where}.book.intent must be interior or exterior`);
+      if (k.package && !findPackage(k.package)) bad(`${where}.book.package "${k.package}" is not a package`);
+      if (k.interest && !findPackage(k.interest)) bad(`${where}.book.interest "${k.interest}" is not a package`);
+      attrs = `href="book.html"` +
+        (k.package ? ` data-book-package="${k.package}"` : k.interest ? ` data-book-interest="${k.interest}"` : k.intent ? ` data-book-intent="${k.intent}"` : "");
+    }
+    return `      <a class="pk" ${attrs} aria-label="${esc(b.label)}: ${esc(b.alt)}">${photo}<span class="pk-l">${esc(b.label)} <i aria-hidden="true">&rarr;</i></span></a>`;
+  });
+  const body = `<section class="svc-pick" aria-labelledby="svcPickH">
+  <div class="wrap">
+    <h2 id="svcPickH">${esc(cfg.title)}</h2>
+    <div class="svc-pick-grid">
+${cards.join("\n")}
+    </div>
+    <p class="svc-pick-more">Available 7 days a week, 6 AM to midnight</p>
+  </div>
+</section>`;
+  let html = read("index.html");
+  const start = "<!-- HOME:SERVICES:START -->\n";
+  const end = "<!-- HOME:SERVICES:END -->";
+  const i = html.indexOf(start);
+  const j = html.indexOf(end);
+  if (i < 0 || j < 0) throw new Error("render-site: HOME:SERVICES markers not found in index.html");
+  html = html.slice(0, i + start.length) + body + "\n" + html.slice(j);
+  fs.writeFileSync(path.join(root, "index.html"), html);
+}
+
 /* ---------------- opening hours, from config/business.json ---------------- */
 
 // "7 days a week, 7 AM to 10 PM" was typed into four places while the hidden
@@ -544,7 +602,7 @@ for (const f of PAGES) fs.writeFileSync(path.join(root, f), pages[f]);
   const words = new RegExp(`(7 days a week, |7 days/week · )${T} to ${T}`, "g");
   const HOURS_STAMPS = [
     // [file, pattern, replacement, matches expected (the footer counts too)]
-    ["index.html", words, `$1${hoursText()}`, 3], // the hero, the copied Contact section, the footer
+    ["index.html", words, `$1${hoursText()}`, 4], // the hero, the service buttons, the copied Contact section, the footer
     ["contact.html", words, `$1${hoursText()}`, 2],
     ["index.html", /("opens": ")[\d:]+(", "closes": ")[\d:]+(")/g, `$1${HOURS.opens}$2${HOURS.closes}$3`, 1],
   ];
