@@ -5852,6 +5852,8 @@
     return {
       termsVersion: P.LEGAL.termsEffective,
       sms: state.consent.sms === true,
+      // Only from the /book page's marketing box (Imperion, November 14).
+      marketing: state.consent.marketing === true,
       media: state.consent.media === true,
       mandateAccepted: state.mandate === true
     };
@@ -7770,6 +7772,57 @@
   function paintSizeSteps() {
     sizeSteps.forEach(function (c) { c.innerHTML = rSize(); });
   }
+  /**
+   * A package or a "register interest" from a Book link: set it exactly as if
+   * it had been picked inside the form. Returns the step to go to, or null.
+   */
+  function applyIntent(wanted, id) {
+    if (wanted) {
+      if (state.interest.indexOf(wanted) < 0) state.interest.push(wanted);
+      var wv = veh();
+      var wp = P.findPackage(wanted);
+      if (wp) wv.intent = wp.category;
+      return wv.size ? 2 : 0;
+    }
+    var picked = id ? P.findPackage(id) : null;
+    if (picked) {
+      var v = veh();
+      v.intent = picked.category;
+      v.packageIds = [picked.id];
+      v.addons = [];
+      return 0;
+    }
+    return null;
+  }
+
+  /**
+   * Arriving on /book from a Book link elsewhere (bookLinks "page", Imperion,
+   * November 14): what the link carried rides in the query and is applied the
+   * first time the form opens here. Used once, so a later open starts fresh.
+   */
+  var arrival = (function () {
+    var m = /[?&](package|interest)=([a-z0-9-]+)/.exec(location.search || '');
+    return m ? { kind: m[1], id: m[2] } : null;
+  })();
+  function applyArrival() {
+    if (!arrival) return null;
+    var a = arrival;
+    arrival = null;
+    return a.kind === 'interest' ? applyIntent(a.id, null) : applyIntent(null, a.id);
+  }
+
+  /**
+   * The /book page's own consent boxes (#bpSms, #bpMarketing). A tick there
+   * pre-ticks the form's SMS box, which stays the final answer, and records
+   * the marketing yes with the booking. An unticked box changes nothing.
+   */
+  function takeBookPageConsent() {
+    var sms = document.getElementById('bpSms');
+    var mk = document.getElementById('bpMarketing');
+    if (sms && sms.checked) state.consent.sms = true;
+    if (mk) state.consent.marketing = mk.checked === true;
+  }
+
   function mountSizeSteps() {
     document.querySelectorAll('[data-bk-sizestep]').forEach(function (c) {
       sizeSteps.push(c);
@@ -7787,6 +7840,8 @@
   function openWithSize(id, fromEl) {
     open();
     if (host.hidden) return;
+    takeBookPageConsent();
+    applyArrival();
     veh().size = id;
     if (state.step === 0) advance(); else render();
     flipFrom(fromEl);
@@ -8013,8 +8068,12 @@
     // Any Book Now link opens the funnel in place rather than navigating.
     document.querySelectorAll('a[href="book.html"], a[href="./book.html"], [data-book-browse], [data-book-interest]').forEach(function (a) {
       a.addEventListener('click', function (e) {
+        // A link the build pointed at /book (config/booking-page.json
+        // bookLinks) goes there; the form opens on that page.
+        if (/^\/book\b/.test(a.getAttribute('href') || '')) return;
         e.preventDefault();
         open();
+        takeBookPageConsent();
 
         // "View Services" lands on the full catalogue rather than step one.
         if (a.hasAttribute('data-book-browse')) {
@@ -8029,24 +8088,9 @@
         // "Register interest" from the services grid: open the funnel with
         // that box already ticked, so they land on the picker able to carry
         // on and book something they CAN have.
-        var wanted = a.getAttribute('data-book-interest');
-        if (wanted) {
-          if (state.interest.indexOf(wanted) < 0) state.interest.push(wanted);
-          var wv = veh();
-          var wp = P.findPackage(wanted);
-          if (wp) wv.intent = wp.category;
-          return go(wv.size ? 2 : 0);
-        }
-
-        var id = a.getAttribute('data-book-package');
-        var picked = id ? P.findPackage(id) : null;
-        if (picked) {
-          var v = veh();
-          v.intent = picked.category;
-          v.packageIds = [picked.id];
-          v.addons = [];
-          return go(0);
-        }
+        var to = applyIntent(a.getAttribute('data-book-interest'), a.getAttribute('data-book-package'));
+        if (to === null) to = applyArrival();
+        if (to !== null) return go(to);
       });
     });
 

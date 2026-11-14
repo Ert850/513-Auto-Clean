@@ -1357,6 +1357,20 @@ From the live calendar (read only), the code, and your voice notes:
 - **`automatedTexts` stays off on purpose:** turning it on would make the booking form's Done screen promise "a reminder before the day", which nobody sends yet.
 - Notes for Imperion: `docs/TOLL-FREE-VERIFICATION.md`.
 
+## /book consent boxes, and Book links to /book (Imperion, November 14)
+
+- **The boxes:** `booking.html` shows the Contact form's two consent boxes and terms line under the size step (`BOOKPAGE:CONSENT`, from `config/contact-form.json` through `bookPageConsent()`). Mockups: `docs/mockups/book-consent-*`.
+  - A tick there pre-ticks the form's SMS box (`takeBookPageConsent()` in `funnel.js`).
+  - The marketing answer goes into the booking as `consent.marketing` (`wire.ts`).
+- **Book links:** `config/booking-page.json` `bookLinks: "page"` rewrites the 54 Book links on the other pages to `/book` in `dist/` (`book-links.mjs`), keeping the package or interest in the query. `funnel.js` lets those links navigate and applies the query on the first open (`applyArrival()`). "inline" restores the old behaviour.
+- **Gap found and fixed:** Elijah's booking email never showed the customer's SMS answer. Only the customer email used it. Both answers are now rows in his email, which is the consent record for the verification.
+- **Calendar event: unchanged** (`jobs-sync-contract.test.ts` passes).
+- **Test it:**
+  - from any page, Book Full Interior lands on `/book?package=full-interior`, and a size opens the form at Full Interior;
+  - a ticked `/book` SMS box shows ticked at checkout;
+  - Elijah's email shows both answers.
+  - Tests: `book-links.test.ts`.
+
 ## Leftovers noticed, not touched
 
 - `book.css` still has `.bk-time`, `.bk-times`, `.bk-bucket` and `.bk-juston` rules from an older slot design. They were unused before tonight.
