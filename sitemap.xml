@@ -48,4 +48,7 @@
     <changefreq>yearly</changefreq>
     <priority>0.3</priority>
   </url>
+  <!-- City pages, from config/locations/ (published only), by web/scripts/render-locations.mjs -->
+  <!-- LOCATIONS:START -->
+  <!-- LOCATIONS:END -->
 </urlset>

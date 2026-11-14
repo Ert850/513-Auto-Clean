@@ -27,7 +27,9 @@ import { fileURLToPath } from "node:url";
 import { hoursText } from "../../netlify/functions/_pricing.mjs";
 
 export const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
-export const CHROME_PAGES = ["index.html", "services.html", "about.html", "service-area.html", "faq.html", "contact.html", "lp-golf.html", "lp-prestige.html", "booking.html"];
+import { locationPages } from "./locations.mjs";
+// The city pages (config/locations/) join automatically.
+export const CHROME_PAGES = ["index.html", "services.html", "about.html", "service-area.html", "faq.html", "contact.html", "lp-golf.html", "lp-prestige.html", "booking.html", ...locationPages()];
 const PARTS = ["HEAD", "HEADER", "FOOTER", "SCRIPTS"];
 /** The build stamps asset URLs (?v=hash) after this step; compare without them. */
 export const unstamp = (s) => s.replace(/\?v=[0-9a-f]{10}/g, "");
