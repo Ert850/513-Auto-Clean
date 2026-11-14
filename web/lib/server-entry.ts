@@ -26,6 +26,7 @@ import {
   findPackage,
   packagesFor,
   vehicleSize,
+  upgradeLegacy,
 } from "./catalog/seed.js";
 import { componentsOf } from "./catalog/types.js";
 import { DEFAULT_RULES } from "./pricing/rules.js";
@@ -95,7 +96,9 @@ export interface PricedCart {
 export function priceFromWire(wire: WireCart, opts: PriceOptions = {}): PricedCart {
   const rejected: string[] = [];
 
-  const vehicles = (wire.vehicles ?? []).map((wv) => {
+  // A retired package from an old link or a cached page is priced as its
+  // replacement (LEGACY_PACKAGES), never rejected.
+  const vehicles = (wire.vehicles ?? []).map((raw) => ({ ...raw, ...upgradeLegacy(raw.packageIds ?? [], raw.addons ?? []) })).map((wv) => {
     const size = wv.sizeId ? vehicleSize(wv.sizeId) : undefined;
     if (wv.sizeId && !size) rejected.push(`unknown size ${wv.sizeId}`);
 
@@ -227,7 +230,7 @@ export { localMinutesOfDay, ARRIVAL_WINDOW_MIN } from "./availability/slots.js";
  * exterior job got his 6pm waiver).
  */
 export function wireNeeds(wire: WireCart): string[] {
-  if ((wire as { kind?: string }).kind === "advice") return ["interior", "exterior", "correction", "coating"];
+  if ((wire as { kind?: string }).kind === "advice") return ["interior", "exterior", "correction", "coating", "restoration"];
   const vs = wire.vehicles ?? [];
   const pkgIn = (cat: string) => vs.some((v) => (v.packageIds ?? []).some((id) => findPackage(id)?.category === cat));
   const addIn = (scope: string) => vs.some((v) => (v.addons ?? []).some((a) => (findAddon(a.addonId) as { scope?: string } | undefined)?.scope === scope));
@@ -237,6 +240,11 @@ export function wireNeeds(wire: WireCart): string[] {
   if (pkgIn("exterior") || addIn("exterior")) needs.push("exterior");
   if (vs.some((v) => Boolean(v.correction)) || addId(["paint-correction", "paint-polish"])) needs.push("correction");
   if (addId(["ceramic-coating"])) needs.push("coating");
+  // Add-ons that name their own work ("restoration" is the owner's alone).
+  for (const v of vs) for (const a of v.addons ?? []) {
+    const w = (findAddon(a.addonId) as { work?: string } | undefined)?.work;
+    if (w && !needs.includes(w)) needs.push(w);
+  }
   return needs;
 }
 export { mileageFeeCents } from "./pricing/mileage.js";
@@ -260,6 +268,7 @@ export {
   findAddon,
   tierPriceFor,
   findPackage,
+  upgradeLegacy,
   packagesFor,
   unavailableReason,
   vehicleSize,

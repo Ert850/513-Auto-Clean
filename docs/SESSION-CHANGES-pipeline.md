@@ -1371,6 +1371,27 @@ From the live calendar (read only), the code, and your voice notes:
   - Elijah's email shows both answers.
   - Tests: `book-links.test.ts`.
 
+## Package prices and names (Elijah, November 12 and 13; Emmett, November 14)
+
+- **Interior:**
+  - Maintenance $115, Basic $145, Full $235;
+  - **Full Interior + Steam** is a new package at $315, about 5 hours, marked "Most popular";
+  - the $395 Showroom Ready package is retired.
+- **Showroom Ready Restoration** is a new add-on: $445+ in total with Full Interior (+$210), or +$130 on Full + Steam. It includes the steam (the steam extra is blocked once it's added), takes about 3 hours, and is booked with Elijah only (`work: "restoration"`, checked by `wireNeeds` and `jobNeeds`). Its asterisk says the price is agreed on condition before work starts.
+- **The exterior "Showroom Ready (Paint Correction and Protection)"** is renamed "Paint Correction and Protection" (same id, same price).
+- **Old links:** `LEGACY_PACKAGES` and `upgradeLegacy()` turn `showroom-interior`, from an old quote link, a saved draft or a cached page, into Full Interior + Restoration. The server prices it the same way, and nothing is rejected.
+- **Derived instead of typed:** the browse list's "up to $X" steps were typed ($215, $395) and are now read from the catalog. The 10% line left "Ready to book?", so its STAMPS entry went too.
+- **Also updated:**
+  - the reply templates and their test;
+  - the rush-fee read-me;
+  - the landing pages' "Showroom Ready" wording;
+  - the terms (the Basic price stamp, re-locked);
+  - the price list.
+- **Test it:**
+  - Services at 1440×790: the Book buttons end at 698, inside the fold;
+  - the booking form with each package, steam and Restoration;
+  - an old `#q=` link with `showroom-interior`.
+
 ## Leftovers noticed, not touched
 
 - `book.css` still has `.bk-time`, `.bk-times`, `.bk-bucket` and `.bk-juston` rules from an older slot design. They were unused before tonight.

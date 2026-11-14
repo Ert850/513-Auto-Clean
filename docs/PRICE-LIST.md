@@ -1,6 +1,6 @@
 # 513 Auto Clean: price list
 
-Generated from the website's own catalog on November 12, 2026 (`web/scripts/price-list.mjs`). These are the prices 513autoclean.com shows and charges. Quote only these.
+Generated from the website's own catalog on November 14, 2026 (`web/scripts/price-list.mjs`). These are the prices 513autoclean.com shows and charges. Quote only these.
 
 - **Prices are per vehicle, before Ohio or Kentucky sales tax and before travel.**
 - **Vehicle size:** Small (sedan, coupe, hatchback) no extra; Medium (SUV, truck, crossover) +$10; Large (3 row SUV, 7+ passenger van) +$25.
@@ -13,10 +13,10 @@ Generated from the website's own catalog on November 12, 2026 (`web/scripts/pric
 
 | Package | Price (small vehicle) | Time on site | Note |
 |---|---|---|---|
-| Maintenance | $95 | about 1 h 45 min | Returning customers only, not shown on the website: leave it off Google |
-| Basic Interior | $135 | about 2 h |  |
-| Full Interior | $225 | about 4 h |  |
-| Showroom Ready | $395 | about 7 h |  |
+| Maintenance | $115 | about 1 h 45 min | Returning customers only, not shown on the website: leave it off Google |
+| Basic Interior | $145 | about 2 h |  |
+| Full Interior | $235 | about 4 h |  |
+| Full Interior + Steam | $315 | about 5 h |  |
 
 ## Exterior packages
 
@@ -34,6 +34,7 @@ Generated from the website's own catalog on November 12, 2026 (`web/scripts/pric
 | Stain Treatment: Surface stain treatment | $50 | about 1 h |
 | Stain Treatment: Deep stain treatment | $100 | about 2 h |
 | Full Vehicle Steam Treatment | $115 ($80 with Full Interior) | about 1 h 30 min |
+| Showroom Ready Restoration | $445+ total with Full Interior | about 3 h |
 | Ozone Odor Reset | $50 | about 1 h |
 | Seat Removal | $100 | about 2 h |
 | Headlight Restoration | $75 | about 1 h 30 min |
@@ -68,15 +69,15 @@ Each Google service name with the matching service on the site and the price to 
 
 | Google service | On the site | Price to show |
 |---|---|---|
-| Auto detailing | Basic Interior and Full Interior (exterior packages from $75) | from $135 |
+| Auto detailing | Basic Interior and Full Interior (exterior packages from $75) | from $145 |
 | Car waxing | Ceramic Wax Sealant: included in Full Exterior, or an add-on | $35 add-on; in Full Exterior $245 |
 | Clay bar treatment | Clay Bar or Clay Towel: included in Full Exterior, or an add-on | $35 add-on |
 | Engine detailing | Engine Bay Detail: included in Full Exterior, or an add-on | $50 add-on |
 | Full body wash | Express Exterior / Basic Exterior | from $75 |
 | Headlight polishing | Headlight Restoration (add-on) | $75 |
-| Seat shampooing | Full Interior (shampoo scrub of the upholstery); single stains: Stain Treatment | from $225; stains from $50 |
+| Seat shampooing | Full Interior (shampoo scrub of the upholstery); single stains: Stain Treatment | from $235; stains from $50 |
 | Steam cleaning | Full Vehicle Steam Treatment (add-on to an interior package) | $115 ($80 with Full Interior) |
-| Vehicle interior vacuuming | Basic Interior | from $135 |
+| Vehicle interior vacuuming | Basic Interior | from $145 |
 | Wheel washing | Hubcaps scrubbed in Express Exterior; wheels, tires and wells in Basic and Full Exterior; Tire and Rim Shine add-on | from $75; shine $45 |
 
 **Worth adding to Google:** Pet Hair Removal ($50), Stain Treatment ($50 to $100), Ozone Odor Reset ($50), Paint Decontamination ($45), Hard Water Spot Removal ($50).
@@ -84,7 +85,7 @@ Each Google service name with the matching service on the site and the price to 
 ## Not offered yet (don't list on Google)
 
 - Scratch and Ding Reduction: Not available yet. We are building up to machine correction work, and this opens with it.
-- Ceramic Coating: Not available yet. A coating needs the paint corrected first, so it opens together with Showroom Ready Exterior.
+- Ceramic Coating: Not available yet. A coating needs the paint corrected first, so it opens together with Paint Correction and Protection.
 - Paint Polish: Temporarily unavailable.
 - Paint Correction: Temporarily unavailable.
-- Showroom Ready (Paint Correction and Protection): opens with paint correction.
+- Paint Correction and Protection: opens with paint correction.

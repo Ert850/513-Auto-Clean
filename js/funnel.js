@@ -1945,7 +1945,11 @@
       ['interior', 'Interior'], ['exterior', 'Exterior'],
       ['package', 'Packages'], ['addon', 'Add-ons']
     ];
-    var caps = [5000, 12500, 21500, 39500];
+    // "Up to $X" steps from the catalog, never typed (they said $215 and $395
+    // after both prices had changed): add-ons, then three package steps.
+    var capOf = function (id) { var p = P.findPackage(id); return p ? p.priceCents : null; };
+    var caps = [5000, capOf('basic-exterior'), capOf('full-interior'), capOf('full-steam-interior')]
+      .filter(function (c, i, all) { return c !== null && all.indexOf(c) === i; });
     var html = '<div class="bk-browsehead">' +
       // Pinned at the top with the search (owner, November 10: at the foot of
       // a long list it was easy to get stuck in here).
@@ -2862,12 +2866,16 @@
       var v = newVehicle();
       if (raw.z) v.size = raw.z;
       if (raw.i) v.intent = raw.i;
-      if (raw.p) v.packageIds = raw.p.filter(function (id) { return P.findPackage(id); });
+      if (raw.p) v.packageIds = raw.p;
       if (raw.a) {
         v.addons = raw.a
           .filter(function (pair) { return P.findAddon(pair[0]); })
           .map(function (pair) { return { addonId: pair[0], tierId: pair[1] }; });
       }
+      // A link made before a package was retired opens as its replacement.
+      var up = P.upgradeLegacy(v.packageIds, v.addons);
+      v.packageIds = up.packageIds.filter(function (id) { return P.findPackage(id); });
+      v.addons = up.addons;
       if (raw.l) v.label = raw.l;
       if (raw.c) v.correctionTier = raw.c;
       if (raw.t) v.coatingTerm = raw.t;
@@ -3051,7 +3059,7 @@
    * to be anything, so it needs someone who does everything we sell.
    */
   function jobNeeds() {
-    if (state.advice) return ['interior', 'exterior', 'correction', 'coating'];
+    if (state.advice) return ['interior', 'exterior', 'correction', 'coating', 'restoration'];
     var needs = [];
     var interior = state.vehicles.some(function (v) {
       return v.packageIds.some(function (id) { var p = P.findPackage(id); return p && p.category === 'interior'; }) ||
@@ -3061,6 +3069,14 @@
     if (hasExterior()) needs.push('exterior');
     if (hasCorrection() || hasAddonIn(CORRECTION_ADDONS)) needs.push('correction');
     if (hasAddonIn(COATING_ADDONS)) needs.push('coating');
+    // Add-ons that name their own work ("restoration" is the owner's alone),
+    // the same rule as wireNeeds on the server.
+    state.vehicles.forEach(function (v) {
+      v.addons.forEach(function (a) {
+        var d = P.findAddon(a.addonId);
+        if (d && d.work && needs.indexOf(d.work) < 0) needs.push(d.work);
+      });
+    });
     return needs;
   }
 
@@ -7527,6 +7543,11 @@
         }
         state.vehicles.forEach(function (v) {
           if (!Array.isArray(v.packageIds) || !Array.isArray(v.addons)) throw new Error('draft shape');
+          // A draft kept from before a package was retired opens as its
+          // replacement; anything else unknown is dropped, never rendered.
+          var up = P.upgradeLegacy(v.packageIds, v.addons);
+          v.packageIds = up.packageIds.filter(function (id) { return P.findPackage(id); });
+          v.addons = up.addons.filter(function (a) { return P.findAddon(a.addonId); });
         });
       } catch (e) {
         clearDraft();
