@@ -141,3 +141,13 @@ Please give the days and times.
 - **A job reaches accounting only once it's marked done and payment is collected.**
 - **GoHighLevel takes over the bookkeeping.**
 
+## Booking changes waiting to go live (added November 15)
+
+**17. Travel for a job that ends in rush hour costs a little more.**
+- **What changed (built on the test branch, not live):** the drive home used to be priced as if we left at the start time. It is now priced at the time the job actually ends. The travel fee averages the drive there and the drive back, so a job that finishes in rush hour costs a little more.
+- **Example, measured on the test site:** a Mason address, a 1pm start and a 4-hour job (ending about 5pm). The drive back is 45 minutes, not 31, so travel goes from **$25 to $35**. A morning job that ends before rush hour doesn't change.
+- **What the customer sees:** the travel line on the booking screen and the receipt in the email still show the same figure, so nobody is charged more than they were shown.
+- **Question:** keep it this way, which is the true cost of the drive, or keep pricing the drive home at the start time, which is cheaper for the customer but undercharges rush-hour jobs?
+- **Recommended:** keep it.
+
+**Answer:** not asked yet.
