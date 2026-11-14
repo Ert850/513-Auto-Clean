@@ -7822,7 +7822,7 @@
     }
     // "Interior" or "Exterior" from the home page's service buttons: that
     // side chosen, the package still theirs to pick.
-    if (side === 'interior' || side === 'exterior') {
+    if (side && P.BOOK_INTENTS.indexOf(side) > -1) {
       veh().intent = side;
       return 0;
     }
@@ -7834,11 +7834,8 @@
    * November 14): what the link carried rides in the query and is applied the
    * first time the form opens here. Used once, so a later open starts fresh.
    */
-  var arrival = (function () {
-    var m = /[?&](package|interest|intent)=([a-z0-9-]+)/.exec(location.search || '');
-    if (m) return { kind: m[1], id: m[2] };
-    return /[?&]browse=1\b/.test(location.search || '') ? { kind: 'browse' } : null;
-  })();
+  // Read with the words in config/booking-page.json bookLinkParams (bookLinks.ts).
+  var arrival = P.parseArrival(location.search || '');
   function applyArrival() {
     if (!arrival) return null;
     var a = arrival;

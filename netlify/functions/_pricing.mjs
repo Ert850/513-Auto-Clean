@@ -3007,6 +3007,68 @@ function hoursText(h = HOURS) {
 }
 hoursText();
 
+// ../config/booking-page.json
+var booking_page_default = {
+  _read_me: [
+    "The booking page at 513autoclean.com/book (booking.html), the link on the Google Business Profile.",
+    'video.src: the 9:16 video beside the booking card, a path such as "images/book-montage.mp4" (put the file in images/). Empty: the slot shows the hero photo, cropped to 9:16.',
+    'video.poster: the still shown before the video plays, such as "images/book-montage-poster.jpg". Empty: the hero photo.',
+    "The video plays muted, looping, inline, on its own; only its first frames load until it plays.",
+    'bookLinks: "page" sends every Book link on the other pages to /book, where the consent boxes are, and the form opens from there (Imperion, November 14, for the toll-free verification). "inline": Book links open the form in place on every page, as before. Switching back is this one word.',
+    "bookLinkParams: the address words a Book link uses to carry what it started with into /book: package (a package id), interest (a coming-soon package id), intent (interior or exterior, the catalog's own categories) and browse (the full list). Change a word here and every link, the booking form and the build follow; the values themselves always come from the catalog.",
+    "A mistake in this file fails the build."
+  ],
+  video: {
+    src: "",
+    poster: ""
+  },
+  bookLinks: "page",
+  bookLinkParams: {
+    package: "package",
+    interest: "interest",
+    intent: "intent",
+    browse: "browse"
+  }
+};
+
+// lib/booking/bookLinks.ts
+var KINDS2 = ["package", "interest", "intent", "browse"];
+function load() {
+  const p = booking_page_default.bookLinkParams;
+  if (!p || typeof p !== "object") throw new Error("config/booking-page.json: bookLinkParams is missing");
+  const out = {};
+  const seen = /* @__PURE__ */ new Set();
+  for (const k of KINDS2) {
+    const v = p[k];
+    if (typeof v !== "string" || !/^[a-z][a-z0-9_-]{0,19}$/.test(v)) {
+      throw new Error(`config/booking-page.json: bookLinkParams.${k} must be a short lowercase word`);
+    }
+    if (seen.has(v)) throw new Error(`config/booking-page.json: bookLinkParams uses "${v}" twice`);
+    seen.add(v);
+    out[k] = v;
+  }
+  return out;
+}
+var BOOK_LINK_PARAMS = load();
+var BOOK_INTENTS = [...new Set(SEED_CATALOG.packages.map((p) => p.category))];
+function arrivalValueOk(kind, id) {
+  if (kind === "browse") return id === "1";
+  if (kind === "intent") return BOOK_INTENTS.includes(id);
+  return Boolean(findPackage(id));
+}
+function arrivalQuery(kind, id = "1") {
+  if (!kind || !arrivalValueOk(kind, id)) return "";
+  return `?${BOOK_LINK_PARAMS[kind]}=${encodeURIComponent(id)}`;
+}
+function parseArrival(search) {
+  const q = new URLSearchParams(search || "");
+  for (const k of KINDS2) {
+    const v = q.get(BOOK_LINK_PARAMS[k]);
+    if (v !== null && arrivalValueOk(k, v)) return { kind: k, id: v };
+  }
+  return null;
+}
+
 // lib/server-entry.ts
 function priceFromWire(wire, opts = {}) {
   const rejected = [];
@@ -3137,6 +3199,8 @@ export {
   ADDONS,
   ADVICE_HOLD_MIN,
   ARRIVAL_WINDOW_MIN,
+  BOOK_INTENTS,
+  BOOK_LINK_PARAMS,
   CAPABILITIES,
   COATING_COVERAGE,
   COATING_EXPLAINER,
@@ -3153,6 +3217,7 @@ export {
   SEED_CATALOG,
   addonIcon,
   addonsFor,
+  arrivalQuery,
   blockFeeAt,
   businessPhone,
   canDo,
@@ -3174,6 +3239,7 @@ export {
   mileageFeeCents,
   multiDayEvents,
   packagesFor,
+  parseArrival,
   parseDetailers,
   parseIcsBusy,
   parsePhone,
