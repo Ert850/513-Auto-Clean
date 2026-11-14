@@ -1410,6 +1410,13 @@ From the live calendar (read only), the code, and your voice notes:
   - "inline": a full build has no `/book` link and no marker, and the same 7 clicks open the form in place as before (the hero scrolls to `#quote`).
   - A permanent test (`book-links.test.ts`) checks both positions and sweeps the built pages by label.
 
+## The marketing box in the booking form (Emmett, November 14)
+
+- **What:** the Contact form's second box ("I want to receive news, feature updates, discounts & offers from 513 Auto Clean.") now sits under the SMS box in checkout's "Your details". It's optional and unticked.
+- **Kept in step:** the wording is `MARKETING_CONSENT` in `funnel.js`, and `a2p.test.ts` checks it matches `config/contact-form.json` `marketingBox` and sits between the SMS box and the terms line.
+- **Where the answer goes:** `consent.marketing` goes with the booking, and Elijah's email shows "Marketing: yes/no". A tick on the `/book` page carries into this box.
+- **Test it:** checkout at 1440 and 375 shows both boxes, and a booking with marketing ticked reads "Marketing: yes" in Elijah's email.
+
 ## Leftovers noticed, not touched
 
 - `book.css` still has `.bk-time`, `.bk-times`, `.bk-bucket` and `.bk-juston` rules from an older slot design. They were unused before tonight.
