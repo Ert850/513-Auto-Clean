@@ -25,7 +25,9 @@ const addon = (id) => m.ADDONS.find((a) => a.id === id);
 const bookable = (a) => a && !m.unavailableReason(a);
 const tierFrom = (a) => usd(Math.min(...a.tiers.map((t) => t.priceCents)));
 // "$115 ($80 with Full Interior)" for a tier whose price depends on the package.
-const tierText = (t) => t.withPackage
+const tierText = (t) => t.totalWith
+  ? `${usd(pkg(t.totalWith).priceCents + t.priceCents)}+ total with ${pkg(t.totalWith).name}`
+  : t.withPackage
   ? `${usd(t.priceCents)} (${Object.entries(t.withPackage).map(([id, c]) => `${usd(c)} with ${pkg(id).name}`).join(", ")})`
   : usd(t.priceCents);
 const sizes = [["Small", "sedan, coupe, hatchback", 0], ["Medium", "SUV, truck, crossover", 1000], ["Large", "3 row SUV, 7+ passenger van", 2500]];

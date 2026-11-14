@@ -30,7 +30,7 @@ describe("reply templates stay in step with the catalog", () => {
   const rows: [string, string][] = [
     ["Basic Interior", "basic-interior"],
     ["Full Interior", "full-interior"],
-    ["Showroom Ready", "showroom-interior"],
+    ["Full Interior + Steam", "full-steam-interior"],
     ["Express Exterior", "express-exterior"],
     ["Basic Exterior", "basic-exterior"],
     ["Full Exterior", "full-exterior"],

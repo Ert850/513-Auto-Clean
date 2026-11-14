@@ -6,7 +6,7 @@
     "A rule's 'when' can name any of these (leave one out to match everything):",
     "  sources: where the visit came from, the address it arrived through: \"golf\" (513autoclean.com/golf), \"prestige\".",
     "  kinds: \"interior\", \"exterior\" or \"both\": what the whole booking is. \"exterior\" means exterior work only.",
-    "  packages: package ids; matches when ANY of them is booked (maintenance-interior, basic-interior, full-interior, showroom-interior, express-exterior, basic-exterior, full-exterior, showroom-exterior).",
+    "  packages: package ids; matches when ANY of them is booked (maintenance-interior, basic-interior, full-interior, full-steam-interior, express-exterior, basic-exterior, full-exterior, showroom-exterior).",
     "  from / until: dates (YYYY-MM-DD, Cincinnati time, both included). Leave them out and the rule never ends on its own.",
     "The browser and the booking functions both read this file. A change goes live on the next deploy, and a mistake in it fails the build instead of reaching customers.",
     "The exterior-only rule gives the same 2 days as the default today. It stays so that exterior-only bookings keep their own setting if the default changes again.",

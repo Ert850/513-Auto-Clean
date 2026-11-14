@@ -236,7 +236,11 @@ function addonsHtml() {
     const priced = a.tiers.filter((t) => t.priceCents !== null);
     // A price that depends on the package (steam: $80 with Full Interior).
     const deal = priced.length === 1 && priced[0].withPackage ? Object.entries(priced[0].withPackage)[0] : null;
-    const range = deal
+    // Shown as the total with its package (Showroom Ready Restoration: "$445+ with Full Interior").
+    const tw = priced.length === 1 && priced[0].totalWith ? findPackage(priced[0].totalWith) : null;
+    const range = tw
+      ? `${money(tw.priceCents + priced[0].priceCents)}+ with ${tw.name}`
+      : deal
       ? `${money(deal[1])} with ${findPackage(deal[0])?.name ?? deal[0]}, ${money(priced[0].priceCents)} otherwise`
       : priced.length > 1
         ? `${money(priced[0].priceCents)} to ${money(priced[priced.length - 1].priceCents)}`

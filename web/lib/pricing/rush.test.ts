@@ -68,7 +68,7 @@ describe("matching", () => {
     defaultRushDays: 3,
     rules: [
       { name: "summer", when: { from: "2027-06-01", until: "2027-08-31" }, rushDays: 1 },
-      { name: "showroom", when: { packages: ["showroom-interior"] }, rushDays: 0 },
+      { name: "showroom", when: { packages: ["full-steam-interior"] }, rushDays: 0 },
     ],
   });
   it("from and until are Cincinnati dates, both included", () => {
@@ -80,10 +80,10 @@ describe("matching", () => {
     expect(rushWindow({}, Date.UTC(2027, 8, 1, 5, 0), s).minLeadDays).toBe(3); // 1am Sep 1
   });
   it("a package rule matches when any of its packages is booked", () => {
-    expect(rushWindow({ packageIds: ["showroom-interior", "full-exterior"] }, NOW, s).minLeadDays).toBe(0);
+    expect(rushWindow({ packageIds: ["full-steam-interior", "full-exterior"] }, NOW, s).minLeadDays).toBe(0);
   });
   it("the first matching rule wins", () => {
-    expect(rushRuleFor({ packageIds: ["showroom-interior"] }, Date.UTC(2027, 6, 1, 16), s)?.name).toBe("summer");
+    expect(rushRuleFor({ packageIds: ["full-steam-interior"] }, Date.UTC(2027, 6, 1, 16), s)?.name).toBe("summer");
   });
   it("a rule asking for a source never matches a visit without one", () => {
     const g = checkRushSettings({ defaultRushDays: 2, rules: [{ name: "g", when: { sources: ["golf"] }, rushDays: 0 }] });
