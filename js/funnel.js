@@ -60,7 +60,7 @@
       // Who the chosen time is booked with: a DETAILERS id, or 'owner'.
       detailer: 'owner',
       contact: { name: '', phone: '', email: '' },
-      consent: { terms: null, sms: null, media: null },
+      consent: { terms: null, sms: null, marketing: null, media: null },
       payInFull: false,
       // The card-on-file authorization, ticked in words the customer read.
       // The server refuses to save a card without it.
@@ -5031,6 +5031,10 @@
       // smsBox; contact-form.test.ts keeps the two in step). Moved here from
       // "Almost done", A2P plan T3, November 12.
       consentBox('sms', 'bkSms', SMS_CONSENT, '') +
+      // The Contact form's second box too (Emmett, November 14: parity with
+      // Imperion's forms). Optional and unticked; config/contact-form.json
+      // marketingBox, kept in step by a2p.test.ts.
+      consentBox('marketing', 'bkMarketing', MARKETING_CONSENT, '') +
       '<p class="bk-terms-line">By continuing you agree to our ' +
       '<a href="terms.html" target="_blank" rel="noopener">Terms &amp; Conditions</a> and ' +
       '<a href="privacy.html" target="_blank" rel="noopener">Privacy Policy</a>.</p>' +
@@ -5040,6 +5044,7 @@
   var SMS_CONSENT = 'I consent to receive SMS notifications, alerts &amp; occasional marketing communication from 513 Auto Clean. ' +
     'Message frequency varies. Message &amp; data rates may apply. Text HELP to (513) 279-2915 for assistance. ' +
     'You can reply STOP to unsubscribe at any time.';
+  var MARKETING_CONSENT = 'I want to receive news, feature updates, discounts &amp; offers from 513 Auto Clean.';
 
   /** Where they heard about us: one optional choice, for the owner's ROI. */
   var HEARD_OPTIONS = ['Google search', 'Google Maps', 'Instagram', 'Facebook', 'TikTok', 'A friend or family member',
@@ -7848,7 +7853,7 @@
     var sms = document.getElementById('bpSms');
     var mk = document.getElementById('bpMarketing');
     if (sms && sms.checked) state.consent.sms = true;
-    if (mk) state.consent.marketing = mk.checked === true;
+    if (mk && mk.checked) state.consent.marketing = true;
   }
 
   function mountSizeSteps() {
