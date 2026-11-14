@@ -234,7 +234,7 @@ ${receiptRows(priced)}`,
     ? `<p style="margin:0 0 14px">Your time is <strong>${confirmed ? "held" : "requested"}</strong>. What we have not settled yet is which detail you want, which is the part you asked us about.</p>` +
       `<p style="margin:0 0 14px">We will work that out with you: from what you have told us if there is enough to go on, otherwise on the day, looking at the vehicle together. <strong>You hear the price before we start anything</strong>, and if none of it is worth it to you we will leave and there is nothing to pay.</p>`
     : confirmed
-      ? `<p style="margin:0 0 14px">Your detail is <strong>fully confirmed and booked</strong>. Thank you for your trust and support. We hope you're as excited as we are!</p>`
+      ? `<p style="margin:0 0 14px">Thank you for your trust and support. We hope you're as excited as we are!</p>`
       : `<p style="margin:0 0 14px">We will confirm this with you shortly, usually within a few hours. Treat the time as requested until you hear back.</p>`;
 
   // Elijah's layout (November 13): arrival time, how long, then the window
@@ -261,7 +261,7 @@ ${receiptRows(priced)}`,
       : soon
         ? `We have your short-notice request for ${when}`
         : confirmed
-          ? `Booked in for ${when}`
+          ? `Confirmed: your detail on ${when}`
           : `We have your booking for ${when}`,
     html: SHELL(
       advice
@@ -269,7 +269,7 @@ ${receiptRows(priced)}`,
         : soon
           ? `Thanks ${name}, we have your request`
           : confirmed
-            ? `Thanks ${name}, you are booked in.`
+            ? `Thanks ${name}, you're fully confirmed for your detail with 513 Auto Clean.`
             : `Thanks ${name}, we have your booking`,
       `${opening}${shortNotice}${label("Arrival time")}
 <p style="margin:0 0 16px;font-size:18px;font-weight:700">${esc(when)}</p>

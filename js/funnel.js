@@ -160,7 +160,7 @@
     { id: 'time',     tab: 'Time',     title: 'Pick your time',            auto: false, render: rTime,    valid: vTime },
     { id: 'contact',  tab: 'Accept',   title: 'Your details, and what you agree to', auto: false, render: rDetails, valid: vContact },
     { id: 'pay',      tab: 'Checkout', title: 'Checkout',                  auto: false, render: rPay,     valid: vPay,
-      sub: 'A few details and you are booked. Nothing is charged today.' }
+      sub: 'A few details and you are booked. You pay on site once your detail is complete.' }
   ];
 
   /*
@@ -7208,7 +7208,7 @@
     lastRenderedStep = null;
     el('bkBar').style.width = '100%';
     var asked = isInquiry() || (state.slot && shortNotice(state.slot));
-    el('bkTitle').textContent = asked ? 'Request sent' : 'You are booked in';
+    el('bkTitle').textContent = asked ? 'Request sent' : "You're fully confirmed";
     el('bkNext').hidden = true;
     el('bkBack').hidden = true;
     el('bkTotal').hidden = true;
