@@ -1603,6 +1603,13 @@ An independent review found nothing that loses or duplicates a normal booking. I
   - both TEST calendars are public as free/busy only;
   - `GOOGLE_BUSY_ONLY_CALENDAR_IDS` adds 513 TEST Bookings for Deploy Previews only.
 
+## Decisions, November 15 (Emmett)
+
+- **Accepted:** the fee's name stays decided by noon, so the picker matches the receipt (fix 4).
+- **Accepted:** a clash that shouldn't turn the customer away goes to Elijah as a request, with nothing written onto the taken time. The three cases are standard hours, already paid, and a failed retry lookup.
+- **Approved:** test bookings on the preview, with the test events deleted afterwards.
+- **Rush-hour travel (fix 3):** kept for now, and asked of Elijah as question 17.
+
 ## Leftovers noticed, not touched
 
 - `book.css` still has `.bk-time`, `.bk-times`, `.bk-bucket` and `.bk-juston` rules from an older slot design. They were unused before tonight.
