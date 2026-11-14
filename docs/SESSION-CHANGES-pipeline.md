@@ -1398,6 +1398,18 @@ From the live calendar (read only), the code, and your voice notes:
 - **Fix:** the start of any working stretch (merged OPEN blocks, `dayOpens`) counts as the start of the day. A gap after a job still needs the drive to fit (tests in `arrival-window.test.ts`). The booking form still leaves this off for a drive over an hour (`myDrive <= 60`).
 - **Each detailer's start location** was already configurable: `DETAILER_HOMES` in Netlify, by name. It's set, but the value is hidden, so whether Kris's entry exists is confirmed by a booking on his calendar.
 
+## Missed Book links (Emmett's check, November 14): root cause
+
+- **What was missed:** with `bookLinks: "page"`, the home hero's Book Now still jumped to "Ready to book?" (`href="#quote"`). The 404 page's "Book a detail" (`/#book`) and the old addresses `/#book` and `#schedule` (and `/book.html`, which redirects to `/#book`) still opened the form in place.
+- **Root cause:** the rewrite was keyed on the booking form's own link pattern (`href="book.html"`, what the form intercepts), and I checked it by counting those links. I never audited by intent: every link whose label says Book, plus every address that opens the form.
+- **Fix:**
+  - `book-links.mjs` also rewrites `#quote`, `#book`, `/#book` and `index.html#book` links, and marks the page (`data-book-links="page"`);
+  - `funnel.js` `toBookPage()` sends the old addresses to `/book`, except on a card payment's return.
+- **Validated both ways:**
+  - "page": every page at 1440 and 375, live DOM after scrolling, has 0 Book links that don't go to `/book`. Real clicks on 7 kinds of link land on `/book` with their package or `?browse=1`.
+  - "inline": a full build has no `/book` link and no marker, and the same 7 clicks open the form in place as before (the hero scrolls to `#quote`).
+  - A permanent test (`book-links.test.ts`) checks both positions and sweeps the built pages by label.
+
 ## Leftovers noticed, not touched
 
 - `book.css` still has `.bk-time`, `.bk-times`, `.bk-bucket` and `.bk-juston` rules from an older slot design. They were unused before tonight.
