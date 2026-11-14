@@ -268,7 +268,6 @@
     }
 
     paint();
-    syncSchema(d.rating, d.total);
   }
 
   /* ---------- the top ticker ----------
@@ -366,26 +365,6 @@
     wrap.addEventListener('mouseenter', function () { clearInterval(timer); });
     wrap.addEventListener('mouseleave', restart);
     wrap.addEventListener('focusin', function () { clearInterval(timer); });
-  }
-
-  /**
-   * Replace the hardcoded aggregateRating with what the source actually
-   * says. A stale review count in structured data is worse than none.
-   */
-  function syncSchema(rating, total) {
-    var tags = document.querySelectorAll('script[type="application/ld+json"]');
-    for (var i = 0; i < tags.length; i++) {
-      try {
-        var d = JSON.parse(tags[i].textContent);
-        if (d['@type'] !== 'AutoDetailing') continue;
-        d.aggregateRating = {
-          '@type': 'AggregateRating',
-          ratingValue: String(rating),
-          reviewCount: String(total)
-        };
-        tags[i].textContent = JSON.stringify(d, null, 2);
-      } catch (err) { /* malformed block, leave it alone */ }
-    }
   }
 
   if (mount) {
