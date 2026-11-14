@@ -78,6 +78,7 @@ import {
   multiDayStillFits,
   planDays,
 } from "./availability/multiDay.js";
+import { checkRange, slotStillFree } from "./availability/stillFree.js";
 import { findPromo, normalisePromo, promoDiscountCents, promoMessage } from "./pricing/promos.js";
 import { addonIcon } from "./catalog/icons.js";
 import { popularityOf } from "./catalog/popularity.js";
@@ -142,6 +143,8 @@ const api = {
   fitsOneDay,
   multiDayStillFits,
   planDays,
+  checkRange,
+  slotStillFree,
   localMinutesOfDay,
   weekStartOf,
   addWeeks,

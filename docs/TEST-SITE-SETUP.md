@@ -1,43 +1,25 @@
-# The private test site: setup
+# The private test copy: a password-gated Deploy Preview
 
-**What it is:** a second Netlify site, separate from the live one, that builds the `eNov14` test branch. Every page, script, image and function call needs a password. Every response also says `noindex`. Nobody without the password can see anything, including Google and a toll-free reviewer. The live site is untouched.
+**What it is (Emmett, November 14: "we aren't doing a netlify test site we should do a preview"):** no second Netlify site. A draft pull request from `eNov14` makes Netlify build a Deploy Preview on the existing site, at `https://deploy-preview-<N>--513-auto-clean.netlify.app`. Every page, script, image and function call there needs a password, and every response says `noindex`. Nobody without the password can see anything, including Google and a toll-free reviewer. The live site is untouched.
 
-**How the password works:** `netlify/edge-functions/test-gate.js` runs on every request, but only acts where the variable `TEST_SITE_PASSWORD` is set. Only the test site sets it. On the live site the function returns at once and changes nothing (tested: `web/lib/site/test-gate.test.ts`). It's a Netlify edge function, so it works on the free plan.
+**How the password works:** `netlify/edge-functions/test-gate.js` runs on every request, but only acts where the variable `TEST_SITE_PASSWORD` is set. It is set for the **Deploy Previews** context only. In Production the function returns at once and changes nothing (tested: `web/lib/site/test-gate.test.ts`). It's an edge function, so it works on the free plan.
 
-## Steps (Netlify and Google; each one is an account change, so Emmett says yes first)
+## Steps (each is an account change or a GitHub action, so Emmett says yes first)
 
-**Decided (Emmett, November 14):** test calendars, owner emails to Emmett, and the calendar session does the setup.
+1. **TEST calendars** in the business Google account: "513 TEST Bookings" and "513 TEST Kris Bookings". The site writes as that account, so no extra sharing is needed.
+2. **Deploy-Previews-only values on the existing site** (Site configuration, Environment variables). For each one, choose "different value for each deploy context". Re-enter the Production value exactly as it was, and change only the Deploy Previews value.
+   - `TEST_SITE_PASSWORD`: chosen and typed by Emmett, marked secret. No Production value.
+   - `GOOGLE_BOOKED_CALENDAR_ID`: the "513 TEST Bookings" ID. Owner jobs are written here (`_gcal.mjs` `bookedCalendarId()`). `GOOGLE_CALENDAR_ID` stays the real one: it's only read, for real availability.
+   - `DETAILERS`: the Production value with Kris's `bookings` set to the "513 TEST Kris Bookings" ID. His availability calendar stays real, because it's only read.
+   - `OWNER_EMAIL`: Emmett's own address (given in the session, kept out of this public repo). Elijah gets nothing from testing.
+3. **Open a draft PR from `eNov14` to `main`** (Emmett's approval; never merged without a separate yes). Netlify builds the preview from it.
+4. **Check:**
+   - Without the password, `curl -I` returns 401 with `X-Robots-Tag: noindex`; with it, every page works.
+   - A test booking writes only to a TEST calendar, and the owner email reaches only Emmett.
+   - Production's variables are unchanged and production was not redeployed.
 
-1. **Create the site.** In Netlify: Add new site, then Import an existing project, then GitHub `Ert850/513-Auto-Clean`.
-   - Site name: `513-auto-clean-test`, so the address is `https://513-auto-clean-test.netlify.app`.
-   - Branch to deploy: **`eNov14`**. Build command and publish folder come from `netlify.toml`.
-2. **On the new site only, under Site configuration and Build & deploy:**
-   - Deploy Previews: **off**;
-   - Branch deploys: **only the production branch**.
-
-   That way pull requests never make extra public copies.
-3. **Environment variables on the new site:**
-   - **`TEST_SITE_PASSWORD`:** a password Emmett chooses, marked secret, scope Functions (edge functions read it). **Typed by Emmett, never in chat.**
-   - **Copy from the live site** the variables the build and functions need: the Google calendar and Maps settings, `DETAILERS`, `DETAILER_HOMES`, `SHOP_ORIGIN_ADDRESS`, the Resend key, the analytics IDs (optional), and `BUSINESS_PHONE`.
-     - **Secret values can't be read back out of Netlify,** so Emmett pastes those from his own copy.
-     - The Netlify CLI command `netlify env:clone` may copy the rest.
-   - **Bookings go to test calendars** (Emmett, November 14). Create two calendars in the business Google account, "513 TEST Bookings" and "513 TEST Kris Bookings", shared with the same account that writes the real ones (the service account or OAuth user). Then, on the test site only:
-     - `GOOGLE_BOOKED_CALENDAR_ID` = the ID of "513 TEST Bookings". Owner jobs are written here (`_gcal.mjs` `bookedCalendarId()`). `GOOGLE_CALENDAR_ID` stays the real one, because it's only read, for real availability.
-     - `DETAILERS` = the live value with Kris's `bookings` changed to the ID of "513 TEST Kris Bookings". His availability calendar stays real, because it's only read.
-   - **Owner emails go to Emmett** (November 14): `OWNER_EMAIL` = Emmett's own address on the test site (he gives it to the session; it stays out of this public repo). Elijah gets nothing from testing.
-4. **Google Cloud:** add `https://513-auto-clean-test.netlify.app/*` to the browser key's allowed websites, so address suggestions and the map work there.
-5. **Deploy and check:**
-   - The address asks for the password, and every page works after it.
-   - `curl -I` without the password returns 401 with `X-Robots-Tag: noindex`.
-   - A test booking writes only to "513 TEST Bookings" (or Kris's test calendar) and the owner email reaches only Emmett.
-
-## Decisions (all made November 14)
-
-1. Test bookings go to test calendars.
-2. Owner emails go to Emmett.
-3. The calendar session does the setup.
-
-## What the test site can't do
+## What the preview can't do
 
 - **The Contact form:** Web3Forms only accepts the live domain, so it can't submit there.
 - **Real customer texts or payments:** none are set up anyway.
+- **Address suggestions and the map** use the browser Maps key. If its allowed websites don't cover `*--513-auto-clean.netlify.app`, those two fail on the preview; booking still works by typing the address.

@@ -1514,6 +1514,21 @@ From the live calendar (read only), the code, and your voice notes:
 - **Bug found while building:** the first service build cut `sitemap.xml` down to its first line. Its markers were missing, because an earlier edit didn't match, and `indexOf` returned -1, so the slice kept almost nothing. Restored from git; the generator now stops with an error when the markers are missing, as the city one already did.
 - **Tests:** 694 pass. Mockups: `docs/mockups/eNov14-service-*.png`.
 
+## eNov14: calendar fix 1, the server checks the time is still free (November 14)
+
+- **Root cause:** only the booking form checked the time before Confirm. The server wrote the event without looking, so two people who picked the same time seconds apart both got it, and so did a request edited by hand. And the form sent the confirmation without waiting for an answer, so the server could not have told the customer anyway.
+- **Fix:**
+  - **One check:** `web/lib/availability/stillFree.ts` (`checkRange`, `slotStillFree`), used by the form's `verifySlot` and by the server, so the two cannot disagree. It reads Cincinnati days, where the form used the visitor's own midnight.
+  - **The server:** `_detailers.mjs` `slotStatus()` reads the same calendars the form reads for whoever has the time, plus Elijah's personal calendar on his times (`personal-busy.mjs` `readPersonal`, shared). `send-confirmation` runs it after the retry check and before the write.
+  - **Taken:** a 409; no event, no emails. The form waits for that answer (up to `CONFIRM_WAIT_MS`, 15 s; the request is never aborted), then reopens Time with "Someone booked that time while you were deciding". Web3Forms is not sent.
+  - **Calendar unreadable:** written, but the customer's email doesn't say confirmed, and the owner's subject starts "CHECK THE TIME" with a note saying why.
+  - **Kept on purpose:**
+    - A time that fails only on the server's longer measured drive (measured at the appointment, against the form's no-time measurement) is kept (`tight`). A refusal is only for a real clash with a job or the hours.
+    - A paid booking is never turned away; it is written as one to check.
+  - **What's left:** two Confirms in the same second can still both pass, because both read before either writes. That window used to be minutes; it is now about a second.
+- **Test (preview):** book a time, then book the same time from a second browser that loaded the form before the first booking. The second should land back on Time, with no event and no email.
+- **Tests:** `still-free.test.ts`; 707 pass.
+
 ## Leftovers noticed, not touched
 
 - `book.css` still has `.bk-time`, `.bk-times`, `.bk-bucket` and `.bk-juston` rules from an older slot design. They were unused before tonight.

@@ -38,9 +38,9 @@ describe("1. a multi-day time is checked the way it was offered", () => {
   });
 
   it("verifySlot uses that check for a job past one day", () => {
-    const src = fs.readFileSync(path.join(__dirname, "../../../js/funnel.js"), "utf8");
-    const fn = src.slice(src.indexOf("function verifySlot()"), src.indexOf("function checkThenAdvance()"));
-    expect(fn).toContain("P.multiDayStillFits(");
+    // Through the shared check since November 14 (still-free.test.ts).
+    const src = fs.readFileSync(path.join(__dirname, "stillFree.ts"), "utf8");
+    expect(src).toContain("multiDayStillFits(");
   });
 });
 
