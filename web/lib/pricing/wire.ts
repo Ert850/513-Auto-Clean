@@ -91,6 +91,8 @@ export interface WireConsent {
   /** The terms version the customer saw, e.g. "2026-09-11". */
   termsVersion?: string;
   sms?: boolean;
+  /** The /book page's marketing box (Imperion, November 14). */
+  marketing?: boolean;
   media?: boolean;
   /** The card-on-file authorisation. Required before a card is saved. */
   mandateAccepted?: boolean;
@@ -425,6 +427,7 @@ export function validateWire(body: unknown, opts: ValidateOptions): WireValidati
   if (isObj(rawConsent)) {
     if (typeof rawConsent["termsVersion"] === "string") consent.termsVersion = rawConsent["termsVersion"].slice(0, 20);
     if (typeof rawConsent["sms"] === "boolean") consent.sms = rawConsent["sms"];
+    if (typeof rawConsent["marketing"] === "boolean") consent.marketing = rawConsent["marketing"];
     if (typeof rawConsent["media"] === "boolean") consent.media = rawConsent["media"];
     if (rawConsent["mandateAccepted"] === true) consent.mandateAccepted = true;
   }

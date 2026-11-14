@@ -306,7 +306,7 @@ export function askedFor(prefer) {
   return [days.join(", "), prefer.flex === true ? "any start that day" : parts.join(", ")].filter(Boolean).join("; ");
 }
 
-function ownerEmail({ contact, when, priced, kind, cart, detailer, asked, notes, calendarFail = "" }) {
+function ownerEmail({ contact, when, priced, kind, cart, detailer, asked, notes, consent = {}, calendarFail = "" }) {
   const a = cart?.address ?? {};
   const where = [a.line1, a.city, a.region, a.zip].filter(Boolean).join(", ");
   const soon = kind === "booking" && cart?.slot && cart.slot - Date.now() < 24 * 60 * 60 * 1000;
@@ -335,6 +335,8 @@ function ownerEmail({ contact, when, priced, kind, cart, detailer, asked, notes,
 <tr><td style="padding:4px 0;color:#5a6069">When</td><td style="padding:4px 0">${esc(when || (asked ? `asked for ${asked}` : "not selected, they asked us to come back with a time"))}</td></tr>
 <tr><td style="padding:4px 0;color:#5a6069">Where</td><td style="padding:4px 0">${esc(where || "not given")}</td></tr>
 ${detailer ? `<tr><td style="padding:4px 0;color:#5a6069">Detailer</td><td style="padding:4px 0">${esc(detailer.name)}</td></tr>` : ""}
+<tr><td style="padding:4px 0;color:#5a6069">SMS consent</td><td style="padding:4px 0">${consent.sms === true ? "yes" : "no"}</td></tr>
+<tr><td style="padding:4px 0;color:#5a6069">Marketing</td><td style="padding:4px 0">${consent.marketing === true ? "yes" : "no"}</td></tr>
 </table>
 ${
   kind === "advice"
@@ -571,7 +573,7 @@ export async function handler(event) {
   const mode = payload?.mode === "pay_now" ? "pay_now" : "card_only";
   const checked = validateWire(payload, { nowMs: Date.now(), mode });
   if (!checked.ok) return json(400, { error: checked.error });
-  const { cart, contact, kind, payInFull } = checked.booking;
+  const { cart, contact, kind, payInFull, consent } = checked.booking;
 
   /*
    * MEASURED, not estimated. This line used to read
@@ -594,7 +596,7 @@ export async function handler(event) {
     blockFeeBp: await blockFeeFor(detailer, cart.slot, payload?.timeFeeBp),
   });
   const when = whenLabel(cart.slot);
-  const ctx = { contact, when, priced, kind, cart, slot: cart.slot ?? null, detailer, measured, textsOk: payload?.consent?.sms === true };
+  const ctx = { contact, when, priced, kind, cart, slot: cart.slot ?? null, detailer, measured, consent, textsOk: consent.sms === true };
 
   const rawCart = payload?.cart ?? {};
   const rawAccess = rawCart.access ?? {};

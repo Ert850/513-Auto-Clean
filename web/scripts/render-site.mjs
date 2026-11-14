@@ -33,7 +33,7 @@ import {
   packagesFor,
   unavailableReason,
 } from "../../netlify/functions/_pricing.mjs";
-import { contactCard, contactHead, loadContactForm } from "./contact-form.mjs";
+import { contactCard, contactHead, loadContactForm, bookPageConsent } from "./contact-form.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 // The catalog is split across pages now: packages on the home page, add-ons
@@ -519,7 +519,7 @@ for (const f of PAGES) fs.writeFileSync(path.join(root, f), pages[f]);
     .map(([, hash, label]) => `          <li><a href="service-area.html${hash}">${label}</a></li>`);
   if (areas.length < 3) throw new Error("render-site: the footer's area list was not found for the booking page");
   let html = pages["booking.html"] ?? read("booking.html");
-  for (const [name, body] of [["VIDEO", media], ["AREAS", areas.join("\n")]]) {
+  for (const [name, body] of [["VIDEO", media], ["AREAS", areas.join("\n")], ["CONSENT", bookPageConsent(loadContactForm())]]) {
     const start = `<!-- BOOKPAGE:${name}:START -->\n`;
     const end = `<!-- BOOKPAGE:${name}:END -->`;
     const i = html.indexOf(start);

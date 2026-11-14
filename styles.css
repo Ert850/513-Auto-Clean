@@ -1685,6 +1685,8 @@ main > .bookpage:first-child { padding-block: clamp(16px, 2.2vw, 30px); }
 .bp-contact dd { margin: 0; font-weight: 600; }
 .bp-step { background: var(--paper-2); border: 1px solid var(--line); border-radius: var(--r-lg); padding: clamp(1rem, 2vw, 1.4rem); }
 .bp-step h2 { font-size: 1.1rem; margin: 0 0 .9rem; }
+/* The consent boxes under the size step (Imperion, November 14): the Contact form's own look, a touch smaller. */
+.bp-consent { margin-top: .9rem; font-size: .92em; }
 .bp-cta { display: none; }
 
 @media (min-width: 1000px) {

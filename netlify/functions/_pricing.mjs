@@ -1796,6 +1796,7 @@ function validateWire(body, opts) {
   if (isObj(rawConsent)) {
     if (typeof rawConsent["termsVersion"] === "string") consent.termsVersion = rawConsent["termsVersion"].slice(0, 20);
     if (typeof rawConsent["sms"] === "boolean") consent.sms = rawConsent["sms"];
+    if (typeof rawConsent["marketing"] === "boolean") consent.marketing = rawConsent["marketing"];
     if (typeof rawConsent["media"] === "boolean") consent.media = rawConsent["media"];
     if (rawConsent["mandateAccepted"] === true) consent.mandateAccepted = true;
   }

@@ -18,6 +18,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { stampPhone } from "./phone-stamp.mjs";
+import { routeDist } from "./book-links.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const dist = path.join(root, "dist");
@@ -122,6 +123,12 @@ bytes -= saved;
 {
   const { phone, changed } = stampPhone(dist);
   if (changed.length) console.log(`phone: ${phone.display} (BUSINESS_PHONE) written into ${changed.length} files`);
+}
+
+// Where the Book links go: config/booking-page.json "bookLinks" (see book-links.mjs).
+{
+  const moved = routeDist(dist, JSON.parse(fs.readFileSync(path.join(root, "config/booking-page.json"), "utf8")));
+  if (moved) console.log(`book links: ${moved} links now go to /book`);
 }
 
 /* ---- images: only what the page can reach ---- */
