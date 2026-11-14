@@ -73,16 +73,16 @@ He checked every page. Results, Meet the Team, Reviews and Range & Travel are fi
    - **Photos:** Elijah's, from the photo pipeline. A DA polisher shot is needed.
    - **Build static first.** A one-second transformation per button (cleaning, washing, stain fading, polishing) comes later. It uses `transform` and `opacity` only, nothing heavy on phones, and stays still under reduced motion.
    - Mock up at 375 and 1440 before building; it's a new section on the owner's first screen.
-2. **"Ready to book?" block on the home page (`index.html`, "Start My Booking"): lower friction.**
+2. **"Ready to book?" block on the home page (`index.html`, "Start My Booking"): lower friction.** **BUILT November 14 (PR #11).**
    - Elijah's wording (November 13): "Know your price before you book. Pay on site once your detail is complete." It replaces "See your exact price…" and "Nothing is charged until we confirm your time". That's true: payment is after the detail, no deposit (`BUSINESS-CONTEXT.md`).
    - "Add more than one vehicle and save 10% on each extra" becomes "Explore our detailing packages and find the right service for your vehicle", linking to Services. That also removes a typed business number.
    - Where a price needs an inspection or a quote (heavy pet hair, stains, correction), say the final price is agreed before work starts.
    - Rework the intro line the same way.
-3. **The same payment wording in the booking form.**
+3. **The same payment wording in the booking form.** **BUILT November 14 (PR #11).**
    - Change the booking lines: `funnel.js` "Nothing is charged today" on the last step, and any other line about a booked time.
    - Leave the request and quote lines ("nothing is charged until you agree to it"). They are about agreeing to a price, which is still true.
    - Check the terms and the FAQ say the same.
-4. **Showroom Ready moves to its new form now (Elijah, November 13: "Full price change is $445+. Move to its new form").** The other new prices still wait.
+4. **Showroom Ready moves to its new form now (Elijah, November 13: "Full price change is $445+. Move to its new form").** The other new prices still wait. **BUILT November 14 (PR #11).**
    - **What changes:**
      - "Showroom Ready Restoration", starting at $445, about 3 hours on top, Elijah only;
      - quoted on the vehicle's condition: say clearly that $445 is where it starts, not the final price;
@@ -102,7 +102,7 @@ He checked every page. Results, Meet the Team, Reviews and Range & Travel are fi
    - The A2P quote wording and the consent boxes stay word for word.
    - The Send button must stay visible at 1440×790.
 6. **FAQ questions need updating** (he knows it's coming). This is the queued FAQ program below. Get his list of questions.
-7. **"You are booked in" reads oddly (Emmett, November 13).** Pick new wording and use it everywhere it appears:
+7. **"You are booked in" reads oddly (Emmett, November 13).** Pick new wording and use it everywhere it appears: **BUILT November 14 (PR #11).**
    - the booking email's title, "Thanks {name}, you are booked in." (`send-confirmation.mjs` `customerEmail`);
    - its subject, "Booked in for {when}";
    - the Done screen's title, "You are booked in" (`funnel.js`, `bkTitle`).
@@ -124,15 +124,15 @@ He checked every page. Results, Meet the Team, Reviews and Range & Travel are fi
   - **built November 13** (`tierPriceFor`, `withPackage`; `steam-price.test.ts`).
 - **Cancelling = deleting the event (Elijah):** the website already treats a deleted event as free time. Still needed:
   - Kris needs "Make changes to events" on 513 Kris Bookings: **already set** (checked November 14, edit level without sharing rights, Kris's account confirmed by Emmett);
-  - JobsSync marks rows whose event is gone as "Cancelled" (today they stay "Upcoming");
+  - JobsSync marks rows whose event is gone as "Cancelled": **built November 14** (`tools/jobs-sync/`), waiting for Elijah to install;
   - the customer isn't told automatically: GoHighLevel's cancellation message, once connected.
 - **Accounting:** a job counts only when it's marked done **and** paid, and GoHighLevel takes over the bookkeeping (pipeline stages Booked → Done → Paid). Until then, JobsSync marks deleted events Cancelled only.
   - **Elijah's statuses (November 13):** Booked, Confirmed, In Progress, Completed, Paid, Cancelled. Completed and Paid are separate, because a done job may not be paid yet. A cancelled booking stays on record, marked Cancelled, and never counts.
   - **Marking a job done from a phone:** "DONE" in the event title, or a green event colour, until GoHighLevel holds the status. Ask Kris and Elijah which one; JobsSync reads it.
   - **Open question for Elijah's accountant:** is the travel charge taxable? The site taxes package plus travel today (`quote.ts` `taxableBase`). Elijah's note says not to assume. Change nothing until an accountant answers for Ohio, Kentucky and Indiana.
 
-- **Kris arrives at 6pm** (question 16, yes). Build the queued `outboundFree` change so the start of any working stretch counts as the start of the day. His 6pm BEST is then a true 6pm arrival, and long drives no longer drop it.
-- **Package prices are fixed but wait** until today's prices are shown to convert:
+- **Kris arrives at 6pm** (question 16, yes). **BUILT November 14 (PR #11).** Build the queued `outboundFree` change so the start of any working stretch counts as the start of the day. His 6pm BEST is then a true 6pm arrival, and long drives no longer drop it.
+- **Package prices are fixed but wait** until today's prices are shown to convert: **BUILT November 14 (PR #11).**
   - Maintenance $115, Basic $145, Full $235;
   - Full + Steam $315 (steam +$80 on Full);
   - steam on any other package $115;

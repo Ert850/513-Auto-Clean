@@ -515,7 +515,7 @@ var ADDONS = [
     scope: "exterior",
     icon: "gem",
     description: "3 to 5 years of protection with proper maintenance, bonded to the clear coat.",
-    note: "A real coating cures into a hard glass-like layer chemically bonded to the clear coat, which is why it lasts years rather than months. It also locks in whatever the paint looks like at the time, so any swirls underneath are sealed in with it. That is why coatings are sold with correction rather than on their own, and why this one lives inside Showroom Ready Exterior.",
+    note: "A real coating cures into a hard glass-like layer chemically bonded to the clear coat, which is why it lasts years rather than months. It also locks in whatever the paint looks like at the time, so any swirls underneath are sealed in with it. That is why coatings are sold with correction rather than on their own, and why this one lives inside Paint Correction and Protection.",
     unavailable: true,
     unavailableNote: "Not available yet. A coating needs the paint corrected first, so it opens together with Paint Correction and Protection.",
     tiers: [
