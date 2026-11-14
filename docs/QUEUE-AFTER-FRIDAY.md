@@ -275,6 +275,15 @@ Built and logged in `SESSION-CHANGES-pipeline.md` (Round 22). The design that wa
 
 ## Photo pipeline: the website gallery pulls from Google Drive (Elijah, team brief section 5, November 11)
 
+**Elijah's shared photo folder (November 14).** The link is with Emmett; it stays out of this public repo. Photos were still uploading on November 14. The layout:
+- **01 Inbox:** where raw job photos are dropped.
+- **02 Selects:** the best before and after pairs, edited and ready to use.
+- **03 Website:** photos approved for the website. The site's gallery and service photos come only from here.
+- **04 GBP and Social:** already posted, so nothing is posted twice.
+- **05 Photos by Job Type:** filled automatically from the NAS, one folder per job, sorted by service (Full Interior, Full Interior + Steam, Basic Interior, Stain, Spill and Odor, and so on). That's what tags a photo to a service and a job date.
+
+**Never publish** a license plate, a customer's face, a house number or personal items in the car (Elijah). Check every photo before it goes on the site.
+
 **Goal:** the results gallery is built from the shared Drive folder "513 Auto Clean Photos / 03 Website", so new photos reach the site without code changes. The current site photos get replaced.
 
 **Plan:**
