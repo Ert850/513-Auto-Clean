@@ -3726,8 +3726,9 @@
   function feeWhy(ms) {
     var parts = [];
     if (needsPriority(ms)) parts.push('rush');
-    var m = localMin(ms);
-    if (timeFeeApplies(ms)) parts.push(m < 12 * 60 ? 'early start' : 'late start');
+    // Named by noon, the same rule as the receipt line (quote.ts
+    // surchargeLabel), so the picker and the receipt always agree.
+    if (timeFeeApplies(ms)) parts.push(localMin(ms) < 12 * 60 ? 'early start' : 'late start');
     return parts.join(' and ') + ' fee';
   }
 
@@ -4205,7 +4206,9 @@
       // Down to the last hour an offered job is still running in, no further.
       lastRowMin: P.lastRowForSlots(calc.slots, dur),
       // Stars on the calendars' best times, when they set any.
-      suggested: bestStarts(calc) || undefined
+      suggested: bestStarts(calc) || undefined,
+      // The fee from the calendar of whoever takes it, not the clock.
+      isPremium: timeFeeApplies
     });
 
     // Landing on an empty week shows the next one with something in it,
@@ -4327,21 +4330,28 @@
   var CHEV_UP = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 15l6-6 6 6"/></svg>';
   var CHEV_DN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>';
 
-  /** The regular hours a day opens on (owner, November 10): starts from 10am to before 6pm. */
-  var REG_FROM = 10 * 60, REG_TO = 18 * 60;
-
   /**
    * Whether the early and late starts are shown. Folded behind "Earlier
    * times" and "Later times" until asked for, unless the chosen time is
-   * there, or the day has nothing in the regular hours to open on.
+   * there, or the day has nothing at standard price to open on.
+   *
+   * The day's regular hours (owner, November 10) are its standard-price
+   * starts, by the calendar of whoever takes each (calendar fix 4, November
+   * 14), whole hours from the first to the last. A fixed 10am to 6pm folded
+   * Kris's standard-price 6pm under "Later times". `from`/`to` are minutes.
    */
   function foldsOpen(starts) {
-    var reg = starts.some(function (s) { var m = localMin(s.ms); return m >= REG_FROM && m < REG_TO; });
+    var std = starts.filter(function (s) { return !timeFeeApplies(s.ms); }).map(function (s) { return localMin(s.ms); });
+    var reg = std.length > 0;
+    var from = reg ? Math.floor(Math.min.apply(null, std) / 60) * 60 : 0;
+    var to = reg ? Math.floor(Math.max.apply(null, std) / 60) * 60 + 60 : 24 * 60;
     var mine = state.slot && starts.some(function (s) { return sameMinute(s.ms, state.slot); });
     var at = mine ? localMin(state.slot) : -1;
     return {
-      early: state.wkEarly || !reg || (mine && at < REG_FROM),
-      late: state.wkLate || !reg || (mine && at >= REG_TO),
+      early: state.wkEarly || !reg || (mine && at < from),
+      late: state.wkLate || !reg || (mine && at >= to),
+      from: from,
+      to: to
     };
   }
 
@@ -4405,8 +4415,8 @@
         esc(tzDay(day.dayStart + DAY / 2, { weekday: 'long' })) + '. Try another day.</p>';
     }
     var folds = foldsOpen(dayStarts(day));
-    var early = cells.filter(function (c) { return c.hourMin < REG_FROM; });
-    var late = cells.filter(function (c) { return c.hourMin >= REG_TO; });
+    var early = cells.filter(function (c) { return c.hourMin < folds.from; });
+    var late = cells.filter(function (c) { return c.hourMin >= folds.to; });
     var startsOf = function (list) {
       var out = [];
       list.forEach(function (c) { c.starts.forEach(function (ms) { out.push({ ms: ms }); }); });
@@ -4414,7 +4424,7 @@
     };
 
     var shown = cells.filter(function (c) {
-      return (c.hourMin >= REG_FROM || folds.early) && (c.hourMin < REG_TO || folds.late);
+      return (c.hourMin >= folds.from || folds.early) && (c.hourMin < folds.to || folds.late);
     });
     var groups = [];
     shown.forEach(function (c) {
@@ -4485,12 +4495,12 @@
     // start in them: a grey row only between two times, or under a job's
     // tail (owner, November 11: no dead rows).
     var range = P.timelineRange(starts.map(function (s) { return localMin(s.ms); }), dur, folds,
-      { from: REG_FROM, to: REG_TO }, rows[rows.length - 1] + 60);
+      { from: folds.from, to: folds.to }, rows[rows.length - 1] + 60);
     if (!range) range = { from: localMin(starts[0].ms), last: localMin(starts[0].ms), to: localMin(starts[0].ms) + 30 };
     var shown = [];
     for (var m = range.from; m < range.to; m += 30) shown.push(m);
-    var hidEarly = folds.early ? [] : starts.filter(function (s) { return localMin(s.ms) < REG_FROM; });
-    var hidLate = folds.late ? [] : starts.filter(function (s) { return localMin(s.ms) >= REG_TO; });
+    var hidEarly = folds.early ? [] : starts.filter(function (s) { return localMin(s.ms) < folds.from; });
+    var hidLate = folds.late ? [] : starts.filter(function (s) { return localMin(s.ms) >= folds.to; });
     // Rows after the last start shown are only the tail of its job.
     byMin = {};
     starts.forEach(function (s) { var x = localMin(s.ms); if (x >= range.from && x <= range.last) byMin[x] = s; });

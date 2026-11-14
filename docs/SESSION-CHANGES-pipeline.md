@@ -1555,6 +1555,16 @@ From the live calendar (read only), the code, and your voice notes:
 - **Test:** `still-free.test.ts` stubs Routes with a slower rush-hour drive home. The screen's minutes equal the receipt's, and the drive home departs at the finish.
 - **Test (preview):** book a 1pm Full Interior (it ends around 5pm). The travel line on the screen equals the receipt's Travel row and the owner email's.
 
+## eNov14: calendar fix 4, standard-price evening starts count as standard in the week (November 14)
+
+- **Root cause:** the week builder (`buildWeek`) marked a start as a fee start by the clock's bands, and the day views folded "Earlier times" and "Later times" at a fixed 10am and 6pm (`REG_FROM`/`REG_TO`). The price shown came from the calendar, but the star and the folding came from the clock. So Kris's 6pm, standard price on his calendar, got no star and sat folded under "Later times".
+- **Fix:**
+  - `buildWeek` takes `isPremium` (the form passes `timeFeeApplies`, which reads the calendar of whoever takes the time). Its stars come from `daySuggestions`, which already took it.
+  - `foldsOpen` sets each day's regular hours from that day's standard-price starts (whole hours, first to last). For Elijah's usual day that is still 10am to 6pm, so nothing changes for him.
+- **Not changed, on purpose:** the fee's name ("early start" or "late start") stays decided by noon. The receipt line (`quote.ts` `surchargeLabel`) names it by noon, on screen and in the emails. Naming it by the calendar block in the picker alone would let the picker and the receipt disagree. Noon gives the right name for every calendar today, Kris's included. Moving both to the calendar's rule means carrying the fee block's side through the pricing engine; that's a separate change if it's ever needed.
+- **Tests:** `week.test.ts`, "calendar fix 4".
+- **Test (preview):** with Kris's evening open, choose an interior job and open a day he works. The 6pm start is visible without opening "Later times", reads "Standard price", and can carry the star.
+
 ## Leftovers noticed, not touched
 
 - `book.css` still has `.bk-time`, `.bk-times`, `.bk-bucket` and `.bk-juston` rules from an older slot design. They were unused before tonight.
