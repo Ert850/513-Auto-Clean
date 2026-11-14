@@ -1392,6 +1392,12 @@ From the live calendar (read only), the code, and your voice notes:
   - the booking form with each package, steam and Restoration;
   - an old `#q=` link with `showroom-interior`.
 
+## Kris's 6 PM is a true 6 PM arrival (Elijah, question 16; built November 14)
+
+- **Root cause:** `outboundFree` in `slots.ts` let the drive happen before the day only for a start at or before 10am. Kris's evening stretch (OPEN from 6pm) was treated like a gap after a job: his 6pm was planned late in its window, and a long drive dropped it.
+- **Fix:** the start of any working stretch (merged OPEN blocks, `dayOpens`) counts as the start of the day. A gap after a job still needs the drive to fit (tests in `arrival-window.test.ts`). The booking form still leaves this off for a drive over an hour (`myDrive <= 60`).
+- **Each detailer's start location** was already configurable: `DETAILER_HOMES` in Netlify, by name. It's set, but the value is hidden, so whether Kris's entry exists is confirmed by a booking on his calendar.
+
 ## Leftovers noticed, not touched
 
 - `book.css` still has `.bk-time`, `.bk-times`, `.bk-bucket` and `.bk-juston` rules from an older slot design. They were unused before tonight.
