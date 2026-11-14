@@ -81,7 +81,7 @@ var PACKAGES = [
     note: "The same work as a Basic Interior, priced lower because a car detailed a month or two ago has far less built up in it. It resets the everyday mess: crumbs, dust, fingerprints, mats. It does NOT include shampooing, stain work or anything deep, because there should not be anything deep left. If it has been longer than three months, or something has been spilled since, start from Basic or Full instead.",
     notIncluded: ["Shampoo or stain work", "Anything deep: there should be nothing deep left"],
     tip: "Been longer than three months, or a spill since? Start from Basic or Full instead.",
-    priceCents: 9500,
+    priceCents: 11500,
     durationMin: 105,
     componentIds: [...BASIC_INT_IDS],
     featured: false,
@@ -98,7 +98,7 @@ var PACKAGES = [
     note: "A blowout and thorough vacuum through the seats, carpet and trunk, mats cleaned, surfaces wiped down, and the visible grime taken off. The car looks and feels clean when you get back in it. It does NOT shampoo or extract the upholstery, treat set-in stains, condition leather, or brush out every seam and crevice. A vacuum and air compressor blow out alone does not lift what has worked its way down into the upholstery, so engrained fibers, pet hair and grit in the carpet will not all come out, and stains already in the fabric will still be there. Most will come out with a Full Interior, or with Basic plus pet hair removal, a stain treatment, or both.",
     notIncluded: ["Shampooing or extracting the upholstery", "Treating set-in stains", "Leather conditioning", "Every seam and crevice brushed out"],
     tip: "Pet hair or stains? Add pet hair removal or a stain treatment, or pick Full Interior.",
-    priceCents: 13500,
+    priceCents: 14500,
     durationMin: 120,
     componentIds: [...BASIC_INT_IDS],
     featured: false,
@@ -110,40 +110,35 @@ var PACKAGES = [
     name: "Full Interior",
     category: "interior",
     tagline: "A deep, top to bottom detail that makes it feel new again.",
-    note: "Everything in Basic, then the deep work: engrained particles pulled out of the carpet, upholstery shampooed and scrubbed, mats washed and dressed, leather conditioned, glass and door jams cleaned, and every crack and crevice brush detailed. Stain reduction is part of it. It does NOT guarantee a stain comes out completely, steam sanitize the whole vehicle, or remove the seats to get underneath them. Most engrained fibers and pet hair come out at this level, but the truly stubborn ones woven deep into the carpet backing need the individual fiber lifting in Showroom Ready. Deep set stains want the Stain Treatment extra and lingering smells want the Ozone Odor Reset.",
+    note: "Everything in Basic, then the deep work: engrained particles pulled out of the carpet, upholstery shampooed and scrubbed, mats washed and dressed, leather conditioned, glass and door jams cleaned, and every crack and crevice brush detailed. Stain reduction is part of it. It does NOT guarantee a stain comes out completely, steam sanitize the whole vehicle, or remove the seats to get underneath them. Most engrained fibers and pet hair come out at this level, but the truly stubborn ones woven deep into the carpet backing need the individual fiber lifting in Showroom Ready Restoration. Deep set stains want the Stain Treatment extra and lingering smells want the Ozone Odor Reset.",
     notIncluded: ["A promise every stain comes out completely", "Steam sanitizing the whole vehicle", "Taking the seats out to clean underneath"],
-    tip: "Deep stains or smells? Add a Stain Treatment or the Ozone Odor Reset. The most stubborn pet hair needs Showroom Ready.",
-    priceCents: 22500,
+    tip: "Deep stains or smells? Add a Stain Treatment or the Ozone Odor Reset. The most stubborn pet hair needs Showroom Ready Restoration.",
+    priceCents: 23500,
     durationMin: 240,
     componentIds: [...FULL_INT_IDS],
-    featured: true,
+    // "Most popular" moved to Full Interior + Steam, the lead offer (Elijah, November 12).
+    featured: false,
     sortOrder: 2
   },
   {
-    id: "showroom-interior",
-    slug: "showroom-interior",
-    name: "Showroom Ready",
+    // Elijah, November 11 to 13: Full Interior + Steam as its own package, the
+    // lead offer. Its price is Full plus the $80 steam that Full gets, so the
+    // steam extra on Full and this package always cost the same.
+    id: "full-steam-interior",
+    slug: "full-steam-interior",
+    name: "Full Interior + Steam",
     category: "interior",
-    tagline: "Everything in Full, taken to its limit.",
-    note: "Everything in Full, then taken as far as an interior goes: the whole cabin steamed and sanitized, engrained fibers lifted out individually rather than vacuumed at, floor mats given a water resistant treatment, and a ceramic coating on the trim and on the interior metal and paint so it stays this way. It does NOT repair damage. Tears, burns, cracked trim and worn out material are still tears, burns, cracked trim and worn out material. This makes everything that is there as good as it can get.",
-    notIncluded: ["Repairing tears, burns, cracked trim or worn out material"],
-    tip: "It makes everything that is there as good as it can get.",
-    priceCents: 39500,
-    durationMin: 420,
-    // 6 to 8 hours, quoted at 7
-    durationMaxMin: 480,
-    componentIds: [
-      ...FULL_INT_IDS,
-      "int-steam-full",
-      "int-fiber-removal",
-      "int-mat-protect",
-      "int-trim-ceramic",
-      "int-metal-ceramic"
-    ],
-    featured: false,
+    tagline: "Our most popular detail: Full Interior with the whole cabin steam sanitized.",
+    note: "Everything in Full Interior, then the whole vehicle steamed: every safe surface sanitized and scrubbed with heat rather than chemicals, into the vents, seams and seat rails that no cloth reaches. The heat kills bacteria on contact and everything dries in minutes. It does NOT guarantee a stain comes out completely or repair damage. Deep set stains want the Stain Treatment extra and lingering smells want the Ozone Odor Reset.",
+    notIncluded: ["A promise every stain comes out completely", "Repairing tears, burns or worn out material"],
+    tip: "Deep stains or smells? Add a Stain Treatment or the Ozone Odor Reset.",
+    priceCents: 31500,
+    // Steam counts as an hour on top of Full here (Elijah, November 12).
+    durationMin: 300,
+    componentIds: [...FULL_INT_IDS, "int-steam-full"],
+    featured: true,
     sortOrder: 3,
-    supersetOf: "full-interior",
-    pricePlus: true
+    supersetOf: "full-interior"
   },
   /* ---------------- exterior ---------------- */
   {
@@ -182,9 +177,9 @@ var PACKAGES = [
     name: "Full Exterior",
     category: "exterior",
     tagline: "Strips what a wash cannot reach, then protects the paint underneath. Decontaminated, clayed, engine bay cleaned and finished with a ceramic wax sealant.",
-    note: "Everything in Basic, then the paint is actually decontaminated: iron and fallout dissolved chemically, a clay towel to shear off what is left, hard water spotting treated, the engine bay cleaned and protected, and a ceramic wax sealant applied so water beads and dirt struggles to stick. It does NOT correct the paint. Swirl marks, scratches and etching stay exactly as they are, and the sealant goes on over the top of them. Removing those means machine polishing, which is Showroom Ready.",
+    note: "Everything in Basic, then the paint is actually decontaminated: iron and fallout dissolved chemically, a clay towel to shear off what is left, hard water spotting treated, the engine bay cleaned and protected, and a ceramic wax sealant applied so water beads and dirt struggles to stick. It does NOT correct the paint. Swirl marks, scratches and etching stay exactly as they are, and the sealant goes on over the top of them. Removing those means machine polishing, which is Paint Correction and Protection.",
     notIncluded: ["Correcting swirl marks, scratches or etching"],
-    tip: "Want those gone? That takes machine polishing, which is Showroom Ready.",
+    tip: "Want those gone? That takes machine polishing, which is Paint Correction and Protection.",
     priceCents: 24500,
     durationMin: 240,
     componentIds: [
@@ -202,10 +197,9 @@ var PACKAGES = [
   {
     id: "showroom-exterior",
     slug: "showroom-exterior",
-    // Spelled out because "Showroom Ready" alone reads as a deeper wash next
-    // to the interior package of the same name, and this is neither the same
-    // work nor the same order of price.
-    name: "Showroom Ready (Paint Correction and Protection)",
+    // Renamed from "Showroom Ready (Paint Correction and Protection)" (Elijah,
+    // November 12; Emmett, November 14). The id stays, so old links still open.
+    name: "Paint Correction and Protection",
     category: "exterior",
     // Everything in Full Exterior, then a required correction or coating
     // tier on top. The base here is the Full Exterior work; the tier adds its
@@ -242,6 +236,23 @@ var SEED_CATALOG = {
 };
 function packagesFor(category) {
   return SEED_CATALOG.packages.filter((p) => p.category === category).sort((a, b) => a.sortOrder - b.sortOrder);
+}
+var LEGACY_PACKAGES = {
+  "showroom-interior": { packageId: "full-interior", addons: [{ addonId: "showroom-restoration", tierId: "std" }] }
+};
+function upgradeLegacy(packageIds, addons) {
+  const ids = [];
+  const extra = [];
+  for (const id of packageIds) {
+    const to = LEGACY_PACKAGES[id];
+    if (!to) {
+      ids.push(id);
+      continue;
+    }
+    if (!ids.includes(to.packageId)) ids.push(to.packageId);
+    for (const a of to.addons) if (!addons.some((x) => x.addonId === a.addonId) && !extra.some((x) => x.addonId === a.addonId)) extra.push(a);
+  }
+  return { packageIds: ids, addons: [...addons.map((a) => ({ addonId: a.addonId, tierId: a.tierId })), ...extra] };
 }
 function findPackage(id) {
   return SEED_CATALOG.packages.find((p) => p.id === id);
@@ -315,7 +326,40 @@ var ADDONS = [
     note: "Steam cleans with heat rather than chemicals. It softens grease and grime so it wipes off instead of being scrubbed at, gets into vents, seams and seat rails that no cloth reaches, and the heat kills bacteria on contact. Everything dries in minutes because there is very little water involved.",
     // $80 with Full Interior (Full + Steam $305 at today's $225), $115 on any
     // other package (Elijah, November 13).
-    tiers: [{ id: "std", label: "Full vehicle", priceCents: 11500, withPackage: { "full-interior": 8e3 }, durationMin: 90 }]
+    tiers: [{ id: "std", label: "Full vehicle", priceCents: 11500, withPackage: { "full-interior": 8e3 }, durationMin: 90 }],
+    // Already in Full Interior + Steam and in Showroom Ready Restoration.
+    includedIn: {
+      packageIds: ["full-steam-interior"],
+      addonIds: ["showroom-restoration"],
+      message: "Already included: the whole cabin is steamed in this detail."
+    }
+  },
+  {
+    // The old $395 Showroom Ready package, as an add-on (Elijah, November 12
+    // and 13; Emmett, November 14): $445 and up in total with Full Interior,
+    // steam included, so it is $210 on Full and $130 on Full Interior + Steam.
+    // About 3 hours more. Elijah does it himself (work "restoration", which
+    // only the owner's DETAILERS entry does).
+    id: "showroom-restoration",
+    name: "Showroom Ready Restoration",
+    scope: "interior",
+    icon: "restore",
+    description: "Everything in Full, taken as far as an interior goes.",
+    note: "The whole cabin steamed and sanitized, engrained fibers lifted out individually rather than vacuumed at, floor mats given a water resistant treatment, and a ceramic coating on the trim and on the interior metal and paint so it stays this way. It does NOT repair damage: tears, burns, cracked trim and worn out material stay as they are. It makes everything that is there as good as it can get.",
+    tiers: [
+      {
+        id: "std",
+        label: "Restoration",
+        priceCents: 21e3,
+        withPackage: { "full-interior": 21e3, "full-steam-interior": 13e3 },
+        totalWith: "full-interior",
+        durationMin: 180,
+        asterisk: "A starting price. The final price depends on the vehicle's condition, and we agree it with you before any work starts."
+      }
+    ],
+    requiresAnyPackageId: ["full-interior", "full-steam-interior"],
+    requirementMessage: "Showroom Ready Restoration builds on a Full Interior. Pick Full Interior or Full Interior + Steam first.",
+    work: "restoration"
   },
   {
     id: "ozone",
@@ -328,9 +372,9 @@ var ADDONS = [
     // Ozone attacks what is left in the air and the plastics. Running it over
     // material that has not been extracted first mostly wastes the customer's
     // money, so it is gated rather than merely discouraged.
-    requiresAnyPackageId: ["full-interior", "showroom-interior"],
+    requiresAnyPackageId: ["full-interior", "full-steam-interior"],
     requiresAnyAddonTier: [{ addonId: "stain", tierIds: ["minor", "major"] }],
-    requirementMessage: "Ozone needs the source removed first. Pair it with a stain treatment, or add it to a Full Interior or Showroom Ready."
+    requirementMessage: "Ozone needs the source removed first. Pair it with a stain treatment, or add it to a Full Interior or Full Interior + Steam."
   },
   {
     id: "seat-removal",
@@ -353,7 +397,7 @@ var ADDONS = [
     // for spot work on top of it is charging twice for the same pass.
     includedIn: {
       packageIds: ["showroom-exterior"],
-      message: "Already covered by the correction tier on Showroom Ready Exterior."
+      message: "Already covered by the correction tier on Paint Correction and Protection."
     },
     // Off the menu until the correction setup is built out. Listed with its
     // price rather than hidden, so someone who wants it can say so and be
@@ -473,7 +517,7 @@ var ADDONS = [
     description: "3 to 5 years of protection with proper maintenance, bonded to the clear coat.",
     note: "A real coating cures into a hard glass-like layer chemically bonded to the clear coat, which is why it lasts years rather than months. It also locks in whatever the paint looks like at the time, so any swirls underneath are sealed in with it. That is why coatings are sold with correction rather than on their own, and why this one lives inside Showroom Ready Exterior.",
     unavailable: true,
-    unavailableNote: "Not available yet. A coating needs the paint corrected first, so it opens together with Showroom Ready Exterior.",
+    unavailableNote: "Not available yet. A coating needs the paint corrected first, so it opens together with Paint Correction and Protection.",
     tiers: [
       {
         id: "std",
@@ -711,7 +755,7 @@ var rush_fee_default = {
     "A rule's 'when' can name any of these (leave one out to match everything):",
     '  sources: where the visit came from, the address it arrived through: "golf" (513autoclean.com/golf), "prestige".',
     '  kinds: "interior", "exterior" or "both": what the whole booking is. "exterior" means exterior work only.',
-    "  packages: package ids; matches when ANY of them is booked (maintenance-interior, basic-interior, full-interior, showroom-interior, express-exterior, basic-exterior, full-exterior, showroom-exterior).",
+    "  packages: package ids; matches when ANY of them is booked (maintenance-interior, basic-interior, full-interior, full-steam-interior, express-exterior, basic-exterior, full-exterior, showroom-exterior).",
     "  from / until: dates (YYYY-MM-DD, Cincinnati time, both included). Leave them out and the rule never ends on its own.",
     "The browser and the booking functions both read this file. A change goes live on the next deploy, and a mistake in it fails the build instead of reaching customers.",
     "The exterior-only rule gives the same 2 days as the default today. It stays so that exterior-only bookings keep their own setting if the default changes again.",
@@ -1556,6 +1600,8 @@ var ADDON_ICONS = {
   shield: '<path d="M12 2.6 19.5 5.4v5.9c0 4.8-3.2 8.1-7.5 9.6-4.3-1.5-7.5-4.8-7.5-9.6V5.4z"/><path d="M12 8.6c1.7 2 2.5 3.3 2.5 4.4a2.5 2.5 0 1 1-5 0c0-1.1.8-2.4 2.5-4.4z"/>',
   /** A faceted gem: hard, glass-like, permanent. */
   gem: '<path d="M6.5 3.5h11l3 5-8.5 12L3.5 8.5z"/><path d="M3.5 8.5h17"/><path d="M9.7 8.5 12 3.7l2.3 4.8L12 20.5"/>',
+  /** A seat with sparkles: an interior taken as far as it goes (Showroom Ready Restoration). */
+  restore: '<path d="M6 20.5v-4.5h9.5v4.5"/><path d="M7.5 16V8.8a2 2 0 0 1 2-2h2.6a2 2 0 0 1 2 2V16"/><path d="M18.5 3.5v4M16.5 5.5h4"/><path d="M19.5 11.5v2.4M18.3 12.7h2.4"/>',
   /** A panel with two scratches and a spot being worked. */
   scratch: '<rect x="2.5" y="5.5" width="19" height="13" rx="2.5"/><path d="M7 15.8 10.6 9.2"/><path d="M12.4 15.2 14.4 11.4"/><circle cx="17.4" cy="9.6" r="2.2"/>',
   /** A rotary polisher head. */
@@ -1640,7 +1686,15 @@ function validateWire(body, opts) {
       }
       v.sizeId = rv["sizeId"];
     }
-    const pkgIds = rv["packageIds"] ?? [];
+    let pkgIds = rv["packageIds"] ?? [];
+    let legacyAddons = null;
+    if (Array.isArray(pkgIds) && pkgIds.some((id) => typeof id === "string" && LEGACY_PACKAGES[id])) {
+      const raw = Array.isArray(rv["addons"]) ? rv["addons"] : [];
+      const ok = raw.filter((a) => !!a && typeof a.addonId === "string" && typeof a.tierId === "string");
+      const up = upgradeLegacy(pkgIds.filter((id) => typeof id === "string"), ok);
+      pkgIds = up.packageIds;
+      legacyAddons = up.addons;
+    }
     if (!Array.isArray(pkgIds)) return fail("bad_packages", "Packages were not understood.");
     if (pkgIds.length > WIRE_LIMITS.maxPackagesPerVehicle) return fail("bad_packages", "Too many packages on one vehicle.");
     const seenCat = /* @__PURE__ */ new Set();
@@ -1662,7 +1716,7 @@ function validateWire(body, opts) {
       packageIds.push(p.id);
     }
     v.packageIds = packageIds;
-    const rawAddons = rv["addons"] ?? [];
+    const rawAddons = legacyAddons ?? rv["addons"] ?? [];
     if (!Array.isArray(rawAddons)) return fail("bad_addons", "Add-ons were not understood.");
     if (rawAddons.length > WIRE_LIMITS.maxAddonsPerVehicle) return fail("bad_addons", "Too many add-ons on one vehicle.");
     const seenAddon = /* @__PURE__ */ new Set();
@@ -1796,6 +1850,7 @@ function validateWire(body, opts) {
   if (isObj(rawConsent)) {
     if (typeof rawConsent["termsVersion"] === "string") consent.termsVersion = rawConsent["termsVersion"].slice(0, 20);
     if (typeof rawConsent["sms"] === "boolean") consent.sms = rawConsent["sms"];
+    if (typeof rawConsent["marketing"] === "boolean") consent.marketing = rawConsent["marketing"];
     if (typeof rawConsent["media"] === "boolean") consent.media = rawConsent["media"];
     if (rawConsent["mandateAccepted"] === true) consent.mandateAccepted = true;
   }
@@ -2955,7 +3010,7 @@ hoursText();
 // lib/server-entry.ts
 function priceFromWire(wire, opts = {}) {
   const rejected = [];
-  const vehicles = (wire.vehicles ?? []).map((wv) => {
+  const vehicles = (wire.vehicles ?? []).map((raw) => ({ ...raw, ...upgradeLegacy(raw.packageIds ?? [], raw.addons ?? []) })).map((wv) => {
     const size = wv.sizeId ? vehicleSize(wv.sizeId) : void 0;
     if (wv.sizeId && !size) rejected.push(`unknown size ${wv.sizeId}`);
     const packages = [];
@@ -3062,7 +3117,7 @@ function priceFromWire(wire, opts = {}) {
   };
 }
 function wireNeeds(wire) {
-  if (wire.kind === "advice") return ["interior", "exterior", "correction", "coating"];
+  if (wire.kind === "advice") return ["interior", "exterior", "correction", "coating", "restoration"];
   const vs = wire.vehicles ?? [];
   const pkgIn = (cat) => vs.some((v) => (v.packageIds ?? []).some((id) => findPackage(id)?.category === cat));
   const addIn = (scope) => vs.some((v) => (v.addons ?? []).some((a) => findAddon(a.addonId)?.scope === scope));
@@ -3072,6 +3127,10 @@ function wireNeeds(wire) {
   if (pkgIn("exterior") || addIn("exterior")) needs.push("exterior");
   if (vs.some((v) => Boolean(v.correction)) || addId(["paint-correction", "paint-polish"])) needs.push("correction");
   if (addId(["ceramic-coating"])) needs.push("coating");
+  for (const v of vs) for (const a of v.addons ?? []) {
+    const w = findAddon(a.addonId)?.work;
+    if (w && !needs.includes(w)) needs.push(w);
+  }
   return needs;
 }
 export {
@@ -3123,6 +3182,7 @@ export {
   swapPhone,
   tierPriceFor,
   unavailableReason,
+  upgradeLegacy,
   validateWire,
   vehicleSize,
   waivesFeeAt,

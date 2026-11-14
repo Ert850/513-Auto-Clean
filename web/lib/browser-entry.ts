@@ -13,6 +13,7 @@ import {
   SEED_CATALOG,
   VEHICLE_SIZES,
   vehicleSize,
+  upgradeLegacy,
 } from "./catalog/seed.js";
 import {
   ADDONS,
@@ -109,6 +110,7 @@ const api = {
   vehicleSize,
   packagesFor,
   findPackage,
+  upgradeLegacy,
   addonsFor,
   findAddon,
   tierPriceFor,

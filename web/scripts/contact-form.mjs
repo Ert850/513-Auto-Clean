@@ -111,6 +111,22 @@ const TICKS = (w) => `
           </div>
 `;
 
+/**
+ * The same two boxes and terms line under the /book card (Imperion, November
+ * 14). Not a form: funnel.js reads them when the booking form opens (#bpSms
+ * pre-ticks its own SMS box; #bpMarketing goes into the booking). Empty in a
+ * mode without consent boxes, so switching the Contact form back clears both.
+ */
+export function bookPageConsent(cfg) {
+  const w = cfg.modes[cfg.mode];
+  if (!w.smsBox) return "";
+  return `      <div class="bp-consent inq-ticks">
+        <label class="inq-tick"><input type="checkbox" id="bpSms" /> <span>${fill(w.smsBox)}</span></label>
+        <label class="inq-tick"><input type="checkbox" id="bpMarketing" /> <span>${fill(w.marketingBox)}</span></label>
+        <p class="inq-terms">${fill(w.termsLine)}</p>
+      </div>`;
+}
+
 /** The heading beside the form. */
 export function contactHead(cfg) {
   const w = cfg.modes[cfg.mode];

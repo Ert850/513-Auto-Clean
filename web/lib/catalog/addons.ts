@@ -23,6 +23,11 @@ export interface AddonTier {
    * (Elijah, November 13). Read it through `tierPriceFor`, never directly.
    */
   withPackage?: Record<string, number>;
+  /**
+   * Shown as a total with this package rather than as an extra: Showroom
+   * Ready Restoration is "$445+ with Full Interior" (Emmett, November 14).
+   */
+  totalWith?: string;
   description?: string;
   durationMin: number;
   /** Renders an asterisk against the price. */
@@ -70,7 +75,12 @@ export interface Addon {
    * The message names the package rather than deriving it, because importing
    * the package catalog here would make the two modules circular.
    */
-  includedIn?: { packageIds: string[]; message: string };
+  includedIn?: { packageIds: string[]; addonIds?: string[]; message: string };
+  /**
+   * Work only some detailers do (DETAILERS "does"), checked like
+   * "correction": "restoration" is the owner's alone (November 14).
+   */
+  work?: string;
   /** See ServiceComponent.videoUrl. Reserved for the (i) markers. */
   videoUrl?: string;
   /**
@@ -169,6 +179,40 @@ export const ADDONS: Addon[] = [
     // $80 with Full Interior (Full + Steam $305 at today's $225), $115 on any
     // other package (Elijah, November 13).
     tiers: [{ id: "std", label: "Full vehicle", priceCents: 11500, withPackage: { "full-interior": 8000 }, durationMin: 90 }],
+    // Already in Full Interior + Steam and in Showroom Ready Restoration.
+    includedIn: {
+      packageIds: ["full-steam-interior"],
+      addonIds: ["showroom-restoration"],
+      message: "Already included: the whole cabin is steamed in this detail.",
+    },
+  },
+  {
+    // The old $395 Showroom Ready package, as an add-on (Elijah, November 12
+    // and 13; Emmett, November 14): $445 and up in total with Full Interior,
+    // steam included, so it is $210 on Full and $130 on Full Interior + Steam.
+    // About 3 hours more. Elijah does it himself (work "restoration", which
+    // only the owner's DETAILERS entry does).
+    id: "showroom-restoration",
+    name: "Showroom Ready Restoration",
+    scope: "interior",
+    icon: "restore",
+    description: "Everything in Full, taken as far as an interior goes.",
+    note:
+      "The whole cabin steamed and sanitized, engrained fibers lifted out individually rather than vacuumed at, floor mats given a water resistant treatment, and a ceramic coating on the trim and on the interior metal and paint so it stays this way. It does NOT repair damage: tears, burns, cracked trim and worn out material stay as they are. It makes everything that is there as good as it can get.",
+    tiers: [
+      {
+        id: "std",
+        label: "Restoration",
+        priceCents: 21000,
+        withPackage: { "full-interior": 21000, "full-steam-interior": 13000 },
+        totalWith: "full-interior",
+        durationMin: 180,
+        asterisk: "A starting price. The final price depends on the vehicle's condition, and we agree it with you before any work starts.",
+      },
+    ],
+    requiresAnyPackageId: ["full-interior", "full-steam-interior"],
+    requirementMessage: "Showroom Ready Restoration builds on a Full Interior. Pick Full Interior or Full Interior + Steam first.",
+    work: "restoration",
   },
   {
     id: "ozone",
@@ -182,10 +226,10 @@ export const ADDONS: Addon[] = [
     // Ozone attacks what is left in the air and the plastics. Running it over
     // material that has not been extracted first mostly wastes the customer's
     // money, so it is gated rather than merely discouraged.
-    requiresAnyPackageId: ["full-interior", "showroom-interior"],
+    requiresAnyPackageId: ["full-interior", "full-steam-interior"],
     requiresAnyAddonTier: [{ addonId: "stain", tierIds: ["minor", "major"] }],
     requirementMessage:
-      "Ozone needs the source removed first. Pair it with a stain treatment, or add it to a Full Interior or Showroom Ready.",
+      "Ozone needs the source removed first. Pair it with a stain treatment, or add it to a Full Interior or Full Interior + Steam.",
   },
   {
     id: "seat-removal",
@@ -211,7 +255,7 @@ export const ADDONS: Addon[] = [
     // for spot work on top of it is charging twice for the same pass.
     includedIn: {
       packageIds: ["showroom-exterior"],
-      message: "Already covered by the correction tier on Showroom Ready Exterior.",
+      message: "Already covered by the correction tier on Paint Correction and Protection.",
     },
     // Off the menu until the correction setup is built out. Listed with its
     // price rather than hidden, so someone who wants it can say so and be
@@ -344,7 +388,7 @@ export const ADDONS: Addon[] = [
     unavailable: true,
     unavailableNote:
       "Not available yet. A coating needs the paint corrected first, so it opens together with " +
-      "Showroom Ready Exterior.",
+      "Paint Correction and Protection.",
     tiers: [
       {
         id: "std",
@@ -471,6 +515,9 @@ export function addonBlockedReason(
   // Checked first: telling someone what is missing is pointless when the work
   // is already paid for inside the package they picked.
   if (a.includedIn && a.includedIn.packageIds.some((id) => ctx.packageIds.includes(id))) {
+    return a.includedIn.message;
+  }
+  if (a.includedIn?.addonIds?.some((id) => ctx.addonTiers.some((t) => t.addonId === id))) {
     return a.includedIn.message;
   }
 

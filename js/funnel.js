@@ -60,7 +60,7 @@
       // Who the chosen time is booked with: a DETAILERS id, or 'owner'.
       detailer: 'owner',
       contact: { name: '', phone: '', email: '' },
-      consent: { terms: null, sms: null, media: null },
+      consent: { terms: null, sms: null, marketing: null, media: null },
       payInFull: false,
       // The card-on-file authorization, ticked in words the customer read.
       // The server refuses to save a card without it.
@@ -160,7 +160,7 @@
     { id: 'time',     tab: 'Time',     title: 'Pick your time',            auto: false, render: rTime,    valid: vTime },
     { id: 'contact',  tab: 'Accept',   title: 'Your details, and what you agree to', auto: false, render: rDetails, valid: vContact },
     { id: 'pay',      tab: 'Checkout', title: 'Checkout',                  auto: false, render: rPay,     valid: vPay,
-      sub: 'A few details and you are booked. Nothing is charged today.' }
+      sub: 'A few details and you are booked. You pay on site once your detail is complete.' }
   ];
 
   /*
@@ -1945,7 +1945,11 @@
       ['interior', 'Interior'], ['exterior', 'Exterior'],
       ['package', 'Packages'], ['addon', 'Add-ons']
     ];
-    var caps = [5000, 12500, 21500, 39500];
+    // "Up to $X" steps from the catalog, never typed (they said $215 and $395
+    // after both prices had changed): add-ons, then three package steps.
+    var capOf = function (id) { var p = P.findPackage(id); return p ? p.priceCents : null; };
+    var caps = [5000, capOf('basic-exterior'), capOf('full-interior'), capOf('full-steam-interior')]
+      .filter(function (c, i, all) { return c !== null && all.indexOf(c) === i; });
     var html = '<div class="bk-browsehead">' +
       // Pinned at the top with the search (owner, November 10: at the foot of
       // a long list it was easy to get stuck in here).
@@ -2862,12 +2866,16 @@
       var v = newVehicle();
       if (raw.z) v.size = raw.z;
       if (raw.i) v.intent = raw.i;
-      if (raw.p) v.packageIds = raw.p.filter(function (id) { return P.findPackage(id); });
+      if (raw.p) v.packageIds = raw.p;
       if (raw.a) {
         v.addons = raw.a
           .filter(function (pair) { return P.findAddon(pair[0]); })
           .map(function (pair) { return { addonId: pair[0], tierId: pair[1] }; });
       }
+      // A link made before a package was retired opens as its replacement.
+      var up = P.upgradeLegacy(v.packageIds, v.addons);
+      v.packageIds = up.packageIds.filter(function (id) { return P.findPackage(id); });
+      v.addons = up.addons;
       if (raw.l) v.label = raw.l;
       if (raw.c) v.correctionTier = raw.c;
       if (raw.t) v.coatingTerm = raw.t;
@@ -3051,7 +3059,7 @@
    * to be anything, so it needs someone who does everything we sell.
    */
   function jobNeeds() {
-    if (state.advice) return ['interior', 'exterior', 'correction', 'coating'];
+    if (state.advice) return ['interior', 'exterior', 'correction', 'coating', 'restoration'];
     var needs = [];
     var interior = state.vehicles.some(function (v) {
       return v.packageIds.some(function (id) { var p = P.findPackage(id); return p && p.category === 'interior'; }) ||
@@ -3061,6 +3069,14 @@
     if (hasExterior()) needs.push('exterior');
     if (hasCorrection() || hasAddonIn(CORRECTION_ADDONS)) needs.push('correction');
     if (hasAddonIn(COATING_ADDONS)) needs.push('coating');
+    // Add-ons that name their own work ("restoration" is the owner's alone),
+    // the same rule as wireNeeds on the server.
+    state.vehicles.forEach(function (v) {
+      v.addons.forEach(function (a) {
+        var d = P.findAddon(a.addonId);
+        if (d && d.work && needs.indexOf(d.work) < 0) needs.push(d.work);
+      });
+    });
     return needs;
   }
 
@@ -5015,6 +5031,10 @@
       // smsBox; contact-form.test.ts keeps the two in step). Moved here from
       // "Almost done", A2P plan T3, November 12.
       consentBox('sms', 'bkSms', SMS_CONSENT, '') +
+      // The Contact form's second box too (Emmett, November 14: parity with
+      // Imperion's forms). Optional and unticked; config/contact-form.json
+      // marketingBox, kept in step by a2p.test.ts.
+      consentBox('marketing', 'bkMarketing', MARKETING_CONSENT, '') +
       '<p class="bk-terms-line">By continuing you agree to our ' +
       '<a href="terms.html" target="_blank" rel="noopener">Terms &amp; Conditions</a> and ' +
       '<a href="privacy.html" target="_blank" rel="noopener">Privacy Policy</a>.</p>' +
@@ -5024,6 +5044,7 @@
   var SMS_CONSENT = 'I consent to receive SMS notifications, alerts &amp; occasional marketing communication from 513 Auto Clean. ' +
     'Message frequency varies. Message &amp; data rates may apply. Text HELP to (513) 279-2915 for assistance. ' +
     'You can reply STOP to unsubscribe at any time.';
+  var MARKETING_CONSENT = 'I want to receive news, feature updates, discounts &amp; offers from 513 Auto Clean.';
 
   /** Where they heard about us: one optional choice, for the owner's ROI. */
   var HEARD_OPTIONS = ['Google search', 'Google Maps', 'Instagram', 'Facebook', 'TikTok', 'A friend or family member',
@@ -5852,6 +5873,8 @@
     return {
       termsVersion: P.LEGAL.termsEffective,
       sms: state.consent.sms === true,
+      // Only from the /book page's marketing box (Imperion, November 14).
+      marketing: state.consent.marketing === true,
       media: state.consent.media === true,
       mandateAccepted: state.mandate === true
     };
@@ -6687,6 +6710,8 @@
       sendPrep(true);
       reset();
       _key = null;
+      // The /book page's answers apply to every booking made from it.
+      takeBookPageConsent();
       state.address = keep.address;
       state.contact = keep.contact;
       state.access = keep.access;
@@ -7206,7 +7231,7 @@
     lastRenderedStep = null;
     el('bkBar').style.width = '100%';
     var asked = isInquiry() || (state.slot && shortNotice(state.slot));
-    el('bkTitle').textContent = asked ? 'Request sent' : 'You are booked in';
+    el('bkTitle').textContent = asked ? 'Request sent' : "You're fully confirmed";
     el('bkNext').hidden = true;
     el('bkBack').hidden = true;
     el('bkTotal').hidden = true;
@@ -7525,6 +7550,11 @@
         }
         state.vehicles.forEach(function (v) {
           if (!Array.isArray(v.packageIds) || !Array.isArray(v.addons)) throw new Error('draft shape');
+          // A draft kept from before a package was retired opens as its
+          // replacement; anything else unknown is dropped, never rendered.
+          var up = P.upgradeLegacy(v.packageIds, v.addons);
+          v.packageIds = up.packageIds.filter(function (id) { return P.findPackage(id); });
+          v.addons = up.addons.filter(function (a) { return P.findAddon(a.addonId); });
         });
       } catch (e) {
         clearDraft();
@@ -7770,6 +7800,62 @@
   function paintSizeSteps() {
     sizeSteps.forEach(function (c) { c.innerHTML = rSize(); });
   }
+  /**
+   * A package or a "register interest" from a Book link: set it exactly as if
+   * it had been picked inside the form. Returns the step to go to, or null.
+   */
+  function applyIntent(wanted, id) {
+    if (wanted) {
+      if (state.interest.indexOf(wanted) < 0) state.interest.push(wanted);
+      var wv = veh();
+      var wp = P.findPackage(wanted);
+      if (wp) wv.intent = wp.category;
+      return wv.size ? 2 : 0;
+    }
+    var picked = id ? P.findPackage(id) : null;
+    if (picked) {
+      var v = veh();
+      v.intent = picked.category;
+      v.packageIds = [picked.id];
+      v.addons = [];
+      return 0;
+    }
+    return null;
+  }
+
+  /**
+   * Arriving on /book from a Book link elsewhere (bookLinks "page", Imperion,
+   * November 14): what the link carried rides in the query and is applied the
+   * first time the form opens here. Used once, so a later open starts fresh.
+   */
+  var arrival = (function () {
+    var m = /[?&](package|interest)=([a-z0-9-]+)/.exec(location.search || '');
+    if (m) return { kind: m[1], id: m[2] };
+    return /[?&]browse=1\b/.test(location.search || '') ? { kind: 'browse' } : null;
+  })();
+  function applyArrival() {
+    if (!arrival) return null;
+    var a = arrival;
+    arrival = null;
+    // A kept draft wins: they asked to pick up where they left off.
+    if (state.resumed) return null;
+    // "View Services": the catalogue, as the link did on its own page.
+    if (a.kind === 'browse') { state.step = 1; state.browse = true; return null; }
+    return a.kind === 'interest' ? applyIntent(a.id, null) : applyIntent(null, a.id);
+  }
+
+  /**
+   * The /book page's own consent boxes (#bpSms, #bpMarketing). A tick there
+   * pre-ticks the form's SMS box, which stays the final answer, and records
+   * the marketing yes with the booking. An unticked box changes nothing.
+   */
+  function takeBookPageConsent() {
+    var sms = document.getElementById('bpSms');
+    var mk = document.getElementById('bpMarketing');
+    if (sms && sms.checked) state.consent.sms = true;
+    if (mk && mk.checked) state.consent.marketing = true;
+  }
+
   function mountSizeSteps() {
     document.querySelectorAll('[data-bk-sizestep]').forEach(function (c) {
       sizeSteps.push(c);
@@ -7787,6 +7873,8 @@
   function openWithSize(id, fromEl) {
     open();
     if (host.hidden) return;
+    takeBookPageConsent();
+    applyArrival();
     veh().size = id;
     if (state.step === 0) advance(); else render();
     flipFrom(fromEl);
@@ -8013,8 +8101,12 @@
     // Any Book Now link opens the funnel in place rather than navigating.
     document.querySelectorAll('a[href="book.html"], a[href="./book.html"], [data-book-browse], [data-book-interest]').forEach(function (a) {
       a.addEventListener('click', function (e) {
+        // A link the build pointed at /book (config/booking-page.json
+        // bookLinks) goes there; the form opens on that page.
+        if (/^\/book\b/.test(a.getAttribute('href') || '')) return;
         e.preventDefault();
         open();
+        takeBookPageConsent();
 
         // "View Services" lands on the full catalogue rather than step one.
         if (a.hasAttribute('data-book-browse')) {
@@ -8029,24 +8121,9 @@
         // "Register interest" from the services grid: open the funnel with
         // that box already ticked, so they land on the picker able to carry
         // on and book something they CAN have.
-        var wanted = a.getAttribute('data-book-interest');
-        if (wanted) {
-          if (state.interest.indexOf(wanted) < 0) state.interest.push(wanted);
-          var wv = veh();
-          var wp = P.findPackage(wanted);
-          if (wp) wv.intent = wp.category;
-          return go(wv.size ? 2 : 0);
-        }
-
-        var id = a.getAttribute('data-book-package');
-        var picked = id ? P.findPackage(id) : null;
-        if (picked) {
-          var v = veh();
-          v.intent = picked.category;
-          v.packageIds = [picked.id];
-          v.addons = [];
-          return go(0);
-        }
+        var to = applyIntent(a.getAttribute('data-book-interest'), a.getAttribute('data-book-package'));
+        if (to === null) to = applyArrival();
+        if (to !== null) return go(to);
       });
     });
 
@@ -8073,8 +8150,25 @@
       return;
     }
 
-    if (location.hash === '#book') open();
+    if (location.hash === '#book') {
+      if (toBookPage()) return;
+      open();
+    }
   }
+
+  /**
+   * Book links go to /book (config/booking-page.json bookLinks "page", marked
+   * on the page by the build): an old address that would open the form here
+   * (/#book, which /book.html redirects to, and #schedule) goes there too.
+   * Never on a card payment's return, which has to finish on this page.
+   */
+  function toBookPage() {
+    if (document.documentElement.getAttribute('data-book-links') !== 'page') return false;
+    if (/[?&](payment_intent|setup_intent|redirect_status)=/.test(location.search || '')) return false;
+    location.replace('/book');
+    return true;
+  }
+  window.ACToBookPage = toBookPage;
 
   window.ACFunnel = { open: open, close: close };
 

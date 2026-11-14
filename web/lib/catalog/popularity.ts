@@ -24,7 +24,8 @@ export const POPULARITY_SEED: Record<string, number> = {
   "full-exterior": 68,
   "express-exterior": 44,
   "maintenance-interior": 36,
-  "showroom-interior": 30,
+  // Full Interior + Steam is new (November 14), seeded just under Full Interior.
+  "full-steam-interior": 95,
   "showroom-exterior": 20,
 
   // add-ons
@@ -37,6 +38,7 @@ export const POPULARITY_SEED: Record<string, number> = {
   "ceramic-sealant": 32,
   "engine-bay": 27,
   steam: 24,
+  "showroom-restoration": 30,
   "paint-decon": 22,
   "clay-bar": 18,
   "hard-water": 16,

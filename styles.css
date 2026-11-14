@@ -389,10 +389,13 @@ section { padding-block: clamp(40px, 5vw, 72px); position: relative; }
   font-size: .84rem; color: #7a5209; background: rgba(240,169,63,.14);
   border-radius: var(--r-sm); padding: .5rem .65rem; margin-bottom: .85rem; line-height: 1.5;
 }
+/* A tab sitting on the card's top edge, clear of the title (owner's pick B,
+   November 14: the old pill over the corner nearly touched the longer
+   "Full Interior + Steam" title). Nothing inside the card moves. */
 .svc-tag {
-  position: absolute; top: -12px; right: 1.5rem; background: linear-gradient(135deg, var(--red), var(--red-deep));
+  position: absolute; bottom: calc(100% + 1px); right: 1.4rem; background: linear-gradient(135deg, var(--red), var(--red-deep));
   color: #ffffff; font-size: .72rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase;
-  padding: .35rem .8rem; border-radius: 999px; box-shadow: var(--shadow-sm);
+  padding: .3rem .8rem .25rem; border-radius: 10px 10px 0 0; white-space: nowrap;
 }
 .svc-card h3 { font-size: 1.35rem; margin-bottom: .2rem; }
 .svc-card .svc-meta { display: flex; align-items: baseline; gap: .6rem; margin-bottom: .75rem; flex-wrap: wrap; }
@@ -1685,6 +1688,8 @@ main > .bookpage:first-child { padding-block: clamp(16px, 2.2vw, 30px); }
 .bp-contact dd { margin: 0; font-weight: 600; }
 .bp-step { background: var(--paper-2); border: 1px solid var(--line); border-radius: var(--r-lg); padding: clamp(1rem, 2vw, 1.4rem); }
 .bp-step h2 { font-size: 1.1rem; margin: 0 0 .9rem; }
+/* The consent boxes under the size step (Imperion, November 14): the Contact form's own look, a touch smaller. */
+.bp-consent { margin-top: .9rem; font-size: .92em; }
 .bp-cta { display: none; }
 
 @media (min-width: 1000px) {

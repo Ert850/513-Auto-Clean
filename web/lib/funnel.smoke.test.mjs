@@ -369,7 +369,7 @@ describe("the booking funnel opens", () => {
     // The stub page answers every id, so the question form counts as present
     // and is filled in place (on any other page it is handed to contact.html).
     expect(fresh.lookup("q-message").value, "the message names what they want").toMatch(
-      /^Please tell me when Showroom Ready \(Paint Correction and Protection\) opens\./,
+      /^Please tell me when Paint Correction and Protection opens\./,
     );
     expect(fresh.lookup("q-message").value).toContain("My vehicle: Small");
   });

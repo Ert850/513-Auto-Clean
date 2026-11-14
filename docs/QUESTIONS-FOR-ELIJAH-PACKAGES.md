@@ -118,6 +118,12 @@ Please give the days and times.
 
 **Answer:** **Not answered in this recording.** Still open.
 
+## Correction from Elijah (November 14, via his agent)
+
+- **13. Prestige Living prints late November to early December 2026**, not 2028 or January 1. That matches Dwayne's November 3 voicemail ("3 to 5 weeks"). So **`/prestige` and `lp-prestige.html` must be final now**, along with the PRESTIGE10 decision (on or off, end date). `/golf` is live and points at its page, so finalize it at the same time.
+- **QR codes sent to both art departments on November 14** (`marketing/qr` PDF, EPS and 2378 px PNG, checksums verified): Direct Fairways (art@directfairways.com, account 504758) and Prestige Living (graphics@prestigelivingmagazine.com). Both were asked for a proof with the code in place. Elijah will scan-test the proofs.
+- Both `https://513autoclean.com/golf` and `/prestige` return 302 to their landing pages with UTM tags, checked November 14.
+
 ## Follow-up answers (Elijah, text message, November 13)
 
 - **2. Full Interior + Steam:** **$315** at the later prices (Full $235 + steam $80). Steam on **any other package** is an add-on at **$115**.

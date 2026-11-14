@@ -15,7 +15,7 @@
 <link rel="manifest" href="manifest.webmanifest" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link rel="stylesheet" href="styles.css?v=3fb2716251" />
+<link rel="stylesheet" href="styles.css?v=15d13ea925" />
 <!-- CHROME:HEAD:START -->
 <!-- Public configuration and third party loaders live in js/, not inline,
      so the Content-Security-Policy can forbid inline scripts outright.
@@ -146,11 +146,21 @@
           <dt>Email</dt><dd><a href="mailto:513autoclean@gmail.com">513autoclean@gmail.com</a></dd>
         </dl>
       </div>
+      <div class="bp-right">
       <div class="bp-step">
         <h2>How big is your vehicle?</h2>
         <!-- The booking form's own first step, painted here by js/funnel.js
              (mountSizeSteps). A pick opens the form at step 2. -->
         <div data-bk-sizestep data-bk-from="#bpCard"></div>
+      </div>
+      <!-- The Contact form's consent wording, from config/contact-form.json (Imperion, November 14). -->
+<!-- BOOKPAGE:CONSENT:START -->
+      <div class="bp-consent inq-ticks">
+        <label class="inq-tick"><input type="checkbox" id="bpSms" /> <span>I consent to receive SMS notifications, alerts &amp; occasional marketing communication from 513 Auto Clean. Message frequency varies. Message &amp; data rates may apply. Text HELP to (513) 279-2915 for assistance. You can reply STOP to unsubscribe at any time.</span></label>
+        <label class="inq-tick"><input type="checkbox" id="bpMarketing" /> <span>I want to receive news, feature updates, discounts &amp; offers from 513 Auto Clean.</span></label>
+        <p class="inq-terms">By continuing you agree to our <a href="terms.html">Terms &amp; Conditions</a> and <a href="privacy.html">Privacy Policy</a>.</p>
+      </div>
+<!-- BOOKPAGE:CONSENT:END -->
       </div>
     </div>
   </div>
@@ -228,9 +238,9 @@
 <link rel="stylesheet" href="book.css?v=49dc494bec" />
 <!-- Deferred, so they run in this order: the pricing bundle before the
      booking form and before any page script that prices (travel.js). -->
-<script src="js/pricing.bundle.js?v=3fd4a2c538" defer></script>
-<script src="js/funnel.js?v=31cf3e63f8" defer></script>
-<script src="script.js?v=d3572115ca" defer></script>
+<script src="js/pricing.bundle.js?v=af6fcfdbf8" defer></script>
+<script src="js/funnel.js?v=adf7535138" defer></script>
+<script src="script.js?v=f30093639c" defer></script>
 <!-- CHROME:SCRIPTS:END -->
 </body>
 </html>

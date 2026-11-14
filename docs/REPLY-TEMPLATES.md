@@ -15,9 +15,10 @@ page cannot, so it is the one to check.
 
 | | | |
 |---|---|---|
-| Basic Interior | $135 | 2 hrs |
-| Full Interior | $225 | 4 hrs |
-| Showroom Ready | $395 | 7 hrs |
+| Basic Interior | $145 | 2 hrs |
+| Full Interior | $235 | 4 hrs |
+| Full Interior + Steam | $315 | 5 hrs |
+| Full Interior + Showroom Ready Restoration | from $445 | 7 hrs |
 
 **Exterior**
 
@@ -46,17 +47,20 @@ the site. Send the link rather than retyping them.
 > We offer a 100% satisfaction guarantee. If anything is not to your liking,
 > we will make it right. We are also fully insured.
 >
-> **Interior:** Basic Interior ($135), Full Interior ($225), or Showroom Ready
-> ($395).
+> **Interior:** Basic Interior ($145), Full Interior ($235), or Full Interior
+> + Steam ($315). Showroom Ready Restoration takes a Full Interior further,
+> from $445 in total.
 >
 > Basic: vacuum, clean mats, clean surfaces, remove interior grime.
 >
 > Full: thorough vacuum, shampoo and scrub upholstery, treat stains, wash and
 > dress mats, condition leather, clean glass, brush detail every crevice.
 >
-> Showroom Ready: everything in Full, then the cabin steamed and sanitized,
-> engrained fibers lifted out individually, and a ceramic coating on the trim
-> and interior metal.
+> Full + Steam: everything in Full, then the whole cabin steamed and sanitized.
+>
+> Showroom Ready Restoration: everything in Full, then the cabin steamed and
+> sanitized, engrained fibers lifted out individually, and a ceramic coating on
+> the trim and interior metal.
 >
 > **Exterior:** Express Exterior ($75), Basic Exterior ($125), or Full
 > Exterior ($245).
@@ -103,9 +107,9 @@ the site. Send the link rather than retyping them.
 
 > Hi, we'd be happy to help.
 >
-> Booked together, a Basic Interior and Basic Exterior is $260, less the $25
-> combo discount, so **$235**. Full Interior and Full Exterior together is
-> $470, less $25, so **$445**.
+> Booked together, a Basic Interior and Basic Exterior is $270, less the $25
+> combo discount, so **$245**. Full Interior and Full Exterior together is
+> $480, less $25, so **$455**.
 >
 > Pick any combination and see the price instantly:
 > **513autoclean.com/#services**
