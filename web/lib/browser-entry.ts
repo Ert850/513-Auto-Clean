@@ -79,6 +79,7 @@ import {
   planDays,
 } from "./availability/multiDay.js";
 import { checkRange, slotStillFree } from "./availability/stillFree.js";
+import { localDayStart } from "./time/zone.js";
 import { findPromo, normalisePromo, promoDiscountCents, promoMessage } from "./pricing/promos.js";
 import { addonIcon } from "./catalog/icons.js";
 import { popularityOf } from "./catalog/popularity.js";
@@ -145,6 +146,7 @@ const api = {
   planDays,
   checkRange,
   slotStillFree,
+  localDayStart,
   localMinutesOfDay,
   weekStartOf,
   addWeeks,

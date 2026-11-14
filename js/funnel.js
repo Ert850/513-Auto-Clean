@@ -2707,9 +2707,9 @@
     // No "I need it soon" box: the rush days are marked on the
     // calendar itself, and the fee follows the time that is picked.
     if (hasCorrection()) {
-      var lead = new Date(startOfToday().getTime() + P.CORRECTION_RULES.minLeadDays * DAY);
+      var lead = dayStartIn(P.CORRECTION_RULES.minLeadDays);
       html += '<p class="bk-note">Correction work starts on a weekend morning from <b>' +
-        lead.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }) +
+        tzDay(lead, { weekday: 'long', month: 'long', day: 'numeric' }) +
         '</b>, and runs across consecutive days.</p>';
     }
     // No "standard prices start from" note: the calendar marks the rush days itself.
@@ -2906,8 +2906,8 @@
   function preferenceSummary() {
     var days = state.prefer.days.map(function (k) {
       var b = k.split('-');
-      return new Date(Number(b[0]), Number(b[1]) - 1, Number(b[2]))
-        .toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+      return tzDay(dayStartFromInput(b[0] + '-' + String(b[1]).padStart(2, '0') + '-' + String(b[2]).padStart(2, '0')),
+        { weekday: 'long', month: 'short', day: 'numeric' });
     });
     var parts = state.prefer.parts.map(function (id) {
       var w = DAY_PARTS.filter(function (x) { return x.id === id; })[0];
@@ -2932,9 +2932,14 @@
     else list_.push(value);
   }
 
-  function startOfToday() {
-    var d = new Date();
-    return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  /**
+   * Cincinnati midnight, n days from today (calendar fix 2, November 14).
+   * The visitor's own midnight shifted request days and the booking horizon
+   * by a day for anyone booking from another time zone. Through noon, so a
+   * clock change between can't land on the wrong day.
+   */
+  function dayStartIn(n) {
+    return P.localDayStart(P.localDayStart(Date.now(), TZ) + n * DAY + DAY / 2, TZ);
   }
 
   /*
@@ -2993,7 +2998,7 @@
     return d ? d.name : '';
   }
 
-  function lastBookableMs() { return startOfToday().getTime() + MAX_BOOK_DAYS * DAY; }
+  function lastBookableMs() { return dayStartIn(MAX_BOOK_DAYS); }
 
   /**
    * The crew in booking order. Just the owner unless DETAILERS lists others.
@@ -3208,7 +3213,7 @@
     var CR = P.CORRECTION_RULES;
     var now = Date.now();
     var soonest = now + MIN_NOTICE_MIN * 60000;
-    var lead = corr && CR.minLeadDays > 0 ? startOfToday().getTime() + CR.minLeadDays * DAY : 0;
+    var lead = corr && CR.minLeadDays > 0 ? dayStartIn(CR.minLeadDays) : 0;
 
     // The WHOLE job, however long. Anything past a day gets planned across
     // consecutive days rather than truncated to its first morning.
@@ -3449,17 +3454,15 @@
    * then nothing below, which is a dead end dressed up as an instruction.
    */
   function preferPicker() {
-    var today = startOfToday();
-
     var days = '';
     for (var i = 1; i <= 10; i++) {
-      var d = new Date(today.getTime() + i * DAY);
-      var key = d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate();
+      var d = dayStartIn(i);
+      var key = cinciKey(d);
       var on = state.prefer.days.indexOf(key) > -1;
       days += '<button type="button" class="bk-pref-day' + (on ? ' on' : '') +
         '" data-prefday="' + key + '">' +
-        '<b>' + d.toLocaleDateString('en-US', { weekday: 'short' }) + '</b>' +
-        '<span>' + d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + '</span>' +
+        '<b>' + tzDay(d, { weekday: 'short' }) + '</b>' +
+        '<span>' + tzDay(d, { month: 'short', day: 'numeric' }) + '</span>' +
         '</button>';
     }
 
@@ -4814,20 +4817,19 @@
    */
   var MAX_BOOK_DAYS = 365;
 
-  /** "2026-03-14" as local midnight. Built by parts: Date.parse treats a bare
-   *  date string as UTC, which lands on the previous evening in Cincinnati. */
+  /** "2026-03-14" as Cincinnati midnight. Built by parts: Date.parse treats a
+   *  bare date string as UTC, which lands on the previous evening here. */
   function dayStartFromInput(value) {
     var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(value || ''));
     if (!m) return 0;
-    var d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
-    return isNaN(d.getTime()) ? 0 : d.getTime();
+    var noon = Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]), 17);
+    return isNaN(noon) ? 0 : P.localDayStart(noon, TZ);
   }
 
+  /** The Cincinnati date of an instant, as a date box wants it. */
   function dateInputValue(ms) {
-    var d = new Date(ms);
-    return d.getFullYear() + '-' +
-      String(d.getMonth() + 1).padStart(2, '0') + '-' +
-      String(d.getDate()).padStart(2, '0');
+    var p = tzDay(ms, { year: 'numeric', month: '2-digit', day: '2-digit' }).split('/');
+    return p[2] + '-' + p[0] + '-' + p[1];
   }
 
   /**
