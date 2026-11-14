@@ -1686,7 +1686,15 @@ function validateWire(body, opts) {
       }
       v.sizeId = rv["sizeId"];
     }
-    const pkgIds = rv["packageIds"] ?? [];
+    let pkgIds = rv["packageIds"] ?? [];
+    let legacyAddons = null;
+    if (Array.isArray(pkgIds) && pkgIds.some((id) => typeof id === "string" && LEGACY_PACKAGES[id])) {
+      const raw = Array.isArray(rv["addons"]) ? rv["addons"] : [];
+      const ok = raw.filter((a) => !!a && typeof a.addonId === "string" && typeof a.tierId === "string");
+      const up = upgradeLegacy(pkgIds.filter((id) => typeof id === "string"), ok);
+      pkgIds = up.packageIds;
+      legacyAddons = up.addons;
+    }
     if (!Array.isArray(pkgIds)) return fail("bad_packages", "Packages were not understood.");
     if (pkgIds.length > WIRE_LIMITS.maxPackagesPerVehicle) return fail("bad_packages", "Too many packages on one vehicle.");
     const seenCat = /* @__PURE__ */ new Set();
@@ -1708,7 +1716,7 @@ function validateWire(body, opts) {
       packageIds.push(p.id);
     }
     v.packageIds = packageIds;
-    const rawAddons = rv["addons"] ?? [];
+    const rawAddons = legacyAddons ?? rv["addons"] ?? [];
     if (!Array.isArray(rawAddons)) return fail("bad_addons", "Add-ons were not understood.");
     if (rawAddons.length > WIRE_LIMITS.maxAddonsPerVehicle) return fail("bad_addons", "Too many add-ons on one vehicle.");
     const seenAddon = /* @__PURE__ */ new Set();

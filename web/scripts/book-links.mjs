@@ -32,7 +32,8 @@ export function routeBookLinks(html) {
     n++;
     const pkg = /\bdata-book-package="([a-z0-9-]+)"/.exec(tag);
     const interest = /\bdata-book-interest="([a-z0-9-]+)"/.exec(tag);
-    const q = pkg ? `?package=${pkg[1]}` : interest ? `?interest=${interest[1]}` : "";
+    const browse = /\bdata-book-browse\b/.test(tag);
+    const q = pkg ? `?package=${pkg[1]}` : interest ? `?interest=${interest[1]}` : browse ? "?browse=1" : "";
     return tag.replace(/\bhref="(?:\.\/)?book\.html"/, `href="${BOOK_PAGE}${q}"`);
   });
   return { html: out, count: n };

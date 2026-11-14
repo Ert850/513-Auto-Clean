@@ -23,6 +23,7 @@ describe("Book links to /book (config/booking-page.json bookLinks)", () => {
     expect(out).toContain('href="/book">Book Now');
     expect(out).toContain('href="/book?package=full-interior" data-book-package="full-interior"');
     expect(out).toContain('href="/book?interest=showroom-exterior"');
+    expect(out).toContain('href="/book?browse=1" data-book-browse');
     expect(out).toContain('href="services.html"');
     expect(out).not.toMatch(/href="(\.\/)?book\.html"/);
   });

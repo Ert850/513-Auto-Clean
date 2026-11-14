@@ -2,7 +2,7 @@
 import { describe, expect, it } from "vitest";
 import { findPackage, upgradeLegacy } from "./seed.js";
 import { addonBlockedReason, findAddon } from "./addons.js";
-import { priceFromWire, wireNeeds, type WireCart } from "../server-entry.js";
+import { priceFromWire, validateWire, wireNeeds, type WireCart } from "../server-entry.js";
 
 const NOW = Date.UTC(2026, 10, 11, 17, 0);
 const subtotal = (packageIds: string[], addons: { addonId: string; tierId: string }[] = []) => {
@@ -47,6 +47,15 @@ describe("the retired Showroom Ready package (old links, drafts, cached pages)",
   });
   it("is priced by the server, never rejected", () => {
     expect(subtotal(["showroom-interior"])).toBe(subtotal(["full-interior"], [R]));
+  });
+  it("a booking from a tab opened before the deploy is accepted, not refused", () => {
+    const r = validateWire({
+      cart: { vehicles: [{ sizeId: "small", packageIds: ["showroom-interior"], addons: [] }],
+        address: { line1: "1 Main St", city: "Mason", region: "OH", zip: "45040" }, slot: NOW + 7 * 86_400_000 },
+      contact: { name: "T", phone: "(513) 555-0100", email: "t@example.com" },
+    }, { nowMs: NOW, mode: "card_only" });
+    expect(r.ok).toBe(true);
+    expect(r.ok && r.booking.cart.vehicles[0]).toMatchObject({ packageIds: ["full-interior"], addons: [R] });
   });
   it("leaves current packages alone", () => {
     expect(upgradeLegacy(["basic-interior"], [STEAM])).toEqual({ packageIds: ["basic-interior"], addons: [STEAM] });
