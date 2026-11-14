@@ -1,0 +1,60 @@
+{
+  "_read_me": "City page (draft). Facts are sourced in docs/SEO-COMPLIANCE.md section 6. Before publishing (status: published): at least 2 West side jobs with photos (localJobs, gallery pair slugs) and 1 Google review from this area (reviews: author and date from data/reviews.json), confirmed by Elijah.",
+  "status": "draft",
+  "slug": "mobile-detailing-delhi-price-hill-oh",
+  "name": "Delhi & Price Hill",
+  "areaServed": [
+    "Delhi Township, OH",
+    "Price Hill, Cincinnati, OH"
+  ],
+  "title": "Mobile Detailing in Delhi & Price Hill, OH | 513 Auto Clean",
+  "meta": "Interior and exterior car detailing at your home or work in Delhi Township and Price Hill. See your price before you book, and pay once it's done.",
+  "h1": "Mobile car detailing in Delhi and Price Hill",
+  "sub": "A UC student-owned team that brings a full interior or exterior detail to your driveway in Delhi Township, East, West or Lower Price Hill, or to your workplace nearby.",
+  "cta": "Get your Delhi or Price Hill price",
+  "book": {
+    "intent": "interior"
+  },
+  "localParagraph": "Delhi Township runs from the ridge down to the Ohio River, and Price Hill sits on the hill above it, so a lot of driving here is up and down: Delhi Road past Mount St. Joseph University, Rapid Run Road, Glenway Avenue, and River Road, where U.S. 50 carries heavy truck traffic along the water. Cars that do those trips every day collect grit in the floor mats and dust in the vents faster than most.\n\nWe come to you instead. Park in your driveway in Delhi Hills or Delshire, on your street in East or West Price Hill, or at work, and we detail the car where it sits while you get on with your day. You see your exact price, travel and tax included, before you book, and you pay on site once the detail is done.",
+  "highlights": [
+    "Full Interior and Full Interior + Steam for family cars, SUVs and minivans",
+    "Stain, spill and odor treatment for seats and carpet",
+    "Exterior washes, decontamination and protection in the warmer months",
+    "Detailing at your home, or at your workplace while you work"
+  ],
+  "neighborhoods": [
+    "Delhi Hills",
+    "Delshire",
+    "Mount St. Joseph",
+    "East Price Hill",
+    "West Price Hill",
+    "Lower Price Hill",
+    "Incline District",
+    "Sedamsville"
+  ],
+  "zips": [
+    "45233",
+    "45238",
+    "45205",
+    "45204"
+  ],
+  "nearby": [
+    "mobile-detailing-indian-hill-madeira-oh"
+  ],
+  "localJobs": [],
+  "reviews": [],
+  "faq": [
+    {
+      "q": "Do you come down to the river side of Delhi, along River Road?",
+      "a": "Yes. We detail anywhere in Delhi Township, from the ridge neighborhoods down to the homes along River Road and Anderson Ferry Road, as long as there is room to park beside the car and work around it."
+    },
+    {
+      "q": "Can you detail my car at work in Price Hill or at Mount St. Joseph?",
+      "a": "Usually, yes. Many customers book us at their workplace. Let us know the parking lot and any rules about outside vendors, and we will work around your schedule there."
+    },
+    {
+      "q": "How is travel to Delhi and Price Hill priced?",
+      "a": "Travel is worked out from your exact address when you book, and it is shown in your total, with tax, before you confirm. There is nothing added afterwards."
+    }
+  ]
+}

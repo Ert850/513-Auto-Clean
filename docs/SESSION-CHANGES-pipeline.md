@@ -1471,6 +1471,25 @@ From the live calendar (read only), the code, and your voice notes:
 - **The inbox picture beside the sender** (Elijah's question) is a different thing: BIMI, in DNS plus a paid logo certificate. It's in the queue.
 - **Test it:** after deploy, a booking email shows the logo, and the name still shows when images are blocked.
 
+## eNov14: city-page pipeline and the first two drafts (SEO pass, November 14)
+
+- **Research:** `docs/SEO-COMPLIANCE.md` covers Google's doorway and scaled-content policies (there's no official "% unique"), our bar, page structure, structured data, the claims policy and sourced local facts.
+- **The pipeline:** one file per city in `config/locations/<slug>.json`.
+  - `render-locations.mjs` (first in the build) writes `<slug>.html` from `web/templates/location.html`.
+  - `locations.mjs` registers it everywhere: the shared chrome, `FILES`, `PAGES`, and the `LOCATIONS` regions in `sitemap.xml` and on the Range & Travel hub.
+  - Addresses are flat (`/mobile-detailing-delhi-price-hill-oh`): the shared files use relative paths, so a sub-folder would break them.
+  - Structured data is BreadcrumbList plus Service, with `areaServed` (places and ZIPs) and the provider as AutoWash. There's no review or FAQ markup (self-serving reviews; FAQ rich results ended).
+- **The build fails on:**
+  - a title over 60 or a meta description over 155 characters, or a local paragraph outside 100 to 190 words;
+  - fewer than 3 neighborhoods or 3 FAQ answers;
+  - an unknown photo pair or review;
+  - a published page with fewer than 2 local jobs or no local review;
+  - two pages overlapping above 0.30 (word 5-gram Jaccard on their own text, place names and ZIPs blanked; warns above 0.20), or over half of one page appearing in another.
+- **Drafts** (`"status": "draft"`) carry `noindex` and stay out of the sitemap and the hub.
+- **The first two (drafts):** Delhi & Price Hill, and Indian Hill & Madeira, using sourced facts only. They overlap 0.02.
+  - The local jobs and reviews come from Elijah: the job folders are tagged by region, not town.
+- **Tests:** `locations.test.ts`. Mockups: `docs/mockups/eNov14-city-*.png`.
+
 ## Leftovers noticed, not touched
 
 - `book.css` still has `.bk-time`, `.bk-times`, `.bk-bucket` and `.bk-juston` rules from an older slot design. They were unused before tonight.

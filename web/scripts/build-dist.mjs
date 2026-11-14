@@ -19,6 +19,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { stampPhone } from "./phone-stamp.mjs";
 import { routeDist } from "./book-links.mjs";
+import { locationPages } from "./locations.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const dist = path.join(root, "dist");
@@ -44,6 +45,8 @@ const FILES = [
   "robots.txt",
   "sitemap.xml",
   "manifest.webmanifest",
+  // City pages (config/locations/), written by render-locations.mjs.
+  ...locationPages(),
 ];
 const DIRS = ["js", "data"];
 

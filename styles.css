@@ -1750,3 +1750,50 @@ main > .bookpage:first-child { padding-block: clamp(16px, 2.2vw, 30px); }
   .bp-cta .btn { text-transform: uppercase; letter-spacing: .04em; }
   .bp-loc { justify-self: start; }
 }
+
+/* ============ City pages (config/locations/, web/templates/location.html) ============
+   The site's own parts (section-head, eyebrow, btn, the paper backgrounds);
+   nothing here restyles them. */
+.loc-hero { background: var(--paper); padding-block: clamp(20px, 4vh, 40px) clamp(28px, 5vh, 52px); }
+.loc-crumbs { font-size: .85rem; color: var(--text-soft); margin-bottom: .9rem; }
+.loc-crumbs a { color: var(--text-soft); text-decoration: underline; text-underline-offset: 2px; }
+.loc-head h1 { font-size: clamp(1.9rem, 4.2vw, 2.9rem); line-height: 1.08; margin: .3rem 0 .6rem; }
+.loc-head p { max-width: 640px; color: var(--text-soft); font-size: 1.05rem; }
+.loc-cta { display: flex; flex-wrap: wrap; align-items: center; gap: .8rem 1.2rem; margin-top: 1.2rem; }
+.loc-rating { font-size: .92rem; color: var(--text-soft); }
+/* Phones: the long "Get your <city> price" wraps inside a full-width button instead of running off the screen. */
+@media (max-width: 767.98px) { .loc-cta .btn, .loc-final .btn { width: 100%; white-space: normal; text-align: center; justify-content: center; } }
+.loc-rating .hb-stars { color: var(--amber-ink, #b7791f); letter-spacing: .08em; }
+.loc-trust { list-style: none; padding: 0; margin: 1.4rem 0 0; display: flex; flex-wrap: wrap; gap: .5rem; }
+.loc-trust li { background: #ffffff; border: 1px solid var(--line); border-radius: 999px; padding: .4rem .85rem; font-size: .88rem; font-weight: 600; }
+.loc-local { padding-block: clamp(32px, 6vh, 64px); }
+.loc-grid { display: grid; grid-template-columns: 1fr; gap: 2rem; }
+@media (min-width: 1000px) { .loc-grid { grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); align-items: start; } }
+.loc-copy h2, .loc-areas h2, .loc-jobs h2, .loc-reviews h2, .loc-faq h2 { font-size: clamp(1.35rem, 2.4vw, 1.8rem); margin: 0 0 .8rem; }
+.loc-copy p { max-width: 40rem; line-height: 1.65; }
+.loc-copy p + p { margin-top: .9rem; }
+.loc-points { list-style: none; margin: 1.1rem 0 0; padding: 0; line-height: 1.5; }
+.loc-points li { position: relative; padding-left: 1.6rem; margin-bottom: .5rem; }
+.loc-points li::before { content: ""; position: absolute; left: .15rem; top: .3rem; width: .55rem; height: .9rem; border: solid var(--red); border-width: 0 2.4px 2.4px 0; transform: rotate(45deg); }
+.loc-areas { background: var(--paper); border: 1px solid var(--line); border-radius: var(--r-lg); padding: 1.2rem 1.3rem; }
+.loc-areas-l { font-size: .78rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--text-soft); margin: .9rem 0 .4rem; }
+.loc-chips { list-style: none; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: .4rem; }
+.loc-chips li { background: #ffffff; border: 1px solid var(--line); border-radius: 999px; padding: .3rem .7rem; font-size: .86rem; }
+.loc-chips a { color: var(--text); font-weight: 700; text-decoration: none; }
+.loc-jobs { padding-block: clamp(28px, 5vh, 56px); background: var(--paper); }
+.loc-jobs-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+.loc-job { margin: 0; background: #ffffff; border-radius: var(--r-lg); overflow: hidden; box-shadow: var(--shadow-sm, none); }
+.loc-job-pics { display: grid; grid-template-columns: 1fr 1fr; aspect-ratio: 4 / 3; }
+.loc-job-pics img { width: 100%; height: 100%; object-fit: cover; }
+.loc-job figcaption { padding: .7rem .9rem; font-size: .92rem; line-height: 1.45; }
+.loc-reviews { padding-block: clamp(28px, 5vh, 56px); }
+.loc-review { margin: 0 0 1rem; padding: 1rem 1.2rem; border-left: 3px solid var(--red); background: var(--paper); border-radius: 0 var(--r-sm) var(--r-sm) 0; }
+.loc-review p { margin: 0 0 .4rem; }
+.loc-review cite { font-style: normal; font-weight: 700; font-size: .9rem; }
+.loc-faq { padding-block: clamp(28px, 5vh, 56px); background: var(--paper); }
+.loc-q { background: #ffffff; border: 1px solid var(--line); border-radius: var(--r-sm); padding: .8rem 1rem; margin-bottom: .6rem; }
+.loc-q summary { cursor: pointer; font-weight: 700; }
+.loc-q p { margin: .6rem 0 0; line-height: 1.6; }
+.loc-final { margin-top: 1.4rem; display: flex; flex-wrap: wrap; gap: .7rem; }
+.loc-hub { margin-top: 1rem; }
+.loc-hub h3 { font-size: 1.05rem; margin: 0 0 .5rem; }
