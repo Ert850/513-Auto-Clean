@@ -4,7 +4,11 @@ From a research and site audit (Twilio and GoHighLevel guidance). The site is fr
 
 ## Use in the submission
 
-- **Opt-in URLs:** https://513autoclean.com/contact.html and the same form on https://513autoclean.com/ (between the reviews and "Our work"). The booking form has the same SMS box at checkout.
+- **Opt-in URLs:**
+  - https://513autoclean.com/contact.html, and the same form on https://513autoclean.com/ (between the reviews and "Our work");
+  - https://513autoclean.com/book, which has both boxes and the Terms line under the booking card. Every Book button on the site leads here.
+  - The booking form's checkout ("Your details") has the same two boxes.
+  - All the boxes use the same words, and all are unticked and optional.
 - **Privacy URL:** https://513autoclean.com/privacy.html. **Terms URL:** https://513autoclean.com/terms.html. Both are linked in every page's footer and next to the opt-in.
 - **Use case:** "Customer care: appointment confirmations, reminders, on-the-way alerts and replies to quote or booking questions for a mobile car detailing business in Cincinnati. Customers opt in by ticking an unchecked, optional box on our website forms."
 - **Sample messages:**
@@ -24,10 +28,17 @@ From a research and site audit (Twilio and GoHighLevel guidance). The site is fr
 
 - **The consent wording is Imperion's, word for word**, as their document asked. The audit flagged that the first box mixes alerts and "occasional marketing" in one consent. Twilio prefers separate consents, and the second box doesn't say "texts". Its suggested alternative, if Imperion wants it:
   - "I agree to receive text messages from 513 Auto Clean about my quote or appointment (confirmations, reminders, on-the-way alerts and replies to my questions). Message frequency varies. Msg & data rates may apply. Reply STOP to cancel, HELP for help. See our Terms and Privacy Policy. Consent is not a condition of purchase."
-  - "I also want to receive texts from 513 Auto Clean with offers and discounts. Frequency varies. Msg & data rates may apply. Reply STOP to cancel, HELP for help."
+  - "I also want to receive texts from 513 Auto Clean with offers and discounts. Frequency varies. Msg & data rates may apply. Reply STOP to cancel, HELP for help." (Today's second box, Imperion's wording, reads "I want to receive news, feature updates, discounts & offers from 513 Auto Clean.")
 - **Business email:** the site and the form use 513autoclean@gmail.com. Twilio prefers an email on the business domain (for example one at 513autoclean.com). That's a submission-form field; the site can keep Gmail.
 - **Legal name and address:** use the exact registered legal name, and the address on file, in the form. The site says "513 Auto Clean" and "Cincinnati, OH" only. If the registered name differs, the reviewer may flag the mismatch.
-- **Proof of consent:** each Contact form and booking email records "SMS consent: yes/no". Keep those emails as the consent record.
+- **Proof of consent:** each Contact form email and each booking email to Elijah records "SMS consent: yes/no" and "Marketing: yes/no". Keep those emails as the consent record.
+
+## Changed again on November 14 (PR #11), before submission
+
+- Both consent boxes on `/book`, and the marketing box in the booking form's checkout.
+- Every Book button goes to `/book` (`config/booking-page.json` `bookLinks`).
+- New package prices: Basic $145, Full $235, Full Interior + Steam $315, Showroom Ready Restoration from $445.
+- Validated live: every page at desktop and phone width, all Book links, and 2 real bookings (both consent answers recorded, then deleted).
 
 ## Live validation before the freeze (November 13, after PR #10)
 
