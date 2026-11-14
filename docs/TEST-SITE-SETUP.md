@@ -24,12 +24,12 @@
    - **Bookings go to test calendars** (Emmett, November 14). Create two calendars in the business Google account, "513 TEST Bookings" and "513 TEST Kris Bookings", shared with the same account that writes the real ones (the service account or OAuth user). Then, on the test site only:
      - `GOOGLE_BOOKED_CALENDAR_ID` = the ID of "513 TEST Bookings". Owner jobs are written here (`_gcal.mjs` `bookedCalendarId()`). `GOOGLE_CALENDAR_ID` stays the real one, because it's only read, for real availability.
      - `DETAILERS` = the live value with Kris's `bookings` changed to the ID of "513 TEST Kris Bookings". His availability calendar stays real, because it's only read.
-   - **Owner emails go to Emmett** (November 14): `OWNER_EMAIL` = emmett.looman@gmail.com on the test site. Elijah gets nothing from testing.
+   - **Owner emails go to Emmett** (November 14): `OWNER_EMAIL` = Emmett's own address on the test site (he gives it to the session; it stays out of this public repo). Elijah gets nothing from testing.
 4. **Google Cloud:** add `https://513-auto-clean-test.netlify.app/*` to the browser key's allowed websites, so address suggestions and the map work there.
 5. **Deploy and check:**
    - The address asks for the password, and every page works after it.
    - `curl -I` without the password returns 401 with `X-Robots-Tag: noindex`.
-   - A test booking writes only to "513 TEST Bookings" (or Kris's test calendar) and the owner email reaches only emmett.looman@gmail.com.
+   - A test booking writes only to "513 TEST Bookings" (or Kris's test calendar) and the owner email reaches only Emmett.
 
 ## Decisions (all made November 14)
 
