@@ -10,6 +10,18 @@ Work that's agreed but deliberately not started before Friday. Newest first.
   - Check that no page carries 371-5948 afterwards.
   - Emails pick it up from the same deploy.
 
+## After toll-free approval: remove Emmett's email from the public git history (Emmett, November 15)
+
+- **The problem:** an earlier commit of `docs/TEST-SITE-SETUP.md` (fixed in d723e73) contains Emmett's personal email address. The repo is public, so it can still be read in that commit's history.
+- **Why not now:** removing it means rewriting history, so every commit hash changes, a force-push is needed, and open PRs and other branches break. `main` is frozen for verification, and force-pushing is against the owner rules without his explicit yes.
+- **When:** after toll-free verification is approved and eNov14 is merged, with Emmett's explicit yes for the force-push.
+- **How:**
+  - `git filter-repo --replace-text` over every branch, replacing the address;
+  - force-push every affected branch;
+  - ask GitHub Support to purge cached views of the old commits (the commit is reachable by its hash until they do);
+  - tell Elijah and anyone with a clone to re-clone.
+- **Also check** that nothing else personal is in the history (`git log -p -S`): other addresses, phone numbers, home addresses.
+
 ## Monday: the 513 Auto Clean logo in the booking emails (Elijah, November 14)
 
 Elijah's inbox shows a generic building icon beside "513 Auto Clean". Two separate pieces:
