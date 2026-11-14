@@ -943,6 +943,10 @@
     // with Contact and Address still folded above it.
     if (onCheckout() && !state.ckOpen) ckPrefill();
     if (onCheckout()) slotStillFits();
+    // A detail changed at checkout changes when the drive home starts, so it
+    // is measured again (a no-op when nothing changed): the server measures
+    // with the length booked, and the two must agree.
+    if (onCheckout() && state.slot && addressComplete()) measureTravel();
     var s = step();
     var scroller = el('bkScroll');
     keptScroll = scroller ? scroller.scrollTop : 0;
@@ -2457,7 +2461,7 @@
     travelByKey = line.toUpperCase();
     travelBy = {};
     crew().forEach(function (d) {
-      fetch('/api/travel?address=' + encodeURIComponent(line) + '&service=' + encodeURIComponent(holdMinutes()) +
+      fetch('/api/travel?address=' + encodeURIComponent(line) + '&serviceMin=' + encodeURIComponent(holdMinutes()) +
             '&zip=' + encodeURIComponent(state.address.zip || '') + (d.owner ? '' : '&detailer=' + encodeURIComponent(d.id)), { cache: 'default' })
         .then(function (r) { return r.ok ? r.json() : Promise.reject(new Error(String(r.status))); })
         .then(function (j) {
@@ -2500,7 +2504,9 @@
     travelTimer = setTimeout(function () {
       fetch('/api/travel?address=' + encodeURIComponent(addressLine()) +
             (state.slot ? '&at=' + encodeURIComponent(state.slot) : '') +
-            '&service=' + encodeURIComponent(holdMinutes()) +
+            // The job's length, so the drive home is measured at the finish
+            // (calendar fix 3: sent as `service`, which the server never read).
+            '&serviceMin=' + encodeURIComponent(holdMinutes()) +
             '&zip=' + encodeURIComponent(state.address.zip || '') +
             (who ? '&detailer=' + encodeURIComponent(who) : ''), { cache: 'default' })
         .then(function (r) { return r.ok ? r.json() : Promise.reject(new Error(String(r.status))); })
