@@ -17,7 +17,7 @@
  * Pure: no I/O, no clock. The caller passes `nowMs`.
  */
 import { findAddon, findCoatingTerm, findCorrectionTier, isSelectable } from "../catalog/addons.js";
-import { findPackage, vehicleSize } from "../catalog/seed.js";
+import { LEGACY_PACKAGES, findPackage, upgradeLegacy, vehicleSize } from "../catalog/seed.js";
 import { MAX_ONE_WAY_MINUTES } from "../travel/zipRanges.js";
 import { sourceKey } from "./rush.js";
 
@@ -245,7 +245,18 @@ export function validateWire(body: unknown, opts: ValidateOptions): WireValidati
     }
 
     /* packages: real, bookable, unique, one per category */
-    const pkgIds = rv["packageIds"] ?? [];
+    let pkgIds = rv["packageIds"] ?? [];
+    // A retired package from a tab opened before a deploy (Showroom Ready, in
+    // the old funnel.js) is checked as its replacement, never refused.
+    let legacyAddons: { addonId: string; tierId: string }[] | null = null;
+    if (Array.isArray(pkgIds) && pkgIds.some((id) => typeof id === "string" && LEGACY_PACKAGES[id])) {
+      const raw = Array.isArray(rv["addons"]) ? (rv["addons"] as unknown[]) : [];
+      const ok = raw.filter((a): a is { addonId: string; tierId: string } =>
+        !!a && typeof (a as { addonId?: unknown }).addonId === "string" && typeof (a as { tierId?: unknown }).tierId === "string");
+      const up = upgradeLegacy(pkgIds.filter((id): id is string => typeof id === "string"), ok);
+      pkgIds = up.packageIds;
+      legacyAddons = up.addons;
+    }
     if (!Array.isArray(pkgIds)) return fail("bad_packages", "Packages were not understood.");
     if (pkgIds.length > WIRE_LIMITS.maxPackagesPerVehicle) return fail("bad_packages", "Too many packages on one vehicle.");
     const seenCat = new Set<string>();
@@ -269,7 +280,7 @@ export function validateWire(body: unknown, opts: ValidateOptions): WireValidati
     v.packageIds = packageIds;
 
     /* add-ons: real, selectable, priced, unique */
-    const rawAddons = rv["addons"] ?? [];
+    const rawAddons = legacyAddons ?? rv["addons"] ?? [];
     if (!Array.isArray(rawAddons)) return fail("bad_addons", "Add-ons were not understood.");
     if (rawAddons.length > WIRE_LIMITS.maxAddonsPerVehicle) return fail("bad_addons", "Too many add-ons on one vehicle.");
     const seenAddon = new Set<string>();

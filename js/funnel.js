@@ -6705,6 +6705,8 @@
       sendPrep(true);
       reset();
       _key = null;
+      // The /book page's answers apply to every booking made from it.
+      takeBookPageConsent();
       state.address = keep.address;
       state.contact = keep.contact;
       state.access = keep.access;
@@ -7823,12 +7825,17 @@
    */
   var arrival = (function () {
     var m = /[?&](package|interest)=([a-z0-9-]+)/.exec(location.search || '');
-    return m ? { kind: m[1], id: m[2] } : null;
+    if (m) return { kind: m[1], id: m[2] };
+    return /[?&]browse=1\b/.test(location.search || '') ? { kind: 'browse' } : null;
   })();
   function applyArrival() {
     if (!arrival) return null;
     var a = arrival;
     arrival = null;
+    // A kept draft wins: they asked to pick up where they left off.
+    if (state.resumed) return null;
+    // "View Services": the catalogue, as the link did on its own page.
+    if (a.kind === 'browse') { state.step = 1; state.browse = true; return null; }
     return a.kind === 'interest' ? applyIntent(a.id, null) : applyIntent(null, a.id);
   }
 

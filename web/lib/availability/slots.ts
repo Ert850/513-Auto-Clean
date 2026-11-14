@@ -267,6 +267,11 @@ export function computeSlots(req: SlotRequest): number[] {
       // without this check, two jobs could be booked back to back with no
       // time to drive between them.
       dayOpens.has(f.start) &&
+      // Not straight after other work: a separate OPEN block or a job that
+      // ends less than a drive before this stretch opens (review, November
+      // 14) means the detailer is driving from there, inside the day.
+      !stretches.some((b) => b.end < f.start && b.end > f.start - req.travelBeforeMin * MIN) &&
+      !req.busy.some((b) => b.end <= f.start && b.end > f.start - req.travelBeforeMin * MIN) &&
       // And only for a start the drive could not have fitted in front of.
       // 7am with an hour's drive fits inside a 6am opening on its own.
       start - f.start < req.travelBeforeMin * MIN;

@@ -27,6 +27,17 @@ describe("the drive may use the arrival hour", () => {
     expect(hours(computeSlots({ ...base, travelBeforeMin: 90, travelAfterMin: 90, openBlocks: open, busy: [], arrivalWindowMin: 60 }))[0]).toBe(18);
   });
 
+  it("a stretch opening right after other work is not the start of a day (review, November 14)", () => {
+    // OPEN until 2pm, then from 2:30pm: the 2:30 start needs the drive.
+    const split = [{ start: at(17, 8), end: at(17, 14) }, { start: at(17, 14, 30), end: at(17, 23) }];
+    const busy = [{ start: at(17, 8), end: at(17, 14) }];
+    expect(hours(computeSlots({ ...base, openBlocks: split, busy }))).not.toContain(14.5);
+    // A job placed by hand ending as Kris's 6pm opens: 6pm needs the drive.
+    const kris = [{ start: at(17, 18), end: at(18, 0) }];
+    const hand = [{ start: at(17, 16), end: at(17, 18) }];
+    expect(hours(computeSlots({ ...base, openBlocks: kris, busy: hand }))[0]).toBe(19);
+  });
+
   it("a gap after a job is not the start of a day: the drive still has to fit", () => {
     const open = [{ start: at(17, 14), end: at(18, 0) }];
     const busy = [{ start: at(17, 14), end: at(17, 18) }];
