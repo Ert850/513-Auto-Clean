@@ -1301,6 +1301,22 @@ body > #quote { padding-block: clamp(40px, 4.4vw, 64px); }
 .inq-tick input { appearance: auto; accent-color: var(--red); width: 17px; height: 17px; flex: none; margin: .05rem 0 0; }
 .inq-terms { font-size: .8rem; color: var(--text-soft); margin: .15rem 0 0; }
 .inq-terms a { color: var(--red-deep); font-weight: 600; }
+/* Phones: the quote form compacted (Elijah, November 13: "a lot of the entries
+   are unnecessarily long on mobile"; built November 14 from the approved
+   mockup docs/mockups/eNov14-contact-phone.png). Every field and Imperion's
+   wording stay; Name and Phone, and Vehicle and City, share a row. Inputs keep
+   16px text so iPhones do not zoom in. */
+@media (max-width: 767.98px) {
+  .inquiry .inq-grid { gap: 1.1rem; }
+  .inquiry .form-card { padding: 1.2rem 1rem; }
+  .inquiry .field-row.three { display: grid; grid-template-columns: 1fr 1fr; column-gap: .6rem; }
+  .inquiry .field-row.three > .field:nth-child(3) { grid-column: 1 / -1; }
+  .inquiry .field { margin-bottom: .7rem; }
+  .inquiry .field label { margin-bottom: .3rem; font-size: .82rem; }
+  .inquiry .field input, .inquiry .field textarea { padding: .65rem .8rem; }
+  .inquiry .field textarea { min-height: 72px; }
+  .inquiry .inq-tick { padding: .5rem .7rem; font-size: .76rem; }
+}
 /* Quote mode adds two boxes and a line, which put Request Quote 63 px below a
    1440x790 window (measured). The owner's test needs the button on the first
    screen, so this mode trims its own spacing and the two text boxes. */

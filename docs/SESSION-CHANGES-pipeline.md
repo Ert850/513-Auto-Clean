@@ -1453,6 +1453,15 @@ From the live calendar (read only), the code, and your voice notes:
   - replace the 6 old pairs, or keep them after his.
 - **How the photos were made:** downloaded through the folder's share link and resized with Pillow (quality stepped down until under 150 KB). There's no checked-in resize script yet; one comes with the photo pipeline.
 
+## eNov14: the quote form compacted on phones (Elijah, November 13; mockup approved November 14)
+
+- **What:** under 768 px only, on both `contact.html` and the home page copy:
+  - Name and Phone share a row, and so do Vehicle and City; Email and "Best way to reach you" stay full width;
+  - tighter field spacing and padding, shorter text boxes, and slightly smaller consent text.
+- **Unchanged:** every field and Imperion's wording. Inputs keep 16 px text (no iPhone zoom). Laptops are unchanged.
+- **Measured:** at 375 px, Request Quote moves from 1819 to 1531 px down the page.
+- **Test it:** contact.html at 375 and 320 (no sideways scroll; labels readable), and submit on the test site once it exists.
+
 ## Leftovers noticed, not touched
 
 - `book.css` still has `.bk-time`, `.bk-times`, `.bk-bucket` and `.bk-juston` rules from an older slot design. They were unused before tonight.
