@@ -1529,6 +1529,19 @@ From the live calendar (read only), the code, and your voice notes:
 - **Test (preview):** book a time, then book the same time from a second browser that loaded the form before the first booking. The second should land back on Time, with no event and no email.
 - **Tests:** `still-free.test.ts`; 707 pass.
 
+## eNov14: calendar fix 2, every booking date is a Cincinnati date (November 14)
+
+- **Root cause:** the form built some dates from the visitor's own clock (`new Date(y, m, d)`, `getDate()`, `setHours(0)`). Anyone booking from another time zone, such as a parent in California booking for a UC student, could see request days, the 365-day limit and the correction start date a day off near midnight. The final time check also read the wrong day's calendar for them.
+- **Fix:**
+  - `dayStartIn(n)` (Cincinnati midnight, through noon so a clock change can't slip a day) replaces `startOfToday()`;
+  - request days are keyed and labelled by `cinciKey`/`tzDay`;
+  - the week's date box reads and writes Cincinnati dates;
+  - `verifySlot` reads Cincinnati days (fix 1).
+  - `P.localDayStart` is now in the browser bundle.
+  - Left alone on purpose: the "Booked · Nov 14, 5:58 PM" stamp on Done, which is the visitor's own moment.
+- **Guard:** `still-free.test.ts` fails if `funnel.js` reads a date part from the visitor's clock again.
+- **Test (preview):** in Chrome DevTools, under Sensors, set the location to Tokyo, open Time and "tell us when suits". The ten days start tomorrow in Cincinnati. Pick days, send a request, and the owner email lists the same days.
+
 ## Leftovers noticed, not touched
 
 - `book.css` still has `.bk-time`, `.bk-times`, `.bk-bucket` and `.bk-juston` rules from an older slot design. They were unused before tonight.

@@ -165,3 +165,13 @@ describe("send-confirmation: a taken time is refused, nothing written or sent", 
     expect(g.mail.some((s) => /^Confirmed:/.test(s))).toBe(false);
   });
 });
+
+describe("calendar fix 2: every booking date is a Cincinnati date", () => {
+  it("the form takes no date from the visitor's own clock", () => {
+    const src = fs.readFileSync(path.join(__dirname, "../../../js/funnel.js"), "utf8");
+    // getFullYear/getMonth/getDate/setHours read the visitor's time zone: a
+    // parent booking from California saw request days a day off near midnight.
+    expect(src).not.toMatch(/\.(getFullYear|getMonth|getDate|getDay|getHours|setHours)\(/);
+    expect(src).not.toMatch(/new Date\(\s*Number\(/);
+  });
+});
