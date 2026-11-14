@@ -110,13 +110,21 @@ describe("slotStatus: the server reads the calendar again", () => {
     expect((await slotStatus(null, job())).status).toBe("unconfigured");
   });
 
-  it("a longer drive measured at the appointment never turns away a time offered on the form's drive", async () => {
+  it("with several detailers, a time that clashes only on the longer timed drive is kept, on the form's own drive", async () => {
     // 70 minutes each way: an 85 minute buffer after a job ending 12:45 puts
-    // the arrival past the hour's window, so it clashes; on the form's drive
-    // (the hour) it arrives 1:45, inside the window, so the booking stands.
+    // the arrival past the hour's window, so it clashes. The form, with two
+    // detailers, allowed for the drive measured with no time of day (40
+    // minutes, inside the hour): arriving 1:45 fits, so the booking stands.
+    vi.stubEnv("DETAILERS", JSON.stringify([{ name: "Kris", does: "interior", availability: "ka@x", bookings: "kb@x" }, { name: "Elijah", owner: true }]));
     stubGoogle([{ start: at(9 * 60), end: at(12 * 60 + 45) }]);
-    const r = await slotStatus(null, job({ driveMin: 70 }));
-    expect(r).toMatchObject({ status: "free", tight: true });
+    expect(await slotStatus(null, job({ driveMin: 70 }), process.env, async () => 40)).toMatchObject({ status: "free", tight: true });
+    // Never on a made-up drive: with no measurement, the clash stands.
+    expect((await slotStatus(null, job({ driveMin: 70 }), process.env, async () => null)).status).toBe("taken");
+  });
+
+  it("with one detailer the form used the same timed drive, so a clash on it is a clash", async () => {
+    stubGoogle([{ start: at(9 * 60), end: at(12 * 60 + 45) }]);
+    expect((await slotStatus(null, job({ driveMin: 70 }), process.env, async () => 40)).status).toBe("taken");
   });
 });
 
@@ -124,10 +132,11 @@ describe("send-confirmation: a taken time is refused, nothing written or sent", 
   beforeEach(() => { resetRateLimits(); for (const [k, v] of Object.entries(ENV)) vi.stubEnv(k, v); });
   afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); });
 
-  const post = () => handler({
+  const post = (extra: Record<string, unknown> = {}) => handler({
     httpMethod: "POST",
     headers: {},
     body: JSON.stringify({
+      ...extra,
       cart: {
         vehicles: [{ sizeId: "small", packageIds: ["basic-interior"], addons: [] }],
         address: { line1: "1 Main St", city: "Cincinnati", region: "OH", zip: "45220" },
@@ -146,6 +155,18 @@ describe("send-confirmation: a taken time is refused, nothing written or sent", 
     expect(JSON.parse(r.body)).toMatchObject({ taken: true });
     expect(g.writes).toHaveLength(0);
     expect(g.mail).toHaveLength(0);
+  });
+
+  it("standard hours (the browser could not read the calendar) or a paid booking: a request, nothing written onto the taken time", async () => {
+    for (const extra of [{ standardHours: true }, { mode: "pay_now" }]) {
+      resetRateLimits();
+      const g = stubGoogle([{ start: at(13 * 60), end: at(15 * 60) }]);
+      const r = await post(extra);
+      expect(r.statusCode).toBe(200);
+      expect(g.writes).toHaveLength(0);
+      expect(g.mail.some((s) => /^NOT ON THE CALENDAR, /.test(s))).toBe(true);
+      expect(g.mail.some((s) => /^Confirmed:/.test(s))).toBe(false);
+    }
   });
 
   it("free: written and confirmed as before", async () => {

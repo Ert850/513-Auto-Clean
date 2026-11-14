@@ -6,7 +6,7 @@ const SHORT_NOTICE_MS = SCHEDULING.shortNoticeHours * 3_600_000;
 const DRIVE_FALLBACK_MIN = SCHEDULING.driveFallbackMinutes;
 import { blockFeeFor, detailerFor, homeFor, slotStatus, timeFeeWaived } from "./_detailers.mjs";
 import { createBookingEvent, findBookingEvent, gcalAuthMode, gcalConfigured } from "./_gcal.mjs";
-import { measuredOneWayMinutes } from "./_routes.mjs";
+import { addressLine, measureRoundTrip, measuredOneWayMinutes } from "./_routes.mjs";
 import { limited } from "./_ratelimit.mjs";
 import { verifyTurnstile } from "./_turnstile.mjs";
 
@@ -343,7 +343,7 @@ function ownerEmail({ contact, when, priced, kind, cart, detailer, asked, notes,
         ? cart?.slot ? "Time held, package to work out" : "Help me decide, no time yet"
         : kind === "inquiry" ? "New request" : soon ? "Short-notice request, not confirmed until you accept it" : "New booking",
       (calendarFail
-        ? `<p style="margin:0 0 14px;padding:10px 12px;background:#fdecea;border-left:3px solid #c62828;color:#7f1d1d"><strong>NOT ON THE CALENDAR</strong> (${esc(calendarFail)}). The time is still open to other customers: add it by hand now.</p>`
+        ? `<p style="margin:0 0 14px;padding:10px 12px;background:#fdecea;border-left:3px solid #c62828;color:#7f1d1d"><strong>NOT ON THE CALENDAR</strong>${/^this time is already taken/.test(calendarFail) ? `: ${esc(calendarFail)}.` : `(${esc(calendarFail)}). The time is still open to other customers: add it by hand now.`}</p>`
         : "") +
       (unchecked
         ? `<p style="margin:0 0 14px;padding:10px 12px;background:#fdf3e3;border-left:3px solid #f0a93f"><strong>CHECK THIS TIME:</strong> ${esc(unchecked)}. It is on the calendar. Make sure nothing else is booked then, and confirm it with them: their email says we will confirm.</p>`
@@ -529,7 +529,7 @@ export function stillFreeJob({ cart, priced, kind, measuredMin }) {
   };
 }
 
-async function writeCalendar({ contact, cart, priced, extras, payInFull, key, kind, detailer, measuredMin }) {
+async function writeCalendar({ contact, cart, priced, extras, payInFull, key, kind, detailer, measuredMin, standardHours = false }) {
   if (!gcalConfigured()) return { ok: false, reason: "unconfigured" };
   if (!cart.slot) return { ok: false, reason: "no_slot" };
 
@@ -539,8 +539,9 @@ async function writeCalendar({ contact, cart, priced, extras, payInFull, key, ki
   // A retry of the same booking (Confirm pressed again after an error) finds
   // the event the first try wrote, by its booking key, and stops there
   // (final review, November 13: two events and four emails).
+  let lookupFailed = false;
   if (key) {
-    const existing = await findBookingEvent({ key, calendarId, aroundMs: cart.slot }).catch(() => null);
+    const existing = await findBookingEvent({ key, calendarId, aroundMs: cart.slot }).catch(() => { lookupFailed = true; return null; });
     if (existing) return { ok: true, id: existing.id, duplicate: true };
   }
   /*
@@ -550,14 +551,30 @@ async function writeCalendar({ contact, cart, priced, extras, payInFull, key, ki
    * after the retry check above (a retry's own event would read as a clash).
    * Taken: nothing is written and no email goes out; the form says so and
    * reopens Time. Unread: written, but as a time to check, never as
-   * confirmed. A paid booking is never turned away: it is written to check.
+   * confirmed.
+   *
+   * Taken, but turning them away would be wrong (review, November 14): they
+   * have paid; their browser could not read the calendar, so they chose from
+   * standard hours and would only be sent round again; or the retry lookup
+   * failed, so the clash may be their own first try. Then nothing is written
+   * onto the taken time either: it goes through as a request, the customer is
+   * told we will confirm, and the owner email says why. Never a second job.
    */
-  const st = await slotStatus(detailer, stillFreeJob({ cart, priced, kind, measuredMin }));
+  const st = await slotStatus(detailer, stillFreeJob({ cart, priced, kind, measuredMin }), process.env,
+    () => measureRoundTrip({ dest: { address: addressLine(cart.address), ...(homeFor(detailer) ? { origin: homeFor(detailer) } : {}) } })
+      .then((d) => (d?.reachable ? d.minutes : null)));
   if (st.tight) console.log("still free: only with the form's drive", cart.slot);
-  if (st.status === "taken" && !payInFull) return { ok: false, reason: "taken", taken: true };
+  if (st.status === "taken") {
+    const why = payInFull ? "they have already paid"
+      : standardHours ? "their browser could not read the calendar, so they chose from standard hours"
+      : lookupFailed ? "we could not check whether this was a repeat of a booking they had just made"
+      : "";
+    if (!why) return { ok: false, reason: "taken", taken: true };
+    return { ok: false, reason: `this time is already taken (${why}). Nothing was put on the calendar: offer them another time` };
+  }
   const unchecked = st.status === "unread"
     ? "the calendar could not be read just before it was written, so it was not checked against the other jobs"
-    : st.status === "taken" ? "another job was booked at this time first, and they have already paid" : "";
+    : "";
   const first = await createBookingEvent({ ...events[0], key, phone, calendarId });
   if (!first.ok) return first;
   if (unchecked) first.unchecked = unchecked;
@@ -676,6 +693,8 @@ export async function handler(event) {
           key: text(payload?.idempotencyKey, 120),
           detailer,
           measuredMin: measured,
+          // The form offered standard hours because it could not read the calendar.
+          standardHours: payload?.standardHours === true,
         }).catch((err) => {
           console.error("calendar write", err);
           return { ok: false, reason: "threw" };

@@ -7037,7 +7037,10 @@
           // own DETAILERS setting; anything else books the default calendar.
           detailer: detailerParam(),
           // The early or late fee shown, used by the server only if it cannot read the calendar.
-          timeFeeBp: shownTimeFeeBp()
+          timeFeeBp: shownTimeFeeBp(),
+          // The times were standard hours, because this browser could not read
+          // the calendar: a clash then goes to the owner as a request.
+          standardHours: Boolean(lastCalc && lastCalc.mode === 'unconfigured')
         })
       })
         .then(function (r) { return { taken: r.status === 409 }; })
@@ -7060,6 +7063,8 @@
       state.sending = false;
       el('bkNext').disabled = false;
       track('time_taken_at_confirm', {});
+      // A fresh calendar read, so the taken time is not offered again.
+      lastSlotsKey = '';
       dropSlot('Someone booked that time while you were deciding. These are the times still open.');
       render();
     });

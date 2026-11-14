@@ -586,6 +586,8 @@ export function recommendStarts(req: {
    */
   preferMin?: number;
   limit?: number;
+  /** Does this start carry an early or late fee? Defaults to the clock's bands. */
+  isPremium?: (ms: number) => boolean;
   timeZone?: string;
 }): Recommendation[] {
   const all = [...new Set(req.starts)].sort((a, b) => a - b);
@@ -603,7 +605,10 @@ export function recommendStarts(req: {
    * The rush fee is different and is not filtered here: it applies to every
    * hour of a near-term day, so no choice within that day avoids it.
    */
-  const standard = all.filter((ms) => !bandOf(localMinutesOfDay(ms, req.timeZone))?.premium);
+  // The calendar's fee when the caller knows it (daySuggestions; calendar fix
+  // 4), else the clock's bands.
+  const premium = req.isPremium ?? ((ms: number) => Boolean(bandOf(localMinutesOfDay(ms, req.timeZone))?.premium));
+  const standard = all.filter((ms) => !premium(ms));
   const starts = standard.length ? standard : all;
 
   const limit = req.limit ?? 2;

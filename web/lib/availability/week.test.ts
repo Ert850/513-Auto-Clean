@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { zonedToUtc } from "../time/zone.js";
+import { recommendStarts } from "./slots.js";
 import { addWeeks, buildWeek, dayOpenShare, startsPossible, daySuggestions, lastRowForSlots, STARTS_PER_DAY, stretchStarts, timelineRange, recommendBestDays, TIME_RECOMMENDATION_RULES, weekStartOf } from "./week.js";
 
 const TZ = "America/New_York";
@@ -266,6 +267,15 @@ describe("calendar fix 4: a detailer's standard-price evening is standard in the
     expect(six.suggested).toBe(true);
     expect(seven.premium).toBe(true);
     expect(seven.suggested).toBe(false);
+  });
+
+  it("the recommendation ranking takes the calendar's fee too, so a fee start never outranks a standard 6pm", () => {
+    // 8am carries a fee on this calendar, 6pm doesn't. By the clock both are
+    // fee starts, so the ranking fell back to all and could pick 8am.
+    const starts = [at(11, 17, 8), at(11, 17, 18)];
+    const fee = (ms: number) => ms === at(11, 17, 8);
+    const picked = recommendStarts({ starts, travelGapMin: 60, isPremium: fee, limit: 2 }).map((r) => r.ms);
+    expect(picked).toEqual([at(11, 17, 18)]);
   });
 
   it("the form folds by the fee, not by 10am to 6pm", () => {
