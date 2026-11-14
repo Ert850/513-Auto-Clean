@@ -102,11 +102,19 @@ const PHONE = (() => {
 // `preview` is the inbox preview line (the grey text under the subject). Hidden
 // in the email itself; the padding stops mail apps filling the rest of the
 // line with body text.
+// The logo at the top of every email (Emmett's pick A, November 14): the
+// bottle on its own white tile, so it stays visible when a mail app goes dark.
+// From the site Netlify publishes (URL is set by Netlify), else the domain.
+const LOGO = `${(process.env.URL || "https://513autoclean.com").replace(/\/$/, "")}/images/email-logo.png`;
+
 const SHELL = (title, inner, preview = "") => `<!doctype html>
 <html><body style="margin:0;padding:24px;background:#f4f5f2;font:16px/1.6 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#14171d">
 ${preview ? `<div style="display:none;max-height:0;overflow:hidden;opacity:0;font-size:1px;line-height:1px;color:transparent">${esc(preview)}${"&#847;&zwnj;&nbsp;".repeat(60)}</div>` : ""}
 <div style="max-width:560px;margin:0 auto;background:#fff;border-radius:12px;padding:28px">
-<p style="margin:0 0 4px;font-size:12px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:#c41414">513 Auto Clean</p>
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 10px;border-collapse:collapse"><tr>
+<td style="width:40px;height:40px;padding:0;vertical-align:middle"><img src="${LOGO}" width="40" height="40" alt="513 Auto Clean logo" style="display:block;width:40px;height:40px;border:1px solid #e2e4df;border-radius:9px;background:#ffffff"></td>
+<td style="padding:0 0 0 10px;vertical-align:middle;font-size:12px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:#c41414">513 Auto Clean</td>
+</tr></table>
 <h1 style="margin:0 0 16px;font-size:24px;line-height:1.2">${title}</h1>
 ${inner}
 <p style="margin:24px 0 0;padding-top:16px;border-top:1px solid #e2e4df;font-size:13px;color:#5a6069">
