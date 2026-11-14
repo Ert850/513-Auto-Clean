@@ -18,8 +18,8 @@ import { fileURLToPath } from "node:url";
 import { phoneHashSalt } from "./phone-stamp.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
-import { locationPages } from "./locations.mjs";
-const PAGES = ["index.html", "terms.html", "privacy.html", "404.html", "services.html", "about.html", "service-area.html", "faq.html", "contact.html", "lp-golf.html", "lp-prestige.html", "booking.html", ...locationPages()];
+import { generatedPages } from "./locations.mjs";
+const PAGES = ["index.html", "terms.html", "privacy.html", "404.html", "services.html", "about.html", "service-area.html", "faq.html", "contact.html", "lp-golf.html", "lp-prestige.html", "booking.html", ...generatedPages()];
 
 const SALT = phoneHashSalt();
 

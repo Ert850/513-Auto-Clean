@@ -31,6 +31,22 @@ export function locationPages() {
   return loadLocations().map(pageFile);
 }
 
+/* Service pages (config/services/<slug>.json, render-services.mjs): the same
+   one-file-per-page idea, read from the catalog. */
+const SDIR = path.join(root, "config/services");
+export function loadServices() {
+  if (!fs.existsSync(SDIR)) return [];
+  return fs.readdirSync(SDIR)
+    .filter((f) => f.endsWith(".json") && !f.startsWith("_"))
+    .sort()
+    .map((f) => ({ file: `config/services/${f}`, ...JSON.parse(fs.readFileSync(path.join(SDIR, f), "utf8")) }));
+}
+
+/** Every generated page (cities and services): what the chrome, publishing and stamps register. */
+export function generatedPages() {
+  return [...loadLocations(), ...loadServices()].map(pageFile);
+}
+
 /** Words of a page's own (local) text, for the duplicate check. */
 export function localWords(loc) {
   const parts = [

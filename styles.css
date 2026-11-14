@@ -1817,3 +1817,30 @@ main > .bookpage:first-child { padding-block: clamp(16px, 2.2vw, 30px); }
 .loc-map { min-height: 300px; border-radius: var(--r-lg); background: var(--paper-2, #eceee9); border: 1px solid var(--line); overflow: hidden; }
 @media (min-width: 1000px) { .loc-map { min-height: 340px; } }
 .loc-job figcaption q { display: block; margin-top: .35rem; color: var(--text-soft); font-style: italic; }
+
+/* ============ Service pages (config/services/, web/templates/service.html) ============
+   They share the city pages' parts (loc-*); these are only what's new. */
+.svp-split .svp-split-pics { display: grid; grid-template-columns: 1fr 1fr; gap: 3px; border-radius: var(--r-xl, 18px); overflow: hidden; box-shadow: var(--shadow-md); }
+.svp-split .svp-split-pics img { width: 100%; height: 100%; aspect-ratio: 3 / 4; object-fit: cover; border-radius: 0; box-shadow: none; }
+.svp-levels { padding-block: clamp(32px, 6vh, 60px); background: var(--paper); }
+.svp-levels h2 { font-size: clamp(1.35rem, 2.4vw, 1.8rem); margin: 0 0 1rem; }
+.svp-levels-grid { display: grid; grid-template-columns: 1fr; gap: 16px; }
+@media (min-width: 1000px) { .svp-levels-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.svp-level { position: relative; display: flex; flex-direction: column; background: #ffffff; border: 1px solid var(--line); border-radius: var(--r-lg); padding: 1.2rem 1.2rem 1.1rem; }
+.svp-level.featured { border-color: var(--red); box-shadow: 0 0 0 1px var(--red), var(--shadow-md); }
+.svp-level h3 { font-size: 1.25rem; margin: 0 0 .2rem; }
+.svp-price { margin: 0 0 .5rem; display: flex; gap: .6rem; align-items: baseline; }
+.svp-price b { font-size: 1.35rem; }
+.svp-price span { color: var(--text-soft); font-size: .9rem; }
+.svp-tag { color: var(--text-soft); margin: 0 0 .7rem; line-height: 1.5; }
+.svp-level ul { list-style: none; padding: 0; margin: 0 0 .8rem; font-size: .92rem; line-height: 1.45; }
+.svp-level li { position: relative; padding-left: 1.4rem; margin-bottom: .35rem; }
+.svp-level li::before { content: ""; position: absolute; left: .1rem; top: .25rem; width: .45rem; height: .8rem; border: solid var(--red); border-width: 0 2.2px 2.2px 0; transform: rotate(45deg); }
+.svp-not { font-size: .85rem; color: var(--text-soft); margin: 0 0 1rem; }
+.svp-level .btn { margin-top: auto; }
+.svp-steps { margin: 0; padding-left: 1.3rem; line-height: 1.6; }
+.svp-steps li { margin-bottom: .55rem; padding-left: .2rem; }
+.svp-honest { margin-top: 1.1rem; padding: .9rem 1rem; background: var(--paper); border-left: 3px solid var(--red); border-radius: 0 var(--r-sm) var(--r-sm) 0; line-height: 1.55; }
+.svp-sizes { font-size: .86rem; color: var(--text-soft); margin: .8rem 0 0; line-height: 1.5; }
+.svp-where { margin: 1.2rem 0 0; }
+.svp-where a { color: var(--red-deep); font-weight: 700; }

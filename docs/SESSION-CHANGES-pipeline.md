@@ -1499,6 +1499,21 @@ From the live calendar (read only), the code, and your voice notes:
 - **Unchanged:** the visible rating (hero pill, trust badge, ticker).
 - **Check after the unfreeze:** Google's Rich Results Test and validator.schema.org on the live home page.
 
+## eNov14: service-page pipeline and the first two drafts (SEO B4, November 14)
+
+- **The pipeline:** `config/services/<slug>.json` holds the words only (intro, steps, the honest note, questions). `render-services.mjs` fills everything else from the catalog:
+  - package names, "from" prices, times, contents, what's not included;
+  - add-on prices, including Restoration's total and steam's per-package price;
+  - the size surcharges.
+  - The before/afters are gallery pairs tagged with the service, each with the customer's comment when there is one.
+- **Registration:** `locations.mjs` `generatedPages()` registers cities and services alike, and the `SERVICEPAGES` sitemap region lists published ones.
+- **The build fails on:** a missing field, title or description lengths (as rendered), an unknown package or add-on, fewer than 3 steps or 3 questions, and a published page with fewer than 2 photo pairs.
+- **Drafts:**
+  - Interior Car Detailing (`/interior-car-detailing-cincinnati`): Basic, Full and Full + Steam compared, plus add-ons;
+  - Stain, Spill & Odor Treatment (`/car-stain-odor-treatment-cincinnati`): no removal promises, and a "Straight answer" note.
+- **Bug found while building:** the first service build cut `sitemap.xml` down to its first line. Its markers were missing, because an earlier edit didn't match, and `indexOf` returned -1, so the slice kept almost nothing. Restored from git; the generator now stops with an error when the markers are missing, as the city one already did.
+- **Tests:** 694 pass. Mockups: `docs/mockups/eNov14-service-*.png`.
+
 ## Leftovers noticed, not touched
 
 - `book.css` still has `.bk-time`, `.bk-times`, `.bk-bucket` and `.bk-juston` rules from an older slot design. They were unused before tonight.

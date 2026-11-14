@@ -1,0 +1,55 @@
+{
+  "_read_me": "Service page (draft). Prices come from the catalog. No removal promises (CLAUDE.md). Publish needs 2+ before/after pairs tagged with stain work.",
+  "status": "draft",
+  "slug": "car-stain-odor-treatment-cincinnati",
+  "name": "Stain, Spill & Odor Treatment",
+  "serviceType": "Car upholstery stain and odor treatment",
+  "title": "Car Stain & Odor Treatment in Cincinnati | 513 Auto Clean",
+  "meta": "Coffee, kid spills, pet accidents and smoke smell, treated at your house in Cincinnati. Stain treatment from {addon:stain}. Straight answers on what lifts.",
+  "eyebrow": "Stains, spills and odors",
+  "h1": "Car stain, spill and odor treatment in Cincinnati",
+  "sub": "Coffee, kid spills, pet accidents, smoke. We treat your seats and carpet at your house and tell you up front what's likely to lift.",
+  "cta": "Get an instant stain quote",
+  "book": {
+    "intent": "interior"
+  },
+  "hero": {
+    "pair": "sonic-interior"
+  },
+  "packages": [],
+  "proofPairs": [
+    "third-row-seat-stains",
+    "sonic-interior",
+    "console"
+  ],
+  "proofH2": "Stains before and after",
+  "howH2": "How we treat it",
+  "steps": [
+    "Tell us what the stain or smell is and how long it's been there. A note in your booking helps.",
+    "We pre-treat, agitate and extract, so what has soaked in is pulled back out instead of pushed deeper.",
+    "For smells, the source gets cleaned first. Then the Ozone Odor Reset runs with the car sealed and aired out after.",
+    "You see the result before you pay."
+  ],
+  "honest": "how much of a stain lifts depends on what it is, how long it has set and the fabric. We never promise it all comes out, and we tell you before we start.",
+  "addonsH2": "What it costs",
+  "addons": [
+    "stain",
+    "ozone",
+    "pet-hair",
+    "steam"
+  ],
+  "faq": [
+    {
+      "q": "Will the stain come out completely?",
+      "a": "Sometimes, not always. Fresh spills usually lift well. Old, set-in stains often fade a lot but leave a shadow. We tell you which you're likely to get before we start."
+    },
+    {
+      "q": "Can you get rid of smoke or pet smell?",
+      "a": "Usually a lot of it. The smell lives in the fabric, so we clean the source first, then the Ozone Odor Reset takes out what's left in the air and the foam."
+    },
+    {
+      "q": "Do I need a full detail for a single stain?",
+      "a": "No. Stain treatment can go on any package, and you pick surface or deep treatment depending on how bad it is."
+    }
+  ]
+}
