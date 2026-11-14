@@ -90,7 +90,7 @@ the site. Send the link rather than retyping them.
 
 > Hi! We'd be happy to help.
 >
-> We can do a Full Interior detail for $225: thorough vacuum, shampoo and
+> We can do a Full Interior detail for $235: thorough vacuum, shampoo and
 > scrub upholstery, treat stains, wash and dress mats, condition leather,
 > clean glass, brush detail every crevice. About 4 hours.
 >
@@ -159,9 +159,11 @@ message can be recognised, not to be sent.
 
 - **$15 combo discount.** It is **$25** now.
 - **Express Interior $65.** Discontinued. The cheapest interior is Basic at
-  $135.
+  $145.
 - **Basic Interior $100, $115 or $125, Full Interior $189, $195 or $215.** Now
-  $135 and $225 (Elijah, November 12).
+  $135 and $225 (Elijah, November 12), then $145 and $235 (November 14).
+- **Showroom Ready $395 (interior package).** Retired November 14: now Full
+  Interior plus Showroom Ready Restoration, from $445 in total.
 - **Basic Exterior $100 or $115, Full Exterior $189, $200 or $210.** Now $125
   and $245.
 - **"$50/hour add-ons".** Add-ons are flat priced by tier now, not hourly.
