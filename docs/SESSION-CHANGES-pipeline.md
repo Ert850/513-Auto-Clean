@@ -1542,6 +1542,19 @@ From the live calendar (read only), the code, and your voice notes:
 - **Guard:** `still-free.test.ts` fails if `funnel.js` reads a date part from the visitor's clock again.
 - **Test (preview):** in Chrome DevTools, under Sensors, set the location to Tokyo, open Time and "tell us when suits". The ten days start tomorrow in Cincinnati. Pick days, send a request, and the owner email lists the same days.
 
+## eNov14: calendar fix 3, the drive home is measured at the job's end (November 14)
+
+- **Root cause:**
+  - The form sent the job's length to `/api/travel` as `service`, but the function reads `serviceMin`.
+  - The server's own measurement (`measuredOneWayMinutes`) read `cart.serviceDurationMin`, which the wire cart never carries.
+  - So both measured the drive home as leaving at the start time. They agreed, so the price shown was the price charged. But a job ending in rush hour was priced on the wrong traffic.
+- **Fix:**
+  - The form sends `serviceMin`. The function also still accepts `service`, for a page loaded before the deploy.
+  - `_routes.mjs` `jobMinutes(cart)` works out the length with the pricing engine (the form's `holdMinutes`: the work, else the advice hold), so both legs are timed the same way.
+  - At checkout the form measures again when the detail changes (a no-op otherwise), so the screen uses the length the server prices.
+- **Test:** `still-free.test.ts` stubs Routes with a slower rush-hour drive home. The screen's minutes equal the receipt's, and the drive home departs at the finish.
+- **Test (preview):** book a 1pm Full Interior (it ends around 5pm). The travel line on the screen equals the receipt's Travel row and the owner email's.
+
 ## Leftovers noticed, not touched
 
 - `book.css` still has `.bk-time`, `.bk-times`, `.bk-bucket` and `.bk-juston` rules from an older slot design. They were unused before tonight.

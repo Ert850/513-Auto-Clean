@@ -11,6 +11,8 @@
  * the drive started.
  */
 
+import { priceFromWire, ADVICE_HOLD_MIN } from "./_pricing.mjs";
+
 /**
  * Rounded so two requests for the same place hit the same cache entry.
  * Three decimals is about 100 metres; addresses are trimmed and upper-cased.
@@ -175,6 +177,20 @@ export async function measureRoundTrip({ dest, slotMs, serviceMin }) {
 }
 
 /**
+ * How long the job holds, as the booking form sends it to /api/travel
+ * (holdMinutes: the work, else the advice hold). The wire cart carries no
+ * length, and `cart.serviceDurationMin` never existed, so the drive home was
+ * measured as if leaving at the start (calendar fix 3, November 14).
+ */
+export function jobMinutes(cart) {
+  try {
+    return priceFromWire(cart, { nowMs: Date.now() }).serviceDurationMin || ADVICE_HOLD_MIN;
+  } catch {
+    return 0;
+  }
+}
+
+/**
  * The drive, measured, for pricing a cart.
  *
  * THIS LIVES HERE SO IT CANNOT BE FORGOTTEN. create-payment measured the
@@ -195,7 +211,7 @@ export async function measuredOneWayMinutes(cart, origin) {
     const drive = await measureRoundTrip({
       dest: origin ? { address: line, origin } : { address: line },
       slotMs: cart?.slot ?? null,
-      serviceMin: cart?.serviceDurationMin ?? 0,
+      serviceMin: jobMinutes(cart),
     });
     return drive?.reachable ? drive.minutes : null;
   } catch {

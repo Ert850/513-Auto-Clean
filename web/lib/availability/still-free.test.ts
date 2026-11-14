@@ -175,3 +175,52 @@ describe("calendar fix 2: every booking date is a Cincinnati date", () => {
     expect(src).not.toMatch(/new Date\(\s*Number\(/);
   });
 });
+
+describe("calendar fix 3: the drive home is measured at the finish, on screen and on the receipt", () => {
+  afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); });
+
+  it("both send the job's length, and both get the same minutes", async () => {
+    vi.stubEnv("GOOGLE_MAPS_SERVER_KEY", "maps");
+    vi.stubEnv("SHOP_ORIGIN_ADDRESS", "1 Shop St, Cincinnati, OH 45202");
+    const legs: { reverse: boolean; departure: number }[] = [];
+    vi.stubGlobal("fetch", async (url: string, o: { body?: string } = {}) => {
+      const b = JSON.parse(o.body ?? "{}");
+      const reverse = Boolean(b.origin?.address?.startsWith("9 Test"));
+      const departure = b.departureTime ? Date.parse(b.departureTime) : 0;
+      legs.push({ reverse, departure });
+      // Rush hour home from 5pm: 50 minutes, otherwise 25.
+      const evening = departure && new Date(departure).getUTCHours() >= 21;
+      return new Response(JSON.stringify({ routes: [{ duration: `${(reverse && evening ? 50 : 25) * 60}s`, distanceMeters: 20000 }] }));
+    });
+    const { handler: travel } = await import("../../../netlify/functions/travel.mjs");
+    const { measuredOneWayMinutes, jobMinutes } = await import("../../../netlify/functions/_routes.mjs");
+    const { priceFromWire } = await import("../server-entry.js");
+    // A Full Interior starting 1pm finishes into rush hour.
+    const cart = {
+      vehicles: [{ sizeId: "small", packageIds: ["full-interior"], addons: [] }],
+      address: { line1: "9 Test Rd", city: "Cincinnati", region: "OH", zip: "45220" },
+      zip: "45220",
+      slot: at(13 * 60),
+    };
+    const minutes = priceFromWire(cart as never, { nowMs: Date.now() }).serviceDurationMin;
+    expect(jobMinutes(cart)).toBe(minutes);
+
+    resetRateLimits();
+    const screen = JSON.parse((await travel({
+      httpMethod: "GET", headers: {},
+      queryStringParameters: { address: "9 Test Rd, Cincinnati, OH, 45220", at: String(cart.slot), serviceMin: String(minutes), zip: "45220" },
+    })).body);
+    const receipt = await measuredOneWayMinutes(cart, null);
+    expect(receipt).toBe(screen.minutes);
+    // The drive home left at the finish, not the start.
+    const home = legs.filter((l) => l.reverse).map((l) => l.departure);
+    expect(home).toContain(cart.slot + minutes * 60_000);
+    expect(home).not.toContain(cart.slot);
+  });
+
+  it("the form sends the length under the name the server reads", () => {
+    const src = fs.readFileSync(path.join(__dirname, "../../../js/funnel.js"), "utf8");
+    expect(src).not.toContain("'&service='");
+    expect(src.match(/'&serviceMin='/g)).toHaveLength(2);
+  });
+});
