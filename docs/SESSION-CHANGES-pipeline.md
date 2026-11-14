@@ -1441,6 +1441,18 @@ From the live calendar (read only), the code, and your voice notes:
   - The allowed intents are the catalog's own categories, and package or interest values must be real package ids.
 - **Checked:** renaming `intent` to `side` in the config changed every built link to `?side=…` and the form's reading of it. Tests: `bookLinks.test.ts`.
 
+## eNov14: Elijah's photos in the gallery and on the home buttons (November 14)
+
+- **What:** 5 before/after pairs from Drive "03 Website" (third-row seat stains, Soul cargo, Civic front floor, captain's chair, Forester front floor), with Elijah's captions, now first in `data/gallery.json` (11 pairs).
+  - Resized to 420, 760 and 1120 px WebP plus a 760 px JPG, each under 150 KB (Imperion B6).
+  - The Interior and Spills and Stains home buttons use them.
+  - Exterior and Paint Correction still use placeholder photos: no exterior or polisher photos yet.
+- **To confirm with Elijah:**
+  - the Soul cargo "before" shows a bag, and the third-row "before" shows papers and a bag (his rule: no personal items);
+  - the third-row "after" is landscape against a portrait "before", so that wipe compares two framings;
+  - replace the 6 old pairs, or keep them after his.
+- **How the photos were made:** downloaded through the folder's share link and resized with Pillow (quality stepped down until under 150 KB). There's no checked-in resize script yet; one comes with the photo pipeline.
+
 ## Leftovers noticed, not touched
 
 - `book.css` still has `.bk-time`, `.bk-times`, `.bk-bucket` and `.bk-juston` rules from an older slot design. They were unused before tonight.
