@@ -15,10 +15,22 @@ const base = { serviceDurationMin: 120, travelBeforeMin: 60, travelAfterMin: 60,
   notBefore: at(17, 0), notAfter: at(18, 0), hasExterior: false, ignoreReturnAfterMin: 1080, ignoreOutboundBeforeMin: 600 };
 
 describe("the drive may use the arrival hour", () => {
-  it("Kris, OPEN 6pm to midnight: 6pm is offered with the window, not without", () => {
+  it("Kris, OPEN 6pm to midnight: 6pm is a true 6pm arrival, window or not (Elijah, November 13)", () => {
+    // The start of any working stretch is the start of his day: he drives
+    // before it (his day job ends around 5pm).
     const open = [{ start: at(17, 18), end: at(18, 0) }];
-    expect(hours(computeSlots({ ...base, openBlocks: open, busy: [], arrivalWindowMin: 60 }))[0]).toBe(18);
-    expect(hours(computeSlots({ ...base, openBlocks: open, busy: [] }))[0]).toBe(19);
+    const lateBy = new Map<number, number>();
+    expect(hours(computeSlots({ ...base, openBlocks: open, busy: [], arrivalWindowMin: 60, lateBy }))[0]).toBe(18);
+    expect(lateBy.has(at(17, 18))).toBe(false);
+    expect(hours(computeSlots({ ...base, openBlocks: open, busy: [] }))[0]).toBe(18);
+    // Even with a drive longer than his window.
+    expect(hours(computeSlots({ ...base, travelBeforeMin: 90, travelAfterMin: 90, openBlocks: open, busy: [], arrivalWindowMin: 60 }))[0]).toBe(18);
+  });
+
+  it("a gap after a job is not the start of a day: the drive still has to fit", () => {
+    const open = [{ start: at(17, 14), end: at(18, 0) }];
+    const busy = [{ start: at(17, 14), end: at(17, 18) }];
+    expect(hours(computeSlots({ ...base, openBlocks: open, busy }))[0]).toBe(19);
   });
 
   it("after a previous job too: free at 2pm, 2pm is offered", () => {
@@ -29,15 +41,17 @@ describe("the drive may use the arrival hour", () => {
   });
 
   it("plans the job from the late arrival: a start that would end past midnight is not offered", () => {
-    // OPEN from 9:30pm: a 10pm start arrives 10:30pm, a 2 hour job ends 12:30am.
-    const open = [{ start: at(17, 21, 30), end: at(18, 2) }];
-    const got = hours(computeSlots({ ...base, openBlocks: open, busy: [], arrivalWindowMin: 60 }));
+    // Free from 9:30pm after a job: a 10pm start arrives 10:30pm, a 2 hour job ends 12:30am.
+    const open = [{ start: at(17, 18), end: at(18, 2) }];
+    const busy = [{ start: at(17, 18), end: at(17, 21, 30) }];
+    const got = hours(computeSlots({ ...base, openBlocks: open, busy, arrivalWindowMin: 60 }));
     expect(got).not.toContain(22);
   });
 
-  it("a drive longer than the window still has to fit before it", () => {
-    const open = [{ start: at(17, 18), end: at(18, 0) }];
-    const got = hours(computeSlots({ ...base, travelBeforeMin: 90, travelAfterMin: 90, openBlocks: open, busy: [], arrivalWindowMin: 60 }));
+  it("after a job, a drive longer than the window still has to fit before it", () => {
+    const open = [{ start: at(17, 14), end: at(18, 0) }];
+    const busy = [{ start: at(17, 14), end: at(17, 18) }];
+    const got = hours(computeSlots({ ...base, travelBeforeMin: 90, travelAfterMin: 90, openBlocks: open, busy, arrivalWindowMin: 60 }));
     expect(got[0]).toBe(18.5);
   });
 });
