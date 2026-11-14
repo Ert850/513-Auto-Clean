@@ -274,3 +274,4 @@ export {
   vehicleSize,
 };
 export { BOOK_LINK_PARAMS, BOOK_INTENTS, arrivalQuery, parseArrival } from "./booking/bookLinks.js";
+export { zipGeo } from "./travel/zipGeo.js";

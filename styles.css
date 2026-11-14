@@ -1797,3 +1797,23 @@ main > .bookpage:first-child { padding-block: clamp(16px, 2.2vw, 30px); }
 .loc-final { margin-top: 1.4rem; display: flex; flex-wrap: wrap; gap: .7rem; }
 .loc-hub { margin-top: 1rem; }
 .loc-hub h3 { font-size: 1.05rem; margin: 0 0 .5rem; }
+/* City pages, round 2: hero with a job photo, the "what we do" box, the map. */
+.loc-hero-grid { display: grid; grid-template-columns: 1fr; gap: 1.4rem; align-items: center; }
+@media (min-width: 1000px) { .loc-hero-grid { grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 2.4rem; } }
+.loc-hero-copy h1 { font-size: clamp(1.9rem, 4.2vw, 2.9rem); line-height: 1.08; margin: .3rem 0 .7rem; }
+.loc-sub { max-width: 36rem; color: var(--text-soft); font-size: 1.05rem; line-height: 1.55; margin: 0; }
+.loc-trust-rating { font-weight: 700; }
+.loc-trust-rating .hb-stars { color: var(--amber-ink, #b7791f); letter-spacing: .06em; margin-right: .2rem; }
+.loc-hero-pic { margin: 0; }
+.loc-hero-pic img { width: 100%; height: auto; aspect-ratio: 4 / 3; object-fit: cover; border-radius: var(--r-xl, 18px); box-shadow: var(--shadow-md); display: block; }
+.loc-hero-pic figcaption { font-size: .82rem; color: var(--text-soft); margin-top: .45rem; }
+.loc-what { background: var(--paper); border: 1px solid var(--line); border-radius: var(--r-lg); padding: 1.2rem 1.3rem; }
+.loc-what .loc-points { margin-top: .4rem; }
+.loc-what-more { display: inline-block; margin-top: .4rem; font-weight: 700; color: var(--red-deep); text-decoration: none; }
+.loc-serve { padding-block: clamp(32px, 6vh, 60px); }
+.loc-serve h2 { font-size: clamp(1.35rem, 2.4vw, 1.8rem); margin: 0 0 1rem; }
+.loc-serve-grid { display: grid; grid-template-columns: 1fr; gap: 1.2rem; }
+@media (min-width: 1000px) { .loc-serve-grid { grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); } }
+.loc-map { min-height: 300px; border-radius: var(--r-lg); background: var(--paper-2, #eceee9); border: 1px solid var(--line); overflow: hidden; }
+@media (min-width: 1000px) { .loc-map { min-height: 340px; } }
+.loc-job figcaption q { display: block; margin-top: .35rem; color: var(--text-soft); font-style: italic; }

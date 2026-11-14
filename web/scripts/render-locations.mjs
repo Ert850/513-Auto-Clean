@@ -17,6 +17,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { root, loadLocations, pageFile, localWords, overlap, contained } from "./locations.mjs";
+import { findPackage, findAddon, zipGeo } from "../../netlify/functions/_pricing.mjs";
 
 const SITE = "https://513autoclean.com";
 // docs/SEO-COMPLIANCE.md section 2: Jaccard on word 5-grams of each page's own
@@ -34,6 +35,23 @@ const gallery = JSON.parse(read("data/gallery.json")).pairs ?? [];
 const reviews = JSON.parse(read("data/reviews.json"));
 
 const locs = loadLocations();
+
+// Prices in the words come from the catalog, never typed (CLAUDE.md): write
+// {price:full-interior} for a package or {addon:steam} for an add-on's
+// standard price, and the build fills in today's figure.
+const money = (c) => `$${(c / 100).toFixed(c % 100 ? 2 : 0)}`;
+function priced(text, where) {
+  return String(text).replace(/\{(price|addon):([a-z0-9-]+)\}/g, (m, kind, id) => {
+    const cents = kind === "price" ? findPackage(id)?.priceCents : findAddon(id)?.tiers?.[0]?.priceCents;
+    if (typeof cents !== "number") throw new Error(`render-locations: ${where}: no ${kind} "${id}" in the catalog`);
+    return money(cents);
+  });
+}
+for (const l of locs) for (const k of ["sub", "localParagraph", "meta"]) if (l[k]) l[k] = priced(l[k], `${l.file} ${k}`);
+for (const l of locs) {
+  l.highlights = (l.highlights ?? []).map((h) => priced(h, l.file));
+  l.faq = (l.faq ?? []).map((q) => ({ q: priced(q.q, l.file), a: priced(q.a, l.file) }));
+}
 const problems = [];
 const need = (cond, loc, msg) => { if (!cond) problems.push(`${loc.file}: ${msg}`); };
 
@@ -47,6 +65,8 @@ for (const loc of locs) {
   need(Array.isArray(loc.zips) && loc.zips.length && loc.zips.every((z) => /^\d{5}$/.test(z)), loc, "zips must be 5-digit ZIP codes");
   need(Array.isArray(loc.neighborhoods) && loc.neighborhoods.length >= 3, loc, "list at least 3 neighborhoods");
   need(Array.isArray(loc.faq) && loc.faq.length >= 3, loc, "at least 3 FAQ answers written for this area");
+  need(loc.hero && typeof loc.hero.src === "string" && fs.existsSync(path.join(root, loc.hero.src)) && loc.hero.alt, loc, "hero needs a photo in images/ and its alt text");
+  need(loc.map && Array.isArray(loc.map.center) && loc.map.center.length === 2 && loc.map.radiusMiles > 0, loc, "map needs center [lat, lon] and radiusMiles");
   for (const j of loc.localJobs ?? []) need(gallery.some((p) => p.slug === j.pair), loc, `localJobs: no gallery pair "${j.pair}"`);
   for (const r of loc.reviews ?? []) need(reviews.reviews.some((x) => x.author === r.author && x.date === r.date), loc, `reviews: no review by ${r.author} on ${r.date}`);
   // Things only this page has: its own paragraph and FAQ always; local jobs and reviews once Elijah's data is in.
@@ -76,9 +96,9 @@ for (const loc of locs) {
   const jobs = (loc.localJobs ?? []).length ? `
 <section class="loc-jobs">
   <div class="wrap">
-    <h2>${esc(loc.jobsH2 ?? `Recent details in ${loc.name}`)}</h2>
+    <h2>${esc(loc.jobsH2 ?? `Recent detailing projects in ${loc.name}`)}</h2>
     <div class="loc-jobs-grid">
-${loc.localJobs.map((j) => { const p = pair(j.pair); return `      <figure class="loc-job"><span class="loc-job-pics"><img src="images/ba-${p.slug}-before-760.webp" alt="${esc(p.altBefore)}" loading="lazy" decoding="async" /><img src="images/ba-${p.slug}-after-760.webp" alt="${esc(p.altAfter)}" loading="lazy" decoding="async" /></span><figcaption><b>${esc(j.vehicle ?? p.caption)}</b>${j.note ? ` ${esc(j.note)}` : ""}</figcaption></figure>`; }).join("\n")}
+${loc.localJobs.map((j) => { const p = pair(j.pair); return `      <figure class="loc-job"><span class="loc-job-pics"><img src="images/ba-${p.slug}-before-760.webp" alt="${esc(p.altBefore)}" loading="lazy" decoding="async" /><img src="images/ba-${p.slug}-after-760.webp" alt="${esc(p.altAfter)}" loading="lazy" decoding="async" /></span><figcaption><b>${esc(j.vehicle ?? p.caption)}</b>${j.note ? ` ${esc(j.note)}` : ""}${j.comment ? `<q>${esc(j.comment)}</q>` : ""}</figcaption></figure>`; }).join("\n")}
     </div>
   </div>
 </section>
@@ -111,14 +131,18 @@ ${loc.reviews.map((r) => { const x = reviews.reviews.find((y) => y.author === r.
     JSONLD: JSON.stringify(jsonld, null, 2),
     NAME: esc(loc.name), EYEBROW: esc(loc.eyebrow ?? `Mobile detailing in ${loc.name}`),
     H1: esc(loc.h1), SUB: esc(loc.sub), CTA: esc(loc.cta), CTA_ATTRS: ctaAttrs,
-    RATING: `Rated ${Number(reviews.rating).toFixed(1)} from ${reviews.count} reviews on Google`,
-    TRUST: (loc.trust ?? ["UC student-owned and operated", "We come to your driveway or office", "See your exact price before you book", "Pay on site once your detail is complete"]).map(li).join("\n"),
-    LOCAL_H2: esc(loc.localH2 ?? `Why ${loc.name} drivers book us`),
+    RATING: `${Number(reviews.rating).toFixed(1)} on Google (${reviews.count} reviews)`,
+    TRUST: (loc.trust ?? ["UC student-owned", "We come to you", "Pay when it's done"]).map((t) => `          <li>${esc(t)}</li>`).join("\n"),
+    HERO_SRC: esc(loc.hero.src), HERO_ALT: esc(loc.hero.alt), HERO_CAPTION: esc(loc.hero.caption ?? ""),
+    WHAT_H2: esc(loc.whatH2 ?? "What we do there"),
+    MAP: esc(JSON.stringify({ center: loc.map.center, radiusMiles: loc.map.radiusMiles,
+      zips: loc.zips.map((z) => { const g = zipGeo(z) ?? (loc.map.zips ?? {})[z]; return g ? { zip: z, lat: g.lat, lon: g.lon } : null; }).filter(Boolean) })),
+    LOCAL_H2: esc(loc.localH2 ?? `Why ${loc.name} drivers trust 513 Auto Clean`),
     LOCAL_P: loc.localParagraph.split(/\n\n+/).map((p) => `      <p>${esc(p)}</p>`).join("\n"),
     HIGHLIGHTS: (loc.highlights ?? []).map(li).join("\n"),
-    AREAS_H2: esc(loc.areasH2 ?? `Where we detail around ${loc.name}`),
-    NEIGHBORHOODS: loc.neighborhoods.map(li).join("\n"),
-    ZIPS: loc.zips.map(li).join("\n"),
+    AREAS_H2: esc(loc.areasH2 ?? `Proudly serving all of ${loc.name} and nearby`),
+    NEIGHBORHOODS: loc.neighborhoods.map((t) => `          <li>${esc(t)}</li>`).join("\n"),
+    ZIPS: loc.zips.map((t) => `          <li>${esc(t)}</li>`).join("\n"),
     NEARBY: nearby.length ? `      <p class="loc-areas-l">Also nearby</p>\n      <ul class="loc-chips">\n${nearby.map((l) => `        <li><a href="${l.slug}">${esc(l.name)}</a></li>`).join("\n")}\n      </ul>` : "",
     JOBS: jobs, REVIEWS: revs,
     FAQ_H2: esc(loc.faqH2 ?? `${loc.name} questions`),

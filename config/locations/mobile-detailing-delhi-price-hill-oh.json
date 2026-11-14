@@ -1,5 +1,5 @@
 {
-  "_read_me": "City page (draft). Facts are sourced in docs/SEO-COMPLIANCE.md section 6. Before publishing (status: published): at least 2 West side jobs with photos (localJobs, gallery pair slugs) and 1 Google review from this area (reviews: author and date from data/reviews.json), confirmed by Elijah.",
+  "_read_me": "City page (draft). Facts: docs/SEO-COMPLIANCE.md section 6. Prices are {price:<package id>} tokens filled from the catalog. Before publishing: 2+ jobs from these ZIPs with photos (localJobs) and 1+ Google review from here (reviews), confirmed by Elijah (docs/ELIJAH-LOCAL-PROOF.md).",
   "status": "draft",
   "slug": "mobile-detailing-delhi-price-hill-oh",
   "name": "Delhi & Price Hill",
@@ -8,24 +8,32 @@
     "Price Hill, Cincinnati, OH"
   ],
   "title": "Mobile Detailing in Delhi & Price Hill, OH | 513 Auto Clean",
-  "meta": "Interior and exterior car detailing at your home or work in Delhi Township and Price Hill. See your price before you book, and pay once it's done.",
-  "h1": "Mobile car detailing in Delhi and Price Hill",
-  "sub": "A UC student-owned team that brings a full interior or exterior detail to your driveway in Delhi Township, East, West or Lower Price Hill, or to your workplace nearby.",
-  "cta": "Get your Delhi or Price Hill price",
+  "meta": "Mobile car detailing at your home or work in Delhi Township and Price Hill. Full Interiors from {price:full-interior}. See your price first, pay when it's done.",
+  "eyebrow": "Delhi Township & Price Hill",
+  "h1": "Mobile auto detailing in Delhi & Price Hill, OH",
+  "sub": "We're a UC student-owned crew. We drive to your house or job on the west side and detail your car right there. Full Interiors from {price:full-interior}.",
+  "cta": "Get an instant Delhi quote",
   "book": {
     "intent": "interior"
   },
-  "localParagraph": "Delhi Township runs from the ridge down to the Ohio River, and Price Hill sits on the hill above it, so a lot of driving here is up and down: Delhi Road past Mount St. Joseph University, Rapid Run Road, Glenway Avenue, and River Road, where U.S. 50 carries heavy truck traffic along the water. Cars that do those trips every day collect grit in the floor mats and dust in the vents faster than most.\n\nWe come to you instead. Park in your driveway in Delhi Hills or Delshire, on your street in East or West Price Hill, or at work, and we detail the car where it sits while you get on with your day. You see your exact price, travel and tax included, before you book, and you pay on site once the detail is done.",
+  "hero": {
+    "src": "images/ba-third-row-seat-stains-after-1120.webp",
+    "alt": "A third-row seat after stain treatment",
+    "caption": "A recent stain treatment on the west side"
+  },
+  "localParagraph": "Delhi runs downhill from Delhi Road to the Ohio River, and Price Hill sits on the hill above it. That's a lot of in and out of the car: Glenway Avenue, Rapid Run Road, Anderson Ferry, and River Road, where U.S. 50 carries heavy truck traffic along the water. Most of what we clean out here is the inside: mats, carpet, car seats, dog hair and whatever has collected under the front seats.\n\nYou don't drive anywhere. Book online, see the full price with travel and tax before you confirm, and we show up at your driveway in Delhi Hills or Delshire, your street in West Price Hill, or your work parking lot. You get on with your day, and you pay when it's done.",
+  "whatH2": "What we do at your house",
   "highlights": [
-    "Full Interior and Full Interior + Steam for family cars, SUVs and minivans",
-    "Stain, spill and odor treatment for seats and carpet",
-    "Exterior washes, decontamination and protection in the warmer months",
-    "Detailing at your home, or at your workplace while you work"
+    "Full Interior + Steam, from {price:full-steam-interior}: the deep clean, then every surface steamed",
+    "Full Interior, from {price:full-interior}: seats and carpet shampooed, mats washed, leather conditioned",
+    "Basic Interior, from {price:basic-interior}: a thorough vacuum and wipe-down between deep cleans",
+    "Stain, spill and odor treatments, priced before we start"
   ],
   "neighborhoods": [
     "Delhi Hills",
     "Delshire",
     "Mount St. Joseph",
+    "Sayler Park",
     "East Price Hill",
     "West Price Hill",
     "Lower Price Hill",
@@ -38,6 +46,23 @@
     "45205",
     "45204"
   ],
+  "map": {
+    "center": [
+      39.104,
+      -84.6
+    ],
+    "radiusMiles": 3.3,
+    "zips": {
+      "45205": {
+        "lat": 39.11,
+        "lon": -84.574
+      },
+      "45204": {
+        "lat": 39.094,
+        "lon": -84.567
+      }
+    }
+  },
   "nearby": [
     "mobile-detailing-indian-hill-madeira-oh"
   ],
@@ -45,16 +70,16 @@
   "reviews": [],
   "faq": [
     {
-      "q": "Do you come down to the river side of Delhi, along River Road?",
-      "a": "Yes. We detail anywhere in Delhi Township, from the ridge neighborhoods down to the homes along River Road and Anderson Ferry Road, as long as there is room to park beside the car and work around it."
+      "q": "Do you come down to River Road and Sayler Park?",
+      "a": "Yes. Anywhere in Delhi Township and Price Hill, river side included. We just need room to park next to your car and walk around it."
     },
     {
-      "q": "Can you detail my car at work in Price Hill or at Mount St. Joseph?",
-      "a": "Usually, yes. Many customers book us at their workplace. Let us know the parking lot and any rules about outside vendors, and we will work around your schedule there."
+      "q": "Can you do my car while I'm at work?",
+      "a": "Yes, if your lot allows it. A lot of our customers book us at work. Add a note about where the car is parked when you book."
     },
     {
-      "q": "How is travel to Delhi and Price Hill priced?",
-      "a": "Travel is worked out from your exact address when you book, and it is shown in your total, with tax, before you confirm. There is nothing added afterwards."
+      "q": "How much is travel to Delhi or Price Hill?",
+      "a": "It's based on the drive to your address and it's in your total, with tax, before you book. Nothing gets added after."
     }
   ]
 }
