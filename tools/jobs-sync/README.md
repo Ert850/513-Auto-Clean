@@ -1,4 +1,4 @@
-# JobsSync (updated November 12, 2026)
+# JobsSync (updated November 14, 2026)
 
 This is Elijah's `JobsSync.gs`, updated to match the way the website now writes bookings to
 Google Calendar. It still fills the same two tabs in the Accounting sheet, **Jobs (auto)** and
@@ -79,3 +79,66 @@ kept, and rows already in the sheet are matched by the same Event ID as before.
 ## Jobs longer than one day (November 13)
 
 The website now writes a job that runs over several days as one event per day. Day 1 is the booking as before, with the total. Days 2 and on are titled "Day 2 of 2, ..." (after the detailer's name, if any) and carry no total, so this script skips them and the job is counted once.
+
+## Cancelling a booking (November 14)
+
+**To cancel a booking, delete its event in Google Calendar.** Elijah or Kris, on either
+calendar, from the phone or the computer. Nothing to do in the sheet.
+
+On its next run (within the hour, or "513 Jobs", then "Sync jobs now") the script finds the
+row whose event is gone and sets its Status to **Cancelled**.
+
+- **The row stays** in Jobs (auto), for the record. It is never deleted.
+- **It leaves the totals.** Jobs by Area and Jobs by month count only rows whose Status is
+  Done, so a Cancelled row is out of both. If you built a sum of your own over the Total or
+  Pre-tax columns, make it count Done rows only, for example
+  `=SUMIFS('Jobs (auto)'!I:I, 'Jobs (auto)'!C:C, "Done")`.
+- **It stays Cancelled.** Later runs leave it alone and never add it again.
+- **Changed your mind?** Restore the event from the calendar's Trash (Google Calendar,
+  Settings, Trash). It comes back with the same ID, and the next run sets the row back to
+  Upcoming or Done.
+
+Deleting the event for a job that was really done also marks it Cancelled. Leave the events of
+finished jobs on the calendar.
+
+### What is safe
+
+The script only marks a row Cancelled when all of these hold, so a hiccup never cancels a job:
+
+- **Every calendar was read without an error** in this run. If one can't be read (sharing,
+  a wrong ID, a Google quota or outage), nothing is marked, and the Executions log says
+  "A calendar could not be read, so no rows were marked Cancelled this run."
+- **The script wrote the row**: it has an Event ID, a Last synced time and one of the calendar
+  names in `CALENDARS`. Rows you typed yourself are never touched.
+- **The row's date is inside the dates the script reads** (from January 1, 2026 to 60 days
+  ahead). Older or later rows are left alone.
+- **A direct look-up of that one event, on every calendar, says it is deleted or cancelled.**
+  An event moved to another date or to the other calendar is found and stays as it is. If the
+  look-up itself fails, the row is left for the next run.
+- **No more than 10 rows look deleted at once.** More than that usually means a wrong Calendar
+  ID, not ten cancellations, so none are marked and the log says how many. If you really did
+  cancel more than 10 in one go, raise `maxCancelsPerRun` near the top for one run.
+
+Rows already Duplicate keep that status.
+
+### Status values
+
+Today the script writes **Upcoming**, **Done**, **Cancelled** and **Duplicate**. The Status
+column is plain text, so it can hold the statuses planned for later (Booked, Completed, Paid,
+Cancelled), when revenue will count only once a job is done and paid. That isn't built yet:
+for now Done still means the event's end time has passed.
+
+### Updating to this version
+
+1. Open the Accounting sheet, then Extensions, then Apps Script.
+2. Copy Kris's Calendar ID from the `CALENDARS` list at the top of the old code first. Select
+   all of the old code, paste this `JobsSync.gs` over it, and put Kris's ID back in place of
+   `PASTE-KRIS-BOOKINGS-ID@group.calendar.google.com`. Save.
+3. In the function dropdown choose **syncJobs** and click **Run** once. Check Executions:
+   Completed, and no "could not be read" line.
+4. Nothing else changes: the Calendar API service and the hourly trigger stay as they are. No
+   new trigger and no new permission.
+
+The first run may mark rows whose events were deleted before this version (they had stayed
+Upcoming). If the log says more than 10 rows look deleted, look them over before raising
+`maxCancelsPerRun`.

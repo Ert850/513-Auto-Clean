@@ -14,6 +14,11 @@
  * duplicate. Two columns are yours: "Price override" and "Area override".
  * Type in them and the sync keeps what you typed.
  *
+ * Cancelling a booking = deleting its event in Google Calendar. The row stays,
+ * its Status becomes "Cancelled", and the totals leave it out. Only rows this
+ * script wrote are ever marked, and only after every calendar was read without
+ * an error and a direct look-up of the event confirms it is gone.
+ *
  * No customer phone numbers or emails are copied into the sheet.
  *
  * NEEDS the "Google Calendar API" advanced service (Services > + in the Apps
@@ -56,6 +61,9 @@ const CONFIG = {
   // DNS is blocked time. Whole word, as the website reads them.
   skipTitle: /^(open|best|dns|busy|blocked?|unavailable|availability|hold|personal)\b/i,
   cancelTitle: /\b(cancel+ed|cancel|no[- ]show|refunded)\b/i,
+  // More rows than this looking deleted in one run means something else is
+  // wrong (a wrong Calendar ID, say), so none are marked and the log says so.
+  maxCancelsPerRun: 10,
 };
 
 // The detailer named at the start of a title, after any SHORT NOTICE prefix:
@@ -120,7 +128,7 @@ function syncJobs() {
   const last = sheet.getLastRow();
   if (last > 1) {
     sheet.getRange(2, 1, last - 1, HEADERS.length).getValues().forEach(function (r, i) {
-      if (r[0]) existing[r[0]] = { row: i + 2, priceOv: r[12], areaOv: r[13] };
+      if (r[0]) existing[r[0]] = { row: i + 2, priceOv: r[12], areaOv: r[13], values: r };
     });
   }
 
@@ -131,9 +139,19 @@ function syncJobs() {
   const duplicates = [];
   const seenIds = {};          // the same event on two calendars
   const seenBookings = {};     // the website wrote the same booking twice (a retried submit)
+  const onCalendar = {};       // every live event the reads returned, under every ID a row may carry
+  const cals = calendars();
+  let allRead = cals.complete; // false if any calendar had no ID or failed to read
 
-  calendars().forEach(function (cal) {
-    listEvents(cal.id, CONFIG.startDate, end).forEach(function (ev) {
+  cals.forEach(function (cal) {
+    const events = listEvents(cal.id, CONFIG.startDate, end);
+    if (!events) { allRead = false; return; }
+    events.forEach(function (ev) {
+      if (ev.status !== 'cancelled') {
+        onCalendar[eventId(ev)] = true;
+        onCalendar[ev.id] = true;
+        if (ev.iCalUID) onCalendar[ev.iCalUID] = true;
+      }
       const row = jobRow(ev, cal, now);
       if (!row) return;
       const id = row[0];
@@ -156,8 +174,34 @@ function syncJobs() {
     });
   });
 
+  // Rows whose event was deleted (or set to cancelled): marked Cancelled, never removed.
+  const cancels = [];
+  if (allRead) {
+    const ctx = {
+      allRead: allRead,
+      onCalendar: onCalendar,
+      from: CONFIG.startDate,
+      to: end,
+      calendarNames: CALENDARS.map(function (c) { return c.name; }),
+    };
+    const candidates = Object.keys(existing).filter(function (id) {
+      return isCancelCandidate(existing[id].values, ctx);
+    });
+    if (candidates.length > CONFIG.maxCancelsPerRun) {
+      console.warn(candidates.length + ' rows look deleted from the calendars, more than ' +
+        CONFIG.maxCancelsPerRun + ', so none were marked Cancelled. Check the Calendar IDs at the top.');
+    } else {
+      candidates.forEach(function (id) {
+        if (eventGone(cals, id)) cancels.push(existing[id].row);
+      });
+    }
+  } else {
+    console.warn('A calendar could not be read, so no rows were marked Cancelled this run.');
+  }
+
   updates.forEach(function (u) { sheet.getRange(u.row, 1, 1, HEADERS.length).setValues([u.values]); });
   duplicates.forEach(function (r) { sheet.getRange(r, 3).setValue('Duplicate'); });
+  cancels.forEach(function (r) { sheet.getRange(r, 3).setValue('Cancelled'); });
   if (appends.length) sheet.getRange(sheet.getLastRow() + 1, 1, appends.length, HEADERS.length).setValues(appends);
   if (sheet.getLastRow() > 2) sheet.getRange(2, 1, sheet.getLastRow() - 1, HEADERS.length).sort({ column: 2, ascending: true });
   sheet.getRange('B:B').setNumberFormat('yyyy-mm-dd h:mm am/pm');
@@ -242,23 +286,35 @@ function buildAreaTab(ss) {
 
 /* ---------------- helpers ---------------- */
 
-/** The calendars in CALENDARS that this account can read, each with a real ID. */
+/**
+ * The calendars in CALENDARS that this account can read, each with a real ID.
+ * out.complete is false when one of them has no ID, so nothing is marked
+ * Cancelled from a partial set of calendars.
+ */
 function calendars() {
   const out = [];
+  out.complete = true;
   CALENDARS.forEach(function (c) {
     let id = /^PASTE-/.test(c.id) ? '' : c.id;
     if (!id && c.name) {
       const found = CalendarApp.getCalendarsByName(c.name);
       if (found.length) id = found[0].getId();
     }
-    if (!id) { console.warn('No calendar ID for "' + c.name + '": fill it in at the top of the script.'); return; }
+    if (!id) {
+      console.warn('No calendar ID for "' + c.name + '": fill it in at the top of the script.');
+      out.complete = false;
+      return;
+    }
     if (out.some(function (o) { return o.id === id; })) return;
     out.push({ id: id, name: c.name, detailer: c.detailer });
   });
   return out;
 }
 
-/** Every event in the window, recurring ones expanded, through the Calendar API. */
+/**
+ * Every event in the window, recurring ones expanded, through the Calendar API.
+ * null when the read failed: a failed read must never look like an empty calendar.
+ */
 function listEvents(calendarId, from, to) {
   const items = [];
   let pageToken;
@@ -276,10 +332,53 @@ function listEvents(calendarId, from, to) {
       pageToken = res.nextPageToken;
     } while (pageToken);
   } catch (err) {
-    // Not shared with this account, or a wrong ID. The other calendars still sync.
+    // Not shared with this account, a wrong ID, or a quota error. The other
+    // calendars still sync, but nothing is marked Cancelled this run.
     console.warn('Could not read calendar ' + calendarId + ': ' + err);
+    return null;
   }
   return items;
+}
+
+/**
+ * Whether a sheet row may have lost its event, and so gets the direct look-up
+ * in eventGone(). No Apps Script calls, so it can be tested on its own.
+ *   r    the row's values, in HEADERS order
+ *   ctx  { allRead, onCalendar, from, to, calendarNames }
+ */
+function isCancelCandidate(r, ctx) {
+  const id = r[0], date = r[1], status = r[2], calName = r[11], synced = r[14];
+  if (!ctx.allRead) return false;                                  // a read failed: decide nothing
+  if (!id || !synced || ctx.calendarNames.indexOf(calName) === -1) return false; // not written by this script
+  if (status === 'Cancelled' || status === 'Duplicate') return false;
+  if (!(date instanceof Date) || date < ctx.from || date >= ctx.to) return false; // outside the window read
+  return !ctx.onCalendar[id];
+}
+
+/**
+ * True only when every calendar answers, by a direct look-up, that the event
+ * is gone (deleted, or status "cancelled"). Found anywhere, or any error
+ * (permission, quota, network): false, and the row is left as it is.
+ */
+function eventGone(cals, key) {
+  if (!cals.length) return false;
+  try {
+    return cals.every(function (cal) {
+      // Row keys are iCalUIDs, or an event ID for one date of a repeating event.
+      const found = Calendar.Events.list(cal.id, { iCalUID: key, showDeleted: true, maxResults: 50 }).items || [];
+      if (found.length) return found.every(function (e) { return e.status === 'cancelled'; });
+      if (key.indexOf('@') !== -1) return true;   // an iCalUID no event carries; event IDs have no @
+      try {
+        return Calendar.Events.get(cal.id, key).status === 'cancelled';
+      } catch (err) {
+        if (/not found|404|410|deleted/i.test(String(err))) return true;
+        throw err;
+      }
+    });
+  } catch (err) {
+    console.warn('Could not check event ' + key + ': ' + err + '. Its row was left as it is.');
+    return false;
+  }
 }
 
 /**
