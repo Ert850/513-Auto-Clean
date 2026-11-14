@@ -1434,6 +1434,13 @@ From the live calendar (read only), the code, and your voice notes:
   - at 1440×900 the buttons start at 787 px, so their tops show;
   - at 1440×790 and on a phone (812) they start just under the first screen, because the longer headline takes three lines on a laptop and four on a phone.
 
+## eNov14: Book link words from config (Emmett, November 14)
+
+- **What:** `config/booking-page.json` `bookLinkParams` names the address words (`package`, `interest`, `intent`, `browse`).
+  - `web/lib/booking/bookLinks.ts` (`arrivalQuery`, `parseArrival`, `BOOK_INTENTS`) is the one table that `book-links.mjs`, `funnel.js` and the home buttons' check all use.
+  - The allowed intents are the catalog's own categories, and package or interest values must be real package ids.
+- **Checked:** renaming `intent` to `side` in the config changed every built link to `?side=…` and the form's reading of it. Tests: `bookLinks.test.ts`.
+
 ## Leftovers noticed, not touched
 
 - `book.css` still has `.bk-time`, `.bk-times`, `.bk-bucket` and `.bk-juston` rules from an older slot design. They were unused before tonight.

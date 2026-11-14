@@ -63,6 +63,7 @@ import {
 } from "./pricing/surcharge.js";
 import { quote } from "./pricing/quote.js";
 import { rushWindow } from "./pricing/rush.js";
+import { BOOK_LINK_PARAMS, BOOK_INTENTS, arrivalQuery, parseArrival } from "./booking/bookLinks.js";
 import {
   QUOTE_TTL_HOURS,
   decodeQuote,
@@ -184,6 +185,10 @@ const api = {
   earliestBookableDate,
   slotNeedsPriority,
   rushWindow,
+  BOOK_LINK_PARAMS,
+  BOOK_INTENTS,
+  arrivalQuery,
+  parseArrival,
   LEGAL,
   IN_PERSON,
   isLive,

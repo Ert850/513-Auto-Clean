@@ -32,6 +32,7 @@ import {
   MAX_ONE_WAY_MINUTES,
   packagesFor,
   unavailableReason,
+  BOOK_INTENTS,
 } from "../../netlify/functions/_pricing.mjs";
 import { contactCard, contactHead, loadContactForm, bookPageConsent } from "./contact-form.mjs";
 
@@ -564,7 +565,7 @@ for (const f of PAGES) fs.writeFileSync(path.join(root, f), pages[f]);
       attrs = `href="${esc(b.page)}"`;
     } else {
       const k = b.book ?? {};
-      if (k.intent && !["interior", "exterior"].includes(k.intent)) bad(`${where}.book.intent must be interior or exterior`);
+      if (k.intent && !BOOK_INTENTS.includes(k.intent)) bad(`${where}.book.intent must be one of ${BOOK_INTENTS.join(", ")}`);
       if (k.package && !findPackage(k.package)) bad(`${where}.book.package "${k.package}" is not a package`);
       if (k.interest && !findPackage(k.interest)) bad(`${where}.book.interest "${k.interest}" is not a package`);
       attrs = `href="book.html"` +
