@@ -1610,6 +1610,12 @@ An independent review found nothing that loses or duplicates a normal booking. I
 - **Approved:** test bookings on the preview, with the test events deleted afterwards.
 - **Rush-hour travel (fix 3):** kept for now, and asked of Elijah as question 17.
 
+## Overnight, November 15: the real form on the preview
+
+- **The taken-time path through the actual form:** a patched `fetch` sent another customer's booking with the form's own details just before Confirm. The server wrote theirs and refused ours with a 409. The form reopened Time with "Someone booked that time while you were deciding. These are the times still open." The taken Saturday 10am was not among the 5 times offered. No script errors. Screenshot: `docs/mockups/eNov14-preview-time-taken.png`. The other customer's test event was deleted.
+- **Kris's evening:** on Tuesday, November 17, 6pm, 6:30pm and 7pm read "Standard price", and 6pm carries the "Suggested" star. Only the fee starts from 8pm fold under "Later times". Screenshot: `docs/mockups/eNov14-preview-kris-tuesday.png`.
+- **Email logo broken on the preview:** expected. It points at the live site, where the image arrives with the same deploy.
+
 ## Leftovers noticed, not touched
 
 - `book.css` still has `.bk-time`, `.bk-times`, `.bk-bucket` and `.bk-juston` rules from an older slot design. They were unused before tonight.
