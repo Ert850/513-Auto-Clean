@@ -25,18 +25,28 @@ export function bookLinksSetting(cfg) {
   return v;
 }
 
+/**
+ * Every address that means "book" (review, November 14: the home hero's Book
+ * Now was a jump to the "Ready to book?" section, #quote, and the 404 page's
+ * was /#book, so matching book.html alone missed both). Audit by what a link
+ * SAYS (Book, booking) as well as where it points: book-links.test.ts does.
+ */
+const BOOK_HREF = /\bhref="(?:(?:\.\/)?book\.html|#quote|#book|\/#book|(?:\/|\.\/)?index\.html#book)"/;
+
 /** Rewrites one page's Book links to /book, keeping what each link carried. */
 export function routeBookLinks(html) {
   let n = 0;
-  const out = html.replace(/<a\b[^>]*\bhref="(?:\.\/)?book\.html"[^>]*>/g, (tag) => {
+  const out = html.replace(new RegExp(`<a\\b[^>]*${BOOK_HREF.source}[^>]*>`, "g"), (tag) => {
     n++;
     const pkg = /\bdata-book-package="([a-z0-9-]+)"/.exec(tag);
     const interest = /\bdata-book-interest="([a-z0-9-]+)"/.exec(tag);
     const browse = /\bdata-book-browse\b/.test(tag);
     const q = pkg ? `?package=${pkg[1]}` : interest ? `?interest=${interest[1]}` : browse ? "?browse=1" : "";
-    return tag.replace(/\bhref="(?:\.\/)?book\.html"/, `href="${BOOK_PAGE}${q}"`);
+    return tag.replace(BOOK_HREF, `href="${BOOK_PAGE}${q}"`);
   });
-  return { html: out, count: n };
+  // Marks the page, so an old address that opens the form here (/#book, the
+  // /book.html redirect, #schedule) is sent to /book instead (funnel.js).
+  return { html: n ? out.replace(/<html\b(?![^>]*data-book-links)/, '<html data-book-links="page"') : out, count: n };
 }
 
 /** Every published page but the booking page. Returns how many links moved. */

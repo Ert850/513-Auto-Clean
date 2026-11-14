@@ -8145,8 +8145,25 @@
       return;
     }
 
-    if (location.hash === '#book') open();
+    if (location.hash === '#book') {
+      if (toBookPage()) return;
+      open();
+    }
   }
+
+  /**
+   * Book links go to /book (config/booking-page.json bookLinks "page", marked
+   * on the page by the build): an old address that would open the form here
+   * (/#book, which /book.html redirects to, and #schedule) goes there too.
+   * Never on a card payment's return, which has to finish on this page.
+   */
+  function toBookPage() {
+    if (document.documentElement.getAttribute('data-book-links') !== 'page') return false;
+    if (/[?&](payment_intent|setup_intent|redirect_status)=/.test(location.search || '')) return false;
+    location.replace('/book');
+    return true;
+  }
+  window.ACToBookPage = toBookPage;
 
   window.ACFunnel = { open: open, close: close };
 

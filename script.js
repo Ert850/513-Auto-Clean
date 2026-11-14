@@ -224,6 +224,8 @@
   if (onHome && oldId && !document.getElementById(oldId) && (MOVED[oldId] || oldId === 'schedule')) {
     if (oldId === 'schedule') {
       history.replaceState(null, '', location.pathname + location.search + '#book');
+      // Book links go to /book (bookLinks "page"): this old address too.
+      if (window.ACToBookPage && window.ACToBookPage()) return;
       if (window.ACFunnel) window.ACFunnel.open();
     } else {
       var to = MOVED[oldId].split('#');
