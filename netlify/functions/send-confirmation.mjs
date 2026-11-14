@@ -1,5 +1,5 @@
-import { priceFromWire, validateWire, findPackage, findAddon, vehicleSize, isLive, ADVICE_HOLD_MIN, ARRIVAL_WINDOW_MIN, businessPhone, multiDayEvents, LONG_JOB_STARTS, CORRECTION_RULES } from "./_pricing.mjs";
-import { blockFeeFor, detailerFor, homeFor, timeFeeWaived } from "./_detailers.mjs";
+import { priceFromWire, validateWire, findPackage, findAddon, vehicleSize, isLive, ADVICE_HOLD_MIN, ARRIVAL_WINDOW_MIN, businessPhone, multiDayEvents, LONG_JOB_STARTS, CORRECTION_RULES, wireNeeds } from "./_pricing.mjs";
+import { blockFeeFor, detailerFor, homeFor, slotStatus, timeFeeWaived } from "./_detailers.mjs";
 import { createBookingEvent, findBookingEvent, gcalAuthMode, gcalConfigured } from "./_gcal.mjs";
 import { measuredOneWayMinutes } from "./_routes.mjs";
 import { limited } from "./_ratelimit.mjs";
@@ -182,7 +182,7 @@ function planDays({ cart, kind, minutes, measuredMin }) {
   });
 }
 
-export function customerEmail({ contact, when, priced, kind, slot, cart, detailer, measured, textsOk, flex, asked, calendarOk = true }) {
+export function customerEmail({ contact, when, priced, kind, slot, cart, detailer, measured, textsOk, flex, asked, calendarOk = true, unchecked = false }) {
   const name = esc(String(contact.name || "").split(" ")[0] || "there");
 
   if (kind === "inquiry" || !when) {
@@ -222,7 +222,9 @@ ${receiptRows(priced)}`,
   // And only when the calendar write worked: a failed write leaves the time
   // sellable, so it is a request until Elijah puts it on by hand (final
   // review, November 13: it said "booked in" with nothing on the calendar).
-  const confirmed = isLive("liveCalendar") && !soon && calendarOk;
+  // Nor when the time could not be checked again just before it was written
+  // (calendar fix 1, November 14): it is held, but Elijah makes sure first.
+  const confirmed = isLive("liveCalendar") && !soon && calendarOk && !unchecked;
 
   /*
    * A HELD TIME WITH NO PRICE ON IT.
@@ -314,7 +316,7 @@ export function askedFor(prefer) {
   return [days.join(", "), prefer.flex === true ? "any start that day" : parts.join(", ")].filter(Boolean).join("; ");
 }
 
-function ownerEmail({ contact, when, priced, kind, cart, detailer, asked, notes, consent = {}, calendarFail = "" }) {
+function ownerEmail({ contact, when, priced, kind, cart, detailer, asked, notes, consent = {}, calendarFail = "", unchecked = "" }) {
   const a = cart?.address ?? {};
   const where = [a.line1, a.city, a.region, a.zip].filter(Boolean).join(", ");
   const soon = kind === "booking" && cart?.slot && cart.slot - Date.now() < 24 * 60 * 60 * 1000;
@@ -322,7 +324,7 @@ function ownerEmail({ contact, when, priced, kind, cart, detailer, asked, notes,
     subject:
       // "HELP ME DECIDE" first, because it is the one that needs something
       // from him before the day rather than just turning up.
-      `${calendarFail ? "NOT ON THE CALENDAR, " : ""}${kind === "advice" ? "HELP ME DECIDE" : kind === "inquiry" ? "REQUEST" : soon ? "SHORT NOTICE REQUEST" : "BOOKING"}, ${contact.name}, ` +
+      `${calendarFail ? "NOT ON THE CALENDAR, " : unchecked ? "CHECK THE TIME, " : ""}${kind === "advice" ? "HELP ME DECIDE" : kind === "inquiry" ? "REQUEST" : soon ? "SHORT NOTICE REQUEST" : "BOOKING"}, ${contact.name}, ` +
       `${kind === "advice" ? "no package yet" : $(priced?.totalCents ?? 0)}${when ? `, ${when}` : ""}`,
     // Elijah's inbox preview (November 13): price, job, date and time, place.
     html: ((title, inner) => SHELL(title, inner, [
@@ -337,6 +339,9 @@ function ownerEmail({ contact, when, priced, kind, cart, detailer, asked, notes,
         : kind === "inquiry" ? "New request" : soon ? "Short-notice request, not confirmed until you accept it" : "New booking",
       (calendarFail
         ? `<p style="margin:0 0 14px;padding:10px 12px;background:#fdecea;border-left:3px solid #c62828;color:#7f1d1d"><strong>NOT ON THE CALENDAR</strong> (${esc(calendarFail)}). The time is still open to other customers: add it by hand now.</p>`
+        : "") +
+      (unchecked
+        ? `<p style="margin:0 0 14px;padding:10px 12px;background:#fdf3e3;border-left:3px solid #f0a93f"><strong>CHECK THIS TIME:</strong> ${esc(unchecked)}. It is on the calendar. Make sure nothing else is booked then, and confirm it with them: their email says we will confirm.</p>`
         : "") +
       `<table style="width:100%;font-size:14px;border-collapse:collapse">
 <tr><td style="padding:4px 0;color:#5a6069;width:90px">Who</td><td style="padding:4px 0">${esc(contact.name)}<br>${esc(contact.phone)}${contact.email ? `<br>${esc(contact.email)}` : ""}</td></tr>
@@ -504,6 +509,21 @@ export function bookingEvents({ contact, cart, priced, extras, payInFull, kind, 
       });
 }
 
+/**
+ * The job the time check looks at, as the booking form builds it
+ * (verifySlot): the hours held, the drive of whoever has the time (else the
+ * form's flat 30 minutes), exterior work and correction.
+ */
+export function stillFreeJob({ cart, priced, kind, measuredMin }) {
+  return {
+    slotMs: cart.slot,
+    serviceMin: priced?.serviceDurationMin || ADVICE_HOLD_MIN,
+    driveMin: Number.isFinite(measuredMin) ? measuredMin : 30,
+    hasExterior: kind !== "advice" && wireNeeds(cart).includes("exterior"),
+    correction: (cart.vehicles ?? []).some((v) => Boolean(v.correction)),
+  };
+}
+
 async function writeCalendar({ contact, cart, priced, extras, payInFull, key, kind, detailer, measuredMin }) {
   if (!gcalConfigured()) return { ok: false, reason: "unconfigured" };
   if (!cart.slot) return { ok: false, reason: "no_slot" };
@@ -518,8 +538,24 @@ async function writeCalendar({ contact, cart, priced, extras, payInFull, key, ki
     const existing = await findBookingEvent({ key, calendarId, aroundMs: cart.slot }).catch(() => null);
     if (existing) return { ok: true, id: existing.id, duplicate: true };
   }
+  /*
+   * STILL FREE? (calendar fix 1, November 14.) The form checked a few
+   * minutes ago, but two people can pick the same time seconds apart, and a
+   * request edited by hand skips the form. So the calendar is read again here,
+   * after the retry check above (a retry's own event would read as a clash).
+   * Taken: nothing is written and no email goes out; the form says so and
+   * reopens Time. Unread: written, but as a time to check, never as
+   * confirmed. A paid booking is never turned away: it is written to check.
+   */
+  const st = await slotStatus(detailer, stillFreeJob({ cart, priced, kind, measuredMin }));
+  if (st.tight) console.log("still free: only with the form's drive", cart.slot);
+  if (st.status === "taken" && !payInFull) return { ok: false, reason: "taken", taken: true };
+  const unchecked = st.status === "unread"
+    ? "the calendar could not be read just before it was written, so it was not checked against the other jobs"
+    : st.status === "taken" ? "another job was booked at this time first, and they have already paid" : "";
   const first = await createBookingEvent({ ...events[0], key, phone, calendarId });
   if (!first.ok) return first;
+  if (unchecked) first.unchecked = unchecked;
   // Days 2 and on: their own key, so day 1 stays the one a follow-up finds.
   for (let i = 1; i < events.length; i++) {
     const r = await createBookingEvent({ ...events[i], key: key ? `${key}:day${i + 1}` : key, phone, calendarId });
@@ -647,11 +683,17 @@ export async function handler(event) {
   if (calendar.duplicate) {
     return json(200, { sent: false, duplicate: true, calendar: calendarOut });
   }
+  // Someone else has the time now: no event, no emails. The form reopens
+  // Time with the times still open (js/funnel.js record).
+  if (calendar.taken) {
+    return json(409, { error: "slot_taken", taken: true });
+  }
   if (!apiKey) {
     return json(200, { sent: false, reason: "unconfigured", calendar: calendarOut });
   }
   ctx.calendarOk = kind === "inquiry" || calendar.ok === true;
   ctx.calendarFail = kind === "inquiry" || calendar.ok ? "" : String(calendar.reason || "write failed");
+  ctx.unchecked = calendar.unchecked || "";
 
   // Elijah's copy first. If only one of the two can get through, it has to be
   // the one that means the job happens.

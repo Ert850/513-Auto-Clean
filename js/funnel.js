@@ -1579,70 +1579,27 @@
     // Nothing authoritative to check against, so nothing to contradict.
     if (!P.calendarConfigured(cfg)) return Promise.resolve(true);
 
-    var dur = holdMinutes();
-    var dayStart = new Date(slot);
-    dayStart.setHours(0, 0, 0, 0);
-    var from = dayStart.getTime() - DAY;
-    var to = dayStart.getTime() + 2 * DAY;
-    var myDrive = driveFor(who.id);
-    var buffer = P.travelBufferMin(myDrive);
-
-    // A job past one day's work was offered by the multi-day search, so it
-    // is checked by the same search (paintMultiDay): the slot search below
-    // can never fit it and refused every one as taken (review, November 13).
-    var drive = travelAllowanceMin();
-    if (!P.fitsOneDay(dur, P.LONGEST_DAY, drive, drive)) {
-      var corr = hasCorrection();
-      var plan = P.planDays({
-        serviceMinutes: dur,
-        travelBeforeMin: drive,
-        travelAfterMin: drive,
-        preferredStartsMin: corr ? P.CORRECTION_RULES.allowedStartsMin : P.LONG_JOB_STARTS
-      });
-      if (!plan.ok) return Promise.resolve(true);
-      return P.loadWindow(cfg, from, dayStart.getTime() + (plan.totalDays + 1) * DAY)
-        .then(function (win) {
-          var ok = P.multiDayStillFits({
-            plan: plan,
-            startMs: slot,
-            openBlocks: win.open,
-            busy: win.busy || [],
-            allowedWeekdays: corr ? [0, 6] : undefined
-          });
-          if (ok) lastFreeCheck = Date.now();
-          return ok;
-        })
-        .catch(function () { return true; });
-    }
-
+    // The same check the server runs before it writes the job
+    // (P.slotStillFree, calendar fix 1), over Cincinnati days.
+    var job = {
+      slotMs: slot,
+      serviceMin: holdMinutes(),
+      driveMin: driveFor(who.id),
+      hasExterior: hasExterior(),
+      correction: hasCorrection(),
+      arrivalWindowMin: who.arrivalWindowMin
+    };
+    var range = P.checkRange(job);
+    if (!range) return Promise.resolve(true);
     var personal = who.owner ? personalBusy() : Promise.resolve([]);
-    return Promise.all([P.loadWindow(cfg, from, to), personal])
+    return Promise.all([P.loadWindow(cfg, range.from, range.to), personal])
       .then(function (both) {
         var win = both[0];
-        var late = new Map();
-        var slots = P.computeSlots({
-          lateBy: late,
-          openBlocks: win.open,
-          busy: (win.busy || []).concat(both[1]),
-          serviceDurationMin: dur,
-          travelBeforeMin: buffer,
-          travelAfterMin: buffer,
-          granularityMin: 30,
-          notBefore: from,
-          notAfter: to,
-          hasExterior: hasExterior(),
-          ignoreReturnAfterMin: P.IGNORE_RETURN_AFTER_MIN,
-          ignoreOutboundBeforeMin:
-            myDrive <= 60 ? P.IGNORE_OUTBOUND_BEFORE_MIN : undefined,
-          arrivalWindowMin: who.arrivalWindowMin
-        });
-        // To the minute, not the millisecond: the grid is rebuilt from a
-        // different `now` and need not land on the same instant.
-        var hit = slots.filter(function (ms) { return Math.abs(ms - slot) < 60000; })[0];
+        var res = P.slotStillFree(job, { open: win.open, busy: (win.busy || []).concat(both[1]) });
         // The planned arrival from the calendar as it is now, for the event's end.
-        if (hit !== undefined && state.slot === slot) state.slotLateMin = late.get(hit) || 0;
-        if (hit !== undefined) lastFreeCheck = Date.now();
-        return hit !== undefined;
+        if (res.free && state.slot === slot) state.slotLateMin = res.lateMin;
+        if (res.free) lastFreeCheck = Date.now();
+        return res.free;
       })
       .catch(function () { return true; });
   }
@@ -7019,17 +6976,21 @@
   /**
    * The confirmation email, to the customer and to Elijah.
    *
-   * Fire and forget, deliberately. Web3Forms below is the path that must not
-   * fail, and until today it was the ONLY email in the system: the customer
-   * filled in nine screens and got nothing. An email problem is never the
-   * customer's problem, so nothing here can reject, delay or be waited on.
+   * Web3Forms below is the path that must not fail, and until today it was
+   * the ONLY email in the system: the customer filled in nine screens and got
+   * nothing. An email problem is never the customer's problem, so nothing
+   * here can reject. It IS waited on now, but only for its one answer that
+   * matters (calendar fix 1, November 14): the server read the calendar again
+   * and someone else has the time (409). Anything else, or no answer within
+   * CONFIRM_WAIT_MS, and the booking goes on exactly as before.
    *
    * Ids only. The server reprices the whole thing, so the receipt that lands
    * in an inbox is its arithmetic rather than the browser's.
    */
+  var CONFIRM_WAIT_MS = 15000;
   function sendConfirmation() {
     try {
-      fetch('/api/send-confirmation', {
+      var sent = fetch('/api/send-confirmation', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -7052,16 +7013,34 @@
           // The early or late fee shown, used by the server only if it cannot read the calendar.
           timeFeeBp: shownTimeFeeBp()
         })
-      }).catch(function () {});
+      })
+        .then(function (r) { return { taken: r.status === 409 }; })
+        .catch(function () { return { taken: false }; });
+      // Never aborted: the server may still be writing the job.
+      var waited = new Promise(function (ok) { setTimeout(function () { ok({ taken: false }); }, CONFIRM_WAIT_MS); });
+      return Promise.race([sent, waited]);
     } catch (e) { /* an email must never cost us a booking */ }
+    return Promise.resolve({ taken: false });
   }
 
   function record() {
     var quote = q();
     var msg = root.querySelector('#bkMsg');
 
-    sendConfirmation();
+    sendConfirmation().then(function (res) {
+      if (!res.taken) return sendRecord(quote, msg);
+      // The server found the time booked by someone else since it was checked:
+      // nothing was written or sent. Back to Time, with the times still open.
+      state.sending = false;
+      el('bkNext').disabled = false;
+      track('time_taken_at_confirm', {});
+      dropSlot('Someone booked that time while you were deciding. These are the times still open.');
+      render();
+    });
+  }
 
+  /** The booking to Elijah through Web3Forms, then Done. */
+  function sendRecord(quote, msg) {
     var body = buildSummary(quote);
     var fd = new FormData();
     fd.append('access_key', WEB3FORMS_KEY);

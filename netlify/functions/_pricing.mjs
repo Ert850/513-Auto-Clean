@@ -1081,6 +1081,7 @@ function rushWindow(b, nowMs, s = RUSH_SETTINGS, timeZone = "America/New_York") 
 }
 
 // lib/availability/slots.ts
+var ZONE = "America/New_York";
 var DEFAULT_BOOKING_WINDOW = {
   earliestStartMin: 6 * 60,
   // 10pm. Which does NOT mean any job can start at 10pm: serviceEndByMin
@@ -1095,6 +1096,90 @@ var DEFAULT_BOOKING_WINDOW = {
 };
 var IGNORE_RETURN_AFTER_MIN = 18 * 60;
 var IGNORE_OUTBOUND_BEFORE_MIN = 10 * 60;
+var TRAVEL_FITS_IN_HOUR_MIN = 45;
+function travelBufferMin(oneWayMinutes) {
+  const drive = Number.isFinite(oneWayMinutes) ? Math.max(0, oneWayMinutes) : 0;
+  return drive <= TRAVEL_FITS_IN_HOUR_MIN ? 60 : drive + 15;
+}
+var MIN = 6e4;
+function mergeIntervals(list) {
+  if (list.length === 0) return [];
+  const sorted = [...list].sort((a, b) => a.start - b.start);
+  const out = [{ ...sorted[0] }];
+  for (let i = 1; i < sorted.length; i++) {
+    const cur = sorted[i];
+    const last = out[out.length - 1];
+    if (cur.start <= last.end) last.end = Math.max(last.end, cur.end);
+    else out.push({ ...cur });
+  }
+  return out;
+}
+function subtractIntervals(open, busy) {
+  const merged = mergeIntervals(busy);
+  let free = mergeIntervals(open);
+  for (const b of merged) {
+    const next = [];
+    for (const f of free) {
+      if (b.end <= f.start || b.start >= f.end) {
+        next.push(f);
+        continue;
+      }
+      if (b.start > f.start) next.push({ start: f.start, end: b.start });
+      if (b.end < f.end) next.push({ start: b.end, end: f.end });
+    }
+    free = next;
+  }
+  return free;
+}
+function computeSlots(req) {
+  const commitmentMs = (req.travelBeforeMin + req.serviceDurationMin + req.travelAfterMin) * MIN;
+  if (commitmentMs <= 0) return [];
+  const free = subtractIntervals(req.openBlocks, req.busy);
+  const stretches = mergeIntervals(req.openBlocks);
+  const dayOpens = new Set(stretches.map((b) => b.start));
+  const dayCloses = new Set(stretches.map((b) => b.end));
+  const step = Math.max(1, req.granularityMin) * MIN;
+  const out = [];
+  const wanted = req.preferredStartsMin;
+  const win = req.bookingWindow ?? DEFAULT_BOOKING_WINDOW;
+  for (const f of free) {
+    const outboundFree = (start) => req.ignoreOutboundBeforeMin !== void 0 && // This free interval has to BEGIN where availability begins. A gap that
+    // opens at 9am because a job finished is not the start of the day, and
+    // the drive to the next customer genuinely does have to fit in it:
+    // without this check, two jobs could be booked back to back with no
+    // time to drive between them.
+    dayOpens.has(f.start) && // Not straight after other work: a separate OPEN block or a job that
+    // ends less than a drive before this stretch opens (review, November
+    // 14) means the detailer is driving from there, inside the day.
+    !stretches.some((b) => b.end < f.start && b.end > f.start - req.travelBeforeMin * MIN) && !req.busy.some((b) => b.end <= f.start && b.end > f.start - req.travelBeforeMin * MIN) && // And only for a start the drive could not have fitted in front of.
+    // 7am with an hour's drive fits inside a 6am opening on its own.
+    start - f.start < req.travelBeforeMin * MIN;
+    const slack = Math.max(0, req.arrivalWindowMin ?? 0) * MIN;
+    const earliest = outboundFree(ceilTo(Math.max(f.start, req.notBefore), step)) ? Math.max(f.start, req.notBefore) : Math.max(f.start + req.travelBeforeMin * MIN - slack, f.start, req.notBefore);
+    let t = ceilTo(earliest, step);
+    while (true) {
+      const arrival = outboundFree(t) ? t : Math.max(t, f.start + req.travelBeforeMin * MIN);
+      const late = arrival - t;
+      const returnMin = req.ignoreReturnAfterMin !== void 0 && dayCloses.has(f.end) && localMinutesOfDay(t, req.timeZone) >= req.ignoreReturnAfterMin ? 0 : req.travelAfterMin;
+      const commitmentEnd = arrival + (req.serviceDurationMin + returnMin) * MIN;
+      if (arrival + req.serviceDurationMin * MIN > f.end) break;
+      if (commitmentEnd > f.end) {
+        t += step;
+        continue;
+      }
+      if (t > req.notAfter) break;
+      if (late <= slack && (!req.allowedWeekdays || req.allowedWeekdays.includes(localWeekday(t, req.timeZone ?? ZONE))) && withinBookingWindow(t, req.serviceDurationMin + late / MIN, win, req.timeZone, req.hasExterior) && matchesPreferred(t, wanted, req.timeZone)) {
+        out.push(t);
+        if (req.lateBy && late > 0) req.lateBy.set(t, late / MIN);
+      }
+      t += step;
+    }
+  }
+  return out.sort((a, b) => a - b);
+}
+function ceilTo(ms, step) {
+  return Math.ceil(ms / step) * step;
+}
 var ARRIVAL_WINDOW_MIN = 60;
 var TIME_BANDS = [
   {
@@ -1137,6 +1222,21 @@ var TIME_BANDS = [
     range: "6pm to 10pm"
   }
 ];
+function withinBookingWindow(ms, serviceDurationMin, win, timeZone, hasExterior) {
+  const startMin = localMinutesOfDay(ms, timeZone);
+  if (startMin < win.earliestStartMin || startMin > win.latestStartMin) return false;
+  if (hasExterior && win.latestExteriorStartMin !== void 0 && startMin > win.latestExteriorStartMin) {
+    return false;
+  }
+  return startMin + serviceDurationMin <= win.serviceEndByMin;
+}
+function matchesPreferred(ms, wanted, timeZone) {
+  if (!wanted) return true;
+  const mins = localMinutesOfDay(ms, timeZone);
+  const day = localWeekday(ms, timeZone ?? ZONE);
+  const list = day === 0 || day === 6 ? wanted.weekend : wanted.weekday;
+  return list.includes(mins);
+}
 function localMinutesOfDay(ms, timeZone = "America/New_York") {
   const parts = new Intl.DateTimeFormat("en-US", {
     timeZone,
@@ -2919,6 +3019,56 @@ function planDays(req) {
     longestDoorToDoorMin: longestDoorToDoor
   };
 }
+var OUTBOUND_BEFORE_DAY_MAX_MIN = 60;
+var covered = (block, open) => mergeIntervals(open).some((o) => o.start <= block.start && o.end >= block.end);
+var clashes = (block, busy) => busy.some((b) => b.start < block.end && b.end > block.start);
+function findMultiDayStarts(req) {
+  const tz = req.timeZone ?? "America/New_York";
+  const limit = req.limit ?? 12;
+  const out = [];
+  let cursor = localDayStart(req.notBefore, tz);
+  for (let guard = 0; guard < 400 && cursor <= req.notAfter && out.length < limit; guard++) {
+    const nextDay = localTimeOnDay(cursor, 1, 0, tz);
+    if (req.allowedWeekdays && req.plan.days.some((d) => !req.allowedWeekdays.includes(localWeekday(localTimeOnDay(cursor, d.index, 12 * 60, tz), tz)))) {
+      cursor = nextDay;
+      continue;
+    }
+    const blocks = [];
+    const days = [];
+    let fits = true;
+    for (const day of req.plan.days) {
+      const block = {
+        start: localTimeOnDay(cursor, day.index, day.blockStartMin, tz),
+        end: localTimeOnDay(cursor, day.index, day.blockEndMin, tz)
+      };
+      const outbound = day.startMin - day.blockStartMin;
+      const work = {
+        start: localTimeOnDay(cursor, day.index, day.startMin - (outbound > OUTBOUND_BEFORE_DAY_MAX_MIN ? outbound : 0), tz),
+        end: localTimeOnDay(cursor, day.index, day.endMin, tz)
+      };
+      if (block.start < req.notBefore || !covered(work, req.openBlocks) || clashes(block, req.busy)) {
+        fits = false;
+        break;
+      }
+      blocks.push(block);
+      days.push({
+        startMs: localTimeOnDay(cursor, day.index, day.startMin, tz),
+        endMs: localTimeOnDay(cursor, day.index, day.endMin, tz),
+        workMin: day.workMin
+      });
+    }
+    if (fits && days.length === req.plan.days.length) {
+      out.push({ startMs: days[0].startMs, days, blocks });
+    }
+    cursor = nextDay;
+  }
+  return out;
+}
+function multiDayStillFits(req) {
+  const tz = req.timeZone ?? "America/New_York";
+  const day0 = localDayStart(req.startMs, tz);
+  return findMultiDayStarts({ ...req, notBefore: day0, notAfter: day0 + 1, limit: 1 }).some((o) => Math.abs(o.startMs - req.startMs) < 6e4);
+}
 function multiDayEvents(req) {
   const tz = req.timeZone ?? "America/New_York";
   if (fitsOneDay(req.serviceMinutes, LONGEST_DAY, req.travelMin, req.travelMin)) return null;
@@ -2934,6 +3084,60 @@ function multiDayEvents(req) {
     const start = d.index === 0 ? req.slotMs : localTimeOnDay(day0, d.index, d.startMin, tz);
     return { startMs: start, endMs: start + d.workMin * 6e4 };
   });
+}
+
+// lib/availability/stillFree.ts
+var ZONE2 = "America/New_York";
+var DAY2 = 864e5;
+function multiDayPlan(job) {
+  if (fitsOneDay(job.serviceMin, LONGEST_DAY, job.driveMin, job.driveMin)) return null;
+  const plan = planDays({
+    serviceMinutes: job.serviceMin,
+    travelBeforeMin: job.driveMin,
+    travelAfterMin: job.driveMin,
+    preferredStartsMin: job.correction ? CORRECTION_RULES.allowedStartsMin : LONG_JOB_STARTS
+  });
+  return plan.ok ? plan : void 0;
+}
+function checkRange(job) {
+  const day0 = localDayStart(job.slotMs, ZONE2);
+  const plan = multiDayPlan(job);
+  if (plan === void 0) return null;
+  return { from: day0 - DAY2, to: day0 + ((plan ? plan.totalDays : 1) + 1) * DAY2 };
+}
+function slotStillFree(job, win) {
+  const range = checkRange(job);
+  if (!range) return { free: true, lateMin: 0 };
+  const plan = multiDayPlan(job);
+  if (plan) {
+    const free = multiDayStillFits({
+      plan,
+      startMs: job.slotMs,
+      openBlocks: win.open,
+      busy: win.busy,
+      allowedWeekdays: job.correction ? [0, 6] : void 0
+    });
+    return { free, lateMin: 0 };
+  }
+  const buffer = travelBufferMin(job.driveMin);
+  const late = /* @__PURE__ */ new Map();
+  const slots = computeSlots({
+    lateBy: late,
+    openBlocks: win.open,
+    busy: win.busy,
+    serviceDurationMin: job.serviceMin,
+    travelBeforeMin: buffer,
+    travelAfterMin: buffer,
+    granularityMin: 30,
+    notBefore: range.from,
+    notAfter: range.to,
+    hasExterior: job.hasExterior,
+    ignoreReturnAfterMin: IGNORE_RETURN_AFTER_MIN,
+    ignoreOutboundBeforeMin: job.driveMin <= 60 ? IGNORE_OUTBOUND_BEFORE_MIN : void 0,
+    arrivalWindowMin: job.arrivalWindowMin
+  });
+  const hit = slots.find((ms) => Math.abs(ms - job.slotMs) < 6e4);
+  return { free: hit !== void 0, lateMin: hit !== void 0 ? late.get(hit) ?? 0 : 0 };
 }
 
 // ../config/business.json
@@ -3312,6 +3516,7 @@ export {
   businessPhone,
   canDo,
   cancellationLadder,
+  checkRange,
   componentsOf,
   copyFor,
   driveTooFar,
@@ -3335,6 +3540,7 @@ export {
   parsePhone,
   phoneTrace,
   priceFromWire,
+  slotStillFree,
   swapPhone,
   tierPriceFor,
   unavailableReason,

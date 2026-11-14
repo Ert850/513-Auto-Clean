@@ -68,31 +68,41 @@ export async function handler(event) {
    * 200 with an empty list, not an error. The funnel already treats "no
    * personal conflicts" as a normal answer, and this genuinely is one.
    */
+  const r = await readPersonal();
+  if (r.off) return json(200, { busy: [], off: true }, false);
+  if (r.error) return json(r.error === "unconfigured" ? 503 : 502, { error: r.error, ...(r.status ? { status: r.status } : {}) }, false);
+  return json(200, r.body, true);
+}
+
+/**
+ * The feed, read and blurred: { body } with the busy list, or { off: true },
+ * or { error }. Shared with send-confirmation, which checks Elijah's personal
+ * time again before it writes a job (calendar fix 1, November 14).
+ */
+export async function readPersonal() {
   if (/^(1|true|yes|on)$/i.test(String(process.env.PERSONAL_CALENDAR_OFF ?? "").trim())) {
-    return json(200, { busy: [], off: true }, false);
+    return { off: true };
   }
 
   const raw = process.env.PERSONAL_CALENDAR_ICS;
-  if (!raw) return json(503, { error: "unconfigured" }, false);
+  if (!raw) return { error: "unconfigured" };
 
   // webcal:// is just https:// wearing a hat, so accept either.
   const url = raw.replace(/^webcal:\/\//i, "https://");
 
   const now = Date.now();
-  if (cache && now - cache.at < CACHE_SECONDS * 1000) {
-    return json(200, cache.body, true);
-  }
+  if (cache && now - cache.at < CACHE_SECONDS * 1000) return { body: cache.body };
 
   try {
     const res = await fetch(url, {
       headers: { Accept: "text/calendar" },
       redirect: "follow",
     });
-    if (!res.ok) return json(502, { error: "feed_failed", status: res.status }, false);
+    if (!res.ok) return { error: "feed_failed", status: res.status };
 
     const text = await res.text();
     if (!text.includes("BEGIN:VCALENDAR")) {
-      return json(502, { error: "not_a_calendar" }, false);
+      return { error: "not_a_calendar" };
     }
 
     const busy = coarsen(
@@ -109,8 +119,8 @@ export async function handler(event) {
 
     const body = { busy, count: busy.length, windowDays: WINDOW_DAYS, grainMinutes: GRAIN_MS / 60_000, fetchedAt: now };
     cache = { at: now, body };
-    return json(200, body, true);
+    return { body };
   } catch {
-    return json(502, { error: "feed_error" }, false);
+    return { error: "feed_error" };
   }
 }
