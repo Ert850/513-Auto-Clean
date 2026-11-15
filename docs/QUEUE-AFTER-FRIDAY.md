@@ -196,7 +196,7 @@ Full reports are in that session; the screenshots are in the session scratchpad 
 - **Smaller:**
   - "Tap" on desktop: DONE November 15 (the privacy policy's "tap Book Now" stays until the next legal update);
   - the close dialog: DONE November 15 ("Discard this quote");
-  - the multi-vehicle saving wording: DONE November 15 (Emmett's words); the bar's struck figure is the multi-vehicle saving only, and "You saved" counts every discount: still to look at;
+  - the multi-vehicle saving wording and the two saving figures: DONE November 15 (Emmett's words; the bar and "You saved" now come from one no-discount price);
   - "10:00 AM" vs "10am": DONE November 15;
   - recommended-time labels: DONE November 15 ("This weekend");
   - the calendar opens on past days: DONE November 15;
