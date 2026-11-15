@@ -45,3 +45,34 @@ describe("city pages", () => {
     expect(overlap(localWords(one), localWords(two))).toBe(1);
   });
 });
+
+describe("city and service pages read like the rest of the site (Emmett, November 15)", () => {
+  const pages = [
+    ...locs.map((l: { slug: string }) => `${l.slug}.html`),
+    ...fs.readdirSync(path.join(root, "config/services")).filter((f) => f.endsWith(".json")).map((f) => f.replace(/\.json$/, ".html")),
+  ];
+  it("every Book button says Book Now, never a made-up 'Delhi quote'", () => {
+    for (const p of pages) {
+      const html = read(p);
+      const labels = [...html.matchAll(/<a class="btn btn-primary[^"]*" href="book\.html"[^>]*>([^<]*)/g)].map((m) => m[1]!.trim());
+      expect(labels.length, p).toBeGreaterThan(0);
+      for (const t of labels) expect(t, p).toBe("Book Now");
+      expect(html, p).not.toMatch(/instant [A-Za-z ]+ quote/i);
+    }
+  });
+  it("the hero is a labelled before/after pair, captioned without a place nobody checked", () => {
+    for (const p of pages) {
+      const hero = read(p).split('class="loc-hero-pic')[1]!.split("</figure>")[0]!;
+      expect(hero, p).toContain("-before-760.webp");
+      expect(hero, p).toContain("-after-760.webp");
+      expect(hero, p).toMatch(/>Before<.*>After</s);
+      expect(hero, p).not.toMatch(/west side|east side|northeast|recent/i);
+    }
+  });
+  it("no keyword-stuffed headings", () => {
+    for (const p of pages) {
+      expect(read(p), p).not.toMatch(/drivers trust 513 Auto Clean|Proudly serving/);
+      for (const m of read(p).matchAll(/<h2>([^<]*) questions<\/h2>/g)) expect(m[1], p).toBe("Common");
+    }
+  });
+});

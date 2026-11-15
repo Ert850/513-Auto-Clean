@@ -9,7 +9,6 @@
   "eyebrow": "Interior detailing",
   "h1": "Interior car detailing in Cincinnati, done in your driveway",
   "sub": "Seats, carpet, mats and every crack and crevice, cleaned at your house by our UC student-owned crew. Pick a level below and see your price before you book.",
-  "cta": "Get an instant interior quote",
   "book": {
     "intent": "interior"
   },
@@ -57,5 +56,10 @@
       "q": "Do I need to be home?",
       "a": "No, as long as we can get into the car. Plenty of customers leave us the keys and go about their day."
     }
+  ],
+  "proofServices": [
+    "full-interior",
+    "basic-interior",
+    "pet-hair"
   ]
 }

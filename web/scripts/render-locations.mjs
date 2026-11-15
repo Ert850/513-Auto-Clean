@@ -14,6 +14,7 @@
  *   few things that belong to this city alone; two pages whose own text
  *   overlaps more than MAX_OVERLAP (word 5-grams, Jaccard).
  */
+import { splitHero } from "./split-hero.mjs";
 import fs from "node:fs";
 import path from "node:path";
 import { root, loadLocations, pageFile, localWords, overlap, contained } from "./locations.mjs";
@@ -57,7 +58,7 @@ const need = (cond, loc, msg) => { if (!cond) problems.push(`${loc.file}: ${msg}
 
 for (const loc of locs) {
   need(/^[a-z0-9-]+$/.test(loc.slug ?? ""), loc, "slug must be lowercase letters, digits and dashes");
-  for (const k of ["name", "title", "meta", "h1", "sub", "localParagraph", "cta"]) need(typeof loc[k] === "string" && loc[k].trim(), loc, `${k} is missing`);
+  for (const k of ["name", "title", "meta", "h1", "sub", "localParagraph"]) need(typeof loc[k] === "string" && loc[k].trim(), loc, `${k} is missing`);
   need((loc.title ?? "").length <= LIMITS.title, loc, `title is ${loc.title?.length} characters (max ${LIMITS.title})`);
   need((loc.meta ?? "").length <= LIMITS.meta, loc, `meta is ${loc.meta?.length} characters (max ${LIMITS.meta})`);
   const words = (loc.localParagraph ?? "").split(/\s+/).filter(Boolean).length;
@@ -65,7 +66,8 @@ for (const loc of locs) {
   need(Array.isArray(loc.zips) && loc.zips.length && loc.zips.every((z) => /^\d{5}$/.test(z)), loc, "zips must be 5-digit ZIP codes");
   need(Array.isArray(loc.neighborhoods) && loc.neighborhoods.length >= 3, loc, "list at least 3 neighborhoods");
   need(Array.isArray(loc.faq) && loc.faq.length >= 3, loc, "at least 3 FAQ answers written for this area");
-  need(loc.hero && typeof loc.hero.src === "string" && fs.existsSync(path.join(root, loc.hero.src)) && loc.hero.alt, loc, "hero needs a photo in images/ and its alt text");
+  // A before/after pair from the gallery, never a lone "after" (Emmett, November 15).
+  need(loc.hero && gallery.some((p) => p.slug === loc.hero.pair) && fs.existsSync(path.join(root, `images/ba-${loc.hero.pair}-before-760.webp`)), loc, "hero.pair must name a gallery before/after pair");
   need(loc.map && Array.isArray(loc.map.center) && loc.map.center.length === 2 && loc.map.radiusMiles > 0, loc, "map needs center [lat, lon] and radiusMiles");
   for (const j of loc.localJobs ?? []) need(gallery.some((p) => p.slug === j.pair), loc, `localJobs: no gallery pair "${j.pair}"`);
   for (const r of loc.reviews ?? []) need(reviews.reviews.some((x) => x.author === r.author && x.date === r.date), loc, `reviews: no review by ${r.author} on ${r.date}`);
@@ -130,22 +132,22 @@ ${loc.reviews.map((r) => { const x = reviews.reviews.find((y) => y.author === r.
     ROBOTS: live(loc) ? "" : '<meta name="robots" content="noindex" />\n',
     JSONLD: JSON.stringify(jsonld, null, 2),
     NAME: esc(loc.name), EYEBROW: esc(loc.eyebrow ?? `Mobile detailing in ${loc.name}`),
-    H1: esc(loc.h1), SUB: esc(loc.sub), CTA: esc(loc.cta), CTA_ATTRS: ctaAttrs,
+    H1: esc(loc.h1), SUB: esc(loc.sub), CTA_ATTRS: ctaAttrs,
     RATING: `${Number(reviews.rating).toFixed(1)} on Google (${reviews.count} reviews)`,
-    TRUST: (loc.trust ?? ["UC student-owned", "We come to you", "Pay when it's done"]).map((t) => `          <li>${esc(t)}</li>`).join("\n"),
-    HERO_SRC: esc(loc.hero.src), HERO_ALT: esc(loc.hero.alt), HERO_CAPTION: esc(loc.hero.caption ?? ""),
+    TRUST: (loc.trust ?? ["UC student-owned", "Pay when it's done"]).map((t) => `          <li>${esc(t)}</li>`).join("\n"),
+    HERO: splitHero(pair(loc.hero.pair)),
     WHAT_H2: esc(loc.whatH2 ?? "What we do there"),
     MAP: esc(JSON.stringify({ center: loc.map.center, radiusMiles: loc.map.radiusMiles,
       zips: loc.zips.map((z) => { const g = zipGeo(z) ?? (loc.map.zips ?? {})[z]; return g ? { zip: z, lat: g.lat, lon: g.lon } : null; }).filter(Boolean) })),
-    LOCAL_H2: esc(loc.localH2 ?? `Why ${loc.name} drivers trust 513 Auto Clean`),
+    LOCAL_H2: esc(loc.localH2 ?? "Where we set up"),
     LOCAL_P: loc.localParagraph.split(/\n\n+/).map((p) => `      <p>${esc(p)}</p>`).join("\n"),
     HIGHLIGHTS: (loc.highlights ?? []).map(li).join("\n"),
-    AREAS_H2: esc(loc.areasH2 ?? `Proudly serving all of ${loc.name} and nearby`),
+    AREAS_H2: esc(loc.areasH2 ?? "Where we go"),
     NEIGHBORHOODS: loc.neighborhoods.map((t) => `          <li>${esc(t)}</li>`).join("\n"),
     ZIPS: loc.zips.map((t) => `          <li>${esc(t)}</li>`).join("\n"),
     NEARBY: nearby.length ? `      <p class="loc-areas-l">Also nearby</p>\n      <ul class="loc-chips">\n${nearby.map((l) => `        <li><a href="${l.slug}">${esc(l.name)}</a></li>`).join("\n")}\n      </ul>` : "",
     JOBS: jobs, REVIEWS: revs,
-    FAQ_H2: esc(loc.faqH2 ?? `${loc.name} questions`),
+    FAQ_H2: esc(loc.faqH2 ?? "Common questions"),
     FAQ: loc.faq.map((q) => `    <details class="loc-q"><summary>${esc(q.q)}</summary><p>${esc(q.a)}</p></details>`).join("\n"),
   };
   let html = tpl.replace(/\{\{(\w+)\}\}/g, (m, k) => { if (!(k in fill)) throw new Error(`render-locations: no value for {{${k}}}`); return fill[k]; });

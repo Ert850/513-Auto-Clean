@@ -9,25 +9,22 @@
   ],
   "title": "Mobile Detailing in Indian Hill & Madeira | 513 Auto Clean",
   "meta": "We detail your car in your own driveway in Indian Hill and Madeira. Full Interior + Steam from {price:full-steam-interior}. Exact price first, pay when it's done.",
-  "eyebrow": "Indian Hill & Madeira",
-  "h1": "Mobile auto detailing in Indian Hill & Madeira, OH",
-  "sub": "We're a UC student-owned crew. We come to your home in Indian Hill or Madeira and detail your car in the driveway. Full Interior + Steam from {price:full-steam-interior}.",
-  "cta": "Get an instant Indian Hill quote",
+  "eyebrow": "Northeast Cincinnati",
+  "h1": "Mobile car detailing in Indian Hill and Madeira",
+  "sub": "We come to your home in Indian Hill or Madeira and detail your car in the driveway or the garage. You see the whole price, travel and tax included, before you book.",
   "book": {
     "package": "full-steam-interior"
   },
   "hero": {
-    "src": "images/ba-forester-front-floor-after-1120.webp",
-    "alt": "A Subaru Forester's front floor and mat after a Full Interior",
-    "caption": "A recent Full Interior on the northeast side"
+    "pair": "forester-front-floor"
   },
-  "localParagraph": "Indian Hill is a residential village, crossed by about 75 miles of bridle trails that the village maintains. Madeira centers on Miami Avenue and Camargo Road, with South Kenwood along its south side. In both, the car usually lives in a driveway or a garage, and that's the easiest place for us to work on it.\n\nWe bring everything with us. Book online, see the full price with travel and tax first, and we take care of the car while you're home, on a call, or out for the afternoon. Kids, dogs, sports gear and road trips all end up in the back seat, and that is what a Full Interior is for. If one needs to go as far as an interior can, ask about Showroom Ready Restoration.",
-  "whatH2": "What we do in your driveway",
+  "localParagraph": "Most homes here have a driveway or a garage, and either one is a good place for us to work. In a garage we can keep going through rain or hard sun, so tick the garage box when you book. If the house sits back from the road or there's a gate, add a note about where to park and how to get in. You don't need to be home, as long as we can get into the car.\n\nFamily cars take the hardest use. Car seats, dogs, sports gear and road trips all end up in the back. Full Interior + Steam is the one we'd pick for those. If a car needs to go as far as an interior can go, ask about Showroom Ready Restoration, which Elijah does himself.",
+  "whatH2": "What people book",
   "highlights": [
     "Full Interior + Steam, from {price:full-steam-interior}: our most popular detail",
-    "Showroom Ready Restoration: the interior taken as far as it goes, priced after we see the car",
-    "Exterior care, from {price:express-exterior}: a hand wash up to full decontamination and sealant",
-    "Nothing to drop off: driveway or garage, your choice"
+    "Full Interior, from {price:full-interior}: seats and carpet shampooed, mats washed, leather conditioned",
+    "Pet hair removal, {addon:pet-hair}, added to any interior",
+    "Showroom Ready Restoration, added to a Full Interior: the interior taken as far as it can go"
   ],
   "neighborhoods": [
     "Indian Hill",
@@ -53,16 +50,18 @@
   "reviews": [],
   "faq": [
     {
-      "q": "Can you work at a house with a long driveway?",
-      "a": "Yes. We only need a level spot next to the car. If the house sits far back from the road, tell us where to park when you book."
+      "q": "Can you work at a house with a long driveway or a gate?",
+      "a": "Yes. We need a level spot next to the car. If the house is far back from the road or gated, tell us where to park and how to get in when you book."
     },
     {
-      "q": "Do you come to downtown Madeira?",
-      "a": "Yes, to homes all over Madeira, and to workplaces where the parking allows it. Leave a note about the spot when you book."
+      "q": "Can you work inside my garage?",
+      "a": "Yes, and it's often the best spot, because rain and sun don't matter there. Leave room to open every door of the car."
     },
     {
       "q": "Is there a travel fee to Indian Hill?",
-      "a": "Travel is measured from your exact address and it's in your total, with tax, before you confirm. No surprise charges later."
+      "a": "Travel is worked out from the drive to your address, and it's in your total, with tax, before you confirm. No surprise charges later."
     }
-  ]
+  ],
+  "localH2": "In your driveway or garage",
+  "faqH2": "Common questions"
 }

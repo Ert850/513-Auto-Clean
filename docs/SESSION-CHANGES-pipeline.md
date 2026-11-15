@@ -1616,6 +1616,40 @@ An independent review found nothing that loses or duplicates a normal booking. I
 - **Kris's evening:** on Tuesday, November 17, 6pm, 6:30pm and 7pm read "Standard price", and 6pm carries the "Suggested" star. Only the fee starts from 8pm fold under "Later times". Screenshot: `docs/mockups/eNov14-preview-kris-tuesday.png`.
 - **Email logo broken on the preview:** expected. It points at the live site, where the image arrives with the same deploy.
 
+## eNov15: city and service pages rewritten after Emmett's review (November 15)
+
+**Emmett:** "Too direct. What are the buttons adding? The recent stain treatment doesn't have a before photo. What is a Delhi quote?"
+
+**Root cause:** the pages were written to the SEO checklist, not to a customer. The generators made that easy:
+- **Button text:** a free-text `cta` field on each page. Each page put its place name in it to look unique, so the button promised an "instant Delhi quote", which doesn't exist. The button opens the same booking form as every Book Now on the site.
+  - There were also four links to two places: the hero button, the end button, the end "See all packages", and the "Every package" link beside the packages.
+- **The hero photo:** a single image and a free-text caption. The city pages showed an "after" with no "before", captioned with a place ("on the west side", "on the northeast side") that nobody had checked. That breaks the owner rule that wording reflects reality.
+- **Proof photos:** service pages hand-picked their before/after pairs with no check that they showed that service. "Stains before and after" showed an interior reset and a console.
+- **Headings:** the defaults put the place name into every heading ("Why Delhi & Price Hill drivers trust 513 Auto Clean", "Proudly serving all of...", "Delhi & Price Hill questions").
+- **Local words:** with no local jobs or reviews from Elijah yet, they were filled with geography trivia (roads, river, truck traffic, bridle-trail mileage) to pass the duplicate-text check. That makes text unique, not useful.
+- **One untrue line:** Indian Hill said Showroom Ready Restoration is "priced after we see the car". The catalog has it at a fixed starting total.
+
+**Fix (two rounds):**
+- **Generators:**
+  - Every Book button reads "Book Now", typed in the templates, the same as the rest of the site. The `cta` field is gone. City pages end with one button; the packages link stays beside the packages.
+  - The hero is always a gallery before/after pair (`split-hero.mjs`, shared by both page types). The halves are labelled Before and After, and the caption is the gallery's own, with no place claimed. The build fails without a real pair.
+  - Service pages must list `proofServices`. Every hero and proof pair must carry one of those tags in `data/gallery.json`, and the hero isn't repeated in the proof row. The stain page now shows its one real stain pair and no proof row, until Elijah sends more.
+  - Default headings are plain: "Where we set up", "Where we go", "Common questions".
+- **Words:**
+  - Practical local detail instead of trivia: driveways in Delhi, street parking in Price Hill, garages and gates in Indian Hill.
+  - Elijah's voice (warm, plain).
+  - No location claims and no removal promises.
+  - H1s read "Mobile car detailing in Delhi and Price Hill".
+  - The eyebrows are the business's own area names (West side, Northeast).
+  - Trust pills don't repeat the opening sentence.
+- **Tests:** `locations.test.ts`, three new checks:
+  - every Book button says Book Now;
+  - every hero is a labelled pair with no place claim;
+  - no stuffed headings.
+  - 722 pass. No sideways scroll at 320, 375, 820 or 1440 px.
+- **Screenshots:** `docs/mockups/eNov15-seo-*`, before and after. All four pages are still drafts (`noindex`).
+- **Not touched, for Emmett:** the catalog wording that also shows on services.html. "Not included: A promise every stain comes out completely" on the package cards reads oddly, and the ozone line says it "destroys the compounds causing the smell".
+
 ## Leftovers noticed, not touched
 
 - `book.css` still has `.bk-time`, `.bk-times`, `.bk-bucket` and `.bk-juston` rules from an older slot design. They were unused before tonight.

@@ -1822,6 +1822,8 @@ main > .bookpage:first-child { padding-block: clamp(16px, 2.2vw, 30px); }
    They share the city pages' parts (loc-*); these are only what's new. */
 .svp-split .svp-split-pics { display: grid; grid-template-columns: 1fr 1fr; gap: 3px; border-radius: var(--r-xl, 18px); overflow: hidden; box-shadow: var(--shadow-md); }
 .svp-split .svp-split-pics img { width: 100%; height: 100%; aspect-ratio: 3 / 4; object-fit: cover; border-radius: 0; box-shadow: none; }
+.svp-split .svp-split-pic { position: relative; display: block; }
+.svp-split .svp-split-tag { position: absolute; left: 10px; bottom: 10px; padding: 3px 9px; border-radius: 999px; background: rgba(11, 14, 19, .72); color: #fff; font-size: .72rem; font-weight: 700; letter-spacing: .04em; }
 .svp-levels { padding-block: clamp(32px, 6vh, 60px); background: var(--paper); }
 .svp-levels h2 { font-size: clamp(1.35rem, 2.4vw, 1.8rem); margin: 0 0 1rem; }
 .svp-levels-grid { display: grid; grid-template-columns: 1fr; gap: 16px; }

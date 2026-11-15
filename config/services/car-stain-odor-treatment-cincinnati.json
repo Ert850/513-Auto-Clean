@@ -9,19 +9,13 @@
   "eyebrow": "Stains, spills and odors",
   "h1": "Car stain, spill and odor treatment in Cincinnati",
   "sub": "Coffee, kid spills, pet accidents, smoke. We treat your seats and carpet at your house and tell you up front what's likely to lift.",
-  "cta": "Get an instant stain quote",
   "book": {
     "intent": "interior"
   },
   "hero": {
-    "pair": "sonic-interior"
+    "pair": "third-row-seat-stains"
   },
   "packages": [],
-  "proofPairs": [
-    "third-row-seat-stains",
-    "sonic-interior",
-    "console"
-  ],
   "proofH2": "Stains before and after",
   "howH2": "How we treat it",
   "steps": [
@@ -51,5 +45,8 @@
       "q": "Do I need a full detail for a single stain?",
       "a": "No. Stain treatment can go on any package, and you pick surface or deep treatment depending on how bad it is."
     }
+  ],
+  "proofServices": [
+    "stain"
   ]
 }
