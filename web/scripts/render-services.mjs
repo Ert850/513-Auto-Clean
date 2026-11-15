@@ -18,7 +18,7 @@
 import { carouselHero } from "./split-hero.mjs";
 import fs from "node:fs";
 import path from "node:path";
-import { root, loadServices, loadLocations, pageFile, overlap, contained, typedNumbers, mainText, normalWords } from "./locations.mjs";
+import { root, loadServices, loadLocations, pageFile, overlap, contained, typedNumbers, configWords, mainText, normalWords } from "./locations.mjs";
 import { findPackage, findAddon, componentsOf, SEED_CATALOG, vehicleSize, tierPriceFor } from "../../netlify/functions/_pricing.mjs";
 
 const SITE = "https://513autoclean.com";
@@ -42,8 +42,7 @@ function priced(text, where) {
   });
 }
 // R6 (docs/SEO-COMPLIANCE.md): a business number in the words comes from a setting, never typed.
-const typed = pages.flatMap((p) => [p.title, p.meta, p.eyebrow, p.h1, p.sub, p.honest, ...(p.steps ?? []), ...(p.faq ?? []).flatMap((q) => [q.q, q.a])]
-  .filter(Boolean).flatMap((t) => typedNumbers(t).map((n) => `${p.file}: "${n}" is typed; say it from a setting ({price:...}, {addon:...}) or leave it out`)));
+const typed = pages.flatMap((p) => configWords(p).flatMap((t) => typedNumbers(t).map((n) => `${p.file}: "${n}" is typed; say it from a setting ({price:...}, {addon:...}) or leave it out`)));
 problems.push(...typed);
 for (const p of pages) {
   for (const k of ["title", "meta", "sub", "honest"]) if (p[k]) p[k] = priced(p[k], `${p.file} ${k}`);

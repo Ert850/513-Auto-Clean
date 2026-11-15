@@ -63,24 +63,49 @@ export function publishedPages() {
  * and {addon:...} tokens are the way to say a price. ZIPs, road numbers
  * (U.S. 50, I-71) and plain counts ("3 rows") are fine.
  */
+const COUNT = "(?:\\d+(?:\\.\\d+)?|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|fifteen|twenty|thirty|forty|forty-five|ninety)";
+const UNIT = "(?:minutes?|mins?|hours?|hrs?|days?|weeks?|months?|miles?|mi|degrees?|percent)";
+const TYPED = new RegExp([
+  "\\$\\s?\\d",                                                      // $50
+  "\\d\\s?%",                                                         // 10%
+  `\\b${COUNT}(?:\\s*(?:-|to)\\s*${COUNT})?\\s+(?:[a-z]+\\s+)?${UNIT}\\b`, // 3 hours, two to four days, 2 business days, an hour
+  "\\ban?\\s+(?:hour|day)\\b",                                            // within an hour, a day ahead
+  "\\d+\\s*°",                                                       // 40°
+  "\\b\\d{1,2}(?::\\d\\d)?\\s?(?:am|pm|a\\.m\\.|p\\.m\\.)(?![a-z])",       // 6pm, 7:30 am
+  "\\b(?:noon|midnight|next day|same day|overnight)\\b",
+].join("|"), "gi");
 export function typedNumbers(text) {
   const t = String(text).replace(/\{(price|addon):[a-z0-9-]+\}/g, "");
-  return t.match(/\$\s?\d|\d\s?%|\b\d+(?:\.\d+)?\s*(?:-|to)?\s*(?:\d+\s*)?(?:minutes?|mins?|hours?|hrs?|days?|weeks?|months?|miles?|mi|degrees?|°)\b|\b\d{1,2}(?::\d\d)?\s?(?:am|pm|a\.m\.|p\.m\.)/gi) ?? [];
+  return t.match(TYPED) ?? [];
+}
+
+/** Every customer-readable string in a page config: all string fields, nested, except the ones that are ids, data or notes for us. */
+const NOT_WORDS = new Set(["_read_me", "status", "slug", "file", "zips", "area", "nearby", "pairs", "pair", "map", "book", "packages", "addons", "proofPairs", "proofServices", "writtenBy", "author", "date", "zip", "intent", "package", "serviceType"]);
+export function configWords(o, key = "") {
+  if (NOT_WORDS.has(key)) return [];
+  if (typeof o === "string") return [o];
+  if (Array.isArray(o)) return o.flatMap((x) => configWords(x));
+  if (o && typeof o === "object") return Object.entries(o).flatMap(([k, v]) => configWords(v, k));
+  return [];
 }
 
 /** A page's visible words: its <main>, or, on the home page (no <main>), what sits between the shared header and footer. */
 export function mainText(html) {
   let m = html.match(/<main[^>]*>([\s\S]*?)<\/main>/);
-  let body = m ? m[1] : html.slice(html.indexOf("<!-- CHROME:HEADER:END -->"), html.indexOf("<!-- CHROME:FOOTER:START -->"));
+  const a = html.indexOf("<!-- CHROME:HEADER:END -->"), b = html.indexOf("<!-- CHROME:FOOTER:START -->");
+  // Comparing nothing would pass every duplicate check.
+  if (!m && (a < 0 || b < a)) throw new Error("mainText: the page has no <main> and no CHROME:HEADER/FOOTER markers");
+  let body = m ? m[1] : html.slice(a, b);
   return body
     .replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>|<!--[\s\S]*?-->/g, " ")
     .replace(/<[^>]+>/g, " ")
-    .replace(/&amp;/g, "&").replace(/&rsaquo;|&rarr;|&[a-z]+;|&#\d+;/g, " ");
+    .replace(/&amp;/g, "&").replace(/&#x([0-9a-f]+);/gi, (m, h) => String.fromCodePoint(parseInt(h, 16))).replace(/&#(\d+);/g, (m, d) => String.fromCodePoint(+d))
+    .replace(/&[a-z]+;/g, " ");
 }
 
 /** Place names of a city page, longest first: its name, neighborhoods and areaServed. */
 export function placeNames(loc) {
-  return [loc.name, ...(loc.neighborhoods ?? []), ...(loc.areaServed ?? [])]
+  return [loc.name, ...(loc.neighborhoods ?? []), ...(loc.areaServed ?? []), ...(loc.roads ?? [])]
     .flatMap((n) => String(n ?? "").toLowerCase().split(/\s*(?:&|,|\band\b|\/)\s*/))
     .map((n) => n.trim()).filter((n) => n.length > 2);
 }

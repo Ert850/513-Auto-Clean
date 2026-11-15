@@ -1823,3 +1823,30 @@ A read-only triage checked every item still queued from the November 13 pre-rele
   - **Refused (400), and Web3Forms OK:** "Request sent", and the Web3Forms subject starts "CHECK THE CALENDAR".
   - **The same walk on 822be93's form:** froze at Confirm.
 - 731 tests pass.
+
+## Validation round on the booking and SEO fixes (November 15)
+
+An independent review of a5f1570..bc0a266 found:
+- **"Confirmed" on screen when the email said otherwise.**
+  - **Root cause:** Done used one flag, `saved`, for two jobs: "someone has it" (enough to skip the Web3Forms error) and "it's on the calendar" (needed to say confirmed). A failed calendar write, a taken time sent to Elijah as a request, or a time that couldn't be checked before writing all showed "You're fully confirmed" while the customer's email said "we will confirm".
+  - **Fix:** `sendConfirmation()` now returns `confirmed` too: a duplicate, or `calendar.ok` and not `unchecked`, the same test as `customerEmail()`. Done and next steps read `state.unconfirmed`.
+  - **Checked** in headless Chrome:
+    - **Calendar write failed, Elijah's email sent:** "Request sent", and Web3Forms carries no CHECK flag, because Elijah's own email already says NOT ON THE CALENDAR.
+    - **Saved:** "You're fully confirmed".
+    - **Refused:** "Request sent" and CHECK THE CALENDAR.
+- **Turnstile tokens are single-use.**
+  - **Symptom:** the card and PayPal checks spent the token, then the confirmation was refused. A retry reused a spent token, and a fast Confirm sent none.
+  - **Fix:** `spendTurnstile()` after each server check resets the widget. `turnstileReady()` waits up to 8 s for a fresh token before the confirmation; without one it still books, refused and flagged to Elijah.
+- **"CHECK THE CALENDAR" went on requests too**, which never touch the calendar. It's now only for bookings.
+- **The number check (R6) is wider:**
+  - **What now counts:** word numbers ("an hour", "two to four days"), a word in between ("2 business days"), "40°", "percent", "noon" and "next day". Every string field of a page config is scanned, headings included (`configWords()`), not a hand-picked list.
+  - **A false positive is gone:** "2 amazing" no longer reads as 2am.
+- **Duplicate check:**
+  - `mainText()` throws on a page with no `<main>` and no chrome markers, rather than comparing nothing.
+  - Hex entities are decoded.
+  - A `roads` list is blanked like other place names.
+- **Reviews:** a review's `area` must be a place the page covers.
+- **Promo check:** only the amount off ("10% off", "$20 off") must match its setting, so a blurb can state its minimum.
+- **Done's top strip** now uses the same clock style ("Nov 15 at 3:41pm").
+
+**Left as is:** the 15 s timeout race. A server slower than 15 s means a "Confirmed" email beside a "Request sent" screen, and Elijah gets two emails. That's safe in the conservative direction.
