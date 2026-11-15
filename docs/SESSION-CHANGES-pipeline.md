@@ -1885,3 +1885,27 @@ Mockups: `docs/mockups/eNov15-booking-fixes-mockups.png`.
   - **Browse prices:** match the mockup.
   - **The pill:** one line (26 px).
 - No script errors.
+
+## Hover styles only where there's a mouse, site-wide (item 7; Emmett approved it and left booking form vs site to me, November 15)
+
+- **Symptom:** a phone treats a tap as hover and keeps it until the next tap elsewhere. A tapped option stays red or lifted beside the one actually chosen:
+  - the booking form's size cards and package rows;
+  - the Contact form's preference pills;
+  - the carousel's arrows and dots, and the reviews arrows;
+  - the home page's Call, Text and Email tiles, which stayed shifted and red after the dialer returned. Red means brand or error on this site, so a stuck red reads as wrong.
+- **Root cause:** every `:hover` rule (55 in `book.css`, 32 in `styles.css`) applied on any device. Nothing hid them from touch screens.
+- **Why site-wide, not just the booking form:**
+  - the same bug sits in the Contact form (the other place people choose between options) and on the home page's contact tiles;
+  - a single rule can be tested (`hover.test.ts` fails on any unwrapped `:hover`), while "booking form only" would leave the site to collect new unguarded rules;
+  - desktop is unchanged either way;
+  - phones lose only stuck states, because none of the 87 rules reveals content or a control, and the default tap flash still shows on every tap (no `-webkit-tap-highlight-color` is set).
+  - **The cost:** an iPad driven with a trackpad reports "no hover", so it loses the hover look. Touch laptops with a mouse keep it.
+- **How:** each rule is wrapped in `@media (hover: hover)` where it stands, so the order and specificity are unchanged. Three rules shared `:hover` with a state and were split, so the state still applies everywhere:
+  - `.bk-askrow.on`;
+  - `.nav-more > button[aria-expanded="true"]`;
+  - `.nav-more-menu a:focus-visible`.
+- **Checked** in headless Chrome:
+  - **Desktop, pointer over an element:** the same computed styles in the old and new builds (Contact pill red, button lifted 2 px, size card red and lifted 1 px).
+  - **Emulated phone (touch, no hover), pointer resting on an unchosen Contact pill:** red in the old build, grey in the new.
+  - **No pointer at all:** contact, faq and service-area are pixel-identical. services.html varies between two loads of the same build, so it can't be compared that way.
+- **Guard:** 735 tests pass, with the new `hover.test.ts`.
