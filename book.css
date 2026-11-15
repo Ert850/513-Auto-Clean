@@ -114,6 +114,12 @@ body.bk-open { overflow: hidden; }
 .bk-total { flex: none; display: flex; flex-direction: column; line-height: 1.2; white-space: nowrap; }
 .bk-total-amt { font-family: var(--font-display); font-weight: 800; font-size: 1.25rem; }
 .bk-total-sub { font-size: .76rem; color: var(--text-soft); }
+/* The longest saving line ("$1,051.05 interior + exterior saving applied · tax included")
+   reached the very edge of a 320 px phone on one line: let it wrap there instead. */
+@media (max-width: 400px) {
+  .bk-total { max-width: 100%; min-width: 0; }
+  .bk-total-sub { white-space: normal; text-wrap: balance; }
+}
 .bk-nextbtn {
   margin-left: auto; display: inline-flex; align-items: center; gap: .5rem;
   background: var(--red); color: #fff; border: 0; border-radius: var(--r-sm);
