@@ -1,0 +1,40 @@
+410c410
+<           category: a.scope, priceCents: t.priceCents, pricePlus: false,
+---
+>           category: a.scope, priceCents: t.priceCents, pricePlus: false, withPkg: t.withPackage, totalWith: t.totalWith,
+1083c1083
+<       sub.textContent = dur ? 'about ' + fmtDur(dur) + ' on site' : '';
+---
+>       sub.textContent = (dur ? 'about ' + fmtDur(dur) + ' on site' : '') + (quote.taxCents > 0 && !quote.taxIsEstimate ? (dur ? ' · ' : '') + 'tax included' : '');
+2001c2001,2005
+<             : '<b>' + svc(i.priceCents, i.pricePlus ? '+' : '') + '</b>' + (dur ? '<i>' + dur + '</i>' : '')) +
+---
+>             : i.totalWith
+>               ? '<b>' + svc(P.findPackage(i.totalWith).priceCents + i.withPkg[i.totalWith], '+') + '</b><i>total with ' + esc(P.findPackage(i.totalWith).name) + '</i>' + (dur ? '<i>' + dur + '</i>' : '')
+>               : i.withPkg
+>               ? '<b>' + svc(i.priceCents) + '</b><i>' + Object.keys(i.withPkg).map(function (k) { return svc(i.withPkg[k]) + ' with ' + esc(P.findPackage(k).name); }).join(', ') + '</i>' + (dur ? '<i>' + dur + '</i>' : '')
+>               : '<b>' + svc(i.priceCents, i.pricePlus ? '+' : '') + '</b>' + (dur ? '<i>' + dur + '</i>' : '')) +
+2381,2382c2385,2386
+<       '<p class="bk-morevehs-l"><b>Another vehicle at this address?</b> Take ' + pct + '% off both, ' +
+<       $(withTwo.grossBeforeMultiCents - withTwo.totalCents) + ' on one like this. We only drive out once.</p>' +
+---
+>       '<p class="bk-morevehs-l"><b>Another vehicle at this address?</b> Both get ' + pct + '% off, so two like this one cost ' +
+>       $(withTwo.grossBeforeMultiCents - withTwo.totalCents) + ' less. We only drive out once.</p>' +
+2970a2975,2982
+>   // MOCK A8b: weeks start today, not on Sunday.
+>   (function () {
+>     var orig = P.weekStartOf;
+>     P.weekStartOf = function (ms) {
+>       var t = P.localDayStart(Date.now(), TZ), s0 = P.localDayStart(ms, TZ);
+>       return s0 < t ? t : t + Math.floor((s0 - t) / (7 * DAY)) * 7 * DAY;
+>     };
+>   })();
+3892a3905
+>     if (pk.reason === 'afterRushWeekend') return 'This weekend';
+3968a3982,3987
+>     // MOCK S4: a first no-rush day that falls on a weekend is the weekend pick.
+>     (function () {
+>       var wk = function (pk) { var d = new Date(pk.dayStart + 12 * 3600000).toLocaleDateString('en-US', { weekday: 'short', timeZone: TZ }); return d === 'Sat' || d === 'Sun'; };
+>       var ar = picks.filter(function (p) { return p.reason === 'afterRush'; })[0];
+>       if (ar && wk(ar)) { ar.reason = 'afterRushWeekend'; picks.forEach(function (p) { if (p.reason === 'weekend') p.reason = 'also'; }); }
+>     })();
