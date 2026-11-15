@@ -5451,7 +5451,7 @@
     // "By email" only when they gave an address (validation, November 11).
     var email = P.isLive('automatedEmail') && Boolean(String(state.contact.email || '').trim());
     var texts = P.isLive('automatedTexts');
-    var calendar = P.isLive('liveCalendar') && !state.unsaved;
+    var calendar = P.isLive('liveCalendar') && !state.unconfirmed;
     var requested = isInquiry();
     var out = [];
 
@@ -5880,11 +5880,36 @@
       return;
     }
     ts.dataset.rendered = '1';
-    window.turnstile.render(ts, {
+    ts.dataset.widget = window.turnstile.render(ts, {
       sitekey: CFG.turnstileSiteKey,
       callback: function (token) { state.turnstileToken = token; },
       'expired-callback': function () { state.turnstileToken = null; }
     });
+  }
+
+  /**
+   * Resolves once there is a token to send, or after TURNSTILE_CONFIRM_WAIT_MS
+   * (a browser that blocks Cloudflare still books: the server then refuses it,
+   * and it reaches Elijah through Web3Forms marked CHECK THE CALENDAR).
+   */
+  var TURNSTILE_CONFIRM_WAIT_MS = 8000;
+  function turnstileReady() {
+    if (!CFG.turnstileSiteKey || state.turnstileToken) return Promise.resolve();
+    return new Promise(function (ok) {
+      var tries = 0;
+      (function poll() {
+        if (state.turnstileToken || ++tries > TURNSTILE_CONFIRM_WAIT_MS / 200) return ok();
+        setTimeout(poll, 200);
+      })();
+    });
+  }
+
+  /** A token is good for one check: drop it and ask the widget for a new one. */
+  function spendTurnstile() {
+    if (!CFG.turnstileSiteKey) return;
+    state.turnstileToken = null;
+    var ts = root.querySelector('#bkTurnstile');
+    try { if (ts && window.turnstile && ts.dataset.widget) window.turnstile.reset(ts.dataset.widget); } catch (e) { /* a new token just won't come */ }
   }
 
   function vPay() {
@@ -6119,7 +6144,8 @@
         timeFeeBp: shownTimeFeeBp()
       })
     })
-      .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+      // The server checked the token; Confirm will need a fresh one.
+      .then(function (r) { spendTurnstile(); return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
       .then(function (r) {
         if (!r.ok || !r.j.clientSecret) {
           // Both branches say the same thing, because from the customer's
@@ -6196,7 +6222,7 @@
               // The early or late fee shown, used by the server only if it cannot read the calendar.
               timeFeeBp: shownTimeFeeBp()
             })
-          }).then(function (r) { return r.json(); }).then(function (j) {
+          }).then(function (r) { spendTurnstile(); return r.json(); }).then(function (j) {
             if (!j.id) throw new Error(j.message || 'PayPal could not start');
             return j.id;
           });
@@ -7106,25 +7132,37 @@
         })
       })
         .then(function (r) {
-          if (r.status === 409) return { taken: true, saved: false };
+          if (r.status === 409) return { taken: true, saved: false, confirmed: false };
           return r.json().then(function (j) {
-            return { taken: false, saved: Boolean(r.ok && j && (j.duplicate || j.owner || (j.calendar && j.calendar.ok))) };
-          }, function () { return { taken: false, saved: false }; });
+            var ok = Boolean(r.ok && j);
+            return {
+              taken: false,
+              // Someone has it: Elijah's email went out, the calendar has it,
+              // or an earlier try saved it.
+              saved: ok && Boolean(j.duplicate || j.owner || (j.calendar && j.calendar.ok)),
+              // And the time is really on the calendar, checked just before it
+              // was written: the same test as the customer's email
+              // (send-confirmation customerEmail), so screen and inbox agree.
+              confirmed: ok && Boolean(j.duplicate || (j.calendar && j.calendar.ok && !j.calendar.unchecked))
+            };
+          }, function () { return { taken: false, saved: false, confirmed: false }; });
         })
-        .catch(function () { return { taken: false, saved: false }; });
+        .catch(function () { return { taken: false, saved: false, confirmed: false }; });
       // Never aborted: the server may still be writing the job.
-      var waited = new Promise(function (ok) { setTimeout(function () { ok({ taken: false, saved: false }); }, CONFIRM_WAIT_MS); });
+      var waited = new Promise(function (ok) { setTimeout(function () { ok({ taken: false, saved: false, confirmed: false }); }, CONFIRM_WAIT_MS); });
       return Promise.race([sent, waited]);
     } catch (e) { /* an email must never cost us a booking */ }
-    return Promise.resolve({ taken: false, saved: false });
+    return Promise.resolve({ taken: false, saved: false, confirmed: false });
   }
 
   function record() {
     var quote = q();
     var msg = root.querySelector('#bkMsg');
 
-    sendConfirmation().then(function (res) {
-      if (!res.taken) return sendRecord(quote, msg, res.saved);
+    turnstileReady().then(sendConfirmation).then(function (res) {
+      // A Turnstile token is good once: a retry or a second Confirm needs a new one.
+      spendTurnstile();
+      if (!res.taken) return sendRecord(quote, msg, res);
       // The server found the time booked by someone else since it was checked:
       // nothing was written or sent. Back to Time, with the times still open.
       state.sending = false;
@@ -7142,15 +7180,18 @@
    * own confirmation already has it, so a Web3Forms failure still ends on Done.
    * Not saved: the subject says so, so Elijah puts it on the calendar.
    */
-  function sendRecord(quote, msg, saved) {
-    // Done says "confirmed" only when the site saved it (CLAUDE.md: a booking
-    // is "confirmed" to the customer only once its calendar event is written).
-    state.unsaved = !saved;
-    var body = (saved ? '' : 'CHECK THE CALENDAR: the site could not confirm it saved this booking. Add it to the calendar if it is not there.\n\n') +
+  function sendRecord(quote, msg, res) {
+    var saved = res.saved;
+    // Done says "confirmed" only when the time is on the calendar (CLAUDE.md:
+    // a booking is "confirmed" to the customer only once its event is written).
+    state.unconfirmed = !res.confirmed;
+    // A request never goes on the calendar, so only a booking can need checking.
+    var check = !saved && !isInquiry();
+    var body = (check ? 'CHECK THE CALENDAR: the site could not confirm it saved this booking. Add it to the calendar if it is not there.\n\n' : '') +
       buildSummary(quote);
     var fd = new FormData();
     fd.append('access_key', WEB3FORMS_KEY);
-    fd.append('subject', (saved ? '' : 'CHECK THE CALENDAR, ') + (state.advice
+    fd.append('subject', (check ? 'CHECK THE CALENDAR, ' : '') + (state.advice
       ? 'HELP ME DECIDE, ' + state.contact.name + ', ' +
         (state.slot ? new Date(state.slot).toLocaleString('en-US', { timeZone: TZ }) : (state.address.zip || 'no zip'))
       : (isInquiry() ? 'REQUEST, ' : shortNotice(state.slot) ? 'SHORT NOTICE REQUEST, ' : 'BOOKING, ') +
@@ -7318,7 +7359,7 @@
     // landing halfway down a receipt is not reading it.
     lastRenderedStep = null;
     el('bkBar').style.width = '100%';
-    var asked = isInquiry() || (state.slot && shortNotice(state.slot)) || state.unsaved;
+    var asked = isInquiry() || (state.slot && shortNotice(state.slot)) || state.unconfirmed;
     el('bkTitle').textContent = asked ? 'Request sent' : "You're fully confirmed";
     el('bkNext').hidden = true;
     el('bkBack').hidden = true;
@@ -7338,8 +7379,8 @@
     // Nothing is left in the footer on Done (an empty strip on phones).
     root.querySelector('.bk-modal').classList.add('is-done');
     el('bkNav').innerHTML = '<span class="bk-nav-done">' +
-      (isInquiry() || state.unsaved ? 'Request sent' : 'Booked') + ' &middot; ' +
-      esc(new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })) +
+      (isInquiry() || state.unconfirmed ? 'Request sent' : 'Booked') + ' &middot; ' +
+      esc(longWhen(Date.now(), true).replace(/^[A-Za-z]+, /, '')) +
       '</span>';
 
     el('bkBody').innerHTML =

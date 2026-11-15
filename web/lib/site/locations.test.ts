@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
 // @ts-expect-error plain ESM build script
-import { loadLocations, loadServices, pageFile, localWords, overlap, contained, typedNumbers, mainText, publishedPages, generatedPages } from "../../scripts/locations.mjs";
+import { loadLocations, loadServices, pageFile, localWords, overlap, contained, typedNumbers, configWords, mainText, publishedPages, generatedPages } from "../../scripts/locations.mjs";
 // @ts-expect-error plain ESM build script
 import { CHROME_PAGES } from "../../scripts/chrome.mjs";
 
@@ -48,14 +48,15 @@ describe("city pages", () => {
 
 describe("SEO build checks (docs/SEO-COMPLIANCE.md, November 15)", () => {
   it("R6: typed business numbers are caught, tokens and ZIPs and road numbers are not", () => {
-    for (const t of ["about 3 hours", "$50 off", "10% off", "we arrive at 6pm", "2 to 4 hours", "7:30 am", "a 20 minute drive", "within 15 miles"])
+    for (const t of ["about 3 hours", "$50 off", "10% off", "we arrive at 6pm", "2 to 4 hours", "7:30 am", "a 20 minute drive", "within 15 miles",
+      "within an hour", "two to four days", "2 business days", "below 40°.", "10 percent", "by noon", "the next day"])
       expect(typedNumbers(t), t).not.toEqual([]);
-    for (const t of ["from {price:full-interior}", "{addon:stain}", "on U.S. 50 and I-71", "ZIP 45238", "3 rows of seats", "Pay when it's done"])
+    for (const t of ["from {price:full-interior}", "{addon:stain}", "on U.S. 50 and I-71", "ZIP 45238", "3 rows of seats", "Pay when it's done",
+      "the 2 amazing results", "a few hours", "months of commuting"])
       expect(typedNumbers(t), t).toEqual([]);
   });
   it("R6: no city or service page config types a business number", () => {
-    const words = (o: any) => [o.title, o.meta, o.eyebrow, o.h1, o.sub, o.localParagraph, o.honest, ...(o.highlights ?? []), ...(o.steps ?? []), ...(o.faq ?? []).flatMap((q: any) => [q.q, q.a])].filter(Boolean);
-    for (const o of [...locs, ...loadServices()]) for (const t of words(o)) expect(typedNumbers(t), `${o.file}: ${t}`).toEqual([]);
+    for (const o of [...locs, ...loadServices()]) for (const t of configWords(o)) expect(typedNumbers(t), `${o.file}: ${t}`).toEqual([]);
   });
   it("R4: the area ZIP list is the Accounting sheet's, and every city's ZIPs are in its area", () => {
     const areas = JSON.parse(read("config/areas.json")).areas;

@@ -17,7 +17,7 @@
 import { pairPics, carouselHero } from "./split-hero.mjs";
 import fs from "node:fs";
 import path from "node:path";
-import { root, loadLocations, loadServices, pageFile, overlap, contained, typedNumbers, mainText, placeNames, normalWords } from "./locations.mjs";
+import { root, loadLocations, loadServices, pageFile, overlap, contained, typedNumbers, configWords, mainText, placeNames, normalWords } from "./locations.mjs";
 import { findPackage, findAddon, zipGeo } from "../../netlify/functions/_pricing.mjs";
 
 const SITE = "https://513autoclean.com";
@@ -53,8 +53,8 @@ function priced(text, where) {
   });
 }
 // R6: a business number in the words comes from a setting, never typed.
-const wordsOf = (l) => [l.title, l.meta, l.eyebrow, l.h1, l.sub, l.localParagraph, ...(l.highlights ?? []), ...(l.faq ?? []).flatMap((q) => [q.q, q.a]), ...(l.localJobs ?? []).flatMap((j) => [j.note, j.comment])].filter(Boolean);
-const typed = locs.flatMap((l) => wordsOf(l).flatMap((t) => typedNumbers(t).map((n) => `${l.file}: "${n}" is typed; say it from a setting ({price:...}, {addon:...}) or leave it out`)));
+// Every string a customer could read, headings included (configWords skips ids and data).
+const typed = locs.flatMap((l) => configWords(l).flatMap((t) => typedNumbers(t).map((n) => `${l.file}: "${n}" is typed; say it from a setting ({price:...}, {addon:...}) or leave it out`)));
 for (const l of locs) for (const k of ["sub", "localParagraph", "meta"]) if (l[k]) l[k] = priced(l[k], `${l.file} ${k}`);
 for (const l of locs) {
   l.highlights = (l.highlights ?? []).map((h) => priced(h, l.file));
@@ -95,7 +95,8 @@ for (const loc of locs) {
       need(j.reviewed === true, loc, `localJobs "${j.pair}": photos not marked reviewed (reviewed: true, after a person checks them)`);
     }
     need((loc.reviews ?? []).length >= 1, loc, "a published page needs at least 1 review from this area");
-    for (const r of loc.reviews ?? []) need(typeof r.area === "string" && r.area.trim(), loc, `reviews: ${r.author}'s town (area), as they gave it`);
+    // The reviewer's own town, and one this page covers.
+    for (const r of loc.reviews ?? []) need(typeof r.area === "string" && placeNames(loc).some((n) => r.area.toLowerCase().includes(n)), loc, `reviews: ${r.author}'s town (area) must be one this page covers (its name, neighborhoods or areaServed)`);
     // R3: a person wrote the local paragraph.
     need(WRITERS.includes(loc.writtenBy), loc, `writtenBy must be ${WRITERS.join(" or ")}: the local paragraph is written by a person who knows the jobs there`);
     // R7: a published page never links to a draft.

@@ -345,6 +345,7 @@ describe("config/promo-codes.json", () => {
     expect(() => checkPromoCodes(one({ percentOff: 15 }))).toThrow(/label says 10%/);
     expect(() => checkPromoCodes(one({ blurb: "20% off your service." }))).toThrow(/blurb says 20%/);
     expect(() => checkPromoCodes(one({ percentOff: undefined, dollarsOff: 20, label: "TEST10, $25 off" }))).toThrow(/label says \$25/);
+    expect(() => checkPromoCodes(one({ blurb: "10% off a detail of $150 or more.", minServiceDollars: 150 }))).not.toThrow();
   });
   for (const [what, input] of bad) {
     it(`refuses ${what}`, () => expect(() => checkPromoCodes(input)).toThrow(/config\/promo-codes\.json/));

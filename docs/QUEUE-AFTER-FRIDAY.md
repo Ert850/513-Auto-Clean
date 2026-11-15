@@ -177,11 +177,11 @@ He checked every page. Results, Meet the Team, Reviews and Range & Travel are fi
 Full reports are in that session; the screenshots are in the session scratchpad (`review/shots/`). Fixed before launch: see `SESSION-CHANGES-pipeline.md`, "Final pre-release review".
 - **Booking and calendar:**
   - **The job length never reaches the drive measure,** on either side. The browser sends `service=` while `travel.mjs` reads `serviceMin`, and `_routes.mjs` reads `cart.serviceDurationMin`, which the cart never has. Both measure the drive home at the start time, so they agree today. Fix both together: the drive home is measured at the finish, and the screen and the receipt use the same value.
-  - **A server-side free/busy check** before writing an event, for two people taking the same time.
-  - **Turnstile:** render it for every booking before setting `TURNSTILE_SECRET_KEY`, or every booking fails.
+  - **A server-side free/busy check:** DONE November 14 (calendar fix 1).
+  - **Turnstile:** DONE November 15. It's drawn for every booking, tokens are spent once and renewed, and Confirm waits for one. Before setting `TURNSTILE_SECRET_KEY`, test once on a Deploy Preview with Cloudflare's always-pass test keys.
   - **Multi-day:** send the browser's day plan to the server, and the emails list every day.
   - **Typed numbers to move into settings:** 24 h short notice, the 30 min drive fallback, `[0, 6]` correction days, "within the hour", promo labels, and the 365/400 booking horizon.
-  - **Browser-local dates in request days and `verifySlot`:** a visitor outside Eastern time sees them shifted.
+  - **Browser-local dates:** DONE November 14 (calendar fix 2).
 - **UI (each needs a mockup first):**
   - **Checkout header:** Back and × cover text at 820 px with long package names, and at 320. With two vehicles it shows vehicle 2's size.
   - **The travel fee box is styled like an error** (pink and red; the color rule says red means brand or error).

@@ -1488,8 +1488,8 @@ function checkPromoCodes(input) {
     if (until !== void 0 && !isRealDate(until)) bad(where, "until must be a real date like 2027-06-30");
     for (const k of ["label", "blurb"]) {
       const words = typeof o[k] === "string" ? o[k] : "";
-      for (const m of words.matchAll(/(\d+(?:\.\d+)?)\s*%/g)) if (Number(m[1]) !== pct) bad(where, `${k} says ${m[0]} but percentOff is ${pct ?? "not set"}`);
-      for (const m of words.matchAll(/\$\s*(\d+(?:\.\d+)?)/g)) if (Number(m[1]) !== usd) bad(where, `${k} says ${m[0]} but dollarsOff is ${usd ?? "not set"}`);
+      for (const m of words.matchAll(/(\d+(?:\.\d+)?)\s*%\s*off/gi)) if (Number(m[1]) !== pct) bad(where, `${k} says ${m[0]} but percentOff is ${pct ?? "not set"}`);
+      for (const m of words.matchAll(/\$\s*(\d+(?:\.\d+)?)\s*off/gi)) if (Number(m[1]) !== usd) bad(where, `${k} says ${m[0]} but dollarsOff is ${usd ?? "not set"}`);
     }
     const min = o["minServiceDollars"];
     if (min !== void 0 && (typeof min !== "number" || min < 0)) bad(where, "minServiceDollars must be 0 or more");

@@ -70,8 +70,9 @@ export function checkPromoCodes(input: unknown): Promo[] {
     // the old one (review, November 13; CLAUDE.md, numbers come from settings).
     for (const k of ["label", "blurb"]) {
       const words = typeof o[k] === "string" ? (o[k] as string) : "";
-      for (const m of words.matchAll(/(\d+(?:\.\d+)?)\s*%/g)) if (Number(m[1]) !== pct) bad(where, `${k} says ${m[0]} but percentOff is ${pct ?? "not set"}`);
-      for (const m of words.matchAll(/\$\s*(\d+(?:\.\d+)?)/g)) if (Number(m[1]) !== usd) bad(where, `${k} says ${m[0]} but dollarsOff is ${usd ?? "not set"}`);
+      // Only the amount OFF: a blurb may also state its minimum ("on a detail of $150 or more").
+      for (const m of words.matchAll(/(\d+(?:\.\d+)?)\s*%\s*off/gi)) if (Number(m[1]) !== pct) bad(where, `${k} says ${m[0]} but percentOff is ${pct ?? "not set"}`);
+      for (const m of words.matchAll(/\$\s*(\d+(?:\.\d+)?)\s*off/gi)) if (Number(m[1]) !== usd) bad(where, `${k} says ${m[0]} but dollarsOff is ${usd ?? "not set"}`);
     }
     const min = o["minServiceDollars"];
     if (min !== undefined && (typeof min !== "number" || min < 0)) bad(where, "minServiceDollars must be 0 or more");
