@@ -1806,3 +1806,20 @@ A read-only triage checked every item still queued from the November 13 pre-rele
 - **Ozone:** "Expect a 60 to 90% reduction in organic odors" is gone; it now reads "How much it helps depends on the smell and how long it has set in." It was a percentage promise, against the no-removal-promises rule.
 
 **Checked:** 730 tests pass and the build passes.
+
+## Confirm froze the page when the calendar couldn't be read (found November 15, live since November 13)
+
+- **Symptom:** on Review, Confirm froze the browser tab for good: nothing was sent, and the page stopped responding. It was found while testing the save fixes on a local copy with no calendar key.
+- **Root cause:**
+  - `advance()` re-checks the time before booking when the last free check is over 5 minutes old (cdfcbe8, final review, November 13).
+  - `verifySlot()` answers "free" without stamping `lastFreeCheck` whenever it has nothing to check against: no calendar key, a calendar read that fails, or a multi-day plan it can't make.
+  - `checkThenAdvance()` then called `advance()`, which saw the old stamp and checked again, in an endless loop of instant promise steps that never let the page paint.
+  - **On the live site** (`main`, c184f26) this happens whenever the calendar read fails at Confirm: a Google outage or quota, or a network or extension that blocks googleapis.com. The booking is lost, and Elijah gets nothing.
+- **Fix:** `checkThenAdvance()` stamps `lastFreeCheck` before it advances on a free answer, so one Confirm is one check.
+- **Guard:** `funnel.smoke.test.mjs`.
+- **Done no longer says "confirmed" when the site couldn't save** (CLAUDE.md: "confirmed" only once the event is written). When `send-confirmation` refuses or doesn't answer, Done now shows the existing not-on-the-calendar wording: the title "Request sent", "We confirm it, usually within a few hours… treat the time as requested", and "Nothing is settled until you hear back from us". Elijah's Web3Forms copy says "CHECK THE CALENDAR".
+- **Checked** in headless Chrome on the local build, with the network faked:
+  - **Saved, and Web3Forms returns 500:** "You're fully confirmed".
+  - **Refused (400), and Web3Forms OK:** "Request sent", and the Web3Forms subject starts "CHECK THE CALENDAR".
+  - **The same walk on 822be93's form:** froze at Confirm.
+- 731 tests pass.

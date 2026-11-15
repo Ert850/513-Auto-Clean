@@ -504,6 +504,15 @@ describe("the booking funnel opens", () => {
     expect(conf).not.toMatch(/priced\.serviceDurationMin \?\? 120/);
   });
 
+  it("Confirm can't loop on its own free check (froze the page, November 15)", () => {
+    // verifySlot says "free" without stamping the time when it has nothing to
+    // check against; advance() then re-checked forever. checkThenAdvance must
+    // stamp the check before it advances.
+    const src = fs.readFileSync(path.join(ROOT, "js/funnel.js"), "utf8");
+    const body = src.slice(src.indexOf("function checkThenAdvance()"), src.indexOf("function advance()"));
+    expect(body).toMatch(/if \(free\) \{[\s\S]*?lastFreeCheck = Date\.now\(\);[\s\S]*?return advance\(\);/);
+  });
+
   it("draws the bot check for every booking once there is a site key, card or no card", () => {
     // November 15: the box sat inside the card step, which is gone while
     // cards are off, and the server wants its token on every booking.

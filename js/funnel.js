@@ -1639,6 +1639,12 @@
       label.textContent = was;
       if (free) {
         state.checkedSlot = state.slot;
+        // Checked now, whatever the answer rested on. verifySlot also says
+        // "free" when it has nothing to check against (no calendar key, a read
+        // that failed, a plan it can't make) without stamping the time, and
+        // advance() then asked again, and again, in a loop that froze the page
+        // on Confirm (found November 15; live since cdfcbe8, November 13).
+        lastFreeCheck = Date.now();
         return advance();
       }
       // Gone. Reload the step so they are choosing from what is actually
@@ -5445,7 +5451,7 @@
     // "By email" only when they gave an address (validation, November 11).
     var email = P.isLive('automatedEmail') && Boolean(String(state.contact.email || '').trim());
     var texts = P.isLive('automatedTexts');
-    var calendar = P.isLive('liveCalendar');
+    var calendar = P.isLive('liveCalendar') && !state.unsaved;
     var requested = isInquiry();
     var out = [];
 
@@ -7137,6 +7143,9 @@
    * Not saved: the subject says so, so Elijah puts it on the calendar.
    */
   function sendRecord(quote, msg, saved) {
+    // Done says "confirmed" only when the site saved it (CLAUDE.md: a booking
+    // is "confirmed" to the customer only once its calendar event is written).
+    state.unsaved = !saved;
     var body = (saved ? '' : 'CHECK THE CALENDAR: the site could not confirm it saved this booking. Add it to the calendar if it is not there.\n\n') +
       buildSummary(quote);
     var fd = new FormData();
@@ -7309,7 +7318,7 @@
     // landing halfway down a receipt is not reading it.
     lastRenderedStep = null;
     el('bkBar').style.width = '100%';
-    var asked = isInquiry() || (state.slot && shortNotice(state.slot));
+    var asked = isInquiry() || (state.slot && shortNotice(state.slot)) || state.unsaved;
     el('bkTitle').textContent = asked ? 'Request sent' : "You're fully confirmed";
     el('bkNext').hidden = true;
     el('bkBack').hidden = true;
@@ -7329,7 +7338,7 @@
     // Nothing is left in the footer on Done (an empty strip on phones).
     root.querySelector('.bk-modal').classList.add('is-done');
     el('bkNav').innerHTML = '<span class="bk-nav-done">' +
-      (isInquiry() ? 'Request sent' : 'Booked') + ' &middot; ' +
+      (isInquiry() || state.unsaved ? 'Request sent' : 'Booked') + ' &middot; ' +
       esc(new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })) +
       '</span>';
 
