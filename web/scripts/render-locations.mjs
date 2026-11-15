@@ -14,7 +14,7 @@
  *   few things that belong to this city alone; two pages whose own text
  *   overlaps more than MAX_OVERLAP (word 5-grams, Jaccard).
  */
-import { splitHero } from "./split-hero.mjs";
+import { pairPics, splitHero } from "./split-hero.mjs";
 import fs from "node:fs";
 import path from "node:path";
 import { root, loadLocations, pageFile, localWords, overlap, contained } from "./locations.mjs";
@@ -58,7 +58,7 @@ const need = (cond, loc, msg) => { if (!cond) problems.push(`${loc.file}: ${msg}
 
 for (const loc of locs) {
   need(/^[a-z0-9-]+$/.test(loc.slug ?? ""), loc, "slug must be lowercase letters, digits and dashes");
-  for (const k of ["name", "title", "meta", "h1", "sub", "localParagraph"]) need(typeof loc[k] === "string" && loc[k].trim(), loc, `${k} is missing`);
+  for (const k of ["name", "title", "meta", "eyebrow", "h1", "sub", "localParagraph"]) need(typeof loc[k] === "string" && loc[k].trim(), loc, `${k} is missing`);
   need((loc.title ?? "").length <= LIMITS.title, loc, `title is ${loc.title?.length} characters (max ${LIMITS.title})`);
   need((loc.meta ?? "").length <= LIMITS.meta, loc, `meta is ${loc.meta?.length} characters (max ${LIMITS.meta})`);
   const words = (loc.localParagraph ?? "").split(/\s+/).filter(Boolean).length;
@@ -67,7 +67,7 @@ for (const loc of locs) {
   need(Array.isArray(loc.neighborhoods) && loc.neighborhoods.length >= 3, loc, "list at least 3 neighborhoods");
   need(Array.isArray(loc.faq) && loc.faq.length >= 3, loc, "at least 3 FAQ answers written for this area");
   // A before/after pair from the gallery, never a lone "after" (Emmett, November 15).
-  need(loc.hero && gallery.some((p) => p.slug === loc.hero.pair) && fs.existsSync(path.join(root, `images/ba-${loc.hero.pair}-before-760.webp`)), loc, "hero.pair must name a gallery before/after pair");
+  need(loc.hero && gallery.some((p) => p.slug === loc.hero.pair) && ["before", "after"].every((s) => fs.existsSync(path.join(root, `images/ba-${loc.hero.pair}-${s}-760.webp`))), loc, "hero.pair must name a gallery before/after pair");
   need(loc.map && Array.isArray(loc.map.center) && loc.map.center.length === 2 && loc.map.radiusMiles > 0, loc, "map needs center [lat, lon] and radiusMiles");
   for (const j of loc.localJobs ?? []) need(gallery.some((p) => p.slug === j.pair), loc, `localJobs: no gallery pair "${j.pair}"`);
   for (const r of loc.reviews ?? []) need(reviews.reviews.some((x) => x.author === r.author && x.date === r.date), loc, `reviews: no review by ${r.author} on ${r.date}`);
@@ -98,9 +98,9 @@ for (const loc of locs) {
   const jobs = (loc.localJobs ?? []).length ? `
 <section class="loc-jobs">
   <div class="wrap">
-    <h2>${esc(loc.jobsH2 ?? `Recent detailing projects in ${loc.name}`)}</h2>
+    <h2>${esc(loc.jobsH2 ?? "Recent jobs nearby")}</h2>
     <div class="loc-jobs-grid">
-${loc.localJobs.map((j) => { const p = pair(j.pair); return `      <figure class="loc-job"><span class="loc-job-pics"><img src="images/ba-${p.slug}-before-760.webp" alt="${esc(p.altBefore)}" loading="lazy" decoding="async" /><img src="images/ba-${p.slug}-after-760.webp" alt="${esc(p.altAfter)}" loading="lazy" decoding="async" /></span><figcaption><b>${esc(j.vehicle ?? p.caption)}</b>${j.note ? ` ${esc(j.note)}` : ""}${j.comment ? `<q>${esc(j.comment)}</q>` : ""}</figcaption></figure>`; }).join("\n")}
+${loc.localJobs.map((j) => { const p = pair(j.pair); return `      <figure class="loc-job"><span class="loc-job-pics svp-split">${pairPics(p)}</span><figcaption><b>${esc(j.vehicle ?? p.caption)}</b>${j.note ? ` ${esc(j.note)}` : ""}${j.comment ? `<q>${esc(j.comment)}</q>` : ""}</figcaption></figure>`; }).join("\n")}
     </div>
   </div>
 </section>
@@ -108,7 +108,7 @@ ${loc.localJobs.map((j) => { const p = pair(j.pair); return `      <figure class
   const revs = (loc.reviews ?? []).length ? `
 <section class="loc-reviews">
   <div class="wrap">
-    <h2>${esc(loc.reviewsH2 ?? `What ${loc.name} customers say`)}</h2>
+    <h2>${esc(loc.reviewsH2 ?? "What customers say")}</h2>
 ${loc.reviews.map((r) => { const x = reviews.reviews.find((y) => y.author === r.author && y.date === r.date); return `    <blockquote class="loc-review"><p>${esc(x.text)}</p><cite>${esc(x.author.split(" ")[0])}${r.area ? `, ${esc(r.area)}` : ""}</cite></blockquote>`; }).join("\n")}
   </div>
 </section>
@@ -131,7 +131,7 @@ ${loc.reviews.map((r) => { const x = reviews.reviews.find((y) => y.author === r.
     FILE: loc.file, TITLE: esc(loc.title), META: esc(loc.meta), CANONICAL: url,
     ROBOTS: live(loc) ? "" : '<meta name="robots" content="noindex" />\n',
     JSONLD: JSON.stringify(jsonld, null, 2),
-    NAME: esc(loc.name), EYEBROW: esc(loc.eyebrow ?? `Mobile detailing in ${loc.name}`),
+    NAME: esc(loc.name), EYEBROW: esc(loc.eyebrow),
     H1: esc(loc.h1), SUB: esc(loc.sub), CTA_ATTRS: ctaAttrs,
     RATING: `${Number(reviews.rating).toFixed(1)} on Google (${reviews.count} reviews)`,
     TRUST: (loc.trust ?? ["UC student-owned", "Pay when it's done"]).map((t) => `          <li>${esc(t)}</li>`).join("\n"),

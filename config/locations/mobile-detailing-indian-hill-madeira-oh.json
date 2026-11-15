@@ -18,13 +18,13 @@
   "hero": {
     "pair": "forester-front-floor"
   },
-  "localParagraph": "Most homes here have a driveway or a garage, and either one is a good place for us to work. In a garage we can keep going through rain or hard sun, so tick the garage box when you book. If the house sits back from the road or there's a gate, add a note about where to park and how to get in. You don't need to be home, as long as we can get into the car.\n\nFamily cars take the hardest use. Car seats, dogs, sports gear and road trips all end up in the back. Full Interior + Steam is the one we'd pick for those. If a car needs to go as far as an interior can go, ask about Showroom Ready Restoration, which Elijah does himself.",
-  "whatH2": "What people book",
+  "localParagraph": "Most homes here have a driveway or a garage, and either one is a good place for us to work. In a garage we can keep going through rain or hard sun, so tick the garage box when you book. If the house sits back from the road or there's a gate, add a note about where to park and how to get in. You don't need to be home, as long as we can get into the car.\n\nCar seats, dogs, sports gear and road trips all end up in the back seat sooner or later. Full Interior + Steam is the one we'd pick for a family car. If yours needs more than that, ask about Showroom Ready Restoration.",
+  "whatH2": "What you can book",
   "highlights": [
     "Full Interior + Steam, from {price:full-steam-interior}: our most popular detail",
     "Full Interior, from {price:full-interior}: seats and carpet shampooed, mats washed, leather conditioned",
     "Pet hair removal, {addon:pet-hair}, added to any interior",
-    "Showroom Ready Restoration, added to a Full Interior: the interior taken as far as it can go"
+    "Showroom Ready Restoration: added to a Full Interior, and done by Elijah himself"
   ],
   "neighborhoods": [
     "Indian Hill",

@@ -18,13 +18,13 @@
   "hero": {
     "pair": "third-row-seat-stains"
   },
-  "localParagraph": "In Delhi most homes have a driveway, so that's usually where we set up. A lot of Price Hill has street parking only, and that works too. We need a legal spot beside the car with room to open every door, and we bring what we need. An outdoor outlet helps if you have one. If you'd rather not be home, book us at your work instead and tell us where the car is parked.\n\nFor most people it's the inside that needs the work: car seats, dogs, work boots and months of commuting. That's what a Full Interior is for. If there's a stain or a smell you're worried about, mention it when you book. We'll look at it with you and tell you honestly what to expect before we start.",
-  "whatH2": "What people book",
+  "localParagraph": "If you have a driveway, that's usually where we set up. Street parking can work too, as long as there's a safe, legal spot right beside the car with room to open every door. If there's nowhere good to work near you, tick \"I do not have a good location for a detail near me\" when you book and we'll meet at a nearby lot. We bring what we need, and an outdoor outlet helps if you have one. You don't have to be home. Plenty of people book us at work and tell us where the car is parked.\n\nFor most people it's the inside that needs the work: car seats, dogs, work boots and months of commuting. That's what a Full Interior is for. If there's a stain or a smell you're worried about, mention it when you book, and we'll tell you what to expect before we start.",
+  "whatH2": "What you can book",
   "highlights": [
     "Full Interior + Steam, from {price:full-steam-interior}: the deep clean, then every surface steamed",
     "Full Interior, from {price:full-interior}: seats and carpet shampooed, mats washed, leather conditioned",
     "Basic Interior, from {price:basic-interior}: a thorough vacuum and wipe-down between deep cleans",
-    "Stain, spill and odor treatments, priced before we start"
+    "Stain treatment, from {addon:stain}, added to any interior"
   ],
   "neighborhoods": [
     "Delhi Hills",
@@ -68,7 +68,7 @@
   "faq": [
     {
       "q": "I only have street parking. Can you still do it?",
-      "a": "Yes. We need a legal spot right beside your car with room to open the doors. If your street is tight or busy, add a note when you book and we'll plan around it."
+      "a": "Often, yes, if there's a safe, legal spot right beside your car. If there isn't, tick \"I do not have a good location for a detail near me\" when you book and we'll meet at a nearby lot."
     },
     {
       "q": "Can you do my car while I'm at work?",

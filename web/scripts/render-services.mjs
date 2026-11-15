@@ -15,7 +15,7 @@
  * 155 characters (as rendered), an unknown package or add-on, fewer than 3
  * steps or 3 questions, and a published page with fewer than 2 photo pairs.
  */
-import { splitHero } from "./split-hero.mjs";
+import { pairPics, splitHero } from "./split-hero.mjs";
 import fs from "node:fs";
 import path from "node:path";
 import { root, loadServices, loadLocations, pageFile, localWords, overlap } from "./locations.mjs";
@@ -110,9 +110,9 @@ ${p.packages.map((id) => {
   const proofHtml = proof.length ? `
 <section class="loc-jobs">
   <div class="wrap">
-    <h2>${esc(p.proofH2 ?? `${p.name}: before and after`)}</h2>
+    <h2>${esc(p.proofH2 ?? "Before and after")}</h2>
     <div class="loc-jobs-grid">
-${proof.map((g) => `      <figure class="loc-job"><span class="loc-job-pics"><img src="images/ba-${g.slug}-before-760.webp" alt="${esc(g.altBefore)}" loading="lazy" decoding="async" /><img src="images/ba-${g.slug}-after-760.webp" alt="${esc(g.altAfter)}" loading="lazy" decoding="async" /></span><figcaption><b>${esc(g.caption)}</b>${(p.proofComments ?? {})[g.slug] ? `<q>${esc(p.proofComments[g.slug])}</q>` : ""}</figcaption></figure>`).join("\n")}
+${proof.map((g) => `      <figure class="loc-job"><span class="loc-job-pics svp-split">${pairPics(g)}</span><figcaption><b>${esc(g.caption)}</b>${(p.proofComments ?? {})[g.slug] ? `<q>${esc(p.proofComments[g.slug])}</q>` : ""}</figcaption></figure>`).join("\n")}
     </div>
   </div>
 </section>

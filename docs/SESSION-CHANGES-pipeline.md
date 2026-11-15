@@ -1648,6 +1648,18 @@ An independent review found nothing that loses or duplicates a normal booking. I
   - no stuffed headings.
   - 722 pass. No sideways scroll at 320, 375, 820 or 1440 px.
 - **Screenshots:** `docs/mockups/eNov15-seo-*`, before and after. All four pages are still drafts (`noindex`).
+- **Validation round (an independent agent):**
+  - **Delhi's street-parking advice contradicted the business rule** ("no driveway, we meet at a nearby lot", `BUSINESS-CONTEXT.md` 4.11). It now points to the form's own "I do not have a good location for a detail near me" box.
+  - **Two stiff lines** are rewritten.
+  - **Restoration wording** was repeated; it's now said once.
+  - **"What people book"** claimed local demand nobody has measured. It now reads "What you can book".
+  - **Stain treatment** now comes from the catalog (`{addon:stain}`).
+  - **The generators:**
+    - job and proof photos carry Before/After labels (`pairPics`, one markup for all three);
+    - the job, review and proof headings default to plain words;
+    - every city page must set its own eyebrow;
+    - a city hero needs both photos;
+    - a test bans the place name from city section headings.
 - **Not touched, for Emmett:** the catalog wording that also shows on services.html. "Not included: A promise every stain comes out completely" on the package cards reads oddly, and the ozone line says it "destroys the compounds causing the smell".
 
 ## Leftovers noticed, not touched

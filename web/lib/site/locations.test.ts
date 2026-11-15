@@ -74,5 +74,7 @@ describe("city and service pages read like the rest of the site (Emmett, Novembe
       expect(read(p), p).not.toMatch(/drivers trust 513 Auto Clean|Proudly serving/);
       for (const m of read(p).matchAll(/<h2>([^<]*) questions<\/h2>/g)) expect(m[1], p).toBe("Common");
     }
+    // City pages: the place is named in the title, the eyebrow, the H1 and the words, never stuffed into the section headings.
+    for (const l of locs) for (const m of read(pageFile(l)).matchAll(/<h2[^>]*>([^<]*)<\/h2>/g)) expect(m[1], l.slug).not.toContain(l.name.split(" & ")[0]);
   });
 });
