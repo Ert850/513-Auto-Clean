@@ -9,20 +9,17 @@
   ],
   "title": "Mobile Detailing in Delhi & Price Hill, OH | 513 Auto Clean",
   "meta": "Mobile car detailing at your home or work in Delhi Township and Price Hill. Full Interiors from {price:full-interior}. See your price first, pay when it's done.",
-  "eyebrow": "Delhi Township & Price Hill",
-  "h1": "Mobile auto detailing in Delhi & Price Hill, OH",
-  "sub": "We're a UC student-owned crew. We drive to your house or job on the west side and detail your car right there. Full Interiors from {price:full-interior}.",
-  "cta": "Get an instant Delhi quote",
+  "eyebrow": "West side Cincinnati",
+  "h1": "Mobile car detailing in Delhi and Price Hill",
+  "sub": "We come to your house or work in Delhi Township or Price Hill and clean your car where it's parked. You see the whole price, travel and tax included, before you book.",
   "book": {
     "intent": "interior"
   },
   "hero": {
-    "src": "images/ba-third-row-seat-stains-after-1120.webp",
-    "alt": "A third-row seat after stain treatment",
-    "caption": "A recent stain treatment on the west side"
+    "pair": "third-row-seat-stains"
   },
-  "localParagraph": "Delhi runs downhill from Delhi Road to the Ohio River, and Price Hill sits on the hill above it. That's a lot of in and out of the car: Glenway Avenue, Rapid Run Road, Anderson Ferry, and River Road, where U.S. 50 carries heavy truck traffic along the water. Most of what we clean out here is the inside: mats, carpet, car seats, dog hair and whatever has collected under the front seats.\n\nYou don't drive anywhere. Book online, see the full price with travel and tax before you confirm, and we show up at your driveway in Delhi Hills or Delshire, your street in West Price Hill, or your work parking lot. You get on with your day, and you pay when it's done.",
-  "whatH2": "What we do at your house",
+  "localParagraph": "In Delhi most homes have a driveway, so that's usually where we set up. A lot of Price Hill has street parking only, and that works too. We need a legal spot beside the car with room to open every door, and we bring what we need. An outdoor outlet helps if you have one. If you'd rather not be home, book us at your work instead and tell us where the car is parked.\n\nFor most people it's the inside that needs the work: car seats, dogs, work boots and months of commuting. That's what a Full Interior is for. If there's a stain or a smell you're worried about, mention it when you book. We'll look at it with you and tell you honestly what to expect before we start.",
+  "whatH2": "What people book",
   "highlights": [
     "Full Interior + Steam, from {price:full-steam-interior}: the deep clean, then every surface steamed",
     "Full Interior, from {price:full-interior}: seats and carpet shampooed, mats washed, leather conditioned",
@@ -70,16 +67,18 @@
   "reviews": [],
   "faq": [
     {
-      "q": "Do you come down to River Road and Sayler Park?",
-      "a": "Yes. Anywhere in Delhi Township and Price Hill, river side included. We just need room to park next to your car and walk around it."
+      "q": "I only have street parking. Can you still do it?",
+      "a": "Yes. We need a legal spot right beside your car with room to open the doors. If your street is tight or busy, add a note when you book and we'll plan around it."
     },
     {
       "q": "Can you do my car while I'm at work?",
-      "a": "Yes, if your lot allows it. A lot of our customers book us at work. Add a note about where the car is parked when you book."
+      "a": "Yes, if your lot allows it. Plenty of people book us at work. Add a note about where the car is parked and how we'll get the keys."
     },
     {
-      "q": "How much is travel to Delhi or Price Hill?",
-      "a": "It's based on the drive to your address and it's in your total, with tax, before you book. Nothing gets added after."
+      "q": "How is travel priced to Delhi or Price Hill?",
+      "a": "By the drive to your address. The booking form works it out and puts it in your total, with tax, before you book. Nothing is added after."
     }
-  ]
+  ],
+  "localH2": "Driveway, street or work lot",
+  "faqH2": "Common questions"
 }

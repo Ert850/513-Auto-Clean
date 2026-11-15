@@ -15,6 +15,7 @@
  * 155 characters (as rendered), an unknown package or add-on, fewer than 3
  * steps or 3 questions, and a published page with fewer than 2 photo pairs.
  */
+import { splitHero } from "./split-hero.mjs";
 import fs from "node:fs";
 import path from "node:path";
 import { root, loadServices, loadLocations, pageFile, localWords, overlap } from "./locations.mjs";
@@ -50,7 +51,7 @@ const proofOf = (p) => (p.proofPairs ?? gallery.filter((g) => (g.services ?? [])
 
 for (const p of pages) {
   need(/^[a-z0-9-]+$/.test(p.slug ?? ""), p, "slug must be lowercase letters, digits and dashes");
-  for (const k of ["name", "title", "meta", "h1", "sub", "cta"]) need(typeof p[k] === "string" && p[k].trim(), p, `${k} is missing`);
+  for (const k of ["name", "title", "meta", "h1", "sub"]) need(typeof p[k] === "string" && p[k].trim(), p, `${k} is missing`);
   need(p.title.length <= 60, p, `title is ${p.title.length} characters (max 60)`);
   need(p.meta.length <= 155, p, `meta is ${p.meta.length} characters (max 155)`);
   for (const id of p.packages ?? []) need(findPackage(id), p, `no package "${id}"`);
@@ -58,6 +59,11 @@ for (const p of pages) {
   need((p.steps ?? []).length >= 3, p, "at least 3 steps");
   need((p.faq ?? []).length >= 3, p, "at least 3 questions");
   for (const slug of p.proofPairs ?? []) need(gallery.some((g) => g.slug === slug), p, `no gallery pair "${slug}"`);
+  // Every before/after on the page is work of this page's service (Emmett,
+  // November 15: "Stains before and after" showed an interior reset).
+  need(Array.isArray(p.proofServices) && p.proofServices.length, p, "proofServices must list the gallery service tags this page shows");
+  const ofService = (slug) => (gallery.find((g) => g.slug === slug)?.services ?? []).some((s) => (p.proofServices ?? []).includes(s));
+  for (const slug of [...(p.proofPairs ?? []), ...(p.hero?.pair ? [p.hero.pair] : [])]) need(ofService(slug), p, `"${slug}" isn't tagged with ${(p.proofServices ?? []).join(" or ")} in data/gallery.json`);
   if (live(p)) need(proofOf(p).length >= 2, p, "a published page needs at least 2 before/after pairs of this service");
 }
 for (let i = 0; i < pages.length; i++) for (let k = i + 1; k < pages.length; k++) {
@@ -72,10 +78,11 @@ const cities = loadLocations().filter(live);
 for (const p of pages) {
   const url = `${SITE}/${p.slug}`;
   const ctaAttrs = p.book?.package ? ` data-book-package="${esc(p.book.package)}"` : p.book?.intent ? ` data-book-intent="${esc(p.book.intent)}"` : "";
-  const proof = proofOf(p);
-  const heroPair = p.hero?.pair ? gallery.find((g) => g.slug === p.hero.pair) : proof[0];
+  const heroPair = p.hero?.pair ? gallery.find((g) => g.slug === p.hero.pair) : proofOf(p)[0];
+  // The hero isn't shown twice.
+  const proof = proofOf(p).filter((g) => g !== heroPair);
   const hero = heroPair
-    ? `      <figure class="loc-hero-pic svp-split"><span class="svp-split-pics"><img src="images/ba-${heroPair.slug}-before-760.webp" alt="${esc(heroPair.altBefore)}" width="380" height="507" fetchpriority="high" decoding="async" /><img src="images/ba-${heroPair.slug}-after-760.webp" alt="${esc(heroPair.altAfter)}" width="380" height="507" decoding="async" /></span><figcaption><b>Before</b> and <b>after</b>: ${esc(heroPair.caption)}</figcaption></figure>`
+    ? splitHero(heroPair)
     : "";
 
   const levels = (p.packages ?? []).length ? `
@@ -143,7 +150,7 @@ ${proof.map((g) => `      <figure class="loc-job"><span class="loc-job-pics"><im
     ROBOTS: live(p) ? "" : '<meta name="robots" content="noindex" />\n',
     JSONLD: JSON.stringify(jsonld, null, 2),
     NAME: esc(p.name), EYEBROW: esc(p.eyebrow ?? p.name), H1: esc(p.h1), SUB: esc(p.sub),
-    CTA: esc(p.cta), CTA_ATTRS: ctaAttrs,
+    CTA_ATTRS: ctaAttrs,
     RATING: `${Number(reviews.rating).toFixed(1)} on Google (${reviews.count} reviews)`,
     TRUST: (p.trust ?? ["UC student-owned", "We come to you", "Pay when it's done"]).map((t) => `          <li>${esc(t)}</li>`).join("\n"),
     HERO: hero, LEVELS: levels, PROOF: proofHtml,
@@ -153,7 +160,7 @@ ${proof.map((g) => `      <figure class="loc-job"><span class="loc-job-pics"><im
     ADDONS_H2: esc(p.addonsH2 ?? "Add to it"),
     ADDONS: (p.addons ?? []).map(addonLine).join("\n"),
     SIZES: `Prices are for a small car. ${esc(sizes)}. You see your exact total, with travel and tax, before you book.`,
-    FAQ_H2: esc(p.faqH2 ?? `${p.name} questions`),
+    FAQ_H2: esc(p.faqH2 ?? "Common questions"),
     FAQ: p.faq.map((q) => `    <details class="loc-q"><summary>${esc(q.q)}</summary><p>${esc(q.a)}</p></details>`).join("\n"),
     WHERE: `    <p class="svp-where">We come to you anywhere in our <a href="service-area.html">service area</a>${cities.length ? `, including ${cities.map((c) => `<a href="${c.slug}">${esc(c.name)}</a>`).join(", ")}` : ""}.</p>`,
   };
