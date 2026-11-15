@@ -1,8 +1,8 @@
 /**
  * Password gate for the PRIVATE test site (November 14).
  *
- * Runs only where TEST_SITE_PASSWORD is set: the separate Netlify test site
- * that deploys the test branch. The live site never sets it, so there this
+ * Runs only where TEST_SITE_PASSWORD is set: the Deploy Previews context of
+ * the existing site (draft PR #13). Production never sets it, so there this
  * returns straight away and the request goes on untouched.
  *
  * On the test site every page, script, image and function call needs the

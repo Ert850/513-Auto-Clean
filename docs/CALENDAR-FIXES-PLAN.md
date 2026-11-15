@@ -29,7 +29,7 @@
 ### 4. Kris's evening times show as standard price in the week view
 
 - **Today:** the week grid and the day view judge "standard price" by the clock (10am to 6pm), not by Kris's calendar. So his 6pm start, which is standard price on his calendar, gets no star and is folded under "Later times".
-- **The fix:** both read the fee from the calendar, like the price already does. Also, the fee's name ("early" or "late start") comes from the calendar block, not from before or after noon.
+- **The fix:** both read the fee from the calendar, like the price already does. ~~Also, the fee's name ("early" or "late start") comes from the calendar block, not from before or after noon.~~ **Changed (Emmett, November 14):** the name stays decided by noon, so it always matches the receipt.
 - **Effort:** about 2 to 3 hours.
 
 ### 5. The last typed scheduling numbers move into settings

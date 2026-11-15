@@ -70,6 +70,7 @@ var BASIC_EXT_IDS = [
   "ext-wheels",
   "ext-tire-dress"
 ];
+var MAINT_PRIOR = { minMonths: 1, maxMonths: 3 };
 var PACKAGES = [
   /* ---------------- interior ---------------- */
   {
@@ -78,16 +79,16 @@ var PACKAGES = [
     name: "Maintenance",
     category: "interior",
     tagline: "Keeps an already detailed car right, at a lower price.",
-    note: "The same work as a Basic Interior, priced lower because a car detailed a month or two ago has far less built up in it. It resets the everyday mess: crumbs, dust, fingerprints, mats. It does NOT include shampooing, stain work or anything deep, because there should not be anything deep left. If it has been longer than three months, or something has been spilled since, start from Basic or Full instead.",
+    note: `The same work as a Basic Interior, priced lower because a car detailed in the last ${MAINT_PRIOR.maxMonths} months has far less built up in it. It resets the everyday mess: crumbs, dust, fingerprints, mats. It does NOT include shampooing or stain work. If it has been longer than ${MAINT_PRIOR.maxMonths} months, or something has been spilled since, start from Basic or Full instead.`,
     notIncluded: ["Shampoo or stain work", "Deep cleaning: it keeps an already detailed car that way"],
-    tip: "Been longer than three months, or a spill since? Start from Basic or Full instead.",
+    tip: `Been longer than ${MAINT_PRIOR.maxMonths} months, or a spill since? Start from Basic or Full instead.`,
     priceCents: 11500,
     durationMin: 105,
     componentIds: [...BASIC_INT_IDS],
     featured: false,
     sortOrder: 0,
     /** Returning customers only, 1 to 3 months after a previous detail. */
-    requiresPriorDetail: { minMonths: 1, maxMonths: 3 }
+    requiresPriorDetail: MAINT_PRIOR
   },
   {
     id: "basic-interior",

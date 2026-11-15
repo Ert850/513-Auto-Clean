@@ -155,7 +155,7 @@ Please give the days and times.
 ## Answers to the November 15 message (Elijah, via Emmett)
 
 1. **Rush-hour travel (question 17):** "Looks good." The drive home stays priced at the real finish time.
-2. **Promo codes:** GOLF10 and PRESTIGE10 are **not on the prints**. They **can be shown on the website**, because nobody finds those addresses without scanning. Queued: show them on `lp-golf.html` and `lp-prestige.html`.
+2. **Promo codes:** GOLF10 and PRESTIGE10 are **not on the prints**. They **can be shown on the website**, because nobody finds those addresses without scanning. Queued: show them on `lp-golf.html` and `lp-prestige.html`. On for everyone or as an A/B test, and any end date, is asked after the freeze (Emmett, November 15).
 3. **Local jobs and reviews for the city pages:** "already in the OneDrive location", a full list of jobs, people and areas. It isn't synced to Emmett's Mac yet (queued).
 4. **Inbox logo (BIMI):** not a registered trademark, and **not worth it**. Closed.
    - He thought changing the Gmail profile picture would do it. That only shows for mail sent straight from that Gmail account. Booking emails go out through Resend from our own domain, where Gmail and Apple Mail show a logo only with BIMI and a mark certificate.
