@@ -180,28 +180,28 @@ Full reports are in that session; the screenshots are in the session scratchpad 
   - **A server-side free/busy check:** DONE November 14 (calendar fix 1).
   - **Turnstile:** DONE November 15. It's drawn for every booking, tokens are spent once and renewed, and Confirm waits for one. Before setting `TURNSTILE_SECRET_KEY`, test once on a Deploy Preview with Cloudflare's always-pass test keys.
   - **Multi-day:** send the browser's day plan to the server, and the emails list every day.
-  - **Typed numbers to move into settings:** 24 h short notice, the 30 min drive fallback, `[0, 6]` correction days, "within the hour", promo labels, and the 365/400 booking horizon.
+  - **Typed numbers to move into settings:** DONE November 14 to 15.
   - **Browser-local dates:** DONE November 14 (calendar fix 2).
 - **UI (each needs a mockup first):**
   - **Checkout header:** Back and × cover text at 820 px with long package names, and at 320. With two vehicles it shows vehicle 2's size.
   - **The travel fee box is styled like an error** (pink and red; the color rule says red means brand or error).
   - **Help me decide:** the bar shows the travel fee as if it were a price; "4 hours covers our longest single-vehicle detail" is false (Showroom Ready is 7 to 8 h); and the Time step's first screen is all text.
   - **"Add a vehicle"** opens a bare restart: no "Vehicle 2" label, no Back.
-  - **A 6am pick is steered to 6pm** (`steerFor` assumes suggestions are fee-free).
-  - **Tax appears unlabelled** in the bar once the ZIP is in.
-  - **Hover styles stick after a tap on phones:** wrap them in `@media (hover: hover)`.
+  - **A 6am pick is steered to 6pm:** DONE November 15.
+  - **Tax appears unlabelled:** DONE November 15 ("tax included").
+  - **Hover styles stick after a tap on phones:** DONE November 15, site-wide (`hover.test.ts`).
   - **The time picker on short screens:** nothing visible at 320×568, and a cramped calendar view at 1440×790.
   - **Layout shift at 820 px:** the home page (reviews ticker) and Range & Travel.
   - **Landing pages on phones:** no Book button on the first screen.
 - **Smaller:**
-  - "Tap" on desktop;
-  - the close dialog says "Cancel my booking" before any booking exists;
-  - the multi-vehicle saving wording, and two different saving figures;
-  - "10:00 AM" vs "10am";
-  - recommended-time labels;
-  - the calendar opens on past days;
-  - "No extra cost" wraps on `/booking.html`;
-  - the phone menu's names, and Contact Us twice;
+  - "Tap" on desktop: DONE November 15 (the privacy policy's "tap Book Now" stays until the next legal update);
+  - the close dialog: DONE November 15 ("Discard this quote");
+  - the multi-vehicle saving wording: DONE November 15 (Emmett's words); the bar's struck figure is the multi-vehicle saving only, and "You saved" counts every discount: still to look at;
+  - "10:00 AM" vs "10am": DONE November 15;
+  - recommended-time labels: DONE November 15 ("This weekend");
+  - the calendar opens on past days: DONE November 15;
+  - "No extra cost" wraps: DONE November 15 ("No extra");
+  - the phone menu's names, and Contact Us twice: DONE November 15;
   - Contact placeholders cut, and the heading repeated;
   - the Exterior tab fold;
   - exterior times after dark (a business question).

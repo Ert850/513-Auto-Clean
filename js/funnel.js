@@ -346,6 +346,12 @@
     return '<s>' + $(cents) + tail + '</s> <span class="bk-cut">' + $(cents - off) + tail + '</span>';
   }
 
+  /** A price after any promo code, as one plain figure (for small print, where a struck price would break the line). */
+  function svcPlain(cents) {
+    var bp = promoRate();
+    return $(bp && cents > 0 ? cents - Math.round((cents * bp) / 10000) : cents);
+  }
+
   /** The same, for a figure written as an addition: "+$50". */
   function svcPlus(cents) {
     var bp = promoRate();
@@ -1070,6 +1076,8 @@
     box.querySelector('.bk-total-amt').textContent = $(quote.totalCents);
     var dur = quote.serviceDurationMin;
     var sub = box.querySelector('.bk-total-sub');
+    // The total includes tax once the ZIP is in; say so (review, November 13).
+    var taxed = quote.taxCents > 0 && !quote.taxIsEstimate;
 
     if (quote.promoDiscountCents > 0) {
       // Re-priced without the code rather than adding the discount back by
@@ -1082,16 +1090,14 @@
       // The saving itself is said once, in the price table's "You saved"
       // (validation, November 11: this bar said $13.47 with the tax, the
       // table $12.50 without, on one screen).
-      sub.innerHTML = '<s>' + $(before.totalCents) + '</s> ' + esc(quote.promoCode) + ' applied';
+      sub.innerHTML = '<s>' + $(before.totalCents) + '</s> ' + esc(quote.promoCode) + ' applied' + (taxed ? ' · tax included' : '');
     } else if (quote.multiVehicleDiscountCents > 0) {
       // Lead with the saving, not the duration: this is the moment the second
       // vehicle has to look like a good idea.
       // The amount is said once, in the price table's "You saved", as with a
       // promo code (final validation, November 11: $75 there, $64.68 here).
-      sub.innerHTML = '<s>' + $(quote.grossBeforeMultiCents) + '</s> multi-vehicle saving applied';
+      sub.innerHTML = '<s>' + $(quote.grossBeforeMultiCents) + '</s> multi-vehicle saving applied' + (taxed ? ' · tax included' : '');
     } else {
-      // The total includes tax once the ZIP is in; say so (review, November 13).
-      var taxed = quote.taxCents > 0 && !quote.taxIsEstimate;
       sub.textContent = [dur ? 'about ' + fmtDur(dur) + ' on site' : '', taxed ? 'tax included' : ''].filter(Boolean).join(' · ');
     }
   }
@@ -2010,7 +2016,7 @@
             // to nowrap made every row wider than a phone, so the list
             // scrolled sideways and the filters above it did not.
             ? '<b class="bk-soon">Soon</b><i class="bk-soonwhy">' + esc(i.unavailable) + '</i>'
-            : '<b>' + svc(i.priceCents, i.pricePlus ? '+' : '') + '</b>' + (i.totalWith ? '<i>total with ' + esc(i.totalWith) + '</i>' : (i.withList || []).length ? '<i>' + i.withList.map(function (w) { return svc(w.cents) + ' with ' + esc(w.name); }).join(', ') + '</i>' : '') + (dur ? '<i>' + dur + '</i>' : '')) +
+            : '<b>' + svc(i.priceCents, i.pricePlus ? '+' : '') + '</b>' + (i.totalWith ? '<i>total with ' + esc(i.totalWith) + '</i>' : (i.withList || []).length ? '<i>' + i.withList.map(function (w) { return svcPlain(w.cents) + ' with ' + esc(w.name); }).join(', ') + '</i>' : '') + (dur ? '<i>' + dur + '</i>' : '')) +
           '</span>' +
           '</button>' +
           (i.note
@@ -2390,8 +2396,8 @@
       RULES
     );
     return '<div class="bk-morevehs">' +
-      // Emmett's words, November 15 ("Take 10% off both, $27 on one like this"
-      // read as a saving on one vehicle; the figure is the saving on both).
+      // Emmett's words, November 15 ("Take 10% off both, $50.67 on one like
+      // this" read as a saving on one vehicle; the figure is the saving on both).
       '<p class="bk-morevehs-l"><b>Another vehicle at this address?</b> Take ' + pct + '%, which would currently save ' +
       $(withTwo.grossBeforeMultiCents - withTwo.totalCents) + '. We only drive out once.</p>' +
       '<button type="button" class="bk-addveh" id="bkAddVeh">Add a vehicle</button></div>';
@@ -2976,15 +2982,15 @@
     else list_.push(value);
   }
 
+  /** The week a time falls in, counted from today (P.weekFromToday). */
+  function weekOf(ms) { return P.weekFromToday(ms, Date.now(), TZ); }
+
   /**
    * Cincinnati midnight, n days from today (calendar fix 2, November 14).
    * The visitor's own midnight shifted request days and the booking horizon
    * by a day for anyone booking from another time zone. Through noon, so a
    * clock change between can't land on the wrong day.
    */
-  /** The week a time falls in, counted from today (P.weekFromToday). */
-  function weekOf(ms) { return P.weekFromToday(ms, Date.now(), TZ); }
-
   function dayStartIn(n) {
     return P.localDayStart(P.localDayStart(Date.now(), TZ) + n * DAY + DAY / 2, TZ);
   }
@@ -6461,6 +6467,13 @@
         state.advice = false;
         v.intent = def.scope;
         v.addons = [{ addonId: def.id, tierId: t.dataset.browsetier }];
+        // Shown at its total with a package ("$445+ total with Full
+        // Interior"): start them on that package, or the add-on would be
+        // dropped the moment a different one is picked.
+        var tierDef = def.tiers.filter(function (x) { return x.id === t.dataset.browsetier; })[0];
+        if (tierDef && tierDef.totalWith && !(v.packageIds || []).some(function (id) { return (def.requiresAnyPackageId || []).indexOf(id) > -1; })) {
+          v.packageIds = [tierDef.totalWith];
+        }
         state.browse = false;
         return go(v.size ? 2 : 0);
       }
