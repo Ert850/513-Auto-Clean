@@ -1785,6 +1785,7 @@ main > .bookpage:first-child { padding-block: clamp(16px, 2.2vw, 30px); }
 .loc-job { margin: 0; background: #ffffff; border-radius: var(--r-lg); overflow: hidden; box-shadow: var(--shadow-sm, none); }
 .loc-job-pics { display: grid; grid-template-columns: 1fr 1fr; aspect-ratio: 4 / 3; }
 .loc-job-pics img { width: 100%; height: 100%; object-fit: cover; }
+.loc-job-pics .svp-split-pic { height: 100%; }
 .loc-job figcaption { padding: .7rem .9rem; font-size: .92rem; line-height: 1.45; }
 .loc-reviews { padding-block: clamp(28px, 5vh, 56px); }
 .loc-review { margin: 0 0 1rem; padding: 1rem 1.2rem; border-left: 3px solid var(--red); background: var(--paper); border-radius: 0 var(--r-sm) var(--r-sm) 0; }
