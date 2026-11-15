@@ -1961,3 +1961,18 @@ Mockups: `docs/mockups/eNov15-booking-fixes-mockups.png`.
 
   All three were checked in headless Chrome.
 - **Guard:** `funnel.smoke.test.mjs`. 737 tests pass.
+
+## Validation round on the saving labels (November 16)
+
+- **The saving test only read the source text.**
+  - **What changed:** the words and the arithmetic moved to `web/lib/pricing/savings.ts` (`discountKinds`, `barLabel`, `savingSummary`), called by the form through the bundle, and `savings.test.ts` prices real carts.
+  - **What it checks:** no discount; the combo; two vehicles with a code ("savings applied"); one code ("LIKENEW applied"); a rush fee; and no ZIP yet. In each case it checks that struck minus total equals "You saved", and checks the note.
+- **"tax and fees included" could read as if travel were part of the saving.**
+  - **What changed:** the note now names the fee from its own line, singular: "tax and rush fee included", or "tax and late start fee included".
+  - **Root cause:** a generic plural for the one fee that's a percentage of the discounted price.
+- **The longest bar label reached the edge of a 320 px phone.**
+  - **Example:** "$544.39 interior + exterior saving applied · tax included".
+  - **Root cause:** the bar line never wraps (`.bk-total { white-space: nowrap }`).
+  - **Fix:** under 400 px it wraps, balanced over two lines so no word sits alone (CLAUDE.md, no orphaned words).
+  - **Checked** at 375 px (one line) and 320 px (two balanced lines). It never overlaps Continue or scrolls sideways.
+- **Tests:** 743 pass.

@@ -1079,23 +1079,14 @@
     // The total includes tax once the ZIP is in; say so (review, November 13).
     var taxed = quote.taxCents > 0 && !quote.taxIsEstimate;
 
-    var kinds = discountKinds(quote);
-    if (kinds.length) {
+    var label = P.barLabel(quote);
+    if (label) {
       // Any discount: lead with the saving, not the duration. Struck: the
       // same booking with every discount off (undiscounted), tax included, so
       // struck minus total is exactly the table's "You saved" (Emmett,
-      // November 15). The amount itself is said once, in the table.
-      // Named when there is one discount; more than one is "savings", since
-      // the struck price takes them all off (validation, November 15).
-      var NAMES = {
-        promo_discount: esc(quote.promoCode || '') + ' applied',
-        additional_vehicle_discount: 'multi-vehicle saving applied',
-        combo_discount: 'interior + exterior saving applied',
-        pay_in_full_discount: 'paid-in-full saving applied'
-      };
-      sub.innerHTML = '<s>' + $(undiscounted().totalCents) + '</s> ' +
-        (kinds.length === 1 ? NAMES[kinds[0]] || 'saving applied' : 'savings applied') +
-        (taxed ? ' · tax included' : '');
+      // November 15). The amount itself is said once, in the table. The
+      // label names one discount, or says "savings" for several (P.barLabel).
+      sub.innerHTML = '<s>' + $(undiscounted().totalCents) + '</s> ' + esc(label) + (taxed ? ' · tax included' : '');
     } else {
       sub.textContent = [dur ? 'about ' + fmtDur(dur) + ' on site' : '', taxed ? 'tax included' : ''].filter(Boolean).join(' · ');
     }
@@ -6282,15 +6273,6 @@
 
   /* ================= summary table ================= */
 
-  /** The kinds of discount line on a quote, each once ("promo_discount", ...). */
-  function discountKinds(quote) {
-    var seen = [];
-    quote.lines.forEach(function (l) {
-      if (l.amountCents < 0 && l.kind !== 'tax' && seen.indexOf(l.kind) < 0) seen.push(l.kind);
-    });
-    return seen;
-  }
-
   /**
    * The same booking with no discount at all: no code, no extra-vehicle rate,
    * no interior-and-exterior combo, not paid in full. Tax included, like the
@@ -6306,37 +6288,9 @@
     return P.quote(c, Object.assign({}, RULES, { additionalVehicleDiscountBp: 0, comboDiscountCents: 0, payInFullDiscountBp: 0 }));
   }
 
-  /**
-   * What every discount on this booking is worth, together: the undiscounted
-   * total minus this one, so it includes the tax (and any rush or early/late
-   * fee, which is a percentage of the discounted price) that came off with
-   * them. The table says so beside it (Emmett, November 15: "Keep it, label
-   * the tax"). The percentage is of the SERVICE list price, before tax:
-   * travel is never discounted, so counting it would shrink "25%" to "19%".
-   */
-  /**
-   * "(5% off, tax included)": what the saving above takes in, so a "-$25.00"
-   * row above "You saved $26.95" doesn't read as a mistake (Emmett, November
-   * 15). Fees too when a rush or early/late fee is in the total.
-   */
-  function savedNote(quote, won) {
-    var taxed = quote.taxCents > 0 && !quote.taxIsEstimate;
-    var with_ = taxed && quote.surchargeCents > 0 ? 'tax and fees included' : taxed ? 'tax included' : quote.surchargeCents > 0 ? 'fees included' : '';
-    var bits = [won.pct >= 1 ? won.pct + '% off' : '', with_].filter(Boolean);
-    return bits.length ? ' <i>(' + bits.join(', ') + ')</i>' : '';
-  }
-
+  /** What every discount is worth, with its note (web/lib/pricing/savings.ts). */
   function savings(quote) {
-    var list = 0;
-    quote.lines.forEach(function (l) {
-      if (l.kind === 'travel' || l.kind === 'tax' || l.kind === 'surcharge') return;
-      if (l.amountCents > 0) list += l.amountCents;
-    });
-    var off = 0, pre = 0;
-    quote.lines.forEach(function (l) { if (l.amountCents < 0 && l.kind !== 'tax') pre -= l.amountCents; });
-    if (pre > 0) off = Math.max(0, undiscounted().totalCents - quote.totalCents);
-    // The percentage is of the service, before tax: "10% off" stays 10%.
-    return { cents: off, pct: list > 0 ? Math.round((pre / list) * 100) : 0 };
+    return P.discountKinds(quote).length ? P.savingSummary(quote, undiscounted().totalCents) : { cents: 0, pct: 0, note: '' };
   }
 
   function lineTable(quote) {
@@ -6413,7 +6367,7 @@
     // stays right when a fifth is added.
     var won = savings(quote);
     var saved = won.cents > 0
-      ? '<tr class="saved"><td>You saved</td><td>' + $(won.cents) + savedNote(quote, won) + '</td></tr>'
+      ? '<tr class="saved"><td>You saved</td><td>' + $(won.cents) + (won.note ? ' <i>(' + esc(won.note) + ')</i>' : '') + '</td></tr>'
       : '';
     return '<table class="bk-lines">' + rows + travel + tax +
       '<tr class="tot"><td>Total</td><td>' + $(quote.totalCents) + '</td></tr>' + saved + when + '</table>';

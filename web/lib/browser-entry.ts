@@ -62,6 +62,7 @@ import {
   slotNeedsPriority,
 } from "./pricing/surcharge.js";
 import { quote } from "./pricing/quote.js";
+import { discountKinds, barLabel, savingSummary } from "./pricing/savings.js";
 import { rushWindow } from "./pricing/rush.js";
 import { BOOK_LINK_PARAMS, BOOK_INTENTS, arrivalQuery, parseArrival } from "./booking/bookLinks.js";
 import {
@@ -172,6 +173,9 @@ const api = {
   blockFeeAt,
   recommendAddons,
   quote,
+  discountKinds,
+  barLabel,
+  savingSummary,
   QUOTE_TTL_HOURS,
   decodeQuote,
   quoteUrl,

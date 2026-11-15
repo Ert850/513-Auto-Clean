@@ -509,9 +509,11 @@ describe("the booking funnel opens", () => {
     const bar = src.slice(src.indexOf("function renderTotal()"), src.indexOf("function fmtDur("));
     expect(bar).toMatch(/'<s>' \+ \$\(undiscounted\(\)\.totalCents\)/);
     expect(bar).not.toMatch(/grossBeforeMultiCents/);
+    // The words and the arithmetic are web/lib/pricing/savings.ts (savings.test.ts); the form only passes the no-discount total in.
+    expect(bar).toMatch(/P\.barLabel\(quote\)/);
     const table = src.slice(src.indexOf("function savings("), src.indexOf("function lineTable("));
-    expect(table).toMatch(/undiscounted\(\)\.totalCents - quote\.totalCents/);
-    expect(src).toMatch(/You saved<\/td><td>' \+ \$\(won\.cents\) \+ savedNote\(quote, won\)/);
+    expect(table).toMatch(/P\.savingSummary\(quote, undiscounted\(\)\.totalCents\)/);
+    expect(src).toMatch(/You saved<\/td><td>' \+ \$\(won\.cents\) \+ \(won\.note/);
   });
 
   it("Confirm can't loop on its own free check (froze the page, November 15)", () => {
