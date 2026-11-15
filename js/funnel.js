@@ -1079,20 +1079,23 @@
     // The total includes tax once the ZIP is in; say so (review, November 13).
     var taxed = quote.taxCents > 0 && !quote.taxIsEstimate;
 
-    if (quote.promoDiscountCents > 0) {
-      // Re-priced without the code rather than adding the discount back by
-      // hand, so the struck figure includes the tax that came off with it and
-      // the two numbers on screen really do subtract to the saving beside
-      // them.
-      // Struck: the same booking with every discount off (undiscounted), so
-      // struck minus total is exactly the table's "You saved".
-      sub.innerHTML = '<s>' + $(undiscounted().totalCents) + '</s> ' + esc(quote.promoCode) + ' applied' + (taxed ? ' · tax included' : '');
-    } else if (quote.multiVehicleDiscountCents > 0) {
-      // Lead with the saving, not the duration: this is the moment the second
-      // vehicle has to look like a good idea.
-      // The amount is said once, in the price table's "You saved", as with a
-      // promo code (final validation, November 11: $75 there, $64.68 here).
-      sub.innerHTML = '<s>' + $(undiscounted().totalCents) + '</s> multi-vehicle saving applied' + (taxed ? ' · tax included' : '');
+    var kinds = discountKinds(quote);
+    if (kinds.length) {
+      // Any discount: lead with the saving, not the duration. Struck: the
+      // same booking with every discount off (undiscounted), tax included, so
+      // struck minus total is exactly the table's "You saved" (Emmett,
+      // November 15). The amount itself is said once, in the table.
+      // Named when there is one discount; more than one is "savings", since
+      // the struck price takes them all off (validation, November 15).
+      var NAMES = {
+        promo_discount: esc(quote.promoCode || '') + ' applied',
+        additional_vehicle_discount: 'multi-vehicle saving applied',
+        combo_discount: 'interior + exterior saving applied',
+        pay_in_full_discount: 'paid-in-full saving applied'
+      };
+      sub.innerHTML = '<s>' + $(undiscounted().totalCents) + '</s> ' +
+        (kinds.length === 1 ? NAMES[kinds[0]] || 'saving applied' : 'savings applied') +
+        (taxed ? ' · tax included' : '');
     } else {
       sub.textContent = [dur ? 'about ' + fmtDur(dur) + ' on site' : '', taxed ? 'tax included' : ''].filter(Boolean).join(' · ');
     }
@@ -6279,17 +6282,15 @@
 
   /* ================= summary table ================= */
 
-  /**
-   * What every discount on this booking is worth, together.
-   *
-   * Summed from the lines the customer is already looking at, so the figure
-   * at the bottom is the arithmetic of the rows above it rather than a
-   * second calculation that might disagree with them.
-   *
-   * The percentage is against the SERVICE list price, not the grand total.
-   * Travel is never discounted, so including it would quietly shrink the
-   * number: a 25% discount would read as 19% because of a drive.
-   */
+  /** The kinds of discount line on a quote, each once ("promo_discount", ...). */
+  function discountKinds(quote) {
+    var seen = [];
+    quote.lines.forEach(function (l) {
+      if (l.amountCents < 0 && l.kind !== 'tax' && seen.indexOf(l.kind) < 0) seen.push(l.kind);
+    });
+    return seen;
+  }
+
   /**
    * The same booking with no discount at all: no code, no extra-vehicle rate,
    * no interior-and-exterior combo, not paid in full. Tax included, like the
@@ -6303,6 +6304,26 @@
     c.promoCode = null;
     c.payInFull = false;
     return P.quote(c, Object.assign({}, RULES, { additionalVehicleDiscountBp: 0, comboDiscountCents: 0, payInFullDiscountBp: 0 }));
+  }
+
+  /**
+   * What every discount on this booking is worth, together: the undiscounted
+   * total minus this one, so it includes the tax (and any rush or early/late
+   * fee, which is a percentage of the discounted price) that came off with
+   * them. The table says so beside it (Emmett, November 15: "Keep it, label
+   * the tax"). The percentage is of the SERVICE list price, before tax:
+   * travel is never discounted, so counting it would shrink "25%" to "19%".
+   */
+  /**
+   * "(5% off, tax included)": what the saving above takes in, so a "-$25.00"
+   * row above "You saved $26.95" doesn't read as a mistake (Emmett, November
+   * 15). Fees too when a rush or early/late fee is in the total.
+   */
+  function savedNote(quote, won) {
+    var taxed = quote.taxCents > 0 && !quote.taxIsEstimate;
+    var with_ = taxed && quote.surchargeCents > 0 ? 'tax and fees included' : taxed ? 'tax included' : quote.surchargeCents > 0 ? 'fees included' : '';
+    var bits = [won.pct >= 1 ? won.pct + '% off' : '', with_].filter(Boolean);
+    return bits.length ? ' <i>(' + bits.join(', ') + ')</i>' : '';
   }
 
   function savings(quote) {
@@ -6392,8 +6413,7 @@
     // stays right when a fifth is added.
     var won = savings(quote);
     var saved = won.cents > 0
-      ? '<tr class="saved"><td>You saved</td><td>' + $(won.cents) +
-        (won.pct >= 1 ? ' <i>(' + won.pct + '% off)</i>' : '') + '</td></tr>'
+      ? '<tr class="saved"><td>You saved</td><td>' + $(won.cents) + savedNote(quote, won) + '</td></tr>'
       : '';
     return '<table class="bk-lines">' + rows + travel + tax +
       '<tr class="tot"><td>Total</td><td>' + $(quote.totalCents) + '</td></tr>' + saved + when + '</table>';

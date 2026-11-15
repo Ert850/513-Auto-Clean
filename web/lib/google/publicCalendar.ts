@@ -427,8 +427,10 @@ export async function loadWindow(
 /**
  * Fallback when no API key is configured: business hours with nothing removed.
  *
- * Deliberately labelled `unconfigured` so the UI can say the times still need
- * confirming, rather than presenting guesses as if they were real openings.
+ * Deliberately labelled `unconfigured` so the UI can say these are standard
+ * start times rather than real openings (Elijah's wording, November 15: "Pick
+ * any time slot that suits you best"); the server checks the time is free
+ * before it writes the job.
  */
 export function unconfiguredWindow(
   fromMs: number,
