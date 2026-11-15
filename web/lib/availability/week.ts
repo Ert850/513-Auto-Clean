@@ -438,12 +438,22 @@ export function recommendBestDays(req: {
     picks.push({ dayStart: d.dayStart, reason, ms: d.ms, who: d.who, more: d.more, daysAway: d.daysAway });
   };
   const avail = () => days.filter((d) => !used.has(d.dayStart));
+  // "This weekend" means the coming one: a Saturday or Sunday before the next
+  // Monday, never one a week or more away (validation, November 15).
+  const todayWd = localWeekday(today + 12 * 3600_000, tz);
+  const toMonday = todayWd === 0 ? 1 : 8 - todayWd;
+  const thisWeekend = (d: (typeof days)[number]) => (d.weekday === 0 || d.weekday === 6) && d.daysAway < toMonday;
   for (const reason of rules.reasons) {
     if (reason === "soonest") { const d = avail()[0]; if (d) take(d, "soonest"); }
-    if (reason === "afterRush") { const d = avail().find((x) => !req.isRush(x.ms)); if (d) take(d, d.weekday === 0 || d.weekday === 6 ? "afterRushWeekend" : "afterRush"); }
+    if (reason === "afterRush") { const d = avail().find((x) => !req.isRush(x.ms)); if (d) take(d, thisWeekend(d) ? "afterRushWeekend" : "afterRush"); }
     if (reason === "weekend") {
-      const d = avail().find((x) => x.weekday === 0 || x.weekday === 6);
-      if (d) take(d, picks.some((p) => p.reason === "afterRushWeekend") ? "also" : "weekend");
+      const ar = picks.find((p) => p.reason === "afterRushWeekend");
+      // The weekend is already picked: the next open day after it, in date
+      // order, rather than a weekend day a week on (validation, November 15).
+      const d = ar
+        ? avail().find((x) => x.dayStart > ar.dayStart && !req.isRush(x.ms))
+        : avail().find((x) => x.weekday === 0 || x.weekday === 6);
+      if (d) take(d, ar ? "also" : "weekend");
     }
   }
   for (const d of avail()) {

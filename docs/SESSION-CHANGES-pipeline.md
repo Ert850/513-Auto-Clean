@@ -1909,3 +1909,24 @@ Mockups: `docs/mockups/eNov15-booking-fixes-mockups.png`.
   - **Emulated phone (touch, no hover), pointer resting on an unchosen Contact pill:** red in the old build, grey in the new.
   - **No pointer at all:** contact, faq and service-area are pixel-identical. services.html varies between two loads of the same build, so it can't be compared that way.
 - **Guard:** 735 tests pass, with the new `hover.test.ts`.
+
+## Validation round on the booking-form fixes (November 15)
+
+- **"This weekend" could name a weekend a week or more away.**
+  - **Root cause:** `afterRushWeekend` was set for any Saturday or Sunday.
+  - **Fix:** it's now set only for a weekend day before the next Monday (`thisWeekend`). On a Sunday that means today only.
+- **The card after "This weekend" could jump a week.**
+  - **Root cause:** with the coming weekend's Sunday full, the `weekend` reason took next Saturday, ahead of the open weekdays between.
+  - **Fix:** it now takes the next no-rush day after "This weekend", in date order.
+  - **Guard:** a new `week.test.ts` case for both.
+- **Picking Restoration from the browse list lost it silently.**
+  - **Root cause:** the pick set only the add-on, so choosing Basic Interior next dropped it with no word. This was older behaviour, made likelier by the list now saying "$445+ total with Full Interior".
+  - **Fix:** a `totalWith` add-on now starts the vehicle on that package.
+  - **Checked:** in the browser it shows Full Interior, 1 extra, $445.
+- **"tax included"** now also shows when a promo or the multi-vehicle saving applies.
+- **The with-package price under steam** shows one plain figure after a promo code, not a struck price inside the small grey line.
+- **"Tap to call, or copy the number"** on Contact and the home page now reads "Call, or copy the number". The privacy policy's "the next time you tap Book Now" waits for the next legal update, because changing it means a new policy date.
+- **Docs:**
+  - **Fixed:** the doc comment `weekOf()` had been put between; the status (test count, the live-bug line Emmett answered, the drafts decision, the carousel line); the queue (done items marked).
+  - **Noted:** a week shown across midnight keeps yesterday's start until "This week" or a fresh open. Prev and Next stay consistent.
+- **Tests:** 736 pass.

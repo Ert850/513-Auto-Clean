@@ -141,6 +141,19 @@ describe("recommendBestDays (best times from the calendars, round 15)", () => {
     expect(TIME_RECOMMENDATION_RULES.version).toBe("best-2");
   });
 
+  it("'This weekend' is only the coming weekend, and the next card follows it in date order (validation, November 15)", () => {
+    const thu = at(11, 19, 7);
+    const rushToSat = (ms: number) => ms < at(11, 21, 0);
+    // Sunday full: the card after "This weekend" is Monday, not next Saturday.
+    const noSun = { ...elijah, starts: elijah.starts.filter((ms) => ms < at(11, 22, 0) || ms >= at(11, 23, 0)), best: elijah.best.filter((ms) => ms < at(11, 22, 0) || ms >= at(11, 23, 0)) };
+    const krisNoSun = { ...kris, starts: kris.starts.filter((ms) => ms < at(11, 22, 0) || ms >= at(11, 23, 0)), best: kris.best.filter((ms) => ms < at(11, 22, 0) || ms >= at(11, 23, 0)) };
+    const picks = recommendBestDays({ members: [krisNoSun, noSun], travelGapMin: 60, isRush: rushToSat, nowMs: thu, isPremium: () => false });
+    expect(picks.slice(1, 3).map((p) => [p.reason, p.dayStart])).toEqual([["afterRushWeekend", at(11, 21, 0)], ["also", at(11, 23, 0)]]);
+    // A first no-rush weekend day a week or more away keeps "In N days".
+    const far = recommendBestDays({ members: [kris, elijah], travelGapMin: 60, isRush: (ms) => ms < at(11, 21, 0), nowMs: at(11, 14, 7), isPremium: () => false });
+    expect(far.find((p) => p.dayStart === at(11, 21, 0))?.reason).not.toBe("afterRushWeekend");
+  });
+
   it("More times are the other detailers' best times that day, never every half hour", () => {
     const fri = recommendBestDays({ members: [kris, elijah], travelGapMin: 60, isRush, nowMs, isPremium: () => false })[1]!;
     // 6pm is Kris's, so Elijah's 6pm is not offered twice.
