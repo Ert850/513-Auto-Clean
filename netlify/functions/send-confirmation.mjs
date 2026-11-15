@@ -76,13 +76,13 @@ function text(v, max) {
 
 const ACCESS = { yes: "yes", no: "no", unsure: "not sure" };
 
+/** "Monday, November 16 at 10am": the booking form's clock style (review, November 13: emails said "10:00 AM"). */
 function whenLabel(slot) {
   if (!slot) return null;
-  return new Date(slot).toLocaleString("en-US", {
-    timeZone: "America/New_York",
-    weekday: "long", month: "long", day: "numeric",
-    hour: "numeric", minute: "2-digit",
+  const day = new Date(slot).toLocaleDateString("en-US", {
+    timeZone: "America/New_York", weekday: "long", month: "long", day: "numeric",
   });
+  return `${day} at ${clock(slot)}`;
 }
 
 /* ------------------------------------------------------------------ */
@@ -158,11 +158,11 @@ ${rows}
 ${travelKnown ? "" : `<p style="margin:0;font-size:13px;color:#5a6069">Travel is worked out from your address and added when we confirm.</p>`}`;
 }
 
-/** "10 AM", "10:30 AM", in Cincinnati time. */
+/** "10am", "10:30am", in Cincinnati time: the booking form's style. */
 function clock(ms) {
   return new Date(ms)
     .toLocaleString("en-US", { timeZone: "America/New_York", hour: "numeric", minute: "2-digit" })
-    .replace(":00", "");
+    .replace(":00", "").replace(" AM", "am").replace(" PM", "pm");
 }
 
 /** "About 2 hours", "About 4.5 hours", to the half hour; "…, over 2 days" for a multi-day job. */

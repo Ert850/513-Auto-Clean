@@ -37,8 +37,8 @@ describe("the booking email", () => {
   });
   it("gives the duration and the arrival window from the detailer's setting", () => {
     expect(text(email(3).html)).toMatch(/Duration About \d+(\.5)? hours?/);
-    expect(text(email(3).html)).toContain(`between ${ARRIVAL_WINDOW_MIN === 60 ? "10 AM and 11 AM" : ""}`);
-    expect(text(email(3, { arrivalWindowMin: 30 }).html)).toContain("between 10 AM and 10:30 AM");
+    expect(text(email(3).html)).toContain(`between ${ARRIVAL_WINDOW_MIN === 60 ? "10am and 11am" : ""}`);
+    expect(text(email(3, { arrivalWindowMin: 30 }).html)).toContain("between 10am and 10:30am");
   });
   it("has no dashes a customer would read as an em-dash", () => {
     expect(email(3).html).not.toMatch(/—| - /);

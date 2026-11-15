@@ -1772,3 +1772,37 @@ An independent audit went through every requirement in `docs/SEO-COMPLIANCE.md` 
 **Checked.** I broke the Delhi config on purpose (a typed "3 hours", a Northeast ZIP, an unknown nearby page, published with no evidence) and the build named all six problems. Restored, rebuilt, and a `CONTEXT=production` dist has no draft pages. 728 tests pass.
 
 **Not built (owner's call, `STATUS-2026-11-15.md`):** the flat addresses instead of `/locations/<slug>/`, and Range & Travel as the hub.
+
+## Open fixes from the November 13 review, no mockup needed (November 15, Emmett: "start working on all readily open tasks")
+
+A read-only triage checked every item still queued from the November 13 pre-release review. None had been fixed. A8a (Package then Continue "skips" Extras) turned out not to be a bug: the extras are folded behind "View additional options" by the owner's November 10 rule. The items below needed no mockup and no decision.
+
+- **A saved booking no longer shows "Something went wrong" (A11c).**
+  - **Symptom:** when the site's own confirmation had saved the booking (event written, emails sent) but the Web3Forms copy failed, the customer saw "Something went wrong… call or text" with a confirmation email already in their inbox.
+  - **Root cause:** `sendConfirmation()` only reported a 409, so `sendRecord()` judged success by Web3Forms alone.
+  - **Fix:** it now also reports `saved` (Elijah's email went out, the calendar has it, or an earlier try saved it), and Done shows whenever the booking is saved.
+- **A booking the site couldn't save is flagged to Elijah (A11a, reply side).**
+  - **Symptom:** a refused confirmation (a missing Turnstile token, a server error, no answer in 15 s) went on through Web3Forms with no sign it never reached the calendar.
+  - **Root cause:** the form ignored every reply except 409.
+  - **Fix:** the Web3Forms subject and body now start "CHECK THE CALENDAR".
+- **Turnstile drawn for every booking (A11a).**
+  - **Symptom:** once `TURNSTILE_SECRET_KEY` was set, every booking would have been refused.
+  - **Root cause:** the box was drawn only inside the card step, which doesn't exist while card-on-file is off, and it was drawn only if the script had already loaded.
+  - **Fix:** the box is now drawn in Review whenever there's a site key, and `mountTurnstile()` waits up to about 20 s for the script. Nothing changes without a site key (none today).
+  - **Guard:** `funnel.smoke.test.mjs` checks the box appears with a key and cards off.
+- **A fee time is never steered (S9).**
+  - **Symptom:** a 6am pick was offered 6pm.
+  - **Root cause:** `steerFor()` compared fee percentages, on the assumption that suggestions are fee-free; a calendar BEST start can carry a late fee equal to the early one.
+  - **Fix:** a time with an early or late fee gets no suggestion, as the owner's November 10 rule says.
+- **Typed numbers moved to settings (S11):**
+  - the Done screen's "within the next day" test was a typed `86400000`; it's now `shortNotice()`, and the words come from `shortNoticeHours` (`noticeWords()`), as does the advice step's line;
+  - "We arrive within its first hour" now reads the detailer's arrival window (`spanWords(windowMin())`);
+  - a promo `label` or `blurb` whose "10%" or "$N" differs from its `percentOff`/`dollarsOff` now fails the build (`checkPromoCodes`).
+  - **Guards:** `scheduling.test.ts` and `promos.test.ts`.
+- **One clock style (S3).**
+  - **What changed:** every date with a time in the form (Review, Done, the leave dialog, the time-switch warning, the advice hold, the multi-day list) and in the emails (subject, heading, arrival line) now reads "Monday, November 16 at 10am", the time picker's style. It used to say "10:00 AM" in some places and "10am" in others, and the emails mixed "10:00 AM" with "10 AM".
+  - **How:** `longWhen()` in the form; `whenLabel()` and `clock()` in `send-confirmation.mjs`. The calendar event and JobsSync are untouched. The Web3Forms subject, which only Elijah reads, keeps its numeric date.
+- **The phone menu uses the nav names (S7):** "Services" and "Range & Travel" (were "Services & Pricing" and "Range & Travel Costs"), per the CLAUDE.md nav-name rule. The second Contact Us waits for Emmett's pick.
+- **Ozone:** "Expect a 60 to 90% reduction in organic odors" is gone; it now reads "How much it helps depends on the smell and how long it has set in." It was a percentage promise, against the no-removal-promises rule.
+
+**Checked:** 730 tests pass and the build passes.
