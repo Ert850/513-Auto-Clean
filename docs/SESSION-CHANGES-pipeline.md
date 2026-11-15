@@ -1850,3 +1850,13 @@ An independent review of a5f1570..bc0a266 found:
 - **Done's top strip** now uses the same clock style ("Nov 15 at 3:41pm").
 
 **Left as is:** the 15 s timeout race. A server slower than 15 s means a "Confirmed" email beside a "Request sent" screen, and Elijah gets two emails. That's safe in the conservative direction.
+
+## Emmett's picks, November 15
+
+- **"Tap" on desktop, reworded, the same on every device:**
+  - "Tap a time to pick it" became "Pick the time that suits you".
+  - "Saved. Tap Book Now whenever you are ready and it will be here" became "Saved. Next time you open Book Now, your answers will be filled in". Emmett turned down "Book Now brings it back" as vague.
+  - "A few taps" became "A few quick questions".
+- **Leave dialog:** "Back to my booking" became "Back to my quote", and "Cancel my booking" became "Discard this quote". No booking exists at that point, and the title already says "quote".
+- **Phone menu:** the Contact Us list link is dropped; Contact Us stays as the button under Book Now (`web/partials/header.html`). It used to show twice. CLAUDE.md's nav rule now says so.
+- **Live site:** no change, and no PR. The Confirm freeze fix waits for the eNov14 merge (Emmett: "WAIT FOR THE MERGE").

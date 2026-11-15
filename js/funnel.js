@@ -976,7 +976,7 @@
     el('bkBar').style.width = pct + '%';
     el('bkProgress').setAttribute('aria-valuenow', String(pct));
     el('bkTitle').textContent = onCheckout() ? s.title : 'Build your detail';
-    if (!onCheckout()) s = Object.assign({}, s, { sub: 'A few taps. Your price updates as you go.' });
+    if (!onCheckout()) s = Object.assign({}, s, { sub: 'A few quick questions. Your price updates as you go.' });
     var sub = el('bkTitleSub');
     if (sub) { sub.textContent = s.sub || ''; sub.hidden = !s.sub; }
     renderNav();
@@ -3973,7 +3973,7 @@
       html += '<p class="bk-wk-none">Nothing open in the next two weeks for this detail. ' +
         'See additional times for later dates, or tell us when suits.</p>';
     } else {
-      html += '<p class="bk-recs-sub">Tap a time to pick it. We arrive within its first ' + spanWords(windowMin()) +
+      html += '<p class="bk-recs-sub">Pick the time that suits you. We arrive within its first ' + spanWords(windowMin()) +
         (dur ? ', and the detail takes about ' + esc(fmtDur(dur)) : '') + '.</p>' + weatherLine(calc);
     }
     picks.forEach(function (pk, i) {
@@ -6749,7 +6749,7 @@
       var kept = saveDraft();
       close();
       return toast(kept
-        ? 'Saved. Tap Book Now whenever you are ready and it will be here.'
+        ? 'Saved. Next time you open Book Now, your answers will be filled in.'
         : 'This browser will not let us save it, sorry. Text us and we will hold it for you.');
     }
     if (t.id === 'bkLeaveAsk') return askAboutIt();
@@ -7733,12 +7733,12 @@
             '</ul>'
           : '') +
         '<div class="bk-leave-acts">' +
-          '<button type="button" class="bk-leave-go" id="bkLeaveStay">' + CHEV_L + 'Back to my booking</button>' +
+          '<button type="button" class="bk-leave-go" id="bkLeaveStay">' + CHEV_L + 'Back to my quote</button>' +
           '<div class="bk-leave-pair">' +
             '<button type="button" id="bkLeaveKeep">' + LEAVE_SAVE + 'Keep it for next time</button>' +
             '<button type="button" id="bkLeaveAsk">' + LEAVE_ASK + 'I have a question</button>' +
           '</div>' +
-          '<button type="button" class="bk-leave-drop" id="bkLeaveDrop">Cancel my booking</button>' +
+          '<button type="button" class="bk-leave-drop" id="bkLeaveDrop">Discard this quote</button>' +
         '</div>' +
         '<p class="bk-leave-note">Keeping it stores your answers in this browser only, for ' +
           DRAFT_DAYS + ' days.' + (P.isLive('checkoutFollowUp') && onCheckout() && canFollowUp()
