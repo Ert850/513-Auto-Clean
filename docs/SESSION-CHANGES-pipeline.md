@@ -1930,3 +1930,15 @@ Mockups: `docs/mockups/eNov15-booking-fixes-mockups.png`.
   - **Fixed:** the doc comment `weekOf()` had been put between; the status (test count, the live-bug line Emmett answered, the drafts decision, the carousel line); the queue (done items marked).
   - **Noted:** a week shown across midnight keeps yesterday's start until "This week" or a fresh open. Prev and Next stay consistent.
 - **Tests:** 736 pass.
+
+## The bar's struck price matches "You saved"; Elijah's start-times line (November 15)
+
+- **Struck price vs "You saved":**
+  - **Symptom:** with a promo code on a two-vehicle booking, the bar struck $378.38 (only the code taken off) beside a $336.34 total, while the table said "You saved" about $78, and the two figures never subtracted to each other.
+  - **Root cause:** the bar re-priced the booking without ONE discount (the code, or the extra-vehicle rate), tax included, while "You saved" added up every discount line without tax.
+  - **Fix:** both now come from one re-pricing with every discount off (`undiscounted()`: no code, no extra-vehicle rate, no interior-and-exterior combo, not paid in full), tax included. Struck price minus total is "You saved", always. The percentage stays the share of the service, before tax.
+  - **Checked** in headless Chrome:
+    - **Two vehicles:** $420.42 struck, $378.38 total, "You saved $42.04 (10% off)".
+    - **Plus LIKENEW:** $420.42 struck, $336.34 total, "You saved $84.08 (20% off)".
+- **Standard start times:** the line shown when times are standard hours now reads, in Elijah's words, "These are our standard start times. Pick any time slot that suits you best." It used to read "Pick whichever suits and we will confirm it, usually within a few hours. If a time ever needs moving we will text you first."
+- **Tests:** 736 pass.

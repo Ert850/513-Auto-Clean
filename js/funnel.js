@@ -1084,19 +1084,15 @@
       // hand, so the struck figure includes the tax that came off with it and
       // the two numbers on screen really do subtract to the saving beside
       // them.
-      var plain = cart();
-      plain.promoCode = null;
-      var before = P.quote(plain, RULES);
-      // The saving itself is said once, in the price table's "You saved"
-      // (validation, November 11: this bar said $13.47 with the tax, the
-      // table $12.50 without, on one screen).
-      sub.innerHTML = '<s>' + $(before.totalCents) + '</s> ' + esc(quote.promoCode) + ' applied' + (taxed ? ' · tax included' : '');
+      // Struck: the same booking with every discount off (undiscounted), so
+      // struck minus total is exactly the table's "You saved".
+      sub.innerHTML = '<s>' + $(undiscounted().totalCents) + '</s> ' + esc(quote.promoCode) + ' applied' + (taxed ? ' · tax included' : '');
     } else if (quote.multiVehicleDiscountCents > 0) {
       // Lead with the saving, not the duration: this is the moment the second
       // vehicle has to look like a good idea.
       // The amount is said once, in the price table's "You saved", as with a
       // promo code (final validation, November 11: $75 there, $64.68 here).
-      sub.innerHTML = '<s>' + $(quote.grossBeforeMultiCents) + '</s> multi-vehicle saving applied' + (taxed ? ' · tax included' : '');
+      sub.innerHTML = '<s>' + $(undiscounted().totalCents) + '</s> multi-vehicle saving applied' + (taxed ? ' · tax included' : '');
     } else {
       sub.textContent = [dur ? 'about ' + fmtDur(dur) + ' on site' : '', taxed ? 'tax included' : ''].filter(Boolean).join(' · ');
     }
@@ -3900,8 +3896,8 @@
   function unconfiguredNote(calc) {
     // A note, not a warning: these ARE our hours.
     return calc.mode === 'unconfigured'
-      ? '<p class="bk-note">These are our <b>standard start times</b>. Pick whichever suits and we will ' +
-        'confirm it, usually within a few hours. If a time ever needs moving we will text you first.</p>'
+      // Elijah's words, November 15.
+      ? '<p class="bk-note">These are our <b>standard start times</b>. Pick any time slot that suits you best.</p>'
       : '';
   }
 
@@ -6294,14 +6290,32 @@
    * Travel is never discounted, so including it would quietly shrink the
    * number: a 25% discount would read as 19% because of a drive.
    */
+  /**
+   * The same booking with no discount at all: no code, no extra-vehicle rate,
+   * no interior-and-exterior combo, not paid in full. Tax included, like the
+   * total, so "You saved" and the bar's struck price always subtract to the
+   * same figure (Emmett, November 15: the bar struck the price before ONE
+   * discount, with tax, while "You saved" added up every discount without
+   * tax; with a code and two vehicles the two disagreed).
+   */
+  function undiscounted() {
+    var c = cart();
+    c.promoCode = null;
+    c.payInFull = false;
+    return P.quote(c, Object.assign({}, RULES, { additionalVehicleDiscountBp: 0, comboDiscountCents: 0, payInFullDiscountBp: 0 }));
+  }
+
   function savings(quote) {
-    var off = 0, list = 0;
+    var list = 0;
     quote.lines.forEach(function (l) {
       if (l.kind === 'travel' || l.kind === 'tax' || l.kind === 'surcharge') return;
-      if (l.amountCents < 0) off -= l.amountCents;
-      else list += l.amountCents;
+      if (l.amountCents > 0) list += l.amountCents;
     });
-    return { cents: off, pct: list > 0 ? Math.round((off / list) * 100) : 0 };
+    var off = 0, pre = 0;
+    quote.lines.forEach(function (l) { if (l.amountCents < 0 && l.kind !== 'tax') pre -= l.amountCents; });
+    if (pre > 0) off = Math.max(0, undiscounted().totalCents - quote.totalCents);
+    // The percentage is of the service, before tax: "10% off" stays 10%.
+    return { cents: off, pct: list > 0 ? Math.round((pre / list) * 100) : 0 };
   }
 
   function lineTable(quote) {
