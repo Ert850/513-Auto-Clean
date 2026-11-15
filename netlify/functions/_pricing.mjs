@@ -368,7 +368,7 @@ var ADDONS = [
     scope: "interior",
     icon: "molecule",
     description: "An ozone treatment for smells that linger, run after the source is cleaned.",
-    note: "A generator converts the oxygen in the air (O2) into ozone (O3). That extra atom is unstable, so it breaks away and oxidises odor molecules, bacteria and smoke residue on contact. Because it works as a gas it reaches the vents, headliner and seat foam that wiping cannot. It then reverts to ordinary oxygen and leaves nothing behind. The vehicle is sealed while it runs and aired out afterwards. Expect a 60 to 90% reduction in organic odors. It has to be paired with a stain treatment, or with a Full Interior or above, because ozone cannot remove what is still soaked into the fabric.",
+    note: "A generator converts the oxygen in the air (O2) into ozone (O3). That extra atom is unstable, so it breaks away and oxidises odor molecules, bacteria and smoke residue on contact. Because it works as a gas it reaches the vents, headliner and seat foam that wiping cannot. It then reverts to ordinary oxygen and leaves nothing behind. The vehicle is sealed while it runs and aired out afterwards. How much it helps depends on the smell and how long it has set in. It has to be paired with a stain treatment, or with a Full Interior or above, because ozone cannot remove what is still soaked into the fabric.",
     tiers: [{ id: "std", label: "Ozone treatment", priceCents: 5e3, durationMin: 60 }],
     // Ozone attacks what is left in the air and the plastics. Running it over
     // material that has not been extracted first mostly wastes the customer's
@@ -1486,6 +1486,11 @@ function checkPromoCodes(input) {
     if (usd !== void 0 && (typeof usd !== "number" || !(usd > 0))) bad(where, "dollarsOff must be more than 0");
     const until = o["until"];
     if (until !== void 0 && !isRealDate(until)) bad(where, "until must be a real date like 2027-06-30");
+    for (const k of ["label", "blurb"]) {
+      const words = typeof o[k] === "string" ? o[k] : "";
+      for (const m of words.matchAll(/(\d+(?:\.\d+)?)\s*%/g)) if (Number(m[1]) !== pct) bad(where, `${k} says ${m[0]} but percentOff is ${pct ?? "not set"}`);
+      for (const m of words.matchAll(/\$\s*(\d+(?:\.\d+)?)/g)) if (Number(m[1]) !== usd) bad(where, `${k} says ${m[0]} but dollarsOff is ${usd ?? "not set"}`);
+    }
     const min = o["minServiceDollars"];
     if (min !== void 0 && (typeof min !== "number" || min < 0)) bad(where, "minServiceDollars must be 0 or more");
     return {

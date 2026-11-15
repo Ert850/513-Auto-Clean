@@ -504,6 +504,28 @@ describe("the booking funnel opens", () => {
     expect(conf).not.toMatch(/priced\.serviceDurationMin \?\? 120/);
   });
 
+  it("draws the bot check for every booking once there is a site key, card or no card", () => {
+    // November 15: the box sat inside the card step, which is gone while
+    // cards are off, and the server wants its token on every booking.
+    const P = env.window.ACPricing;
+    const url = P.quoteUrl(
+      {
+        v: 1,
+        ts: Math.floor(Date.now() / 1000),
+        vs: [{ z: "small", i: "interior", p: ["basic-interior"] }],
+        ad: ["1 Main St", "Cincinnati", "OH", "45220"],
+        ct: ["Ada", "5135551212", "ada@example.com"],
+        sl: Date.now() + 6 * 86_400_000,
+      },
+      "https://513autoclean.com/",
+    );
+    const without = agreeToReview(loadFunnel(url.slice(url.indexOf("#"))));
+    expect(without, "no key, no box").not.toContain("bkTurnstile");
+    const withKey = agreeToReview(loadFunnel(url.slice(url.indexOf("#")), { turnstileSiteKey: "1x00000000000000000000AA" }));
+    expect(withKey).toContain("bkTurnstile");
+    if (!env.window.ACPricing.isLive("cardOnFile")) expect(withKey, "even with cards off").not.toContain("bkMandate");
+  });
+
   it("brings the card step back the moment a Stripe key exists", () => {
     const P = env.window.ACPricing;
     const url = P.quoteUrl(

@@ -903,11 +903,22 @@
    * whoever has the time (DETAILERS arrivalWindow, else arrivalWindowMinutes
    * in config/scheduling.json), the same one the confirmation email states.
    */
-  function arrivalWindow(ms) {
-    var m = localMin(ms);
+  /** Minutes the arrival window spans for whoever has the time (the owner's until a detailer is chosen). */
+  function windowMin() {
     var who = crew().filter(function (d) { return d.id === state.detailer; })[0] ||
       crew().filter(function (d) { return d.owner; })[0];
-    var w = who && typeof who.arrivalWindowMin === 'number' ? who.arrivalWindowMin : P.ARRIVAL_WINDOW_MIN;
+    return who && typeof who.arrivalWindowMin === 'number' ? who.arrivalWindowMin : P.ARRIVAL_WINDOW_MIN;
+  }
+
+  /** "hour", "90 minutes", "2 hours": a span of minutes in words, from the setting. */
+  function spanWords(min) {
+    if (min === 60) return 'hour';
+    return min % 60 ? min + ' minutes' : (min / 60) + ' hours';
+  }
+
+  function arrivalWindow(ms) {
+    var m = localMin(ms);
+    var w = windowMin();
     return endLabel(m).replace(/(am|pm)$/, endLabel(m).slice(-2) === endLabel(m + w).slice(-2) ? '' : '$1') + ' to ' + endLabel(m + w);
   }
 
@@ -2693,7 +2704,7 @@
      */
     var html = state.advice
       // A short-notice time is still a request (final validation, November 11).
-      ? '<p class="bk-sub">Pick a time and we hold it for you (a time within the next day is a request until a detailer accepts it). We will work out the right package with you ' +
+      ? '<p class="bk-sub">Pick a time and we hold it for you (a time within ' + noticeWords() + ' is a request until a detailer accepts it). We will work out the right package with you ' +
         'before we start, so nothing is priced yet.</p>' +
         '<p class="bk-note">We are holding <b>' + Math.round(P.ADVICE_HOLD_MIN / 60) + ' hours</b>, ' +
         // Not "our longest detail": Showroom Ready runs 7 to 8 hours (final review, November 13).
@@ -2997,6 +3008,13 @@
 
   function shortNotice(ms) {
     return Boolean(ms) && ms - Date.now() < SHORT_NOTICE_HOURS * 3600000;
+  }
+
+  /** "the next day", "the next 2 days", "the next 12 hours": the short-notice span in words, from the setting. */
+  function noticeWords() {
+    var h = SHORT_NOTICE_HOURS;
+    if (h % 24) return 'the next ' + h + ' hours';
+    return h === 24 ? 'the next day' : 'the next ' + (h / 24) + ' days';
   }
 
   /** The assigned detailer's id for the server, or '' for the owner. */
@@ -3390,8 +3408,7 @@
         ' to ' + last.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', timeZone: TZ }) + '</b>' +
         '<span>' + opt.days.map(function (d, i) {
           return 'Day ' + (i + 1) + ': ' +
-            new Date(d.startMs).toLocaleTimeString('en-US', { hour: 'numeric', timeZone: TZ }) + ' to ' +
-            new Date(d.endMs).toLocaleTimeString('en-US', { hour: 'numeric', timeZone: TZ });
+            tzTime(d.startMs) + ' to ' + tzTime(d.endMs);
         }).join(' &middot; ') + '</span>' +
         '</button>';
     });
@@ -3669,6 +3686,16 @@
     return new Date(ms).toLocaleDateString('en-US', Object.assign({ timeZone: TZ }, opts));
   }
 
+  /**
+   * "Monday, November 16 at 10am" ("Mon, Nov 16 at 10am" short): every date
+   * with a time in the form, in the same clock style as the time picker
+   * (review, November 13: "10:00 AM" in some places and "10am" in others).
+   */
+  function longWhen(ms, short) {
+    return tzDay(ms, short ? { weekday: 'short', month: 'short', day: 'numeric' } : { weekday: 'long', month: 'long', day: 'numeric' }) +
+      ' at ' + tzTime(ms);
+  }
+
   /** "10am to 12pm": the start and the estimated finish, everywhere a time is offered. */
   function spanLabel(ms, dur) {
     return tzTime(ms) + ' to ' + endLabel(localMin(ms) + dur);
@@ -3940,7 +3967,7 @@
       html += '<p class="bk-wk-none">Nothing open in the next two weeks for this detail. ' +
         'See additional times for later dates, or tell us when suits.</p>';
     } else {
-      html += '<p class="bk-recs-sub">Tap a time to pick it. We arrive within its first hour' +
+      html += '<p class="bk-recs-sub">Tap a time to pick it. We arrive within its first ' + spanWords(windowMin()) +
         (dur ? ', and the detail takes about ' + esc(fmtDur(dur)) : '') + '.</p>' + weatherLine(calc);
     }
     picks.forEach(function (pk, i) {
@@ -4141,12 +4168,16 @@
    * at the cost of a timing fee upsell", which means never steering someone
    * off a time they are paying an early or late fee for (round 9 read it as
    * "never add a fee" and offered 10am, rush only, for a 6am rush + early
-   * pick: a downsell). Suggested starts are never early or late, so a fee
-   * pick gets no suggestion. None once they have taken a suggestion, or when
-   * the time they picked is already one.
+   * pick: a downsell). A fee pick gets no suggestion. That used to rest on
+   * "suggested starts are never early or late", which stopped being true once
+   * the calendar's BEST starts became suggestions: a 6pm BEST with a late fee
+   * matched a 6am early fee's percentage, and a 6am pick was steered to 6pm
+   * (review, November 13). Now it's said outright. None once they have taken
+   * a suggestion, or when the time they picked is already one.
    */
   function steerFor(ms) {
     if (state.steerUsed || !ms) return null;
+    if (timeFeeApplies(ms)) return null;
     var sug = suggestionsOnDay(ms);
     if (!sug.length || sug.some(function (s) { return sameMinute(s, ms); })) return null;
     var bp = surchargeBp(ms);
@@ -4881,7 +4912,7 @@
         '</div>' +
         (state.slot
           ? '<p class="bk-timeswitch-warn">You have <b>' +
-            esc(new Date(state.slot).toLocaleString('en-US', { timeZone: TZ, weekday: 'long', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit' })) +
+            esc(longWhen(state.slot)) +
             '</b> picked. Choosing a day below swaps that confirmed time for a request.</p>'
           : '') +
         '<button type="button" class="bk-timeswitch-b" id="bkSlotMode">Show me real times instead</button>' +
@@ -5456,8 +5487,8 @@
       // Inside a day, the calendar is still right but nobody may have read a
       // phone between this booking and the van needing to leave. Saying so is
       // better than a booking that quietly needs chasing.
-      if (state.slot && state.slot - Date.now() < 86400000) {
-        out.push('<li><b>Because it is within the next day</b>, we will send a quick message to ' +
+      if (state.slot && shortNotice(state.slot)) {
+        out.push('<li><b>Because it is within ' + noticeWords() + '</b>, we will send a quick message to ' +
           'double check we can make it. If anything has to move we call you.</li>');
       }
     } else {
@@ -5620,7 +5651,7 @@
         '<span>' +
         (state.slot
           ? 'We are holding ' + Math.round(P.ADVICE_HOLD_MIN / 60) + ' hours on ' +
-            esc(new Date(state.slot).toLocaleString('en-US', { timeZone: TZ, weekday: 'long', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit' })) +
+            esc(longWhen(state.slot)) +
             '. Before we start we will look at the vehicle with you, recommend the package, and tell you ' +
             'what it costs. You can say no to it and we will do less, or nothing at all, at no charge. '
           : esc(preferenceSummary()) + ' We will read what you have told us, come back with the package we ' +
@@ -5795,10 +5826,6 @@
           '</span></label>';
       }
 
-      if (CFG.turnstileSiteKey) {
-        html += '<div id="bkTurnstile" class="bk-turnstile"></div>';
-      }
-
       html += '<div id="bkPayMount" class="bk-stripe">' +
         (state.mandate || viaPaypal
           ? '<p class="bk-loading">Loading payment options...</p>'
@@ -5819,10 +5846,39 @@
         'Sales tax' + (quote.taxIsEstimate ? ' is added once we have your ZIP' : ' at ' + (quote.taxRateBp / 100).toFixed(2) + '% is included') + '.</p>';
     }
 
+    // The bot check, for EVERY booking (November 15). It used to sit inside the
+    // card box, which isn't drawn while cards are off, while the server asks
+    // for its token on every booking once TURNSTILE_SECRET_KEY is set.
+    if (CFG.turnstileSiteKey) html += '<div id="bkTurnstile" class="bk-turnstile"></div>';
+
     html += '<div class="bk-msg" id="bkMsg" role="status" aria-live="polite"></div>';
 
+    setTimeout(function () { mountTurnstile(0); }, 0);
     if (wantCard) setTimeout(mountPayment, 0);
     return html;
+  }
+
+  /**
+   * Draws the bot check once its script is in (js/vendors.js loads it only
+   * when there is a site key). The script can arrive after the step is drawn,
+   * so it waits for it rather than giving up.
+   */
+  var TURNSTILE_TRIES = 66;   // every 300 ms, about 20 s
+  function mountTurnstile(tries) {
+    if (!CFG.turnstileSiteKey) return;
+    var ts = root.querySelector('#bkTurnstile');
+    if (!ts || ts.dataset.rendered) return;
+    if (!window.turnstile) {
+      var n = (tries || 0) + 1;
+      if (n < TURNSTILE_TRIES) setTimeout(function () { mountTurnstile(n); }, 300);
+      return;
+    }
+    ts.dataset.rendered = '1';
+    window.turnstile.render(ts, {
+      sitekey: CFG.turnstileSiteKey,
+      callback: function (token) { state.turnstileToken = token; },
+      'expired-callback': function () { state.turnstileToken = null; }
+    });
   }
 
   function vPay() {
@@ -5916,15 +5972,7 @@
     var mount = root.querySelector('#bkPayMount');
     if (!mount) return;
 
-    var ts = root.querySelector('#bkTurnstile');
-    if (ts && window.turnstile && !ts.dataset.rendered) {
-      ts.dataset.rendered = '1';
-      window.turnstile.render(ts, {
-        sitekey: CFG.turnstileSiteKey,
-        callback: function (token) { state.turnstileToken = token; },
-        'expired-callback': function () { state.turnstileToken = null; }
-      });
-    }
+    mountTurnstile();
 
     if (state.payInFull && state.payMethod === 'paypal') return mountPayPal(mount);
     // The card form does not load until the card-on-file authorization is
@@ -7005,10 +7053,18 @@
    * Web3Forms below is the path that must not fail, and until today it was
    * the ONLY email in the system: the customer filled in nine screens and got
    * nothing. An email problem is never the customer's problem, so nothing
-   * here can reject. It IS waited on now, but only for its one answer that
-   * matters (calendar fix 1, November 14): the server read the calendar again
-   * and someone else has the time (409). Anything else, or no answer within
-   * CONFIRM_WAIT_MS, and the booking goes on exactly as before.
+   * here can reject. It IS waited on now, for two answers (calendar fix 1,
+   * November 14; November 15):
+   *   taken  the server read the calendar again and someone else has the
+   *          time (409): nothing was written.
+   *   saved  the server has the booking: Elijah's email went out, or it was
+   *          already saved by an earlier try. Then a Web3Forms failure is no
+   *          reason to tell the customer it failed (they already have their
+   *          confirmation email).
+   * Anything else (refused, an error, no answer within CONFIRM_WAIT_MS) and the
+   * booking goes on through Web3Forms as before, marked so Elijah checks the
+   * calendar: a refusal (a missing Turnstile check, say) used to drop the job
+   * from the calendar with nobody told.
    *
    * Ids only. The server reprices the whole thing, so the receipt that lands
    * in an inbox is its arithmetic rather than the browser's.
@@ -7043,13 +7099,18 @@
           standardHours: Boolean(lastCalc && lastCalc.mode === 'unconfigured')
         })
       })
-        .then(function (r) { return { taken: r.status === 409 }; })
-        .catch(function () { return { taken: false }; });
+        .then(function (r) {
+          if (r.status === 409) return { taken: true, saved: false };
+          return r.json().then(function (j) {
+            return { taken: false, saved: Boolean(r.ok && j && (j.duplicate || j.owner || (j.calendar && j.calendar.ok))) };
+          }, function () { return { taken: false, saved: false }; });
+        })
+        .catch(function () { return { taken: false, saved: false }; });
       // Never aborted: the server may still be writing the job.
-      var waited = new Promise(function (ok) { setTimeout(function () { ok({ taken: false }); }, CONFIRM_WAIT_MS); });
+      var waited = new Promise(function (ok) { setTimeout(function () { ok({ taken: false, saved: false }); }, CONFIRM_WAIT_MS); });
       return Promise.race([sent, waited]);
     } catch (e) { /* an email must never cost us a booking */ }
-    return Promise.resolve({ taken: false });
+    return Promise.resolve({ taken: false, saved: false });
   }
 
   function record() {
@@ -7057,7 +7118,7 @@
     var msg = root.querySelector('#bkMsg');
 
     sendConfirmation().then(function (res) {
-      if (!res.taken) return sendRecord(quote, msg);
+      if (!res.taken) return sendRecord(quote, msg, res.saved);
       // The server found the time booked by someone else since it was checked:
       // nothing was written or sent. Back to Time, with the times still open.
       state.sending = false;
@@ -7070,17 +7131,22 @@
     });
   }
 
-  /** The booking to Elijah through Web3Forms, then Done. */
-  function sendRecord(quote, msg) {
-    var body = buildSummary(quote);
+  /**
+   * The booking to Elijah through Web3Forms, then Done. `saved`: the site's
+   * own confirmation already has it, so a Web3Forms failure still ends on Done.
+   * Not saved: the subject says so, so Elijah puts it on the calendar.
+   */
+  function sendRecord(quote, msg, saved) {
+    var body = (saved ? '' : 'CHECK THE CALENDAR: the site could not confirm it saved this booking. Add it to the calendar if it is not there.\n\n') +
+      buildSummary(quote);
     var fd = new FormData();
     fd.append('access_key', WEB3FORMS_KEY);
-    fd.append('subject', state.advice
+    fd.append('subject', (saved ? '' : 'CHECK THE CALENDAR, ') + (state.advice
       ? 'HELP ME DECIDE, ' + state.contact.name + ', ' +
         (state.slot ? new Date(state.slot).toLocaleString('en-US', { timeZone: TZ }) : (state.address.zip || 'no zip'))
       : (isInquiry() ? 'REQUEST, ' : shortNotice(state.slot) ? 'SHORT NOTICE REQUEST, ' : 'BOOKING, ') +
         (detailerName() ? detailerName() + ', ' : '') + state.contact.name + ', ' + $(quote.totalCents) +
-        (state.slot ? ', ' + new Date(state.slot).toLocaleString('en-US', { timeZone: TZ }) : ''));
+        (state.slot ? ', ' + new Date(state.slot).toLocaleString('en-US', { timeZone: TZ }) : '')));
     fd.append('from_name', '513 Auto Clean Booking');
     fd.append('name', state.contact.name);
     fd.append('phone', state.contact.phone);
@@ -7094,10 +7160,15 @@
       .then(function (r) {
         state.sending = false;
         el('bkNext').disabled = false;
-        if (r.ok && r.j.success) done(quote);
+        if ((r.ok && r.j.success) || saved) done(quote);
         else showSendError(msg);
       })
-      .catch(function () { state.sending = false; el('bkNext').disabled = false; showSendError(msg); });
+      .catch(function () {
+        state.sending = false;
+        el('bkNext').disabled = false;
+        if (saved) done(quote);
+        else showSendError(msg);
+      });
   }
 
   /** Writes the send failure into the status line. Takes the NODE, not text. */
@@ -7192,9 +7263,7 @@
     });
 
     add('When', state.slot
-      ? new Date(state.slot).toLocaleString('en-US', { timeZone: TZ,
-          weekday: 'long', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit'
-        })
+      ? longWhen(state.slot)
       : (isInquiry() ? preferenceSummary() || 'Times requested' : ''));
     add('Where', [state.address.line1, state.address.city, state.address.region, state.address.zip]
       .filter(Boolean).join(', '));
@@ -7280,16 +7349,16 @@
           : 'We have your request and the times that suit you. 513 Auto Clean will come back with a time to confirm.')
         : state.advice
           ? 'Your time is held' + (state.slot ? ' for <b>' +
-              new Date(state.slot).toLocaleString('en-US', { timeZone: TZ, weekday: 'long', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit' }) +
+              longWhen(state.slot) +
               '</b>' : '') + '. There is no total yet, because we have not recommended anything yet. ' +
             'We will do that with you before we start, and nothing is charged until you have agreed to it.'
           : shortNotice(state.slot)
           ? 'We have your short-notice request for <b>' +
-              new Date(state.slot).toLocaleString('en-US', { timeZone: TZ, weekday: 'long', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit' }) +
+              longWhen(state.slot) +
               '</b>. It is not confirmed until we reply, which depends on whether a detailer can take it. ' +
               'We will be in touch as fast as we can. Your total is <b>' + $(quote.totalCents) + '</b>' + travelWord(quote) + '.'
           : 'We have your booking' + (state.slot ? ' for <b>' +
-              new Date(state.slot).toLocaleString('en-US', { timeZone: TZ, weekday: 'long', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit' }) +
+              longWhen(state.slot) +
               '</b>' : '') + '. Your total is <b>' + $(quote.totalCents) + '</b>' + travelWord(quote) + '.') +
       '</p>' +
 
@@ -7488,9 +7557,7 @@
       if (line) bits.push(line);
     });
     if (state.slot) {
-      bits.push(new Date(state.slot).toLocaleString('en-US', { timeZone: TZ,
-        weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit'
-      }));
+      bits.push(longWhen(state.slot, true));
     }
     if (state.address.city || state.address.zip) {
       bits.push([state.address.city, state.address.zip].filter(Boolean).join(' '));

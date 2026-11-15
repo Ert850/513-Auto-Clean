@@ -38,6 +38,9 @@ describe("config/scheduling.json", () => {
     const funnel = read("js/funnel.js");
     expect(funnel).not.toMatch(/allowedWeekdays\s*[:=]\s*(corr \? )?\[0, 6\]/);
     expect(funnel).not.toMatch(/MAX_BOOK_DAYS = \d/);
+    // The 24 h short notice, its words, and the arrival window's words (review, November 13).
+    expect(funnel).not.toMatch(/Date\.now\(\) < 86400000/);
+    expect(funnel).not.toMatch(/within the next day|its first hour/);
     expect(funnel).not.toMatch(/MIN_NOTICE_MIN = \d|SHORT_NOTICE_HOURS = \d/);
     expect(funnel).not.toMatch(/endLabel\(m \+ 60\)/);
     const send = read("netlify/functions/send-confirmation.mjs");
