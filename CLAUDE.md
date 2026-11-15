@@ -71,13 +71,27 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 Read this before changing anything. Every rule below came from a real bug or an owner decision. Add a line here, under the right heading, whenever you fix a bug whose cause could come back.
 
 ## Owner rules
-- **Git:** push only to `eNov6`. Never push to `main` or open or merge PRs without the owner's approval. Parallel sessions commit to their own branch and never push.
+- **Git:** push only to the working branch Emmett has approved (`eNov6`; `eNov14` since November 14). Never push to `main` or open or merge PRs without the owner's approval. Parallel sessions commit to their own branch and never push.
+- **The toll-free freeze** (from November 14 until Imperion approves): `main` and the live site are untouched. No PR, merge or hotfix, and don't offer one, even for a real live bug: fix it on the working branch and say it ships with the merge (Emmett, November 15). What waits for approval is `docs/AFTER-TOLL-FREE-APPROVAL.md`.
 - **Others push to `eNov6` too** (Elijah's agent added `docs/BUSINESS-CONTEXT.md` on November 11). `git fetch` before pushing; if GitHub is ahead, rebase unpushed commits onto `origin/eNov6`. Never force-push.
 - **Design:** keep the site's current look (colors, type, components in `styles.css`). Changes are cleanup and reorganization for conversion, not restyling.
 - **Booking:** never break existing booking behavior. Check what the live site does first (`node web/scripts/check-live.mjs`, or step through the form without submitting). GoHighLevel runs *alongside* the current flow, not instead of it.
 - **Wording:** for every change, ask whether the wording reflects the reality of the business. No em-dashes in anything a customer reads.
 - **Elijah's package questions are all answered (November 12 and 13):** see `docs/QUESTIONS-FOR-ELIJAH-PACKAGES.md`, "Follow-up answers". What to build is in `docs/QUEUE-AFTER-FRIDAY.md`. The new prices wait until bookings show the current ones convert.
 - **Business context:** before changing copy, services, prices pages, FAQ or the booking flow, read `docs/BUSINESS-CONTEXT.md` (what sells, target areas, customers' own words, why leads don't book, wording rules). The full version with customer data is the owner's private Data Pack doc.
+- **How Emmett wants work done** (standing, November 9 to 16):
+  - **Mockups first:** any design change gets a current-vs-proposed render at 1440 and 375, and is built only once he approves it.
+  - **Booking and calendar changes:** explain them in plain words first, and wait for a go.
+  - **At the end of each push:** a validation agent, a dropped-task agent and a short status check. Simple choices he leaves to you; ask on design and wording.
+  - **Testing stays private:**
+    - only the password-gated Deploy Preview (`docs/TEST-SITE-SETUP.md`), never a public branch deploy;
+    - TEST calendars, with owner emails to Emmett;
+    - warn Elijah before test bookings, and delete the events after.
+  - **Public repo:** no personal emails, phone numbers, customer data, or Drive or OneDrive links in any committed file. An email in `TEST-SITE-SETUP.md` (fixed in d723e73) stays in history until `AFTER-TOLL-FREE-APPROVAL.md` step 4. Keep such values in memory or Netlify.
+  - **Secrets:** never open downloaded secrets files, and never paste logins or tokens into chat. They go into Netlify or the password manager.
+  - **Wording:**
+    - plain and specific, never generic or AI-sounding ("Book Now brings it back" was rejected as vague);
+    - messages for Elijah are easy to follow, in short sentences.
 - **Tracking:** log every change, with what to test, in `docs/SESSION-CHANGES.md` (parallel sessions: `docs/SESSION-CHANGES-<topic>.md`). Each fixed bug gets its root cause written down.
 
 ## Build and test
