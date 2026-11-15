@@ -504,6 +504,16 @@ describe("the booking funnel opens", () => {
     expect(conf).not.toMatch(/priced\.serviceDurationMin \?\? 120/);
   });
 
+  it("the bar's struck price and You saved come from one no-discount price, labelled (November 15)", () => {
+    const src = fs.readFileSync(path.join(ROOT, "js/funnel.js"), "utf8");
+    const bar = src.slice(src.indexOf("function renderTotal()"), src.indexOf("function fmtDur("));
+    expect(bar).toMatch(/'<s>' \+ \$\(undiscounted\(\)\.totalCents\)/);
+    expect(bar).not.toMatch(/grossBeforeMultiCents/);
+    const table = src.slice(src.indexOf("function savings("), src.indexOf("function lineTable("));
+    expect(table).toMatch(/undiscounted\(\)\.totalCents - quote\.totalCents/);
+    expect(src).toMatch(/You saved<\/td><td>' \+ \$\(won\.cents\) \+ savedNote\(quote, won\)/);
+  });
+
   it("Confirm can't loop on its own free check (froze the page, November 15)", () => {
     // verifySlot says "free" without stamping the time when it has nothing to
     // check against; advance() then re-checked forever. checkThenAdvance must

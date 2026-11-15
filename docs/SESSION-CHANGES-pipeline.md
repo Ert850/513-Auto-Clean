@@ -1942,3 +1942,22 @@ Mockups: `docs/mockups/eNov15-booking-fixes-mockups.png`.
     - **Plus LIKENEW:** $420.42 struck, $336.34 total, "You saved $84.08 (20% off)".
 - **Standard start times:** the line shown when times are standard hours now reads, in Elijah's words, "These are our standard start times. Pick any time slot that suits you best." It used to read "Pick whichever suits and we will confirm it, usually within a few hours. If a time ever needs moving we will text you first."
 - **Tests:** 736 pass.
+
+## "You saved" says what it includes (Emmett's pick, November 15: "Keep it, label the tax")
+
+- **Symptom:** after the bar and the table were made to agree, "You saved" became the true difference, tax included, so a "-$25.00" combo row sat above "You saved $26.95". With a rush or early/late fee it was larger still, because the fee is a percentage of the discounted price.
+- **Root cause:** the figure changed meaning (rows before tax became money actually saved), and nothing on screen said so.
+- **Fix:**
+  - **The table:** "You saved $26.95 (5% off, tax included)", or "(…, tax and fees included)" when a fee is in the total (`savedNote()`).
+  - **The bar:** it now strikes the no-discount price for EVERY kind of discount, not just a code or a second vehicle. It names the discount when there is one ("interior + exterior saving applied", "paid-in-full saving applied") and says "savings applied" when there are several (`discountKinds()`). With two discounts it used to credit the whole saving to one of them.
+- **Also:** stale comments (the old `savings()` comment, "Re-priced without the code", `publicCalendar.ts` "still need confirming") and the status and queue lines.
+- **To test:** in Review, for each case, check that the struck price minus the total equals "You saved", with the label shown.
+
+  | Case | Bar | "You saved" | Struck minus total |
+  |---|---|---|---|
+  | Interior + exterior | "$517.44 interior + exterior saving applied · tax included" | "$26.95 (5% off, tax included)" | $26.95 |
+  | Two vehicles + LIKENEW | "$420.42 savings applied · tax included" | "$84.08 (20% off, tax included)" | $84.08 |
+  | Two vehicles, tomorrow (rush) | "multi-vehicle saving applied" | "$50.45 (10% off, tax and fees included)" | $50.45 |
+
+  All three were checked in headless Chrome.
+- **Guard:** `funnel.smoke.test.mjs`. 737 tests pass.
