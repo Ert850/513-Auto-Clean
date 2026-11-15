@@ -27,7 +27,6 @@
     "crv-interior",
     "sonic-interior"
   ],
-  "proofH2": "Interiors before and after",
   "howH2": "How it works",
   "steps": [
     "Pick your package and vehicle size online. You see the full price, travel and tax included, before you book.",
@@ -54,7 +53,7 @@
     },
     {
       "q": "Do I need to be home?",
-      "a": "No, as long as we can get into the car. Plenty of customers leave us the keys and go about their day."
+      "a": "No, as long as we can get into the car. You can leave us the keys and go about your day."
     }
   ],
   "proofServices": [

@@ -14,10 +14,10 @@
  *   few things that belong to this city alone; two pages whose own text
  *   overlaps more than MAX_OVERLAP (word 5-grams, Jaccard).
  */
-import { pairPics, splitHero } from "./split-hero.mjs";
+import { pairPics, carouselHero } from "./split-hero.mjs";
 import fs from "node:fs";
 import path from "node:path";
-import { root, loadLocations, pageFile, localWords, overlap, contained } from "./locations.mjs";
+import { root, loadLocations, loadServices, pageFile, localWords, overlap, contained } from "./locations.mjs";
 import { findPackage, findAddon, zipGeo } from "../../netlify/functions/_pricing.mjs";
 
 const SITE = "https://513autoclean.com";
@@ -66,8 +66,9 @@ for (const loc of locs) {
   need(Array.isArray(loc.zips) && loc.zips.length && loc.zips.every((z) => /^\d{5}$/.test(z)), loc, "zips must be 5-digit ZIP codes");
   need(Array.isArray(loc.neighborhoods) && loc.neighborhoods.length >= 3, loc, "list at least 3 neighborhoods");
   need(Array.isArray(loc.faq) && loc.faq.length >= 3, loc, "at least 3 FAQ answers written for this area");
-  // A before/after pair from the gallery, never a lone "after" (Emmett, November 15).
-  need(loc.hero && gallery.some((p) => p.slug === loc.hero.pair) && ["before", "after"].every((s) => fs.existsSync(path.join(root, `images/ba-${loc.hero.pair}-${s}-760.webp`))), loc, "hero.pair must name a gallery before/after pair");
+  // The hero carousel: gallery before/after pairs, never a lone "after" (Emmett, November 15).
+  need(Array.isArray(loc.hero?.pairs) && loc.hero.pairs.length, loc, "hero.pairs must list the gallery pairs the hero carousel shows");
+  for (const slug of loc.hero?.pairs ?? []) need(gallery.some((p) => p.slug === slug) && ["before", "after"].every((s) => ["webp", "jpg"].every((x) => fs.existsSync(path.join(root, `images/ba-${slug}-${s}-760.${x}`)))), loc, `hero.pairs: "${slug}" isn't a gallery before/after pair with both photos`);
   need(loc.map && Array.isArray(loc.map.center) && loc.map.center.length === 2 && loc.map.radiusMiles > 0, loc, "map needs center [lat, lon] and radiusMiles");
   for (const j of loc.localJobs ?? []) need(gallery.some((p) => p.slug === j.pair), loc, `localJobs: no gallery pair "${j.pair}"`);
   for (const r of loc.reviews ?? []) need(reviews.reviews.some((x) => x.author === r.author && x.date === r.date), loc, `reviews: no review by ${r.author} on ${r.date}`);
@@ -121,10 +122,10 @@ ${loc.reviews.map((r) => { const x = reviews.reviews.find((y) => y.author === r.
         { "@type": "ListItem", position: 2, name: "Service area", item: `${SITE}/service-area.html` },
         { "@type": "ListItem", position: 3, name: loc.name, item: url },
       ] },
-      { "@type": "Service", serviceType: "Mobile car detailing", url,
+      { "@type": "Service", "@id": `${url}#service`, name: loc.h1, serviceType: "Mobile car detailing", url,
         // AutoWash (an AutomotiveBusiness) is the closest schema.org type (docs/SEO-COMPLIANCE.md section 4).
         provider: { "@type": "AutoWash", "@id": `${SITE}/#business`, name: "513 Auto Clean", url: `${SITE}/` },
-        areaServed: [...(loc.areaServed ?? [loc.name]).map((n) => ({ "@type": "Place", name: n })), ...loc.zips.map((z) => ({ "@type": "PostalCode", postalCode: z }))] },
+        areaServed: [...(loc.areaServed ?? [loc.name]).map((n) => ({ "@type": "Place", name: n })), ...loc.zips.map((z) => ({ "@type": "Place", address: { "@type": "PostalAddress", postalCode: z, addressCountry: "US" } }))] },
     ],
   };
   const fill = {
@@ -135,8 +136,10 @@ ${loc.reviews.map((r) => { const x = reviews.reviews.find((y) => y.author === r.
     H1: esc(loc.h1), SUB: esc(loc.sub), CTA_ATTRS: ctaAttrs,
     RATING: `${Number(reviews.rating).toFixed(1)} on Google (${reviews.count} reviews)`,
     TRUST: (loc.trust ?? ["UC student-owned", "Pay when it's done"]).map((t) => `          <li>${esc(t)}</li>`).join("\n"),
-    HERO: splitHero(pair(loc.hero.pair)),
+    HERO: carouselHero(loc.hero.pairs.map(pair)),
     WHAT_H2: esc(loc.whatH2 ?? "What we do there"),
+    // Each published service page (SEO-COMPLIANCE.md R7); none while they're drafts.
+    SERVICE_LINKS: loadServices().filter(live).map((s) => `      <a class="loc-what-more" href="${s.slug}">${esc(s.name)} &rarr;</a>\n`).join(""),
     MAP: esc(JSON.stringify({ center: loc.map.center, radiusMiles: loc.map.radiusMiles,
       zips: loc.zips.map((z) => { const g = zipGeo(z) ?? (loc.map.zips ?? {})[z]; return g ? { zip: z, lat: g.lat, lon: g.lon } : null; }).filter(Boolean) })),
     LOCAL_H2: esc(loc.localH2 ?? "Where we set up"),

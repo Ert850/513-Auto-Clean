@@ -60,14 +60,37 @@ describe("city and service pages read like the rest of the site (Emmett, Novembe
       expect(html, p).not.toMatch(/instant [A-Za-z ]+ quote/i);
     }
   });
-  it("the hero is a labelled before/after pair, captioned without a place nobody checked", () => {
+  it("the hero is a before/after carousel written into the page, captioned without a place nobody checked", () => {
+    // Emmett, November 15 (option A): the home page's wipe, one card in view.
+    // The cards are in the HTML for search and the largest paint; the first never waits.
     for (const p of pages) {
-      const hero = read(p).split('class="loc-hero-pic')[1]!.split("</figure>")[0]!;
-      expect(hero, p).toContain("-before-760.webp");
-      expect(hero, p).toContain("-after-760.webp");
-      expect(hero, p).toMatch(/>Before<.*>After</s);
-      expect(hero, p).not.toMatch(/west side|east side|northeast|recent/i);
+      const hero = read(p).split('class="loc-hero-pic loc-hero-ba"')[1]!.split("</section>")[0]!;
+      const cards = hero.split('<figure class="ba-slider"').slice(1);
+      expect(cards.length, p).toBeGreaterThan(0);
+      for (const c of cards) {
+        expect(c, p).toMatch(/-before-760\.jpg/);
+        expect(c, p).toMatch(/-after-760\.jpg/);
+        expect(c, p).toMatch(/>Before<.*>After</s);
+        expect(c, p).not.toMatch(/west side|east side|northeast|recent/i);
+      }
+      expect(cards[0], p).not.toContain('loading="lazy"');
+      expect(cards[0], p).toContain('fetchpriority="high"');
+      expect(read(p), p).toMatch(/<script src="js\/gallery\.js[^"]*" defer>/);
     }
+  });
+  it("the hero cards are js/gallery.js's own card markup", () => {
+    // split-hero.mjs writes the cards js/gallery.js would build; a class
+    // renamed in one and not the other would leave the wipe without a handle.
+    const classes = (s: string) => [...s.matchAll(/class="([^"]+)"/g)].map((m) => m[1]).filter((c) => !/^ba-carousel|^ba-viewport|^ba-track|^loc-/.test(c!));
+    const js = read("js/gallery.js");
+    const fn = js.slice(js.indexOf("function card("), js.indexOf("function card(") + 2000);
+    const fromJs = classes(fn.slice(0, fn.indexOf("</figure>")) + "</figure>");
+    const page = read(pages[0]!);
+    const first = page.slice(page.indexOf('<figure class="ba-slider"'));
+    // The photos come from gallery.js photo(), a function of its own.
+    const fromPage = classes(first.slice(0, first.indexOf("</figure>"))).filter((c) => c !== "ba-img");
+    expect(fromPage).toEqual(fromJs);
+    expect(js.slice(js.indexOf("function photo("), js.indexOf("function card("))).toContain('class="ba-img"');
   });
   it("no keyword-stuffed headings", () => {
     for (const p of pages) {

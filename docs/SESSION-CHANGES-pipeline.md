@@ -1694,3 +1694,59 @@ An independent review found nothing that loses or duplicates a normal booking. I
   - `test-gate.js` and `PLAN-eNov14.md` now describe the Deploy Preview, not a branch deploy.
   - `CALENDAR-FIXES-PLAN.md` fix 4 records that the fee's name stays decided by noon.
 - **Status:** `STATUS-2026-11-15.md` is rewritten and now has a merge checklist: the gallery pairs, the draft pages that `build-dist` publishes, and the edge function on production.
+
+## Before/after carousel as the hero of the city and service pages (November 15)
+
+- **What:** Emmett picked option A ("as long as it has the animations"). The hero photo on all four draft pages is now the home page's Results carousel, one card in view, running the same 8 s shared wipe with the same controls.
+  - **Delhi & Price Hill:** 4 interior pairs.
+  - **Indian Hill & Madeira:** 4 different interior pairs, so the two city pages share no captions (R2).
+  - **Stain:** its one stain pair, which wipes on its own.
+  - **Interior:** 5 pairs.
+- **How:**
+  - `web/scripts/split-hero.mjs` `carouselHero()` writes the cards into the HTML. The photos and alt text are crawlable, and the first card is `fetchpriority="high"` and never lazy (SEO-COMPLIANCE.md, images and Core Web Vitals).
+  - `js/gallery.js` finds cards already in `#baGrid` and only starts the carousel, with no fetch. `script.js` has already bound their handles.
+  - `.loc-hero-ba` in `styles.css` sets one card in view, plus `min-width: 0`.
+- **City pages:** `hero.pair` became `hero.pairs`, a list of cards, checked at build for both photos.
+- **Service pages:** their separate before/after row is gone, because the carousel now shows those pairs. `proofH2` was removed with it.
+- **Bug caught in the mockup:**
+  - **Symptom:** on a 375 px phone the page grew to 746 px wide.
+  - **Root cause:** the hero grid's one column is `1fr`, whose minimum is the content's width, and the carousel track is a row of all its cards side by side.
+  - **Fix:** `min-width: 0` on `.loc-hero-ba`.
+- **Guard:** `locations.test.ts` checks that every hero card is a labelled pair with no place claim, that the first card is not lazy, that `gallery.js` is loaded, and that the card markup matches gallery.js `card()`.
+- **Checked:** headless Chrome at 1440×790 and 375×812 on all four pages.
+  - The wipe runs (before, then after, a hold, then the next card); the single stain card loops.
+  - No sideways scroll and no script errors.
+  - Book Now stays in the first screen.
+- **Test:** open each of the four pages. The hero should wipe from the before to the after and move on every 8 s. Pause should stop it, and the arrows and dots should change the card.
+
+## SEO spec recheck of the four draft pages (November 15)
+
+An independent audit went through every requirement in `docs/SEO-COMPLIANCE.md` (R1 to R7, the page checklist, structured data, claims).
+
+**Already met:**
+- titles 53 to 59 characters and descriptions 136 to 145, all different;
+- one H1 each;
+- canonicals that point to the page itself;
+- all images under 150 KB;
+- the first hero photo never lazy;
+- R2 duplicate scores well under the limit (city pair Jaccard 0.098, containment 0.19);
+- ZIPs from BUSINESS-CONTEXT;
+- no typed prices;
+- no review or FAQ markup;
+- no licensed or insured, best, tanks or ceramic claims.
+
+**Fixed now:**
+- **Invalid schema type:**
+  - **What changed:** `areaServed` used `"@type": "PostalCode"`, which isn't a schema.org type. ZIPs are now a `Place` with a `PostalAddress`, and the city `Service` has an `@id` and a `name`, as in the spec's example.
+  - **Root cause:** the type was written from memory and never checked against schema.org.
+- **Unmeasured claim:**
+  - **What changed:** "Plenty of customers leave us the keys" (interior FAQ) is gone.
+  - **Root cause:** it's the same unmeasured kind of line fc7258e removed from Delhi; that fix searched one page, not all four.
+- **Removal outcome in alt text:** the pet hair pair's after alt said "pet hair removed" and now reads "vehicle floor and seats cleaned of pet hair".
+- **Oversized photo:**
+  - **What changed:** `ba-pethair-before-1120.webp` was 157 KB and is recompressed to 126 KB, at the same 1120×840.
+  - **Root cause:** the carousel's `srcset` now offers the 1120 width, which nothing on the city and service pages used before.
+- **Unsourced neighborhood:** "Camargo" is removed from Indian Hill's list. It's a road and a company there, not a neighborhood.
+- **R7:** city pages now link to each published service page (none yet, while they're drafts).
+
+**Left for before publishing** (recorded in `STATUS-2026-11-15.md`): drafts ship in `dist/`; the R1 job ZIP check; R2 measured on rendered text; R7 nearby pages; the ZIPs from one source; the R6 typed-number check; R3 `writtenBy` and a person's sign-off on the paragraphs; area-specific FAQs (R5); the hub and URL scheme sign-off; the Rich Results Test.
