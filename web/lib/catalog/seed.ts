@@ -126,10 +126,10 @@ const PACKAGES: Package[] = [
     slug: "maintenance-interior",
     name: "Maintenance",
     category: "interior",
-    tagline: "Keeps a already-detailed car right, at a lower price.",
+    tagline: "Keeps an already detailed car right, at a lower price.",
     note:
       "The same work as a Basic Interior, priced lower because a car detailed a month or two ago has far less built up in it. It resets the everyday mess: crumbs, dust, fingerprints, mats. It does NOT include shampooing, stain work or anything deep, because there should not be anything deep left. If it has been longer than three months, or something has been spilled since, start from Basic or Full instead.",
-    notIncluded: ["Shampoo or stain work", "Anything deep: there should be nothing deep left"],
+    notIncluded: ["Shampoo or stain work", "Deep cleaning: it keeps an already detailed car that way"],
     tip: "Been longer than three months, or a spill since? Start from Basic or Full instead.",
     priceCents: 11500,
     durationMin: 105,
@@ -163,7 +163,7 @@ const PACKAGES: Package[] = [
     tagline: "A deep, top to bottom detail that makes it feel new again.",
     note:
       "Everything in Basic, then the deep work: engrained particles pulled out of the carpet, upholstery shampooed and scrubbed, mats washed and dressed, leather conditioned, glass and door jams cleaned, and every crack and crevice brush detailed. Stain reduction is part of it. It does NOT guarantee a stain comes out completely, steam sanitize the whole vehicle, or remove the seats to get underneath them. Most engrained fibers and pet hair come out at this level, but the truly stubborn ones woven deep into the carpet backing need the individual fiber lifting in Showroom Ready Restoration. Deep set stains want the Stain Treatment extra and lingering smells want the Ozone Odor Reset.",
-    notIncluded: ["A promise every stain comes out completely", "Steam sanitizing the whole vehicle", "Taking the seats out to clean underneath"],
+    notIncluded: ["Every set-in stain gone completely: some only fade", "Steam sanitizing the whole vehicle", "Taking the seats out to clean underneath"],
     tip: "Deep stains or smells? Add a Stain Treatment or the Ozone Odor Reset. The most stubborn pet hair needs Showroom Ready Restoration.",
     priceCents: 23500,
     durationMin: 240,
@@ -183,7 +183,7 @@ const PACKAGES: Package[] = [
     tagline: "Our most popular detail: Full Interior with the whole cabin steam sanitized.",
     note:
       "Everything in Full Interior, then the whole vehicle steamed: every safe surface sanitized and scrubbed with heat rather than chemicals, into the vents, seams and seat rails that no cloth reaches. The heat kills bacteria on contact and everything dries in minutes. It does NOT guarantee a stain comes out completely or repair damage. Deep set stains want the Stain Treatment extra and lingering smells want the Ozone Odor Reset.",
-    notIncluded: ["A promise every stain comes out completely", "Repairing tears, burns or worn out material"],
+    notIncluded: ["Every set-in stain gone completely: some only fade", "Repairing tears, burns or worn out material"],
     tip: "Deep stains or smells? Add a Stain Treatment or the Ozone Odor Reset.",
     priceCents: 31500,
     // Steam counts as an hour on top of Full here (Elijah, November 12).

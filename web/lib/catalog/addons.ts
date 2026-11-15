@@ -219,7 +219,7 @@ export const ADDONS: Addon[] = [
     name: "Ozone Odor Reset",
     scope: "interior",
     icon: "molecule",
-    description: "Ozone (O3) destroys the compounds causing the smell, not just the smell.",
+    description: "An ozone treatment for smells that linger, run after the source is cleaned.",
     note:
       "A generator converts the oxygen in the air (O2) into ozone (O3). That extra atom is unstable, so it breaks away and oxidises odor molecules, bacteria and smoke residue on contact. Because it works as a gas it reaches the vents, headliner and seat foam that wiping cannot. It then reverts to ordinary oxygen and leaves nothing behind. The vehicle is sealed while it runs and aired out afterwards. Expect a 60 to 90% reduction in organic odors. It has to be paired with a stain treatment, or with a Full Interior or above, because ozone cannot remove what is still soaked into the fabric.",
     tiers: [{ id: "std", label: "Ozone treatment", priceCents: 5000, durationMin: 60 }],

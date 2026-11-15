@@ -10,6 +10,22 @@ Work that's agreed but deliberately not started before Friday. Newest first.
   - Check that no page carries 371-5948 afterwards.
   - Emails pick it up from the same deploy.
 
+## SEO pages: before/after carousels, plus Elijah's November 15 answers (queued November 15)
+
+- **Before/after carousels on the city and service pages (Emmett, November 15):** "the SEO specific pages need before after style carousel anims as you cannot properly show the value of a service without the before and after." The Delhi & Price Hill page shows one still pair, which undersells the work.
+  - **Build:** reuse the home page's Results carousel (`js/gallery.js`, the 8 s shared wipe), fed by the page's own pairs: the service's tagged pairs on a service page, and the area's `localJobs` on a city page. Don't build a second carousel.
+  - Every carousel rule in CLAUDE.md applies (no `.reveal` inside the track, play button state, eager-load the next card, and so on).
+  - **Mockups first, for Emmett's approval** (hero swapped for the carousel, or a carousel section under the hero).
+  - **Needs more tagged pairs:** stain work has one today.
+- **Promo codes on the landing pages (Elijah):** GOLF10 and PRESTIGE10 aren't on the prints, and can be shown on `lp-golf.html` and `lp-prestige.html`.
+  - In `config/promo-codes.json` they're `active: false`. The plan was an A/B test of showing them (`config/experiments.json`).
+  - **Emmett to decide:** switch them on for everyone on those pages, or run the A/B test. Also an end date, or none.
+- **Local jobs for the city pages (Elijah):** the full list of jobs, people and areas is in his OneDrive. It isn't synced to Emmett's Mac: "Add shortcut to My files" in OneDrive first.
+  - Then fill `localJobs` and `reviews` in `config/locations/*.json`, showing only a first name and the area.
+  - The list holds customer data. Read it locally and never commit it.
+- **Photo naming for "03 Website" (Elijah):** `descriptor_YYYY-MM-DD_HHMM_before.jpg` and `..._after.jpg`. His "descriptor_exact:time" with the colon swapped out, because OneDrive and Windows refuse colons. Pairs match on descriptor plus time.
+- **Inbox logo (BIMI): closed.** Elijah: not a registered trademark, not worth it.
+
 ## After toll-free approval: remove Emmett's email from the public git history (Emmett, November 15)
 
 - **The problem:** an earlier commit of `docs/TEST-SITE-SETUP.md` (fixed in d723e73) contains Emmett's personal email address. The repo is public, so it can still be read in that commit's history.
@@ -29,7 +45,7 @@ Elijah's inbox shows a generic building icon beside "513 Auto Clean". Two separa
 2. **The logo as the sender picture in the inbox list** (the icon in Elijah's screenshot). That's BIMI, set in DNS for 513autoclean.com, not in our code:
    - DMARC must be at enforcement (`p=quarantine` or `p=reject`) for the sending domain, with SPF and DKIM for Resend aligned. Check the current DMARC record first: tightening it wrongly can send real emails to spam.
    - The logo must be an SVG Tiny PS file at a public https address, plus a BIMI TXT record.
-   - Gmail and Apple Mail show it only with a mark certificate: a VMC (needs a registered trademark) or a CMC (no trademark; about a year of logo use). Both cost money every year, from roughly several hundred dollars upward. **Ask Elijah if it's worth it.**
+   - Gmail and Apple Mail show it only with a mark certificate: a VMC (needs a registered trademark) or a CMC (no trademark; about a year of logo use). Both cost money every year, from roughly several hundred dollars upward. **Asked: not worth it (Elijah, November 15). Closed.**
    - Without a certificate, some providers (Yahoo, Fastmail) may show it; Gmail and Apple won't.
    - It's DNS, not the website, so it doesn't break the verification freeze, but don't change DMARC during the toll-free review without Imperion knowing.
 - Note: the email in Elijah's screenshot (sent November 13, 8:19 PM) is the **old** layout. Bookings since PR #9 get the new one (arrival time, duration, window, travel always priced).
