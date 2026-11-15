@@ -147,7 +147,7 @@ A job only goes to someone who does every part of it. Save, then **Trigger deplo
 - **BEST events must be Free.** OPEN events must be Busy until the new booking form is live.
 - **Repeating events:** "This event" changes one day. "This and following events" changes it from then on.
 - **Netlify changes need a deploy** (Deploys, Trigger deploy) before they take effect.
-- **Your jobs calendar (513 Auto Clean) stays public with full details for now.** The current live site needs that to see booked jobs. Once the new booking form is live you will be told to switch it to **See only free/busy (hide details)**, so customers' names and addresses are no longer public.
+- **Your jobs calendar (513 Auto Clean) is public as See only free/busy (hide details)** (switched November 13), so customers' names and addresses aren't public. The site reads it through Google's free/busy API.
 
 ## Kris today (for reference)
 
@@ -159,8 +159,8 @@ A job only goes to someone who does every part of it. Save, then **Trigger deplo
 - **Priority:** 1. **Does:** interior only.
 - **Calendars:**
   - 513 Kris Availability: `18f753f8e633da3dec644bca2d658fdccc42ee05a043adbf46dbc939ec88f2dd@group.calendar.google.com` (public, all event details).
-  - 513 Kris Bookings: `b79865896edf56c9cc9985c8607a0a4dfec5df71b032ff7c16d3dae23e793826@group.calendar.google.com` (public, free/busy only). Still to do: share it with Kris once we have his email.
-- **His Netlify `DETAILERS` entry (saved November 10; change `Tue-Sat` to `Tue-Thu` to match his November 12 days, which is harmless either way since the calendar sets his fees):**
+  - 513 Kris Bookings: `b79865896edf56c9cc9985c8607a0a4dfec5df71b032ff7c16d3dae23e793826@group.calendar.google.com` (public, free/busy only). Shared with Kris with "Make changes to events" (checked November 14), so he can delete a job to cancel it.
+- **His Netlify `DETAILERS` entry** (saved November 10; `noFeeStarts` changed to `Tue-Thu` on November 13. The example below still shows the old `Tue-Sat`, which is harmless either way, because the calendar sets his fees):
   ```
   [{"name":"Kris","does":"interior","noFeeStarts":"Tue-Sat 18:00-19:00",
     "availability":"18f753f8e633da3dec644bca2d658fdccc42ee05a043adbf46dbc939ec88f2dd@group.calendar.google.com",

@@ -1,8 +1,23 @@
 # Queued for after the Friday, November 13 deliverables
 
-Work that's agreed but deliberately not started before Friday. Newest first.
+Work that's agreed but deliberately not started before Friday. Newest first. Anything that waits for toll-free approval is in `AFTER-TOLL-FREE-APPROVAL.md`.
 
-## Swap the phone number back (due November 18 to 21)
+## From the long-session audit (November 16): asked earlier, never recorded
+
+- **Booking links sent from the CRM (Emmett, November 10):** "through CRM send a prebuilt booking link", which opens the booking already filled in and, once booked, sends the emails and texts and writes the calendar.
+  - Today the form's "Copy my booking link" already makes a pre-filled link (`ACPricing.quoteUrl`).
+  - What's missing is the GoHighLevel side: sending it from a contact, and its automations.
+  - Belongs with the GHL work (`GHL-SETUP.md`, `ONE-CALENDAR-SPEC.md`), once Imperion connects it.
+- **A 513-brand headline, as an A/B test (Emmett, November 14):** "Maybe tie to the 513 brand better? Elijah says professional is fine, maybe test later."
+  - The hero says "Professional mobile detailing in Greater Cincinnati."
+  - Draft two or three 513 versions, mock them up, then run one against it through `config/experiments.json` (rules in `docs/AB-TESTING.md`).
+- **`check-live.mjs` always says STALE** (noted November 13).
+  - **Root cause:** Netlify re-stamps `config.js` and `funnel.js` at deploy (the phone swap and the config build), so their `?v=` stamps never match the repo's.
+  - **Fix:** teach it which files are re-stamped, or compare a stamp that isn't. Until then, the after-approval checks use `curl` on the pages.
+- **How a job is marked done from a phone** (November 13): "DONE" in the event title, or a green event. Never asked; it's in the handoff to Elijah.
+- **The travel-tax question for Elijah's accountant** (November 13): it had no owner. It's now on Elijah's list in `STATUS-2026-11-15.md`.
+
+## Swap the phone number back (when Imperion says toll-free verification is approved; step 1 of `AFTER-TOLL-FREE-APPROVAL.md`)
 
 - **What's live:** since November 14, the site shows the temporary A2P verification number, (866) 371-5948. `BUSINESS_PHONE` is set in Netlify (all scopes and contexts) and production was redeployed (deploy 6af707e0).
   - Checked live: 12 pages, the scripts, `tel:`/`sms:` links and the structured data all carry it, with no trace of (513) 279-2915.
@@ -21,7 +36,7 @@ Work that's agreed but deliberately not started before Friday. Newest first.
   - In `config/promo-codes.json` they're `active: false`. The plan was an A/B test of showing them (`config/experiments.json`).
   - **Parked until after the freeze (Emmett, November 15):** ask then whether to switch them on for everyone on those pages or run the A/B test, and whether they get an end date. Nothing changes before then: they stay `active: false`.
   - No rush from the prints: the codes aren't printed, so the Prestige prints going out late November don't depend on this.
-- **Local jobs for the city pages (Elijah):** the full list of jobs, people and areas is in his OneDrive. It isn't synced to Emmett's Mac: "Add shortcut to My files" in OneDrive first.
+- **Local jobs for the city pages (Elijah):** he said the full list of jobs, people and areas is in his OneDrive. Emmett added the shortcut on November 15, but that shared folder is only a copy of the website code, with no list. Ask Elijah which file it is (maybe his Accounting sheet).
   - Then fill `localJobs` and `reviews` in `config/locations/*.json`, showing only a first name and the area.
   - The list holds customer data. Read it locally and never commit it.
 - **Photo naming for "03 Website" (Elijah):** `descriptor_YYYY-MM-DD_HHMM_before.jpg` and `..._after.jpg`. His "descriptor_exact:time" with the colon swapped out, because OneDrive and Windows refuse colons. Pairs match on descriptor plus time.
@@ -328,7 +343,7 @@ Built and logged in `SESSION-CHANGES-pipeline.md` (Round 22). The design that wa
 - the naming rule for pairs;
 - daily rebuild or the build-hook script.
 
-**Needs from Emmett:** a Google account for the folder (UC mail isn't one).
+**Folder access:** done. Elijah shared the photo folder on November 14 (the link is in memory, not this public repo).
 
 ## Interior packages: three tiers, Full Interior + Steam as its own package (Elijah, messages November 11)
 

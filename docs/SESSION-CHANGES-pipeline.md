@@ -1976,3 +1976,29 @@ Mockups: `docs/mockups/eNov15-booking-fixes-mockups.png`.
   - **Fix:** under 400 px it wraps, balanced over two lines so no word sits alone (CLAUDE.md, no orphaned words).
   - **Checked** at 375 px (one line) and 320 px (two balanced lines). It never overlaps Continue or scrolls sideways.
 - **Tests:** 743 pass.
+
+## Long-session audit and the after-approval runbook (November 16, Emmett: "Make sure we have all the after toll free approval queue ready")
+
+**What the audit did.** It read every message from November 9 to 16, including the 93 typed while the agent was busy (stored apart from ordinary messages, so a plain filter misses them), and checked each one against the repo.
+
+**Findings:**
+- **One request lost:** booking links sent from the CRM.
+- **Partial:** the 513-brand headline A/B test; how a job is marked done from a phone (never asked); the travel-tax question (no owner).
+- **Stale:**
+  - the OneDrive shortcut step;
+  - the jobs calendar and Kris's sharing in `DETAILERS-GUIDE.md`;
+  - `STATUS-2026-11-13` (Place ID and `noFeeStarts`);
+  - the photo folder's access line;
+  - the phone swap's old due date.
+- **Dropped:** the `check-live.mjs` STALE issue.
+- **Standing rules kept only in plans:** mockups first, validation at the end of each push, private testing, public-repo hygiene, secrets, plain wording, and the freeze.
+
+**Fixes:**
+- **`docs/AFTER-TOLL-FREE-APPROVAL.md`, new:** every step that waits for approval, in order, with who approves it and the checks to run.
+  - **The git-history step was wrong in the old queue.** Emmett's email is only in f9a0f6b, on `eNov14`, so a plain merge would have copied it into `main`. The runbook now squash-merges PR #13, then deletes `eNov14` and asks GitHub Support to purge the old refs. `main` is never force-pushed.
+  - **Two steps added:** the privacy policy's "tap Book Now", and `automatedTexts`, which turns on only once GoHighLevel sends texts.
+- **`QUEUE-AFTER-FRIDAY.md`:** a "From the long-session audit" section (the CRM link, the headline test, `check-live`, done-marking, travel tax), and the stale lines fixed.
+- **`STATUS-2026-11-15.md`:** new sections for the after-approval runbook, Waiting on Imperion, and queued-but-not-started work; fuller Waiting on Emmett and Elijah lists.
+- **`DETAILERS-GUIDE.md`** and **`STATUS-2026-11-13.md`** (marked superseded) corrected.
+- **CLAUDE.md:** the Git rule now names `eNov14`, plus a freeze rule and "How Emmett wants work done".
+- **Memory:** the browser to use for Google and Netlify; the dangling `[[ghl-keys-request]]` link removed.
