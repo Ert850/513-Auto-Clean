@@ -17,7 +17,7 @@
 import { pairPics, carouselHero } from "./split-hero.mjs";
 import fs from "node:fs";
 import path from "node:path";
-import { root, loadLocations, loadServices, pageFile, localWords, overlap, contained } from "./locations.mjs";
+import { root, loadLocations, loadServices, pageFile, overlap, contained, typedNumbers, mainText, placeNames, normalWords } from "./locations.mjs";
 import { findPackage, findAddon, zipGeo } from "../../netlify/functions/_pricing.mjs";
 
 const SITE = "https://513autoclean.com";
@@ -28,12 +28,16 @@ const SITE = "https://513autoclean.com";
 const MAX_OVERLAP = 0.30;
 const WARN_OVERLAP = 0.20;
 const MAX_CONTAINED = 0.50;
-const LIMITS = { title: 60, meta: 155, paraMin: 100, paraMax: 190 };
+const LIMITS = { title: 60, meta: 155, paraMin: 120, paraMax: 180, neighborhoodsMin: 3, neighborhoodsMax: 12, nearbyMax: 4 };
+// Who may write a published page's local paragraph (R3): a person who knows
+// the jobs there, never a model rewording one page per town.
+const WRITERS = ["Elijah", "Emmett"];
 
 const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 const read = (f) => fs.readFileSync(path.join(root, f), "utf8");
 const gallery = JSON.parse(read("data/gallery.json")).pairs ?? [];
 const reviews = JSON.parse(read("data/reviews.json"));
+const AREAS = JSON.parse(read("config/areas.json")).areas;
 
 const locs = loadLocations();
 
@@ -48,12 +52,15 @@ function priced(text, where) {
     return money(cents);
   });
 }
+// R6: a business number in the words comes from a setting, never typed.
+const wordsOf = (l) => [l.title, l.meta, l.eyebrow, l.h1, l.sub, l.localParagraph, ...(l.highlights ?? []), ...(l.faq ?? []).flatMap((q) => [q.q, q.a]), ...(l.localJobs ?? []).flatMap((j) => [j.note, j.comment])].filter(Boolean);
+const typed = locs.flatMap((l) => wordsOf(l).flatMap((t) => typedNumbers(t).map((n) => `${l.file}: "${n}" is typed; say it from a setting ({price:...}, {addon:...}) or leave it out`)));
 for (const l of locs) for (const k of ["sub", "localParagraph", "meta"]) if (l[k]) l[k] = priced(l[k], `${l.file} ${k}`);
 for (const l of locs) {
   l.highlights = (l.highlights ?? []).map((h) => priced(h, l.file));
   l.faq = (l.faq ?? []).map((q) => ({ q: priced(q.q, l.file), a: priced(q.a, l.file) }));
 }
-const problems = [];
+const problems = [...typed];
 const need = (cond, loc, msg) => { if (!cond) problems.push(`${loc.file}: ${msg}`); };
 
 for (const loc of locs) {
@@ -64,7 +71,13 @@ for (const loc of locs) {
   const words = (loc.localParagraph ?? "").split(/\s+/).filter(Boolean).length;
   need(words >= LIMITS.paraMin && words <= LIMITS.paraMax, loc, `localParagraph is ${words} words (want ${LIMITS.paraMin} to ${LIMITS.paraMax})`);
   need(Array.isArray(loc.zips) && loc.zips.length && loc.zips.every((z) => /^\d{5}$/.test(z)), loc, "zips must be 5-digit ZIP codes");
-  need(Array.isArray(loc.neighborhoods) && loc.neighborhoods.length >= 3, loc, "list at least 3 neighborhoods");
+  // R4: the ZIPs are a slice of one area in config/areas.json (the Accounting sheet's table), and a short list of neighborhoods.
+  need(AREAS[loc.area], loc, `area must be one of ${Object.keys(AREAS).join(", ")} (config/areas.json)`);
+  for (const z of loc.zips ?? []) need(!AREAS[loc.area] || AREAS[loc.area].includes(z), loc, `ZIP ${z} isn't in the ${loc.area} area (config/areas.json)`);
+  need(Array.isArray(loc.neighborhoods) && loc.neighborhoods.length >= LIMITS.neighborhoodsMin && loc.neighborhoods.length <= LIMITS.neighborhoodsMax, loc, `list ${LIMITS.neighborhoodsMin} to ${LIMITS.neighborhoodsMax} neighborhoods`);
+  // R7: nearby pages exist; at most a handful.
+  for (const n of loc.nearby ?? []) need(locs.some((l) => l.slug === n), loc, `nearby: no city page "${n}"`);
+  need((loc.nearby ?? []).length <= LIMITS.nearbyMax, loc, `at most ${LIMITS.nearbyMax} nearby pages`);
   need(Array.isArray(loc.faq) && loc.faq.length >= 3, loc, "at least 3 FAQ answers written for this area");
   // The hero carousel: gallery before/after pairs, never a lone "after" (Emmett, November 15).
   need(Array.isArray(loc.hero?.pairs) && loc.hero.pairs.length, loc, "hero.pairs must list the gallery pairs the hero carousel shows");
@@ -74,16 +87,20 @@ for (const loc of locs) {
   for (const r of loc.reviews ?? []) need(reviews.reviews.some((x) => x.author === r.author && x.date === r.date), loc, `reviews: no review by ${r.author} on ${r.date}`);
   // Things only this page has: its own paragraph and FAQ always; local jobs and reviews once Elijah's data is in.
   if (loc.status !== "draft") {
+    // R1: evidence only this page has. A job counts when its ZIP is this
+    // page's and a person checked its photos (plates, faces, house numbers).
     need((loc.localJobs ?? []).length >= 2, loc, "a published page needs at least 2 local jobs with photos");
+    for (const j of loc.localJobs ?? []) {
+      need((loc.zips ?? []).includes(j.zip), loc, `localJobs "${j.pair}": its job ZIP (zip) must be one of this page's ZIPs`);
+      need(j.reviewed === true, loc, `localJobs "${j.pair}": photos not marked reviewed (reviewed: true, after a person checks them)`);
+    }
     need((loc.reviews ?? []).length >= 1, loc, "a published page needs at least 1 review from this area");
+    for (const r of loc.reviews ?? []) need(typeof r.area === "string" && r.area.trim(), loc, `reviews: ${r.author}'s town (area), as they gave it`);
+    // R3: a person wrote the local paragraph.
+    need(WRITERS.includes(loc.writtenBy), loc, `writtenBy must be ${WRITERS.join(" or ")}: the local paragraph is written by a person who knows the jobs there`);
+    // R7: a published page never links to a draft.
+    for (const n of loc.nearby ?? []) need(locs.find((l) => l.slug === n)?.status !== "draft", loc, `nearby: "${n}" is a draft`);
   }
-}
-for (let i = 0; i < locs.length; i++) for (let k = i + 1; k < locs.length; k++) {
-  const a = localWords(locs[i]), b = localWords(locs[k]);
-  const o = overlap(a, b), ca = contained(a, b), cb = contained(b, a);
-  if (o > MAX_OVERLAP) problems.push(`${locs[i].slug} and ${locs[k].slug} overlap ${o.toFixed(2)} (max ${MAX_OVERLAP})`);
-  else if (o > WARN_OVERLAP) console.warn(`render-locations: warning, ${locs[i].slug} and ${locs[k].slug} overlap ${o.toFixed(2)}`);
-  if (Math.max(ca, cb) > MAX_CONTAINED) problems.push(`${locs[i].slug} and ${locs[k].slug}: over half of one page's text is in the other`);
 }
 if (problems.length) throw new Error("render-locations:\n  " + problems.join("\n  "));
 
@@ -95,6 +112,7 @@ for (const loc of locs) {
   const url = `${SITE}/${loc.slug}`;
   const ctaAttrs = loc.book?.package ? ` data-book-package="${esc(loc.book.package)}"` : loc.book?.intent ? ` data-book-intent="${esc(loc.book.intent)}"` : "";
   const li = (t) => `        <li>${esc(t)}</li>`;
+  // A draft's links to other drafts are left out; a published page can't have any (checked above).
   const nearby = (loc.nearby ?? []).map((s) => locs.find((l) => l.slug === s)).filter((l) => l && live(l));
   const jobs = (loc.localJobs ?? []).length ? `
 <section class="loc-jobs">
@@ -110,7 +128,7 @@ ${loc.localJobs.map((j) => { const p = pair(j.pair); return `      <figure class
 <section class="loc-reviews">
   <div class="wrap">
     <h2>${esc(loc.reviewsH2 ?? "What customers say")}</h2>
-${loc.reviews.map((r) => { const x = reviews.reviews.find((y) => y.author === r.author && y.date === r.date); return `    <blockquote class="loc-review"><p>${esc(x.text)}</p><cite>${esc(x.author.split(" ")[0])}${r.area ? `, ${esc(r.area)}` : ""}</cite></blockquote>`; }).join("\n")}
+${loc.reviews.map((r) => { const x = reviews.reviews.find((y) => y.author === r.author && y.date === r.date); return `    <blockquote class="loc-review"><p>${esc(x.text)}</p><cite><a href="${esc(reviews.source)}" rel="noopener">${esc(x.author.split(" ")[0])}${r.area ? `, ${esc(r.area)}` : ""}</a> on Google</cite></blockquote>`; }).join("\n")}
   </div>
 </section>
 ` : "";
@@ -167,6 +185,25 @@ ${loc.reviews.map((r) => { const x = reviews.reviews.find((y) => y.author === r.
   }
   fs.writeFileSync(out, html);
 }
+
+// R2 on what a visitor reads: each page's visible <main> text, with both
+// pages' place names and every ZIP blanked, against every other city page and
+// against the hand-written pages a city page could copy from (Range & Travel,
+// the home page).
+const shown = (f) => mainText(read(f));
+const versus = [...locs.map((l) => ({ name: l.slug, text: shown(pageFile(l)), places: placeNames(l) })),
+  ...["service-area.html", "index.html"].map((f) => ({ name: f, text: shown(f), places: [], fixed: true }))];
+for (let i = 0; i < versus.length; i++) for (let k = i + 1; k < versus.length; k++) {
+  const A = versus[i], B = versus[k];
+  if (A.fixed && B.fixed) continue;
+  const places = [...A.places, ...B.places];
+  const a = normalWords(A.text, places), b = normalWords(B.text, places);
+  const o = overlap(a, b), c = Math.max(contained(a, b), contained(b, a));
+  if (o > MAX_OVERLAP) problems.push(`${A.name} and ${B.name} share ${o.toFixed(2)} of their text (max ${MAX_OVERLAP})`);
+  else if (o > WARN_OVERLAP) console.warn(`render-locations: warning, ${A.name} and ${B.name} share ${o.toFixed(2)} of their text`);
+  if (c > MAX_CONTAINED) problems.push(`${A.name} and ${B.name}: over half of one page's text is in the other`);
+}
+if (problems.length) throw new Error("render-locations:\n  " + problems.join("\n  "));
 
 // The sitemap and the hub list only published (non-draft) pages.
 const published = locs.filter(live);

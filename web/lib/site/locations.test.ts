@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
 // @ts-expect-error plain ESM build script
-import { loadLocations, pageFile, localWords, overlap, contained } from "../../scripts/locations.mjs";
+import { loadLocations, loadServices, pageFile, localWords, overlap, contained, typedNumbers, mainText, publishedPages, generatedPages } from "../../scripts/locations.mjs";
 // @ts-expect-error plain ESM build script
 import { CHROME_PAGES } from "../../scripts/chrome.mjs";
 
@@ -43,6 +43,47 @@ describe("city pages", () => {
     const one = { name: "Delhi", neighborhoods: ["Delshire"], zips: ["45233"], h1: "Detailing in Delhi", sub: "", localParagraph: "We come to Delhi and Delshire 45233 every week to clean cars at home", faq: [] };
     const two = { name: "Madeira", neighborhoods: ["Camargo"], zips: ["45243"], h1: "Detailing in Madeira", sub: "", localParagraph: "We come to Madeira and Camargo 45243 every week to clean cars at home", faq: [] };
     expect(overlap(localWords(one), localWords(two))).toBe(1);
+  });
+});
+
+describe("SEO build checks (docs/SEO-COMPLIANCE.md, November 15)", () => {
+  it("R6: typed business numbers are caught, tokens and ZIPs and road numbers are not", () => {
+    for (const t of ["about 3 hours", "$50 off", "10% off", "we arrive at 6pm", "2 to 4 hours", "7:30 am", "a 20 minute drive", "within 15 miles"])
+      expect(typedNumbers(t), t).not.toEqual([]);
+    for (const t of ["from {price:full-interior}", "{addon:stain}", "on U.S. 50 and I-71", "ZIP 45238", "3 rows of seats", "Pay when it's done"])
+      expect(typedNumbers(t), t).toEqual([]);
+  });
+  it("R6: no city or service page config types a business number", () => {
+    const words = (o: any) => [o.title, o.meta, o.eyebrow, o.h1, o.sub, o.localParagraph, o.honest, ...(o.highlights ?? []), ...(o.steps ?? []), ...(o.faq ?? []).flatMap((q: any) => [q.q, q.a])].filter(Boolean);
+    for (const o of [...locs, ...loadServices()]) for (const t of words(o)) expect(typedNumbers(t), `${o.file}: ${t}`).toEqual([]);
+  });
+  it("R4: the area ZIP list is the Accounting sheet's, and every city's ZIPs are in its area", () => {
+    const areas = JSON.parse(read("config/areas.json")).areas;
+    const gs = read("tools/jobs-sync/JobsSync.gs");
+    const block = /const AREAS = \{([\s\S]*?)\n\};/.exec(gs)![1]!;
+    const fromGs = Object.fromEntries([...block.matchAll(/'([^']+)': \[([^\]]*)\]/g)].map((m) => [m[1], [...m[2]!.matchAll(/'(\d{5})'/g)].map((z) => z[1])]));
+    expect(fromGs).toEqual(areas);
+    for (const l of locs) {
+      expect(Object.keys(areas), l.slug).toContain(l.area);
+      for (const z of l.zips) expect(areas[l.area], `${l.slug} ${z}`).toContain(z);
+      expect(l.neighborhoods.length, l.slug).toBeLessThanOrEqual(12);
+    }
+  });
+  it("R2 reads what a visitor reads: <main>, or the home page between the shared header and footer", () => {
+    const home = mainText(read("index.html"));
+    expect(home).toMatch(/Real cars\. Real results\./);
+    expect(home).not.toMatch(/Meet the Team|Analytics choices/);
+    const city = mainText(read(pageFile(locs[0])));
+    expect(city).toContain(locs[0].h1);
+    expect(city).not.toMatch(/<|CHROME/);
+  });
+  it("R1: drafts never reach the live site (production builds publish only published pages)", () => {
+    const drafts = [...locs, ...loadServices()].filter((p: any) => p.status === "draft").map(pageFile);
+    for (const d of drafts) {
+      expect(publishedPages(), d).not.toContain(d);
+      expect(generatedPages(), d).toContain(d);
+    }
+    expect(read("web/scripts/build-dist.mjs")).toMatch(/process\.env\.CONTEXT === "production" \? publishedPages\(\) : generatedPages\(\)/);
   });
 });
 

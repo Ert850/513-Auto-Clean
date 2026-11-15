@@ -2,6 +2,12 @@
 
 Written 2026-11-14 for Emmett and any agent building `/service-areas/` and `/locations/<city>-oh/`. Research only: nothing here is built yet. Read with `IMPERION-RECOMMENDATIONS.md` (section B), `BUSINESS-CONTEXT.md` and `CLAUDE.md`. Quotes are short extracts from Google's own pages, linked.
 
+**Built November 15** (`render-locations.mjs`, `render-services.mjs`, `locations.mjs`; tests in `web/lib/site/locations.test.ts`):
+- **Always checked:** R2 on the rendered `<main>` text, against every other city page plus Range & Travel and the home page, and service pages against each other plus Services and the home page; R4 ZIPs within one area of `config/areas.json` (the Accounting sheet's table), 3 to 12 neighborhoods; R6 no typed numbers in page configs; R3's 120 to 180 words; R7 nearby pages exist, at most 4.
+- **Checked on publish:** R1 (2+ local jobs, each with its `zip` among the page's ZIPs and `reviewed: true`; 1+ review with its `area`); R3 `writtenBy` (Elijah or Emmett); R7 no link to a draft.
+- **Drafts never reach the live site:** a production build publishes only published pages (`publishedPages()`); Deploy Previews keep drafts for review.
+- **Not built, owner's call:** the flat addresses (`/mobile-detailing-delhi-price-hill-oh`) instead of `/locations/<slug>/`, and Range & Travel as the hub instead of `/service-areas/`. R7's "3 or 4 nearby" can't apply until there are more city pages: Delhi and Indian Hill are on opposite sides, so they no longer list each other.
+
 ## 1. What Google says
 
 **Doorways.** Google's [spam policies](https://developers.google.com/search/docs/essentials/spam-policies) define doorway abuse as "when sites or pages are created to rank for specific, similar search queries" and list, among the examples:

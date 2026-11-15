@@ -1,0 +1,78 @@
+{
+  "_read_me": [
+    "The areas we serve, by ZIP: the one list the city pages check their ZIPs against (docs/SEO-COMPLIANCE.md R4). The same table as Elijah's Accounting sheet (tools/jobs-sync/JobsSync.gs AREAS, which can't read this repo), and web/lib/site/locations.test.ts fails if the two differ. Change both together, then reinstall JobsSync."
+  ],
+  "areas": {
+    "West side": [
+      "45002",
+      "45030",
+      "45052",
+      "45204",
+      "45205",
+      "45211",
+      "45233",
+      "45238",
+      "45239",
+      "45247",
+      "45248",
+      "45251",
+      "45252"
+    ],
+    "Northeast": [
+      "45241",
+      "45242",
+      "45243",
+      "45249"
+    ],
+    "East / Clermont": [
+      "45103",
+      "45140",
+      "45150",
+      "45157",
+      "45174",
+      "45230",
+      "45244",
+      "45245",
+      "45255"
+    ],
+    "East-central": [
+      "45207",
+      "45208",
+      "45209",
+      "45212",
+      "45213",
+      "45226",
+      "45227",
+      "45236"
+    ],
+    "North": [
+      "45011",
+      "45014",
+      "45040",
+      "45069",
+      "45215",
+      "45216",
+      "45218",
+      "45224",
+      "45231",
+      "45237",
+      "45240",
+      "45246"
+    ],
+    "Uptown / Central": [
+      "45206",
+      "45217",
+      "45219",
+      "45220",
+      "45223",
+      "45225",
+      "45229",
+      "45232"
+    ],
+    "Downtown / OTR": [
+      "45202",
+      "45203",
+      "45214"
+    ]
+  }
+}

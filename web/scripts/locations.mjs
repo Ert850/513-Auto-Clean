@@ -42,9 +42,55 @@ export function loadServices() {
     .map((f) => ({ file: `config/services/${f}`, ...JSON.parse(fs.readFileSync(path.join(SDIR, f), "utf8")) }));
 }
 
-/** Every generated page (cities and services): what the chrome, publishing and stamps register. */
+/** Every generated page (cities and services): what the chrome, previews and stamps register. */
 export function generatedPages() {
   return [...loadLocations(), ...loadServices()].map(pageFile);
+}
+
+/**
+ * Only the published ones: what the live site gets (build-dist.mjs, when
+ * Netlify's CONTEXT is "production"). A draft stays reviewable on a Deploy
+ * Preview but is never reachable on 513autoclean.com (SEO-COMPLIANCE.md R1).
+ */
+export function publishedPages() {
+  return [...loadLocations(), ...loadServices()].filter((p) => p.status !== "draft").map(pageFile);
+}
+
+/**
+ * Numbers typed into page wording that should come from a setting
+ * (CLAUDE.md, SEO-COMPLIANCE.md R6): a $ or % figure, or a count of minutes,
+ * hours, days, weeks, months, miles or degrees, or a clock time. {price:...}
+ * and {addon:...} tokens are the way to say a price. ZIPs, road numbers
+ * (U.S. 50, I-71) and plain counts ("3 rows") are fine.
+ */
+export function typedNumbers(text) {
+  const t = String(text).replace(/\{(price|addon):[a-z0-9-]+\}/g, "");
+  return t.match(/\$\s?\d|\d\s?%|\b\d+(?:\.\d+)?\s*(?:-|to)?\s*(?:\d+\s*)?(?:minutes?|mins?|hours?|hrs?|days?|weeks?|months?|miles?|mi|degrees?|°)\b|\b\d{1,2}(?::\d\d)?\s?(?:am|pm|a\.m\.|p\.m\.)/gi) ?? [];
+}
+
+/** A page's visible words: its <main>, or, on the home page (no <main>), what sits between the shared header and footer. */
+export function mainText(html) {
+  let m = html.match(/<main[^>]*>([\s\S]*?)<\/main>/);
+  let body = m ? m[1] : html.slice(html.indexOf("<!-- CHROME:HEADER:END -->"), html.indexOf("<!-- CHROME:FOOTER:START -->"));
+  return body
+    .replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>|<!--[\s\S]*?-->/g, " ")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&amp;/g, "&").replace(/&rsaquo;|&rarr;|&[a-z]+;|&#\d+;/g, " ");
+}
+
+/** Place names of a city page, longest first: its name, neighborhoods and areaServed. */
+export function placeNames(loc) {
+  return [loc.name, ...(loc.neighborhoods ?? []), ...(loc.areaServed ?? [])]
+    .flatMap((n) => String(n ?? "").toLowerCase().split(/\s*(?:&|,|\band\b|\/)\s*/))
+    .map((n) => n.trim()).filter((n) => n.length > 2);
+}
+
+/** Words of some text with the given place names and every ZIP blanked to one token each (SEO-COMPLIANCE.md R2). */
+export function normalWords(text, places) {
+  let t = String(text).toLowerCase().replace(/<[^>]+>/g, " ");
+  for (const n of [...new Set(places)].sort((a, b) => b.length - a.length)) t = t.split(n).join(" placename ");
+  t = t.replace(/\b\d{5}\b/g, " zipcode ");
+  return t.match(/[a-z0-9']+/g) ?? [];
 }
 
 /** Words of a page's own (local) text, for the duplicate check. */
@@ -57,13 +103,7 @@ export function localWords(loc) {
   ];
   // Place names and ZIPs become one token, so two pages are compared on what
   // they say, not on the town they name (docs/SEO-COMPLIANCE.md, section 2).
-  let text = parts.join(" ").toLowerCase().replace(/<[^>]+>/g, " ");
-  const places = [loc.name, ...(loc.neighborhoods ?? []), ...(loc.areaServed ?? [])]
-    .flatMap((n) => String(n).toLowerCase().split(/\s*(?:&|,|\band\b|\/)\s*/))
-    .map((n) => n.trim()).filter((n) => n.length > 2).sort((a, b) => b.length - a.length);
-  for (const n of places) text = text.split(n).join(" placename ");
-  text = text.replace(/\b\d{5}\b/g, " zipcode ");
-  return text.match(/[a-z0-9']+/g) ?? [];
+  return normalWords(parts.join(" "), placeNames(loc));
 }
 
 const grams = (w, n = 5) => new Set(w.slice(0, Math.max(0, w.length - n + 1)).map((_, i) => w.slice(i, i + n).join(" ")));

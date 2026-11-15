@@ -1750,3 +1750,25 @@ An independent audit went through every requirement in `docs/SEO-COMPLIANCE.md` 
 - **R7:** city pages now link to each published service page (none yet, while they're drafts).
 
 **Left for before publishing** (recorded in `STATUS-2026-11-15.md`): drafts ship in `dist/`; the R1 job ZIP check; R2 measured on rendered text; R7 nearby pages; the ZIPs from one source; the R6 typed-number check; R3 `writtenBy` and a person's sign-off on the paragraphs; area-specific FAQs (R5); the hub and URL scheme sign-off; the Rich Results Test.
+
+## SEO build checks (November 15, Emmett: "Start the SEO build checks")
+
+**What changed.** The build now enforces `docs/SEO-COMPLIANCE.md`, not just part of it.
+- **R6:** a page config that types a business number fails: `$`, `%`, minutes, hours, days, months, miles, degrees or a clock time. Prices are said through `{price:}` and `{addon:}`, and ZIPs and road numbers are allowed (`typedNumbers()`).
+- **R2:** the duplicate check runs on each page's rendered visible text with both pages' place names blanked. City pages are compared with each other and with Range & Travel and the home page; service pages with each other and with Services and the home page.
+  - Today the city pair scores 0.10 (containment 0.19), the service pair 0.11 (0.25), and nothing scores above 0.04 against a hand-written page.
+  - **Root cause of the old gap:** it compared config fields only, so shared template text (trust pills, price lines) was never counted, and the home and Range & Travel pages were never compared.
+- **R4:** each city names its `area`, and its ZIPs must be in that area of the new `config/areas.json`. That file is the Accounting sheet's `AREAS` table, copied once, and a test fails if `tools/jobs-sync/JobsSync.gs` and it differ. City pages need 3 to 12 neighborhoods.
+  - **Root cause:** the ZIPs were typed per page and never checked against anything.
+- **R3:** the local paragraph is held to 120 to 180 words, up from 100 to 190.
+- **On publish:**
+  - **R1:** each local job carries its job `zip` (one of the page's) and `reviewed: true`, and each review carries the reviewer's `area`. Review names now link to the Google profile.
+  - **R3:** `writtenBy` must be Elijah or Emmett.
+  - **R7:** a published page can't list a draft as nearby, and every `nearby` entry must exist (at most 4).
+- **Drafts stay off the live site.** `build-dist.mjs` publishes only published pages when Netlify's `CONTEXT` is `production`; Deploy Previews still get the drafts for review.
+  - **Root cause:** `generatedPages()` fed every page to publishing, so a merge would have put four unfinished pages at public addresses.
+- **Delhi and Indian Hill no longer list each other as nearby.** They're on opposite sides of town.
+
+**Checked.** I broke the Delhi config on purpose (a typed "3 hours", a Northeast ZIP, an unknown nearby page, published with no evidence) and the build named all six problems. Restored, rebuilt, and a `CONTEXT=production` dist has no draft pages. 728 tests pass.
+
+**Not built (owner's call, `STATUS-2026-11-15.md`):** the flat addresses instead of `/locations/<slug>/`, and Range & Travel as the hub.
