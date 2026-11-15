@@ -47,7 +47,7 @@ import {
   computeSlots,
   localMinutesOfDay,
 } from "./availability/slots.js";
-import { addWeeks, buildWeek, daySuggestions, dayOpenShare, lastRowForSlots, stretchStarts, timelineRange, recommendBestDays, TIME_RECOMMENDATION_RULES, weekStartOf } from "./availability/week.js";
+import { addWeeks, buildWeek, daySuggestions, dayOpenShare, lastRowForSlots, stretchStarts, timelineRange, recommendBestDays, TIME_RECOMMENDATION_RULES, weekStartOf, weekFromToday } from "./availability/week.js";
 import { coldPause, parseGridpoint, WEATHER_RULES, weatherVerdict } from "./availability/weather.js";
 import { assignStarts, canDo, parseDetailers, waivesFeeAt } from "./availability/crew.js";
 import { componentsOf } from "./catalog/types.js";
@@ -151,6 +151,7 @@ const api = {
   SCHEDULING,
   localMinutesOfDay,
   weekStartOf,
+  weekFromToday,
   addWeeks,
   buildWeek,
   dayOpenShare,

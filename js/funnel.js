@@ -404,10 +404,20 @@
       }
       a.tiers.forEach(function (t) {
         if (t.priceCents === null) return;
+        // Priced with a package (Emmett, November 15: the list showed steam at
+        // $115 and Restoration at $210 with no word of $80 or "$445+"). A
+        // `totalWith` add-on is shown, filtered and sorted at its total with
+        // that package; a `withPackage` price is said under the standard one.
+        var base = t.totalWith && P.findPackage(t.totalWith);
+        var withList = !base && t.withPackage
+          ? Object.keys(t.withPackage).filter(P.findPackage).map(function (k) { return { cents: t.withPackage[k], name: P.findPackage(k).name }; })
+          : [];
         out.push({
           kind: 'addon', id: a.id, tierId: t.id,
           name: a.tiers.length > 1 ? a.name + ': ' + t.label : a.name,
-          category: a.scope, priceCents: t.priceCents, pricePlus: false,
+          category: a.scope,
+          priceCents: base ? base.priceCents + (t.withPackage && t.withPackage[t.totalWith] !== undefined ? t.withPackage[t.totalWith] : t.priceCents) : t.priceCents,
+          pricePlus: Boolean(base), totalWith: base ? base.name : '', withList: withList,
           durationMin: t.durationMin, tagline: a.description, featured: false,
           note: a.note || '', detail: t.description || '',
           search: a.name + ' ' + t.label + ' ' + a.description + ' ' + (t.description || '') + ' ' + a.scope
@@ -1080,7 +1090,9 @@
       // promo code (final validation, November 11: $75 there, $64.68 here).
       sub.innerHTML = '<s>' + $(quote.grossBeforeMultiCents) + '</s> multi-vehicle saving applied';
     } else {
-      sub.textContent = dur ? 'about ' + fmtDur(dur) + ' on site' : '';
+      // The total includes tax once the ZIP is in; say so (review, November 13).
+      var taxed = quote.taxCents > 0 && !quote.taxIsEstimate;
+      sub.textContent = [dur ? 'about ' + fmtDur(dur) + ' on site' : '', taxed ? 'tax included' : ''].filter(Boolean).join(' · ');
     }
   }
 
@@ -1784,7 +1796,7 @@
         return '<button type="button" class="bk-pic' + (v.size === s.id ? ' on' : '') + '" data-size="' + s.id + '">' +
           pic(s.id) + '<b>' + esc(s.label) + '</b>' +
           '<span>' + esc(s.examples) + '</span>' +
-          '<i class="bk-pic-price' + (s.upchargeCents ? '' : ' none') + '">' + (s.upchargeCents ? '+' + $(s.upchargeCents) : 'No extra cost') + '</i>' +
+          '<i class="bk-pic-price' + (s.upchargeCents ? '' : ' none') + '">' + (s.upchargeCents ? '+' + $(s.upchargeCents) : 'No extra') + '</i>' +
           '</button>';
       }).join('') + '</div>';
   }
@@ -1998,7 +2010,7 @@
             // to nowrap made every row wider than a phone, so the list
             // scrolled sideways and the filters above it did not.
             ? '<b class="bk-soon">Soon</b><i class="bk-soonwhy">' + esc(i.unavailable) + '</i>'
-            : '<b>' + svc(i.priceCents, i.pricePlus ? '+' : '') + '</b>' + (dur ? '<i>' + dur + '</i>' : '')) +
+            : '<b>' + svc(i.priceCents, i.pricePlus ? '+' : '') + '</b>' + (i.totalWith ? '<i>total with ' + esc(i.totalWith) + '</i>' : (i.withList || []).length ? '<i>' + i.withList.map(function (w) { return svc(w.cents) + ' with ' + esc(w.name); }).join(', ') + '</i>' : '') + (dur ? '<i>' + dur + '</i>' : '')) +
           '</span>' +
           '</button>' +
           (i.note
@@ -2378,8 +2390,10 @@
       RULES
     );
     return '<div class="bk-morevehs">' +
-      '<p class="bk-morevehs-l"><b>Another vehicle at this address?</b> Take ' + pct + '% off both, ' +
-      $(withTwo.grossBeforeMultiCents - withTwo.totalCents) + ' on one like this. We only drive out once.</p>' +
+      // Emmett's words, November 15 ("Take 10% off both, $27 on one like this"
+      // read as a saving on one vehicle; the figure is the saving on both).
+      '<p class="bk-morevehs-l"><b>Another vehicle at this address?</b> Take ' + pct + '%, which would currently save ' +
+      $(withTwo.grossBeforeMultiCents - withTwo.totalCents) + '. We only drive out once.</p>' +
       '<button type="button" class="bk-addveh" id="bkAddVeh">Add a vehicle</button></div>';
   }
   function vAddons() { return null; }
@@ -2968,6 +2982,9 @@
    * by a day for anyone booking from another time zone. Through noon, so a
    * clock change between can't land on the wrong day.
    */
+  /** The week a time falls in, counted from today (P.weekFromToday). */
+  function weekOf(ms) { return P.weekFromToday(ms, Date.now(), TZ); }
+
   function dayStartIn(n) {
     return P.localDayStart(P.localDayStart(Date.now(), TZ) + n * DAY + DAY / 2, TZ);
   }
@@ -3265,7 +3282,7 @@
       // Our recommended times look across the next two weeks; the calendar
       // shows one week at a time.
       if (!state.showAll || !state.weekStart) {
-        state.weekStart = P.weekStartOf(state.showAll && state.slot && state.slot > now ? state.slot : Math.max(soonest, lead));
+        state.weekStart = weekOf(state.showAll && state.slot && state.slot > now ? state.slot : Math.max(soonest, lead));
       }
       ws = state.weekStart;
       from = Math.max(soonest, lead, ws);
@@ -3890,6 +3907,7 @@
   function pickWhy(pk) {
     if (pk.reason === 'soonest') return 'Soonest';
     if (pk.reason === 'weekend') return 'Weekend';
+    if (pk.reason === 'afterRushWeekend') return 'This weekend';
     if (pk.reason === 'afterRush') return pk.daysAway === 1 ? 'Tomorrow' : 'In ' + pk.daysAway + ' days';
     return 'Also open';
   }
@@ -4243,7 +4261,7 @@
     var ws = state.weekStart;
     var nextWs = P.addWeeks(ws, 1);
     var canNext = nextWs < lastBookableMs();
-    var canPrev = ws > P.weekStartOf(now);
+    var canPrev = ws > weekOf(now);
     var week = P.buildWeek({
       slots: calc.slots, weekStart: ws, busy: calc.busy, travelGapMin: calc.buffer,
       nowMs: now, needsPriority: needsPriority, timeZone: TZ,
@@ -6610,8 +6628,8 @@
       // Another week starts with Earlier and Later times folded, as a new
       // view does (owner, November 11).
       state.wkEarly = state.wkLate = false;
-      state.weekStart = t.id === 'bkWkToday' ? P.weekStartOf(Date.now())
-        : t.id === 'bkWkBack' ? P.weekStartOf(state.slot)
+      state.weekStart = t.id === 'bkWkToday' ? weekOf(Date.now())
+        : t.id === 'bkWkBack' ? weekOf(state.slot)
         : P.addWeeks(state.weekStart, t.id === 'bkWkPrev' ? -1 : 1);
       return loadSlots();
     }
@@ -6626,7 +6644,7 @@
       state.weekTouched = false;
       autoSkips = 0;
       // The calendar opens on the week of the time already chosen, if any.
-      state.weekStart = state.showAll && state.slot ? P.weekStartOf(state.slot) : 0;
+      state.weekStart = state.showAll && state.slot ? weekOf(state.slot) : 0;
       return loadSlots();
     }
     if (t.dataset.wkday !== undefined) {
@@ -6883,7 +6901,7 @@
       state.weekTouched = true;
       state.weekDay = -1;
       state.wkEarly = state.wkLate = false;
-      state.weekStart = P.weekStartOf(jumped + DAY / 2);
+      state.weekStart = weekOf(jumped + DAY / 2);
       return loadSlots();
     }
     if (t.dataset.otherstart !== undefined) {
