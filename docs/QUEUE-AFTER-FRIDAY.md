@@ -19,7 +19,8 @@ Work that's agreed but deliberately not started before Friday. Newest first.
   - **Needs more tagged pairs:** stain work has one today.
 - **Promo codes on the landing pages (Elijah):** GOLF10 and PRESTIGE10 aren't on the prints, and can be shown on `lp-golf.html` and `lp-prestige.html`.
   - In `config/promo-codes.json` they're `active: false`. The plan was an A/B test of showing them (`config/experiments.json`).
-  - **Emmett to decide:** switch them on for everyone on those pages, or run the A/B test. Also an end date, or none.
+  - **Parked until after the freeze (Emmett, November 15):** ask then whether to switch them on for everyone on those pages or run the A/B test, and whether they get an end date. Nothing changes before then: they stay `active: false`.
+  - No rush from the prints: the codes aren't printed, so the Prestige prints going out late November don't depend on this.
 - **Local jobs for the city pages (Elijah):** the full list of jobs, people and areas is in his OneDrive. It isn't synced to Emmett's Mac: "Add shortcut to My files" in OneDrive first.
   - Then fill `localJobs` and `reviews` in `config/locations/*.json`, showing only a first name and the area.
   - The list holds customer data. Read it locally and never commit it.

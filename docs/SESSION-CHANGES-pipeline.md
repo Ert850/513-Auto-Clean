@@ -1679,3 +1679,18 @@ An independent review found nothing that loses or duplicates a normal booking. I
 ## Leftovers noticed, not touched
 
 - `book.css` still has `.bk-time`, `.bk-times`, `.bk-bucket` and `.bk-juston` rules from an older slot design. They were unused before tonight.
+
+## Validation round, November 15 (end of day)
+
+- **Promo codes parked:** GOLF10 and PRESTIGE10 go back to Emmett as a question for after the freeze (`QUEUE-AFTER-FRIDAY.md`). Both stay `active: false`.
+- **Maintenance note:**
+  - **What changed:** "because there should not be anything deep left" is dropped, and "three months" and "a month or two ago" now read `MAINT_PRIOR.maxMonths` (`web/lib/catalog/seed.ts`), the same object as `requiresPriorDetail`.
+  - **Root cause:** the earlier wording fix covered the Not-included lines and missed the note and tip beside them. The month count was typed into the wording next to the setting it describes.
+  - **Test:** the booking form, Maintenance, the note and tip read "3 months".
+- **Delhi & Price Hill page:**
+  - **What changed:** "Plenty of people book us at work" is removed from the paragraph and FAQ 2.
+  - **Root cause:** it claims a demand nobody measured, the same kind of line as "What people book", which the validation round removed.
+- **Stale notes:**
+  - `test-gate.js` and `PLAN-eNov14.md` now describe the Deploy Preview, not a branch deploy.
+  - `CALENDAR-FIXES-PLAN.md` fix 4 records that the fee's name stays decided by noon.
+- **Status:** `STATUS-2026-11-15.md` is rewritten and now has a merge checklist: the gallery pairs, the draft pages that `build-dist` publishes, and the edge function on production.

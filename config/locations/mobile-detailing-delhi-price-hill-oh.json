@@ -18,7 +18,7 @@
   "hero": {
     "pair": "third-row-seat-stains"
   },
-  "localParagraph": "If you have a driveway, that's usually where we set up. Street parking can work too, as long as there's a safe, legal spot right beside the car with room to open every door. If there's nowhere good to work near you, tick \"I do not have a good location for a detail near me\" when you book and we'll meet at a nearby lot. We bring what we need, and an outdoor outlet helps if you have one. You don't have to be home. Plenty of people book us at work and tell us where the car is parked.\n\nFor most people it's the inside that needs the work: car seats, dogs, work boots and months of commuting. That's what a Full Interior is for. If there's a stain or a smell you're worried about, mention it when you book, and we'll tell you what to expect before we start.",
+  "localParagraph": "If you have a driveway, that's usually where we set up. Street parking can work too, as long as there's a safe, legal spot right beside the car with room to open every door. If there's nowhere good to work near you, tick \"I do not have a good location for a detail near me\" when you book and we'll meet at a nearby lot. We bring what we need, and an outdoor outlet helps if you have one. You don't have to be home, and the car can be at work: tell us where it's parked.\n\nFor most people it's the inside that needs the work: car seats, dogs, work boots and months of commuting. That's what a Full Interior is for. If there's a stain or a smell you're worried about, mention it when you book, and we'll tell you what to expect before we start.",
   "whatH2": "What you can book",
   "highlights": [
     "Full Interior + Steam, from {price:full-steam-interior}: the deep clean, then every surface steamed",
@@ -72,7 +72,7 @@
     },
     {
       "q": "Can you do my car while I'm at work?",
-      "a": "Yes, if your lot allows it. Plenty of people book us at work. Add a note about where the car is parked and how we'll get the keys."
+      "a": "Yes, if your lot allows it. Add a note about where the car is parked and how we'll get the keys."
     },
     {
       "q": "How is travel priced to Delhi or Price Hill?",

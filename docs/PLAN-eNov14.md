@@ -7,7 +7,7 @@
 - **Booking and calendar code:** read the code it touches before changing it, with a test for each behaviour, and a booking walked end to end on the test site.
 - **Settings, not typed numbers;** temporary things go behind a switch; phones and desktop agree.
 - **At the end of each round:** a review agent, a validation agent and a dropped-task agent, then a summary for Emmett.
-- **Test site:** a Netlify branch deploy of `eNov14` (`eNov14--513-auto-clean.netlify.app`), if branch deploys are on. It reads the real calendars, so test bookings are deleted after each check.
+- **Test site:** a password-gated Deploy Preview of draft PR #13 (changed November 14, Emmett: "we should do a preview"; see `docs/TEST-SITE-SETUP.md`). Bookings go to the TEST calendars, which are emptied after each check.
 
 ## Round A: queued changes (in order of safety and value)
 
