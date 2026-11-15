@@ -37,6 +37,7 @@
     "Incline District",
     "Sedamsville"
   ],
+  "area": "West side",
   "zips": [
     "45233",
     "45238",
@@ -60,9 +61,7 @@
       }
     }
   },
-  "nearby": [
-    "mobile-detailing-indian-hill-madeira-oh"
-  ],
+  "nearby": [],
   "localJobs": [],
   "reviews": [],
   "faq": [

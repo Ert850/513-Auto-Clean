@@ -18,7 +18,7 @@
 import { carouselHero } from "./split-hero.mjs";
 import fs from "node:fs";
 import path from "node:path";
-import { root, loadServices, loadLocations, pageFile, localWords, overlap } from "./locations.mjs";
+import { root, loadServices, loadLocations, pageFile, overlap, contained, typedNumbers, mainText, normalWords } from "./locations.mjs";
 import { findPackage, findAddon, componentsOf, SEED_CATALOG, vehicleSize, tierPriceFor } from "../../netlify/functions/_pricing.mjs";
 
 const SITE = "https://513autoclean.com";
@@ -41,6 +41,10 @@ function priced(text, where) {
     return money(cents);
   });
 }
+// R6 (docs/SEO-COMPLIANCE.md): a business number in the words comes from a setting, never typed.
+const typed = pages.flatMap((p) => [p.title, p.meta, p.eyebrow, p.h1, p.sub, p.honest, ...(p.steps ?? []), ...(p.faq ?? []).flatMap((q) => [q.q, q.a])]
+  .filter(Boolean).flatMap((t) => typedNumbers(t).map((n) => `${p.file}: "${n}" is typed; say it from a setting ({price:...}, {addon:...}) or leave it out`)));
+problems.push(...typed);
 for (const p of pages) {
   for (const k of ["title", "meta", "sub", "honest"]) if (p[k]) p[k] = priced(p[k], `${p.file} ${k}`);
   p.steps = (p.steps ?? []).map((s) => priced(s, p.file));
@@ -65,10 +69,6 @@ for (const p of pages) {
   const ofService = (slug) => (gallery.find((g) => g.slug === slug)?.services ?? []).some((s) => (p.proofServices ?? []).includes(s));
   for (const slug of [...(p.proofPairs ?? []), ...(p.hero?.pair ? [p.hero.pair] : [])]) need(ofService(slug), p, `"${slug}" isn't tagged with ${(p.proofServices ?? []).join(" or ")} in data/gallery.json`);
   if (live(p)) need(proofOf(p).length >= 2, p, "a published page needs at least 2 before/after pairs of this service");
-}
-for (let i = 0; i < pages.length; i++) for (let k = i + 1; k < pages.length; k++) {
-  const o = overlap(localWords(pages[i]), localWords(pages[k]));
-  if (o > 0.3) problems.push(`${pages[i].slug} and ${pages[k].slug} overlap ${o.toFixed(2)} (max 0.30)`);
 }
 if (problems.length) throw new Error("render-services:\n  " + problems.join("\n  "));
 
@@ -167,6 +167,20 @@ ${p.packages.map((id) => {
   }
   fs.writeFileSync(out, html);
 }
+
+// R2 on what a visitor reads (docs/SEO-COMPLIANCE.md): each service page's
+// visible text against the others and against the pages it could copy from.
+const versus = [...pages.map((p) => ({ name: p.slug, text: mainText(read(pageFile(p))) })),
+  ...["services.html", "index.html"].map((f) => ({ name: f, text: mainText(read(f)), fixed: true }))];
+for (let i = 0; i < versus.length; i++) for (let k = i + 1; k < versus.length; k++) {
+  const A = versus[i], B = versus[k];
+  if (A.fixed && B.fixed) continue;
+  const a = normalWords(A.text, []), b = normalWords(B.text, []);
+  const o = overlap(a, b), c = Math.max(contained(a, b), contained(b, a));
+  if (o > 0.3) problems.push(`${A.name} and ${B.name} share ${o.toFixed(2)} of their text (max 0.30)`);
+  if (c > 0.5) problems.push(`${A.name} and ${B.name}: over half of one page's text is in the other`);
+}
+if (problems.length) throw new Error("render-services:\n  " + problems.join("\n  "));
 
 const published = pages.filter(live);
 let sm = read("sitemap.xml");

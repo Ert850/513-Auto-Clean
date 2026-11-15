@@ -32,6 +32,7 @@
     "Downtown Madeira",
     "South Kenwood"
   ],
+  "area": "Northeast",
   "zips": [
     "45243"
   ],
@@ -42,9 +43,7 @@
     ],
     "radiusMiles": 3.2
   },
-  "nearby": [
-    "mobile-detailing-delhi-price-hill-oh"
-  ],
+  "nearby": [],
   "localJobs": [],
   "reviews": [],
   "faq": [

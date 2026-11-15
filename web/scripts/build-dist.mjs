@@ -19,7 +19,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { stampPhone } from "./phone-stamp.mjs";
 import { routeDist } from "./book-links.mjs";
-import { generatedPages } from "./locations.mjs";
+import { generatedPages, publishedPages } from "./locations.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const dist = path.join(root, "dist");
@@ -46,7 +46,9 @@ const FILES = [
   "sitemap.xml",
   "manifest.webmanifest",
   // City and service pages, written by render-locations.mjs and render-services.mjs.
-  ...generatedPages(),
+  // Drafts reach Deploy Previews only: Netlify sets CONTEXT, and the live
+  // site gets published pages alone (docs/SEO-COMPLIANCE.md R1).
+  ...(process.env.CONTEXT === "production" ? publishedPages() : generatedPages()),
 ];
 const DIRS = ["js", "data"];
 
