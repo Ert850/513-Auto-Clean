@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { zonedToUtc } from "../time/zone.js";
 import { recommendStarts } from "./slots.js";
-import { addWeeks, buildWeek, dayOpenShare, startsPossible, daySuggestions, lastRowForSlots, STARTS_PER_DAY, stretchStarts, timelineRange, recommendBestDays, TIME_RECOMMENDATION_RULES, weekStartOf } from "./week.js";
+import { addWeeks, buildWeek, dayOpenShare, startsPossible, daySuggestions, lastRowForSlots, STARTS_PER_DAY, stretchStarts, timelineRange, recommendBestDays, TIME_RECOMMENDATION_RULES, weekStartOf, weekFromToday } from "./week.js";
 
 const TZ = "America/New_York";
 const at = (mo: number, d: number, h: number, mi = 0) => zonedToUtc(2026, mo, d, h, mi, 0, TZ);
@@ -14,6 +14,17 @@ describe("weekStartOf / addWeeks", () => {
     expect(weekStartOf(at(11, 15, 0, 5))).toBe(at(11, 15, 0));
     // Saturday 11:59pm still belongs to the week before
     expect(weekStartOf(at(11, 21, 23, 59))).toBe(at(11, 15, 0));
+  });
+
+  it("weekFromToday: this week starts today, later weeks whole weeks on (Emmett, November 15)", () => {
+    const wed = at(11, 18, 9);
+    expect(weekFromToday(at(11, 18, 15), wed)).toBe(at(11, 18, 0));
+    expect(weekFromToday(at(11, 24, 23), wed)).toBe(at(11, 18, 0));
+    expect(weekFromToday(at(11, 25, 1), wed)).toBe(at(11, 25, 0));
+    // Never before today, and whole local days across the clock change.
+    expect(weekFromToday(at(11, 10, 12), wed)).toBe(at(11, 18, 0));
+    expect(weekFromToday(at(11, 3, 12), at(10, 28, 9))).toBe(at(10, 28, 0));
+    expect(weekFromToday(at(11, 4, 12), at(10, 28, 9))).toBe(at(11, 4, 0));
   });
 
   it("steps whole weeks across the clock change (DST ends 1 Nov 2026)", () => {
@@ -115,6 +126,19 @@ describe("recommendBestDays (best times from the calendars, round 15)", () => {
       ["weekend", at(11, 21, 0), at(11, 21, 18), "kris"],
     ]);
     expect(picks[1]!.daysAway).toBe(3);
+  });
+
+  it("a first no-rush day on a weekend is the weekend pick; the later weekend day is just 'also' (November 15)", () => {
+    // Thursday 19: rush Thu and Fri, so the first no-rush day is Saturday.
+    const thu = at(11, 19, 7);
+    const rushToSat = (ms: number) => ms < at(11, 21, 0);
+    const picks = recommendBestDays({ members: [kris, elijah], travelGapMin: 60, isRush: rushToSat, nowMs: thu, isPremium: () => false });
+    expect(picks.slice(0, 3).map((p) => [p.reason, p.dayStart])).toEqual([
+      ["soonest", at(11, 17, 0)],
+      ["afterRushWeekend", at(11, 21, 0)],
+      ["also", at(11, 22, 0)],
+    ]);
+    expect(TIME_RECOMMENDATION_RULES.version).toBe("best-2");
   });
 
   it("More times are the other detailers' best times that day, never every half hour", () => {

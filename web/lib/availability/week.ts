@@ -53,6 +53,18 @@ export function weekStartOf(ms: number, timeZone = TZ): number {
   return localTimeOnDay(day, -localWeekday(day + 12 * 3600_000, timeZone), 0, timeZone);
 }
 
+/**
+ * The first day of the week `ms` falls in, counting weeks from today rather
+ * than from Sunday (Emmett, November 15: on a Wednesday the picker opened on
+ * three greyed past days). Today's week starts today; later ones are whole
+ * weeks on from it. Safe across clock changes.
+ */
+export function weekFromToday(ms: number, nowMs: number, timeZone = TZ): number {
+  const today = localDayStart(nowMs, timeZone);
+  const days = Math.round((localDayStart(ms, timeZone) - today) / 86_400_000);
+  return localTimeOnDay(today, days > 0 ? Math.floor(days / 7) * 7 : 0, 0, timeZone);
+}
+
 /** The Sunday `n` weeks from `weekStart`, safe across clock changes. */
 export function addWeeks(weekStart: number, n: number, timeZone = TZ): number {
   return localTimeOnDay(weekStart, 7 * n, 0, timeZone);
@@ -261,7 +273,10 @@ export function buildWeek(req: {
  * place to tune it, and the hook analytics plugs into.
  *
  *   version         sent with every analytics event about these picks
- *   reasons         tried in order, each on a day no other pick uses:
+ *   reasons         tried in order, each on a day no other pick uses
+ *                   (a first no-rush day on a Saturday or Sunday is the
+ *                   weekend pick, "afterRushWeekend", and the later weekend
+ *                   day is just "also"; Emmett, November 15):
  *                   "soonest"    the first day with a best time
  *                   "afterRush"  the first day past the rush window, shown to
  *                                the customer as "In 4 days", not as a price
@@ -270,14 +285,14 @@ export function buildWeek(req: {
  *   extraWhenRoom   more ("also") days, only when the screen has room
  */
 export const TIME_RECOMMENDATION_RULES = {
-  version: "best-1",
+  version: "best-2",
   reasons: ["soonest", "afterRush", "weekend"] as DayReason[],
   shown: 3,
   extraWhenRoom: 2,
 };
 
 export type DayReason = "soonest" | "afterRush" | "weekend";
-export type PickReason = DayReason | "also";
+export type PickReason = DayReason | "afterRushWeekend" | "also";
 
 /** One detailer's offer, in priority order (Kris before Elijah). */
 export interface MemberTimes {
@@ -425,8 +440,11 @@ export function recommendBestDays(req: {
   const avail = () => days.filter((d) => !used.has(d.dayStart));
   for (const reason of rules.reasons) {
     if (reason === "soonest") { const d = avail()[0]; if (d) take(d, "soonest"); }
-    if (reason === "afterRush") { const d = avail().find((x) => !req.isRush(x.ms)); if (d) take(d, "afterRush"); }
-    if (reason === "weekend") { const d = avail().find((x) => x.weekday === 0 || x.weekday === 6); if (d) take(d, "weekend"); }
+    if (reason === "afterRush") { const d = avail().find((x) => !req.isRush(x.ms)); if (d) take(d, d.weekday === 0 || d.weekday === 6 ? "afterRushWeekend" : "afterRush"); }
+    if (reason === "weekend") {
+      const d = avail().find((x) => x.weekday === 0 || x.weekday === 6);
+      if (d) take(d, picks.some((p) => p.reason === "afterRushWeekend") ? "also" : "weekend");
+    }
   }
   for (const d of avail()) {
     if (picks.length >= rules.shown + rules.extraWhenRoom) break;

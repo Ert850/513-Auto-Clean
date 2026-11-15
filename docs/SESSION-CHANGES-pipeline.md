@@ -1860,3 +1860,28 @@ An independent review of a5f1570..bc0a266 found:
 - **Leave dialog:** "Back to my booking" became "Back to my quote", and "Cancel my booking" became "Discard this quote". No booking exists at that point, and the title already says "quote".
 - **Phone menu:** the Contact Us list link is dropped; Contact Us stays as the button under Book Now (`web/partials/header.html`). It used to show twice. CLAUDE.md's nav rule now says so.
 - **Live site:** no change, and no PR. The Confirm freeze fix waits for the eNov14 merge (Emmett: "WAIT FOR THE MERGE").
+
+## Booking form fixes 1 to 6 from the mockup sheet (Emmett, November 15: "Build all"; item 7 waits for a second go)
+
+Mockups: `docs/mockups/eNov15-booking-fixes-mockups.png`.
+
+1. **The week picker starts today.**
+   - **Root cause:** weeks were Sunday to Saturday (`weekStartOf`), so on a Wednesday the picker opened on three greyed past days.
+   - **Fix:** `weekFromToday()` in `week.ts`. This week starts today; later weeks are whole weeks on from it, counted in local days so a clock change can't shift them. The form's `weekOf()` uses it everywhere a week begins (opening, the arrows' disabled state, Back to today, back to the chosen time, Go to a date). The arrows still step a week (`addWeeks`).
+2. **The browse list shows add-on prices that depend on the package.**
+   - **Steam:** shows "$80 with Full Interior" under its $115.
+   - **Showroom Ready Restoration:** shows "$445+, total with Full Interior". It's also filtered and sorted at that total, so "Under $250" no longer lists a job that starts at $445.
+   - **Source:** both come from the catalog (`withPackage`, `totalWith`), and a promo code discounts them like any other price.
+3. **The weekend label.** A first no-rush day on a Saturday or Sunday is now the weekend pick, "This weekend" (`afterRushWeekend`), and the later weekend day is "Also open". Weekday picks keep "In N days" (owner, November 10). `TIME_RECOMMENDATION_RULES.version` goes to `best-2`, so analytics separate the two.
+4. **"tax included"** shows in the bottom bar once the ZIP is in.
+5. **The second-vehicle line is in Emmett's words:** "Take 10%, which would currently save $50.67. We only drive out once." The percentage comes from `RULES`, and the figure is today's saving on two.
+6. **The size pill says "No extra"**, which fits on one line on `/book`.
+
+**Checked:**
+- 733 tests pass, with new `weekFromToday` and weekend-label tests.
+- In headless Chrome on the build, with the clock set to Wednesday November 18:
+  - **Arrows:** the week reads Nov 18 to 24 with back disabled, then Nov 25 to Dec 1 and Dec 2 to 8, back again, and "today" returns to Nov 18.
+  - **Labels** (Thursday clock): Soonest, This weekend, Also open.
+  - **Browse prices:** match the mockup.
+  - **The pill:** one line (26 px).
+- No script errors.
