@@ -1806,6 +1806,12 @@ main > .bookpage:first-child { padding-block: clamp(16px, 2.2vw, 30px); }
 .loc-trust-rating { font-weight: 700; }
 .loc-trust-rating .hb-stars { color: var(--amber-ink, #b7791f); letter-spacing: .06em; margin-right: .2rem; }
 .loc-hero-pic { margin: 0; }
+/* The hero carousel of the city and service pages (web/scripts/split-hero.mjs): one card in view.
+   Its `sizes` (HERO_SIZES there) follows this column; change them together. min-width: 0 keeps the
+   track's cards from widening the one-column grid on phones. */
+.loc-hero-ba { min-width: 0; }
+.loc-hero-ba .ba-track { --ba-per: 1; }
+.loc-hero-ba .ba-slider figcaption { font-size: .82rem; }
 .loc-hero-pic img { width: 100%; height: auto; aspect-ratio: 4 / 3; object-fit: cover; border-radius: var(--r-xl, 18px); box-shadow: var(--shadow-md); display: block; }
 .loc-hero-pic figcaption { font-size: .82rem; color: var(--text-soft); margin-top: .45rem; }
 .loc-what { background: var(--paper); border: 1px solid var(--line); border-radius: var(--r-lg); padding: 1.2rem 1.3rem; }

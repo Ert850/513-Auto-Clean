@@ -536,6 +536,15 @@
     update();
   }
 
+  // The city and service pages write their cards into the page
+  // (web/scripts/split-hero.mjs), so the photos and alt text are in the HTML
+  // and the first photo can be the largest paint. script.js has bound their
+  // handles already; only the carousel is added.
+  if (grid.querySelector('.ba-slider')) {
+    if (root !== grid) carousel([].slice.call(grid.children));
+    return;
+  }
+
   fetch('data/gallery.json', { cache: 'no-cache' })
     .then(function (r) { return r.json(); })
     .then(function (data) {

@@ -15,7 +15,7 @@ Work that's agreed but deliberately not started before Friday. Newest first.
 - **Before/after carousels on the city and service pages (Emmett, November 15):** "the SEO specific pages need before after style carousel anims as you cannot properly show the value of a service without the before and after." The Delhi & Price Hill page shows one still pair, which undersells the work.
   - **Build:** reuse the home page's Results carousel (`js/gallery.js`, the 8 s shared wipe), fed by the page's own pairs: the service's tagged pairs on a service page, and the area's `localJobs` on a city page. Don't build a second carousel.
   - Every carousel rule in CLAUDE.md applies (no `.reveal` inside the track, play button state, eager-load the next card, and so on).
-  - **Mockups first, for Emmett's approval** (hero swapped for the carousel, or a carousel section under the hero).
+  - **Done November 15:** Emmett picked option A, the carousel as the hero (`docs/mockups/eNov15-carousel-*`), and it's built. City pages list their cards in `hero.pairs`; switch them to the area's `localJobs` pairs once Elijah's list arrives. Service pages show `hero.pair` and then the service's tagged pairs.
   - **Needs more tagged pairs:** stain work has one today.
 - **Promo codes on the landing pages (Elijah):** GOLF10 and PRESTIGE10 aren't on the prints, and can be shown on `lp-golf.html` and `lp-prestige.html`.
   - In `config/promo-codes.json` they're `active: false`. The plan was an A/B test of showing them (`config/experiments.json`).

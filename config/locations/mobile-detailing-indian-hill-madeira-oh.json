@@ -16,7 +16,7 @@
     "package": "full-steam-interior"
   },
   "hero": {
-    "pair": "forester-front-floor"
+    "pairs": ["forester-front-floor", "jeep-cargo", "sonic-interior", "crv-interior"]
   },
   "localParagraph": "Most homes here have a driveway or a garage, and either one is a good place for us to work. In a garage we can keep going through rain or hard sun, so tick the garage box when you book. If the house sits back from the road or there's a gate, add a note about where to park and how to get in. You don't need to be home, as long as we can get into the car.\n\nCar seats, dogs, sports gear and road trips all end up in the back seat sooner or later. Full Interior + Steam is the one we'd pick for a family car. If yours needs more than that, ask about Showroom Ready Restoration.",
   "whatH2": "What you can book",
@@ -30,8 +30,7 @@
     "Indian Hill",
     "Madeira",
     "Downtown Madeira",
-    "South Kenwood",
-    "Camargo"
+    "South Kenwood"
   ],
   "zips": [
     "45243"

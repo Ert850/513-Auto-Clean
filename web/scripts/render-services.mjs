@@ -8,14 +8,14 @@
  * leaves out, how long it takes, the size surcharges, add-on prices. The config
  * holds only the words: the intro, the steps, the honest note, the questions.
  * Before/after photos are the gallery pairs tagged with the page's services
- * (data/gallery.json "services"), "Wikipedia style": one pair per card, the
- * caption, and the customer's own comment where we have one.
+ * (data/gallery.json "services"), shown in the hero carousel (split-hero.mjs),
+ * hero.pair first.
  *
  * What fails the build: a missing field, a title over 60 or description over
  * 155 characters (as rendered), an unknown package or add-on, fewer than 3
  * steps or 3 questions, and a published page with fewer than 2 photo pairs.
  */
-import { pairPics, splitHero } from "./split-hero.mjs";
+import { carouselHero } from "./split-hero.mjs";
 import fs from "node:fs";
 import path from "node:path";
 import { root, loadServices, loadLocations, pageFile, localWords, overlap } from "./locations.mjs";
@@ -78,12 +78,12 @@ const cities = loadLocations().filter(live);
 for (const p of pages) {
   const url = `${SITE}/${p.slug}`;
   const ctaAttrs = p.book?.package ? ` data-book-package="${esc(p.book.package)}"` : p.book?.intent ? ` data-book-intent="${esc(p.book.intent)}"` : "";
-  const heroPair = p.hero?.pair ? gallery.find((g) => g.slug === p.hero.pair) : proofOf(p)[0];
-  // The hero isn't shown twice.
-  const proof = proofOf(p).filter((g) => g !== heroPair);
-  const hero = heroPair
-    ? splitHero(heroPair)
-    : "";
+  // The hero carousel holds every before/after of the page: the chosen first
+  // pair, then the service's other pairs (they had their own row until the
+  // carousel, November 15).
+  const first = p.hero?.pair ? gallery.find((g) => g.slug === p.hero.pair) : null;
+  const shown = [...(first ? [first] : []), ...proofOf(p).filter((g) => g !== first)];
+  const hero = shown.length ? carouselHero(shown) : "";
 
   const levels = (p.packages ?? []).length ? `
 <section class="svp-levels">
@@ -107,16 +107,6 @@ ${p.packages.map((id) => {
 </section>
 ` : "";
 
-  const proofHtml = proof.length ? `
-<section class="loc-jobs">
-  <div class="wrap">
-    <h2>${esc(p.proofH2 ?? "Before and after")}</h2>
-    <div class="loc-jobs-grid">
-${proof.map((g) => `      <figure class="loc-job"><span class="loc-job-pics svp-split">${pairPics(g)}</span><figcaption><b>${esc(g.caption)}</b>${(p.proofComments ?? {})[g.slug] ? `<q>${esc(p.proofComments[g.slug])}</q>` : ""}</figcaption></figure>`).join("\n")}
-    </div>
-  </div>
-</section>
-` : "";
 
   const addonLine = (id) => {
     const a = findAddon(id);
@@ -153,7 +143,7 @@ ${proof.map((g) => `      <figure class="loc-job"><span class="loc-job-pics svp-
     CTA_ATTRS: ctaAttrs,
     RATING: `${Number(reviews.rating).toFixed(1)} on Google (${reviews.count} reviews)`,
     TRUST: (p.trust ?? ["UC student-owned", "We come to you", "Pay when it's done"]).map((t) => `          <li>${esc(t)}</li>`).join("\n"),
-    HERO: hero, LEVELS: levels, PROOF: proofHtml,
+    HERO: hero, LEVELS: levels,
     HOW_H2: esc(p.howH2 ?? "How it works"),
     STEPS: p.steps.map((s) => `        <li>${esc(s)}</li>`).join("\n"),
     HONEST: p.honest ? `      <p class="svp-honest"><b>Straight answer:</b> ${esc(p.honest)}</p>` : "",
