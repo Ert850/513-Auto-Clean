@@ -1662,6 +1662,20 @@ An independent review found nothing that loses or duplicates a normal booking. I
     - a test bans the place name from city section headings.
 - **Not touched, for Emmett:** the catalog wording that also shows on services.html. "Not included: A promise every stain comes out completely" on the package cards reads oddly, and the ozone line says it "destroys the compounds causing the smell".
 
+## eNov15: catalog wording on services.html and the booking form (Emmett, November 15)
+
+- **Root cause:** catalog lines written as fragments or claims:
+  - "Not included: A promise every stain comes out completely" (Full Interior, Full Interior + Steam);
+  - "Not included: Anything deep: there should be nothing deep left" (Maintenance), plus "Keeps a already-detailed car right";
+  - "Ozone (O3) destroys the compounds causing the smell, not just the smell", which is close to the removal promises the rules ban.
+- **Now:**
+  - "Every set-in stain gone completely: some only fade";
+  - "Deep cleaning: it keeps an already detailed car that way", and "Keeps an already detailed car right";
+  - "An ozone treatment for smells that linger, run after the source is cleaned".
+  - The stain page's FAQ says the ozone reset "works on" what lingers, not "takes out".
+- **Where it shows:** the catalog is the one source, so services.html, the home page cards, the booking form and the SEO pages all change together.
+- **Also:** Elijah's November 15 answers are recorded (`QUESTIONS-FOR-ELIJAH-PACKAGES.md`); follow-ups and the SEO-page carousels are queued (`QUEUE-AFTER-FRIDAY.md`); JobsSync instructions as `docs/JOBSSYNC-INSTALL.pdf`.
+
 ## Leftovers noticed, not touched
 
 - `book.css` still has `.bk-time`, `.bk-times`, `.bk-bucket` and `.bk-juston` rules from an older slot design. They were unused before tonight.
