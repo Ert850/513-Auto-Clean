@@ -10,7 +10,11 @@ Work that's agreed but deliberately not started before Friday. Newest first. Any
   - Belongs with the GHL work (`GHL-SETUP.md`, `ONE-CALENDAR-SPEC.md`), once Imperion connects it.
 - **A 513-brand headline, as an A/B test (Emmett, November 14):** "Maybe tie to the 513 brand better? Elijah says professional is fine, maybe test later."
   - The hero says "Professional mobile detailing in Greater Cincinnati."
-  - Draft two or three 513 versions, mock them up, then run one against it through `config/experiments.json` (rules in `docs/AB-TESTING.md`).
+  - **Mockups made November 16** (`docs/mockups/eNov16-hero-513-mockups.png`), all against today's headline (A):
+    - B: "Professional mobile detailing across the 513.";
+    - C: "Mobile detailing for the 513.";
+    - D: "We detail cars all over the 513.".
+  - **Waiting on Emmett's pick.** Then one challenger runs against A at 50/50 through `config/experiments.json` (rules in `docs/AB-TESTING.md`). The page is built with A, so Google keeps reading "Greater Cincinnati".
 - **`check-live.mjs` always says STALE** (noted November 13).
   - **Root cause:** Netlify re-stamps `config.js` and `funnel.js` at deploy (the phone swap and the config build), so their `?v=` stamps never match the repo's.
   - **Fix:** teach it which files are re-stamped, or compare a stamp that isn't. Until then, the after-approval checks use `curl` on the pages.
