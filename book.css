@@ -1312,7 +1312,8 @@ button.bk-tl-s {
   margin-right: .25em;
 }
 .bk-pkg-r s { display: block; font-size: .8rem; margin: 0 0 .1rem; }
-.bk-cut { color: var(--red); }
+/* Ink, not red: red means the brand or "that did not work" (CLAUDE.md, Colors; validation cycle 4). */
+.bk-cut { color: var(--text); }
 .bk-tier-p .bk-cut { font-weight: 800; }
 
 /* ---------- Promo code on the package screen ---------- */

@@ -4809,7 +4809,11 @@
       // a half rows, the week bar and the strip scroll away; the small
       // heading stays pinned.
       var sc = el('bkScroll'), band = wk.querySelector('.bk-wk-band');
-      var room = sc ? sc.clientHeight - hh - sh - (band ? band.getBoundingClientRect().height : 0) : Infinity;
+      // The "Go to a date" bar pins to the bottom of the same area, so it
+      // takes room too (validation cycle 4: about one row left at 700x400).
+      var pb = el('bkBody') && el('bkBody').querySelector('.bk-pinbar');
+      var room = sc ? sc.clientHeight - hh - sh - (band ? band.getBoundingClientRect().height : 0) -
+        (pb ? pb.getBoundingClientRect().height : 0) : Infinity;
       wk.classList.toggle('nopin', room < PIN_ROOM_MIN);
     };
     set();
@@ -7752,8 +7756,12 @@
     if (!box) return close();
 
     if (!state.leaving) {
+      // Focus was in the dialog: give it somewhere to land, or it drops to the
+      // page and the next Tab starts from the top (validation cycle 4).
+      var hadFocus = box.contains(document.activeElement);
       box.hidden = true;
       box.innerHTML = '';
+      if (hadFocus && el('bkClose')) el('bkClose').focus();
       return;
     }
 
