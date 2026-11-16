@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
 // @ts-expect-error plain ESM build script
-import { loadLocations, loadServices, pageFile, localWords, overlap, contained, typedNumbers, configWords, mainText, publishedPages, generatedPages } from "../../scripts/locations.mjs";
+import { loadLocations, loadServices, pageFile, localWords, overlap, contained, typedNumbers, configWords, mainText, publishedPages, generatedPages, distPages, isPreviewBuild, unreviewedPairs, reviewFromArea } from "../../scripts/locations.mjs";
 // @ts-expect-error plain ESM build script
 import { CHROME_PAGES } from "../../scripts/chrome.mjs";
 
@@ -84,7 +84,29 @@ describe("SEO build checks (docs/SEO-COMPLIANCE.md, November 15)", () => {
       expect(publishedPages(), d).not.toContain(d);
       expect(generatedPages(), d).toContain(d);
     }
-    expect(read("web/scripts/build-dist.mjs")).toMatch(/process\.env\.CONTEXT === "production" \? publishedPages\(\) : generatedPages\(\)/);
+    // Drafts only where a preview is the point; every other build, including a
+    // laptop build with no CONTEXT, gets published pages alone (validation cycle 3).
+    for (const env of [{ CONTEXT: "production" }, {}, { CONTEXT: "something-new" }]) for (const d of drafts) expect(distPages(env), d).not.toContain(d);
+    for (const env of [{ CONTEXT: "deploy-preview" }, { CONTEXT: "branch-deploy" }, { PREVIEW_BUILD: "1" }]) for (const d of drafts) expect(distPages(env), d).toContain(d);
+    expect(read("web/scripts/build-dist.mjs")).toContain("...distPages(),");
+  });
+
+  it("R1: a review counts for a page only from a town it names, never just Cincinnati (validation cycle 3)", () => {
+    const delhi = locs.find((l: { slug: string }) => l.slug === "mobile-detailing-delhi-price-hill-oh");
+    for (const a of ["Delhi Township, OH", "Sayler Park", "Price Hill (Cincinnati)", "West Price Hill, Cincinnati, OH"]) expect(reviewFromArea(delhi, a), a).toBe(true);
+    for (const a of ["Cincinnati", "Cincinnati, OH", "Mount Washington, Cincinnati", "West Chester (Cincinnati area)", "OH", ""]) expect(reviewFromArea(delhi, a), a).toBe(false);
+  });
+
+  it("R6 catches a hyphenated count and a travel promise (validation cycle 3)", () => {
+    for (const t of ["a 15-minute drive", "a two-hour job", "within a 30-mile radius", "free travel to Delhi", "no travel fee in Delhi"]) expect(typedNumbers(t), t).not.toEqual([]);
+    for (const t of ["3 rows of seats", "U.S. 50 and I-71", "ZIP 45238"]) expect(typedNumbers(t), t).toEqual([]);
+  });
+
+  it("unchecked photos stop every build but a preview (validation cycle 3)", () => {
+    expect(unreviewedPairs({ pairs: [{ slug: "a" }, { slug: "b", reviewed: false }, { slug: "c", reviewed: true }] })).toEqual(["b"]);
+    expect(isPreviewBuild({ CONTEXT: "production" })).toBe(false);
+    expect(isPreviewBuild({})).toBe(false);
+    expect(isPreviewBuild({ CONTEXT: "deploy-preview" })).toBe(true);
   });
 });
 

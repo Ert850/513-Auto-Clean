@@ -33,6 +33,8 @@ Both are one word in a config file, and a test proves each switch restores the o
 
 From `STATUS-2026-11-15.md`, "Before eNov14 can merge". eNov14 is 46+ commits ahead of `main`, open as draft PR [#13](https://github.com/Ert850/513-Auto-Clean/pull/13).
 - [ ] **Elijah's 5 gallery pairs** (commit 4e0279f): a person reviews them for the bag and papers in two before photos and the landscape-against-portrait pair (`PLAN-eNov14.md` A3), or they're dropped from `data/gallery.json`. Don't ship them as they are.
+  - They carry `"reviewed": false`, so **the production build fails until each is set to `true` or removed** (validation cycle 3). The live site keeps its last deploy meanwhile.
+  - `third-row-seat-stains` is objectively mismatched: a portrait before against a landscape after, from another angle. It's the first card in the home carousel and the Delhi hero, and the only stain pair. Re-crop the after to match, or drop it.
 - [ ] `git fetch`. If `main` moved (it shouldn't have), merge `origin/main` into eNov14; never rebase it, which would need a force-push. The squash merge makes the history shape irrelevant. The build passes and every test passes (`cd web && TZ=America/New_York npx vitest run`).
 - [ ] A final validation and dropped-task agent over the whole PR diff.
 - [ ] The preview at https://deploy-preview-13--513-auto-clean.netlify.app:

@@ -19,7 +19,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { stampPhone } from "./phone-stamp.mjs";
 import { routeDist } from "./book-links.mjs";
-import { generatedPages, publishedPages } from "./locations.mjs";
+import { distPages, isPreviewBuild, unreviewedPairs } from "./locations.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const dist = path.join(root, "dist");
@@ -46,9 +46,10 @@ const FILES = [
   "sitemap.xml",
   "manifest.webmanifest",
   // City and service pages, written by render-locations.mjs and render-services.mjs.
-  // Drafts reach Deploy Previews only: Netlify sets CONTEXT, and the live
-  // site gets published pages alone (docs/SEO-COMPLIANCE.md R1).
-  ...(process.env.CONTEXT === "production" ? publishedPages() : generatedPages()),
+  // Drafts reach previews only (distPages in locations.mjs): Netlify sets
+  // CONTEXT, and every other build gets published pages alone
+  // (docs/SEO-COMPLIANCE.md R1).
+  ...distPages(),
 ];
 const DIRS = ["js", "data"];
 
@@ -170,6 +171,16 @@ for (const f of textFiles) {
  * megabytes on a page where the widest a card is ever painted is around 560
  * points.
  */
+{
+  const gallery = JSON.parse(fs.readFileSync(path.join(root, "data/gallery.json"), "utf8"));
+  const unchecked = unreviewedPairs(gallery);
+  if (unchecked.length && !isPreviewBuild()) {
+    console.error(`build-dist: photos not checked yet in data/gallery.json: ${unchecked.join(", ")}.\n` +
+      `  A person checks each pair (plates, faces, house numbers, papers, matching crops), then sets "reviewed": true or removes it.\n` +
+      `  To build a preview anyway: PREVIEW_BUILD=1 npm run build.`);
+    process.exit(1);
+  }
+}
 try {
   const gallery = JSON.parse(fs.readFileSync(path.join(root, "data/gallery.json"), "utf8"));
   for (const p of gallery.pairs ?? []) {

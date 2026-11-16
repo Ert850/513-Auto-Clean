@@ -17,7 +17,7 @@
 import { pairPics, carouselHero } from "./split-hero.mjs";
 import fs from "node:fs";
 import path from "node:path";
-import { root, loadLocations, loadServices, pageFile, overlap, contained, typedNumbers, configWords, mainText, placeNames, normalWords } from "./locations.mjs";
+import { root, loadLocations, loadServices, pageFile, overlap, contained, typedNumbers, configWords, mainText, placeNames, normalWords, reviewFromArea } from "./locations.mjs";
 import { findPackage, findAddon, zipGeo } from "../../netlify/functions/_pricing.mjs";
 
 const SITE = "https://513autoclean.com";
@@ -96,11 +96,20 @@ for (const loc of locs) {
     }
     need((loc.reviews ?? []).length >= 1, loc, "a published page needs at least 1 review from this area");
     // The reviewer's own town, and one this page covers.
-    for (const r of loc.reviews ?? []) need(typeof r.area === "string" && placeNames(loc).some((n) => r.area.toLowerCase().includes(n)), loc, `reviews: ${r.author}'s town (area) must be one this page covers (its name, neighborhoods or areaServed)`);
+    for (const r of loc.reviews ?? []) need(reviewFromArea(loc, r.area), loc, `reviews: ${r.author}'s town (area, "${r.area}") must be one this page names: its name, a neighborhood or an areaServed place, not just "Cincinnati"`);
     // R3: a person wrote the local paragraph.
     need(WRITERS.includes(loc.writtenBy), loc, `writtenBy must be ${WRITERS.join(" or ")}: the local paragraph is written by a person who knows the jobs there`);
     // R7: a published page never links to a draft.
     for (const n of loc.nearby ?? []) need(locs.find((l) => l.slug === n)?.status !== "draft", loc, `nearby: "${n}" is a draft`);
+  }
+}
+// One job is local to one page: the same photos can't be the evidence for two
+// cities (validation cycle 3).
+{
+  const owner = new Map();
+  for (const loc of locs) for (const j of loc.localJobs ?? []) {
+    if (owner.has(j.pair) && owner.get(j.pair) !== loc.slug) problems.push(`localJobs "${j.pair}" is a local job on both ${owner.get(j.pair)} and ${loc.slug}`);
+    else owner.set(j.pair, loc.slug);
   }
 }
 if (problems.length) throw new Error("render-locations:\n  " + problems.join("\n  "));

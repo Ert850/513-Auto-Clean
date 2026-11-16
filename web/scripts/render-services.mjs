@@ -130,7 +130,7 @@ ${p.packages.map((id) => {
       { "@type": "Service", name: p.name, serviceType: p.serviceType ?? p.name, url,
         provider: { "@type": "AutoWash", "@id": `${SITE}/#business`, name: "513 Auto Clean", url: `${SITE}/` },
         areaServed: { "@type": "Place", name: "Greater Cincinnati" },
-        ...((p.packages ?? []).length ? { offers: p.packages.map((id) => { const k = findPackage(id); return { "@type": "Offer", name: k.name, price: (k.priceCents / 100).toFixed(2), priceCurrency: "USD" }; }) } : {}) },
+        ...((p.packages ?? []).length ? { offers: p.packages.map((id) => { const k = findPackage(id); return { "@type": "Offer", name: k.name, priceSpecification: { "@type": "PriceSpecification", minPrice: (k.priceCents / 100).toFixed(2), priceCurrency: "USD" } }; }) } : {}) },
     ],
   };
 
@@ -169,8 +169,10 @@ ${p.packages.map((id) => {
 
 // R2 on what a visitor reads (docs/SEO-COMPLIANCE.md): each service page's
 // visible text against the others and against the pages it could copy from.
+// The city pages are written first (build:locations), so they're compared too
+// (validation cycle 3), as fixed pages: city against city is render-locations' job.
 const versus = [...pages.map((p) => ({ name: p.slug, text: mainText(read(pageFile(p))) })),
-  ...["services.html", "index.html"].map((f) => ({ name: f, text: mainText(read(f)), fixed: true }))];
+  ...["services.html", "index.html", "faq.html", "about.html", ...loadLocations().map(pageFile)].map((f) => ({ name: f, text: mainText(read(f)), fixed: true }))];
 for (let i = 0; i < versus.length; i++) for (let k = i + 1; k < versus.length; k++) {
   const A = versus[i], B = versus[k];
   if (A.fixed && B.fixed) continue;

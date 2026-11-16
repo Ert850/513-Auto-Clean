@@ -96,6 +96,7 @@ Read this before changing anything. Every rule below came from a real bug or an 
 
 ## Build and test
 - Node: `export PATH=/opt/homebrew/opt/node@22/bin:$PATH`. Build with `npm run build` at the root.
+- **Drafts and unchecked photos are for previews only** (November 16). A build copies draft city/service pages, and accepts gallery pairs marked `"reviewed": false`, only on Netlify previews (`CONTEXT` deploy-preview, branch-deploy, dev) or with `PREVIEW_BUILD=1`. Any other build leaves drafts out and fails on an unchecked pair. A local build for a preview is `PREVIEW_BUILD=1 npm run build`. "Anything but production" was the old rule, and it let any other route to the live site carry drafts.
 - Tests: `cd web && TZ=America/New_York npx vitest run`. 14 scheduling tests fail in any other timezone; that's a known issue in the tests, not a bug in the change.
 - Generated, never hand-edited:
   - `CATALOG:*` regions: `SERVICES` (all package cards, the correction tiers, the offers banner) in both `index.html` and `services.html`; `OFFERS` in `index.html`; `ADDONS` in `services.html`; `FAQPRICE` in `faq.html` (source: `web/lib/catalog/`, `web/scripts/render-site.mjs`);
