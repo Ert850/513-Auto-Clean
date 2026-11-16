@@ -2148,3 +2148,30 @@ Left for the improvements list (each needs a mockup and a go first):
 - phone tap targets under 40 px ("How it works" 17 px tall, "Change to suggested?", "Tell us when suits", Back and × at 34 px).
 
 All the fold tests pass at 1440×790, and nothing scrolls sideways on 15 pages at six widths. The headline versions fit at every width.
+
+## Improvements A to F built (November 16, Emmett: "Build all six")
+
+From `IMPROVEMENTS-2026-11-16.md`, as in the mockups. Checked in headless Chrome on the built site; 765 tests pass.
+- **A. Checkout bar on phones (under 560 px):** two rows. Back, "Checkout" and × on the first; the four tabs share the second (`book.css`, end of file).
+  - *Cause:* one row was 349 px wide at 320 px, so Back and × sat over "Checkout" and the outer tabs.
+  - Checked: 320, 375 and 559 px fit exactly (four 73 px tabs at 320); 700 px keeps the one-row bar.
+- **B. Time step on short phones (under 560 px wide and 740 px tall):**
+  - the Contact and Address rows take one line each; the Time row on Review keeps its two lines;
+  - "Pick the time that suits you." is gone from the recommended times' sub-line, because the section's intro already says it.
+  - Checked: at 320×640 the first recommended time ends at 564 px, above the bar at 575 (it was cut off at 610). At 320×800 the rows keep two lines.
+- **C. "Need a different start?":** "Earlier times (+$X fee) ›" first, then the standard starts, then "Later times (+$X fee) ›" (Emmett's wording, November 12; `otherStartOptions()`).
+  - Choosing one refills the same dropdown with that group alone, headed by "‹ Back to standard times", and reopens it where `showPicker()` is allowed.
+  - $X comes from `feeText()`; a group whose starts differ says "from".
+  - A start counts as early or late by `timeFeeApplies()`, named by noon like `feeWhy()`. A rush fee alone does not fold a start.
+  - Checked on a Monday: 14 standard starts between the two folded items. Earlier opens its three starts, Back restores the list, and picking an early start books it.
+- **D. Add a vehicle:** the build page is titled "Vehicle 2". Its sub-line reads "Vehicle 1: Small, Full Interior · Back to vehicle 1". The header's Back does the same (`backToVehicle()`).
+  - Going back drops the new vehicle only if it has no package yet, then returns to Extras on the vehicle before.
+  - Checked: going back with an empty vehicle 2 leaves one vehicle and "Build your detail". With a built vehicle 2, both stay ("Vehicle 1, Small", "Vehicle 2, Medium").
+- **E. Travel fee box:** a plain box with a grey rule, and the figure in ink, measured or not. "Too far" keeps the pink box and red text; "No travel fee" stays green.
+- **F. Landing pages:** Book Now right under the headline on `lp-golf` and `lp-prestige` (`.lp-booktop`), in one column only (under 960 px). Checked: at 375×667 it's at 303 to 361 px; hidden at 1440.
+- **To test (preview):**
+  - a phone at 320 and 375: the checkout bar, then the time step;
+  - open "More times on <day>", then "Need a different start?", on a day with early and late starts;
+  - add a vehicle, go back, add again and finish it;
+  - a ZIP with a travel fee;
+  - `/golf` on a phone.

@@ -2,7 +2,9 @@
 
 From five validation cycles over eNov14 and the queued UI round. Everything the cycles found that was clearly a defect is already fixed on `eNov14` (`SESSION-CHANGES-pipeline.md`, "Validation cycle 1" to "5"). What's left is below: changes to what customers see, which need Emmett's go after a mockup, and a few that need a decision.
 
-**Mockups:** `docs/mockups/eNov16-improvements-mockups.png`. Each shows the eNov14 build beside the same page with the change injected in headless Chrome. Nothing is built.
+**Mockups:** `docs/mockups/eNov16-improvements-mockups.png`. Each shows the eNov14 build beside the same page with the change injected in headless Chrome.
+
+**A to F are built on eNov14 (Emmett, November 16: "Build all six").** What changed and what to test: `SESSION-CHANGES-pipeline.md`, "Improvements A to F built". The items without mockups are not built.
 
 Nothing here touches `main` or the live site. Each is built on `eNov14` (or a later branch) after a go, and ships with a merge.
 
