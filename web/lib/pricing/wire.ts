@@ -106,6 +106,8 @@ export interface CleanBooking {
   kind: BookingKind;
   /** Derived from `mode`, never from the cart. */
   payInFull: boolean;
+  /** Vehicles left out because nothing was chosen on them, by their place in the request (1 = first). */
+  droppedVehicles?: number[];
 }
 
 export type WireValidation =
@@ -338,7 +340,11 @@ export function validateWire(body: unknown, opts: ValidateOptions): WireValidati
   // nobody, and the time stayed sellable (validation pass 3). Help me decide
   // keeps every vehicle: the one with nothing on it is the one to advise on,
   // and nothing is priced.
+  const droppedVehicles: number[] = [];
   if (anything && kind !== "advice" && bare.some(Boolean)) {
+    // Said in Elijah's email: the request's own screen may have shown a
+    // two-vehicle price (validation pass 4).
+    bare.forEach((b, i) => { if (b) droppedVehicles.push(i + 1); });
     for (let i = vehicles.length - 1; i >= 0; i--) if (bare[i]) vehicles.splice(i, 1);
   }
 
@@ -471,7 +477,7 @@ export function validateWire(body: unknown, opts: ValidateOptions): WireValidati
     payInFull,
   };
 
-  return { ok: true, booking: { cart: clean, contact, consent, kind, payInFull } };
+  return { ok: true, booking: { cart: clean, contact, consent, kind, payInFull, ...(droppedVehicles.length ? { droppedVehicles } : {}) } };
 }
 
 /** The drive cap, applied after the server has measured. */

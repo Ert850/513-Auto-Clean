@@ -324,7 +324,7 @@ export function askedFor(prefer) {
 // extras: where they came from and which A/B test versions they saw. Tests are
 // counted from these emails (docs/AB-TESTING.md), and a booking that never
 // reached the calendar has no event to read them from (validation cycle 2).
-function ownerEmail({ contact, when, priced, kind, cart, detailer, asked, notes, consent = {}, calendarFail = "", unchecked = "", extras = {} }) {
+export function ownerEmail({ contact, when, priced, kind, cart, detailer, asked, notes, consent = {}, calendarFail = "", unchecked = "", extras = {}, dropped = [] }) {
   const a = cart?.address ?? {};
   const where = [a.line1, a.city, a.region, a.zip].filter(Boolean).join(", ");
   const soon = kind === "booking" && cart?.slot && cart.slot - Date.now() < SHORT_NOTICE_MS;
@@ -332,7 +332,7 @@ function ownerEmail({ contact, when, priced, kind, cart, detailer, asked, notes,
     subject:
       // "HELP ME DECIDE" first, because it is the one that needs something
       // from him before the day rather than just turning up.
-      `${calendarFail ? "NOT ON THE CALENDAR, " : unchecked ? "CHECK THE TIME, " : ""}${kind === "advice" ? "HELP ME DECIDE" : kind === "inquiry" ? "REQUEST" : soon ? "SHORT NOTICE REQUEST" : "BOOKING"}, ${contact.name}, ` +
+      `${calendarFail ? "NOT ON THE CALENDAR, " : unchecked ? "CHECK THE TIME, " : dropped.length ? "CHECK THE PRICE, " : ""}${kind === "advice" ? "HELP ME DECIDE" : kind === "inquiry" ? "REQUEST" : soon ? "SHORT NOTICE REQUEST" : "BOOKING"}, ${contact.name}, ` +
       `${kind === "advice" ? "no package yet" : $(priced?.totalCents ?? 0)}${when ? `, ${when}` : ""}`,
     // Elijah's inbox preview (November 13): price, job, date and time, place.
     html: ((title, inner) => SHELL(title, inner, [
@@ -347,6 +347,9 @@ function ownerEmail({ contact, when, priced, kind, cart, detailer, asked, notes,
         : kind === "inquiry" ? "New request" : soon ? "Short-notice request, not confirmed until you accept it" : "New booking",
       (calendarFail
         ? `<p style="margin:0 0 14px;padding:10px 12px;background:#fdecea;border-left:3px solid #c62828;color:#7f1d1d"><strong>NOT ON THE CALENDAR</strong>${/^this time is already taken/.test(calendarFail) ? `: ${esc(calendarFail)}.` : `(${esc(calendarFail)}). The time is still open to other customers: add it by hand now.`}</p>`
+        : "") +
+      (dropped.length
+        ? `<p style="margin:0 0 14px;padding:10px 12px;background:#fdf3e3;border-left:3px solid #f0a93f"><strong>CHECK THE PRICE:</strong> vehicle ${dropped.join(" and ")} had nothing chosen, so ${dropped.length > 1 ? "they were" : "it was"} left out of this booking. Their screen may have shown a lower multi-vehicle price; the total here is the real one. Confirm it with them.</p>`
         : "") +
       (unchecked
         ? `<p style="margin:0 0 14px;padding:10px 12px;background:#fdf3e3;border-left:3px solid #f0a93f"><strong>CHECK THIS TIME:</strong> ${esc(unchecked)}. It is on the calendar. Make sure nothing else is booked then, and confirm it with them: their email says we will confirm.</p>`
@@ -477,7 +480,9 @@ export function bookingEvents({ contact, cart, priced, extras, payInFull, kind, 
    * the moment it started and Google would have refused it outright. It holds
    * the same block the customer was offered on the booking screen.
    */
-  const minutes = priced.serviceDurationMin || (kind === "advice" ? ADVICE_HOLD_MIN : 120);
+  // Help me decide holds at least the advice block, even when a package came
+  // with it (an older tab): the event says "Holding 4 hours" (validation pass 4).
+  const minutes = kind === "advice" ? Math.max(priced.serviceDurationMin || 0, ADVICE_HOLD_MIN) : priced.serviceDurationMin || 120;
   const location = [cart.address?.line1, cart.address?.city, cart.address?.region, cart.address?.zip]
     .filter(Boolean)
     .join(", ");
@@ -528,7 +533,7 @@ export function bookingEvents({ contact, cart, priced, extras, payInFull, kind, 
 export function stillFreeJob({ cart, priced, kind, measuredMin }) {
   return {
     slotMs: cart.slot,
-    serviceMin: priced?.serviceDurationMin || ADVICE_HOLD_MIN,
+    serviceMin: kind === "advice" ? Math.max(priced?.serviceDurationMin || 0, ADVICE_HOLD_MIN) : priced?.serviceDurationMin || ADVICE_HOLD_MIN,
     driveMin: Number.isFinite(measuredMin) ? measuredMin : DRIVE_FALLBACK_MIN,
     hasExterior: kind !== "advice" && wireNeeds(cart).includes("exterior"),
     correction: (cart.vehicles ?? []).some((v) => Boolean(v.correction)),
@@ -697,9 +702,13 @@ export async function handler(event) {
 
   // THE CALENDAR FIRST. It is the half that stops the slot being sold again,
   // and it is the half nobody can reconstruct from memory at 11pm.
+  // Nothing to write without a time, whatever the kind: Help me decide with
+  // "tell us when suits" told Elijah "NOT ON THE CALENDAR, add it by hand"
+  // because only "inquiry" was treated as having no time (validation pass 4).
+  const noTime = !cart.slot;
   const calendar =
-    kind === "inquiry"
-      ? { ok: false, reason: "inquiry" }
+    noTime
+      ? { ok: false, reason: "no_time" }
       : await writeCalendar({
           contact, cart, priced, extras, payInFull, kind,
           key: text(payload?.idempotencyKey, 120),
@@ -727,8 +736,9 @@ export async function handler(event) {
   if (!apiKey) {
     return json(200, { sent: false, reason: "unconfigured", calendar: calendarOut });
   }
-  ctx.calendarOk = kind === "inquiry" || calendar.ok === true;
-  ctx.calendarFail = kind === "inquiry" || calendar.ok ? "" : String(calendar.reason || "write failed");
+  ctx.calendarOk = noTime || calendar.ok === true;
+  ctx.calendarFail = noTime || calendar.ok ? "" : String(calendar.reason || "write failed");
+  ctx.dropped = checked.booking.droppedVehicles || [];
   ctx.unchecked = calendar.unchecked || "";
 
   // Elijah's copy first. If only one of the two can get through, it has to be

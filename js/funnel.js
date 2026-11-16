@@ -286,7 +286,7 @@
       zip: state.address.zip || null,
       payInFull: state.payInFull,
       promoCode: state.promoCode || null,
-      visits: state.separateTimes ? state.vehicles.length : 1
+      visits: state.separateTimes ? pricedVehicles().length : 1
     };
   }
 
@@ -464,7 +464,10 @@
    * calendar event with, so the block on the calendar is the block the
    * customer was offered.
    */
-  function holdMinutes() { return totalDurationMin() || P.ADVICE_HOLD_MIN; }
+  function holdMinutes() {
+    // Help me decide holds at least the advice block, whatever is chosen.
+    return state.advice ? Math.max(totalDurationMin(), P.ADVICE_HOLD_MIN) : totalDurationMin() || P.ADVICE_HOLD_MIN;
+  }
 
   /* ================= dom ================= */
 
@@ -1417,10 +1420,19 @@
    */
   function firstProblem() {
     if (onCheckout()) {
-      for (var b = 0; b < LOC_I; b++) {
-        var early = asProblem(STEPS[b].valid(), b);
-        if (early) return early;
+      // Every vehicle, not only the active one: the build checks read veh(),
+      // and a vehicle that was never finished reached checkout by several
+      // routes (validation passes 1 to 4, November 16). The problem carries
+      // its vehicle, and showProblem() switches to it.
+      var was = state.active;
+      for (var vi = 0; vi < state.vehicles.length; vi++) {
+        state.active = vi;
+        for (var b = 0; b < LOC_I; b++) {
+          var early = asProblem(STEPS[b].valid(), b);
+          if (early) { state.active = was; early.vehicle = vi; return early; }
+        }
       }
+      state.active = was;
       // The checkout reads top to bottom, so it is checked top to bottom.
       for (var c = 0; c < CK.length; c++) {
         var found0 = asProblem(CK[c].valid(), LAST);
@@ -1437,6 +1449,7 @@
 
   /** Take them to it, point at it, and put the cursor in it. */
   function showProblem(prob) {
+    if (prob.vehicle !== undefined && prob.vehicle !== state.active) state.active = prob.vehicle;
     // On the checkout, every problem in that section at once.
     var sc0 = prob.sec && CK[ckIndex(prob.sec)];
     if (sc0 && sc0.all && onCheckout()) {
@@ -2935,8 +2948,9 @@
       }
       // A link made before a package was retired opens as its replacement.
       var up = P.upgradeLegacy(v.packageIds, v.addons);
-      v.packageIds = up.packageIds.filter(function (id) { return P.findPackage(id); });
+      v.packageIds = up.packageIds;
       v.addons = up.addons;
+      cleanImportedVehicle(v);
       if (raw.l) v.label = raw.l;
       if (raw.c) v.correctionTier = raw.c;
       if (raw.t) v.coatingTerm = raw.t;
@@ -6085,7 +6099,11 @@
 
   function wireCart() {
     return {
-      // The same vehicles the price shown was made from (pricedVehicles).
+      // The same vehicles the price shown was made from (pricedVehicles), and
+      // the same number of visits: "My vehicles need separate times" charged
+      // travel twice on screen while the server, never told, charged it once
+      // and the booking never said two visits (validation pass 4).
+      visits: cart().visits,
       vehicles: pricedVehicles().map(function (v) {
         return {
           label: v.label || '',
@@ -7716,6 +7734,25 @@
   ];
 
   /**
+   * A vehicle from outside this page (a saved draft, a quote link) holds only
+   * what the server would book: a size that exists, packages that exist and
+   * are bookable now, one per category, add-ons that exist. A coming-soon
+   * package in a draft or link reached checkout and was refused at Confirm
+   * (validation pass 4).
+   */
+  function cleanImportedVehicle(v) {
+    if (v.size && !P.vehicleSize(v.size)) v.size = null;
+    var cats = {};
+    v.packageIds = (v.packageIds || []).filter(function (id) {
+      var p = P.findPackage(id);
+      if (!p || p.comingSoon || cats[p.category]) return false;
+      cats[p.category] = true;
+      return true;
+    });
+    v.addons = (v.addons || []).filter(function (a) { return P.findAddon(a.addonId); });
+  }
+
+  /**
    * A draft saved by an older build can hold what this one never makes: Help
    * me decide with two vehicles (the live site offered it on vehicle 2), or a
    * vehicle with nothing chosen carried into checkout, where only the active
@@ -7726,7 +7763,12 @@
   function tidyRestoredVehicles() {
     var vs = state.vehicles;
     var act = vs[state.active] ? state.active : 0;
-    if (state.advice && vs.length > 1) { state.advice = false; act = -1; }
+    if (state.advice && vs.length > 1) {
+      state.advice = false; act = -1;
+      // Said once the form opens: the vehicle they wanted advice on is gone.
+      state.restoreNote = 'Help me decide works for one vehicle at a time, so we kept your other vehicle. ' +
+        'Tell us about the second one in the notes, or ask us a question.';
+    }
     if (state.advice) { state.active = 0; return; }
     var building = !inCheckout(state.step) && act > -1;
     var kept = vs.filter(function (v, i) { return v.packageIds.length || (building && i === act); });
@@ -7871,8 +7913,9 @@
           // A draft kept from before a package was retired opens as its
           // replacement; anything else unknown is dropped, never rendered.
           var up = P.upgradeLegacy(v.packageIds, v.addons);
-          v.packageIds = up.packageIds.filter(function (id) { return P.findPackage(id); });
-          v.addons = up.addons.filter(function (a) { return P.findAddon(a.addonId); });
+          v.packageIds = up.packageIds;
+          v.addons = up.addons;
+          cleanImportedVehicle(v);
         });
         tidyRestoredVehicles();
       } catch (e) {
@@ -7888,6 +7931,7 @@
     document.addEventListener('keydown', trapTab);
     render();
     el('bkClose').focus();
+    if (state.restoreNote) { toast(state.restoreNote); state.restoreNote = ''; }
   }
 
   /**

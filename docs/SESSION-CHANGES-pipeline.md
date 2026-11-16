@@ -2308,3 +2308,41 @@ For Emmett's review, server side (not built):
 - **`create-payment`:** carts with a bare vehicle 1 or 2 now pass the cart check and stop at the next step (`mandate_required`, sent on purpose with no authorization, so nothing reaches Stripe). An all-empty cart is still `empty_cart`.
 - **Not sent:** a request that would pass every check. It would write a booking or contact Stripe. That the bare vehicle is left out is covered by `wire.test.ts`.
 - **At 375 and 320:** no Help me decide on vehicle 1's Service after coming back from vehicle 2. A live-style draft (Help me decide on a bare vehicle 2, saved at checkout) reopens as Full Interior at $253.33, with no errors.
+
+## Validation pass 4, fixed by root cause (November 16)
+
+From now on, every pass root-causes each finding and sweeps the whole codebase for the same cause (Emmett: "identify all parallel occurrences of similar issue types"). Pass 4 was briefed with the four classes the earlier passes kept hitting. Fixes are per class; 772 tests pass.
+
+**(a) Checked for the active vehicle only, used for all.**
+- *Root cause:* the build checks read `veh()`, and checkout ran them for the active vehicle only. Eleven places assume every vehicle is finished.
+- *Class fix:* at Confirm, `firstProblem()` now runs the build checks on every vehicle. A problem carries its vehicle, and `showProblem()` switches to it. That closes the class at its last gate, whatever route an unfinished vehicle took.
+- *Checked at 375 and 320:* a draft whose vehicle 2 is "Inside and out" with only an interior package reaches Review. Confirm opens "Vehicle 2", Package, "Pick an exterior package too."
+
+**(b) Outside state not normalised.**
+- *Root cause:* drafts and quote links were trusted beyond their shape.
+- *Class fix:* one normaliser, `cleanImportedVehicle()`, for both drafts and links. It removes a size that doesn't exist, packages that don't exist or aren't bookable yet, a second package in a category, and unknown add-ons. `tidyRestoredVehicles()` (vehicles, `active`, Help me decide) runs after it.
+- *Also:* a two-vehicle Help me decide draft now says why the second vehicle went: "Help me decide works for one vehicle at a time, so we kept your other vehicle. Tell us about the second one in the notes, or ask us a question."
+- *Checked:* a draft with Paint Correction and Protection plus Basic Exterior, and size "huge", opens as Basic Exterior. The note shows on the live-style draft.
+
+**(c) A global mode outliving what set it.**
+- *Root cause:* "inquiry" was used to mean "no time". Help me decide with "tell us when suits" has no time, so `send-confirmation` tried to write it, got `no_slot`, and emailed Elijah "NOT ON THE CALENDAR … add it by hand now".
+- *Class fix:* `send-confirmation` decides by the time itself (`!cart.slot`) for the calendar write and both calendar flags.
+- *Swept:* every `kind === "inquiry"` (`_pricing.mjs` `inquiry_has_slot` is correct; `customerEmail` already used `!when`). `advice` and `browse` were swept in passes 1 to 3.
+- *Also in this class:* the advice hold. Help me decide carrying a package (an older tab) held only the package's length while the event said "Holding 4 hours". The browser (`holdMinutes`), the event (`bookingEvents`) and the still-free check (`stillFreeJob`) now hold at least `ADVICE_HOLD_MIN` for Help me decide.
+
+**(d) Browser and server disagree about the cart.**
+- **"My vehicles need separate times"** (also on the live site): the screen charged travel twice, but `wireCart()` never sent `visits`. So the server charged it once, and nothing told Elijah it was two visits.
+  - *Fix:* the form sends `visits`; the server already priced it.
+  - *Checked:* the request carries `"visits":2`. The receipt line "Travel, 2 separate visits" now reaches both emails.
+- **A vehicle the server leaves out** (an older tab only) changed the total without telling anyone.
+  - *Fix:* `validateWire()` reports `droppedVehicles`. Elijah's email gets "CHECK THE PRICE" in the subject and a line saying which vehicle was left out and that the total shown here is the real one.
+- **Swept, not changed:**
+  - Follow-up labels are numbered by the browser's vehicle order; from an older tab with a bare vehicle 1 they could name the wrong car.
+  - `state.serverTotalCents` and PayPal's `totalCents` are never compared with the screen. Payments are off.
+
+**Tests:**
+- `wire.test.ts`: dropped positions, no discount for the dropped vehicle, a request treated the same, separate visits charge the drive twice.
+- `confirmation-email.test.ts`: the Help me decide hold, and the "CHECK THE PRICE" email.
+- `funnel.smoke.test.mjs`: the hold rule.
+
+**Owner's call, not built:** with two vehicles there is no Help me decide; the notes box and "I have a question" remain.

@@ -69,6 +69,42 @@ describe("validateWire: shape", () => {
     expect(r2.ok && r2.booking.cart.vehicles.length).toBe(2);
   });
 
+  it("says which vehicles it left out, takes no multi-vehicle discount for them, and treats a request the same", () => {
+    const b = good();
+    b.cart.vehicles.unshift({ sizeId: "medium", packageIds: [], label: "Civic" });
+    const r = validateWire(b, { nowMs: NOW, mode: "card_only" });
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.booking.droppedVehicles).toEqual([1]);
+    expect(r.booking.cart.vehicles.some((v) => v.label === "Civic")).toBe(false);
+    const alone = validateWire(good(), { nowMs: NOW, mode: "card_only" });
+    expect(alone.ok && alone.booking.droppedVehicles).toBeUndefined();
+    if (!alone.ok) return;
+    expect(priceFromWire(r.booking.cart, { nowMs: NOW }).totalCents).toBe(priceFromWire(alone.booking.cart, { nowMs: NOW }).totalCents);
+    const req = good();
+    req.cart.kind = "inquiry";
+    delete req.cart.slot;
+    req.cart.vehicles.push({ sizeId: "large", packageIds: [] });
+    const rq = validateWire(req, { nowMs: NOW, mode: "card_only" });
+    expect(rq.ok && rq.booking.cart.vehicles.length).toBe(1);
+  });
+
+  it("keeps separate visits only up to the vehicles left after the drop", () => {
+    const b = good();
+    b.cart.vehicles.push({ sizeId: "medium", packageIds: ["basic-interior"], addons: [] });
+    b.cart.visits = 2;
+    const r = validateWire(b, { nowMs: NOW, mode: "card_only" });
+    expect(r.ok && r.booking.cart.visits).toBe(2);
+    if (!r.ok) return;
+    const once = validateWire(good(), { nowMs: NOW, mode: "card_only" });
+    if (!once.ok) return;
+    // Two visits charge the drive twice: the server now hears "separate times".
+    const two = priceFromWire(r.booking.cart, { nowMs: NOW });
+    const travel = (p: typeof two) => p.lines.filter((l) => /travel/i.test(l.label)).reduce((t, l) => t + l.amountCents, 0);
+    const oneVisit = priceFromWire({ ...r.booking.cart, visits: 1 }, { nowMs: NOW });
+    expect(travel(two)).toBe(travel(oneVisit) * 2);
+  });
+
   it("Help me decide keeps a vehicle with nothing on it beside one with a package (the live site's form sends this)", () => {
     const b = good();
     b.cart.kind = "advice";
