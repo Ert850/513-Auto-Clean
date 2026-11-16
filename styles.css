@@ -884,6 +884,11 @@ main > .areas:first-child .section-head { margin-bottom: 18px; }
 .lp-copy.copied .ic-done { display: block; }
 @media (max-width: 419.98px) { .lp-code { grid-template-columns: 1fr; padding: .7rem .9rem; } .lp-copy { justify-self: start; } }
 .lp-cta { display: flex; gap: .7rem; flex-wrap: wrap; margin-top: 1.4rem; }
+/* Book Now under the headline on a phone's first screen (improvement F, November 16):
+   in one column the story pushed the only button below the fold. Beside the
+   portrait (960 px up) the story is short enough, so it stays hidden there. */
+.lp-booktop { margin: .2rem 0 1.1rem; }
+@media (min-width: 960px) { .lp-booktop { display: none; } }
 .lp-options { background: #fff; }
 .lp-grid { display: grid; gap: 1rem; grid-template-columns: 1fr; }
 @media (min-width: 820px) { .lp-grid { grid-template-columns: repeat(3, 1fr); } }

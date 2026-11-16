@@ -995,10 +995,20 @@
 
     el('bkBar').style.width = pct + '%';
     el('bkProgress').setAttribute('aria-valuenow', String(pct));
-    el('bkTitle').textContent = onCheckout() ? s.title : 'Build your detail';
+    // With two vehicles the build page says which one it is building, what
+    // the other is, and how to get back to it (improvement D, November 16:
+    // "Add a vehicle" opened a bare "Build your detail" with no Back).
+    var multi = !onCheckout() && state.vehicles.length > 1;
+    el('bkTitle').textContent = onCheckout() ? s.title : multi ? 'Vehicle ' + (state.active + 1) : 'Build your detail';
     if (!onCheckout()) s = Object.assign({}, s, { sub: 'A few quick questions. Your price updates as you go.' });
     var sub = el('bkTitleSub');
-    if (sub) { sub.textContent = s.sub || ''; sub.hidden = !s.sub; }
+    if (sub && multi) {
+      sub.innerHTML = state.vehicles.map(function (v, i) {
+        return i === state.active ? '' : esc(vehicleLine(v, i));
+      }).filter(Boolean).join(' · ') +
+        (state.active > 0 ? ' · <button type="button" class="bk-vehback" data-vehback>Back to vehicle ' + state.active + '</button>' : '');
+      sub.hidden = false;
+    } else if (sub) { sub.textContent = s.sub || ''; sub.hidden = !s.sub; }
     renderNav();
     // Entering checkout reads the calendar fresh; re-rendering it does not.
     if (onCheckout() && lastRenderedStep !== s.id) lastSlotsKey = '';
@@ -1015,7 +1025,7 @@
     else ckCont.id = null;
 
     var back = el('bkBack');
-    back.hidden = state.step === 0;
+    back.hidden = state.step === 0 && !(multi && state.active > 0);
 
     var next = el('bkNext');
     next.hidden = s.auto || (onCheckout() && ckNextIdle());
@@ -1712,6 +1722,7 @@
 
   /** Back, past anything the forward walk skipped on the way here. */
   function goBack() {
+    if (!onCheckout() && state.step === 0 && state.active > 0) return backToVehicle();
     var ci = onCheckout() ? ckIndex(ckOpenId()) : -1;
     if (ci > 0) {
       state.ckOpen = CK[ci - 1].id;
@@ -2401,6 +2412,23 @@
       '<button type="button" class="bk-addveh" id="bkAddVeh">Add a vehicle</button></div>';
   }
   function vAddons() { return null; }
+  /** "Vehicle 1: Small, Full Interior", for the title line while another vehicle is built. */
+  function vehicleLine(v, i) {
+    var size = v.size ? P.vehicleSize(v.size) : null;
+    var names = v.packageIds.map(function (id) { return (P.findPackage(id) || {}).name; }).filter(Boolean);
+    return 'Vehicle ' + (i + 1) + ': ' + ([size && size.label].concat(names).filter(Boolean).join(', ') || 'nothing chosen yet');
+  }
+  /**
+   * Back from the vehicle being built to the one before it, on Extras, where
+   * "Add a vehicle" was. A vehicle with no package yet is dropped on the way:
+   * it was only just added, and an empty vehicle cannot be booked.
+   */
+  function backToVehicle() {
+    var i = state.active;
+    if (!state.vehicles[i].packageIds.length) state.vehicles.splice(i, 1);
+    state.active = Math.max(0, i - 1);
+    go(indexOfStep('addons'));
+  }
 
   /* ================= step 5: location ================= */
 
@@ -3997,7 +4025,8 @@
       html += '<p class="bk-wk-none">Nothing open in the next two weeks for this detail. ' +
         'See additional times for later dates, or tell us when suits.</p>';
     } else {
-      html += '<p class="bk-recs-sub">Pick the time that suits you. ' +
+      // "Pick a time" is said once, by the section's own intro (improvement B).
+      html += '<p class="bk-recs-sub">' +
         (windowMin() ? 'We arrive within its first ' + spanWords(windowMin()) : 'We arrive at that time') +
         (dur ? ', and the detail takes about ' + esc(fmtDur(dur)) : '') + '.</p>' + weatherLine(calc);
     }
@@ -4134,20 +4163,52 @@
       var others = startsOnDay(lead).filter(function (ms) {
         return !sameMinute(ms, lead) && !best.some(function (b2) { return sameMinute(ms, b2); });
       });
+      // Early and late fee starts fold into one item each (improvement C,
+      // Emmett's wording, November 12): a Saturday listed 26 starts.
+      var group = function (ms) { return !timeFeeApplies(ms) ? 'std' : localMin(ms) < 12 * 60 ? 'early' : 'late'; };
+      var ids = function (g) { return others.filter(function (ms) { return group(ms) === g; }).join(','); };
       inner.innerHTML = best.map(chip).join('') +
         (others.length
           ? '<label class="bk-more-other"><span>Need a different start?</span>' +
-            '<select data-otherstart data-rank="' + btn.dataset.rank + '" data-reason="' + btn.dataset.reason + '" tabindex="-1">' +
-            '<option value="">Choose a time</option>' +
-            others.map(function (ms) {
-              var fee = feeText(ms);
-              return '<option value="' + ms + '">' + esc(spanLabel(ms, dur) + (fee ? ' (' + fee + ')' : '')) + '</option>';
-            }).join('') + '</select></label>'
+            '<select data-otherstart data-rank="' + btn.dataset.rank + '" data-reason="' + btn.dataset.reason + '"' +
+            ' data-std="' + ids('std') + '" data-early="' + ids('early') + '" data-late="' + ids('late') + '" tabindex="-1">' +
+            otherStartOptions(ids('std'), ids('early'), ids('late'), '') + '</select></label>'
           : '');
     }
     if (togglePanel(wrap, btn)) {
       track('time_more_open', { rank: Number(btn.dataset.rank), reason: btn.dataset.reason, rules: P.TIME_RECOMMENDATION_RULES.version });
     }
+  }
+
+  /**
+   * The options of "Need a different start?". Standard view: "Earlier times
+   * (+$X fee) ›", the standard starts, "Later times (+$X fee) ›". Choosing
+   * one of those refills the list with that group alone, headed by a way
+   * back. $X is the group's own fee from feeText(), never written in; when
+   * the starts in a group differ, the smallest is said with "from".
+   */
+  function otherStartOptions(std, early, late, mode) {
+    var dur = holdMinutes();
+    var list = function (csv) { return csv ? csv.split(',').map(Number) : []; };
+    var opt = function (ms) {
+      var fee = feeText(ms);
+      return '<option value="' + ms + '">' + esc(spanLabel(ms, dur) + (fee ? ' (' + fee + ')' : '')) + '</option>';
+    };
+    var folder = function (csv, name, value) {
+      var ms = list(csv);
+      if (!ms.length) return '';
+      var deltas = ms.map(deltaFor);
+      var low = ms[deltas.indexOf(Math.min.apply(null, deltas))];
+      var same = deltas.every(function (d) { return d === deltas[0]; });
+      return '<option value="' + value + '">' + esc(name + ' (' + (same ? '' : 'from ') + feeText(low) + ' fee)') + '  \u203a</option>';
+    };
+    if (mode === 'early' || mode === 'late') {
+      return '<option value="">' + (mode === 'early' ? 'Choose an earlier time' : 'Choose a later time') + '</option>' +
+        '<option value="std">\u2039  Back to standard times</option>' +
+        list(mode === 'early' ? early : late).map(opt).join('');
+    }
+    return '<option value="">Choose a time</option>' + folder(early, 'Earlier times', 'early') +
+      list(std).map(opt).join('') + folder(late, 'Later times', 'late');
   }
 
   /**
@@ -6393,7 +6454,7 @@
   function onClick(e) {
     var t = e.target.closest(
       '[data-size],[data-intent],[data-pkg],[data-addon],[data-clear],[data-slot],' +
-      '[data-pay],[data-delveh],[data-browsepick],[data-max],[data-sort],[data-pkgfirst],' +
+      '[data-pay],[data-delveh],[data-vehback],[data-browsepick],[data-max],[data-sort],[data-pkgfirst],' +
       '[data-kind],[data-paymethod],[data-corr],[data-coating],[data-garage],[data-step],' +
       '[data-prefday],[data-prefpart],[data-interest],[data-interest-only],[data-wkday],[data-more],[data-steer],[data-flexday],[data-wkfold],[data-ckcont],[data-cksec],[data-access],[data-extrarm],' +
       '#bkWkPrev,#bkWkNext,#bkWkNext2,#bkWkToday,#bkWkBack,#bkShowAll,#bkShowRecs,#bkFeeWhy,' +
@@ -6763,6 +6824,7 @@
       state.active = state.vehicles.length - 1;
       return go(0);
     }
+    if (t.dataset.vehback !== undefined) return backToVehicle();
     if (t.dataset.delveh) {
       state.vehicles.splice(Number(t.dataset.delveh), 1);
       state.active = Math.min(state.active, state.vehicles.length - 1);
@@ -6922,6 +6984,14 @@
     }
     if (t.dataset.otherstart !== undefined) {
       if (!t.value) return;
+      if (t.value === 'early' || t.value === 'late' || t.value === 'std') {
+        t.innerHTML = otherStartOptions(t.dataset.std, t.dataset.early, t.dataset.late, t.value);
+        t.value = '';
+        t.focus();
+        // Open it again where the browser allows; otherwise it waits, focused, for one more tap.
+        try { if (t.showPicker) t.showPicker(); } catch (err) { /* needs a fresh tap */ }
+        return;
+      }
       selectSlot(Number(t.value), 'recommended_other', { rank: Number(t.dataset.rank), reason: t.dataset.reason });
       return timeChosen();
     }
