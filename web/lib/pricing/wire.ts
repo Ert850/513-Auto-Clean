@@ -225,8 +225,8 @@ export function validateWire(body: unknown, opts: ValidateOptions): WireValidati
 
   const vehicles: WireVehicle[] = [];
   let anything = false;
-  // The first vehicle with nothing on it, numbered from 1 (0: none).
-  let bareAt = 0;
+  // Vehicles with nothing on them, by position.
+  const bare: boolean[] = [];
 
   for (const rv of rawVehicles) {
     if (!isObj(rv)) return fail("bad_vehicle", "A vehicle entry was not understood.");
@@ -322,8 +322,9 @@ export function validateWire(body: unknown, opts: ValidateOptions): WireValidati
       };
     }
 
-    if (packageIds.length || addons.length || v.correction) anything = true;
-    else if (!bareAt) bareAt = vehicles.length + 1;
+    const has = Boolean(packageIds.length || addons.length || v.correction);
+    if (has) anything = true;
+    bare.push(!has);
     vehicles.push(v);
   }
   // The one cart that is allowed to be empty. Everything else with nothing
@@ -332,10 +333,13 @@ export function validateWire(body: unknown, opts: ValidateOptions): WireValidati
   // A vehicle with nothing on it beside one that has something still counted
   // as a second vehicle, so it took the multi-vehicle discount off the real
   // one (validation pass 1, November 16). The booking form no longer sends
-  // one; this refuses a hand-made or old-tab request. Help me decide sends
-  // vehicles with nothing on them on purpose, all of them, so it passes.
-  if (anything && bareAt) {
-    return fail("empty_vehicle", `Vehicle ${bareAt} has nothing chosen. Pick a package for it, or remove it.`);
+  // one. From a hand-made request or a tab opened before a deploy, it is
+  // left out rather than refused: a refusal from the old code reached
+  // nobody, and the time stayed sellable (validation pass 3). Help me decide
+  // keeps every vehicle: the one with nothing on it is the one to advise on,
+  // and nothing is priced.
+  if (anything && kind !== "advice" && bare.some(Boolean)) {
+    for (let i = vehicles.length - 1; i >= 0; i--) if (bare[i]) vehicles.splice(i, 1);
   }
 
   /* ---- slot ---- */

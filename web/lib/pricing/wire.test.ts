@@ -52,18 +52,29 @@ describe("validateWire: shape", () => {
     rejects((b) => (b.cart.vehicles = [{ packageIds: [] }]), "empty_cart");
   });
 
-  it("refuses a vehicle with nothing on it beside one that has something (no multi-vehicle discount for nothing)", () => {
-    rejects((b) => b.cart.vehicles.push({ sizeId: "medium", packageIds: [] }), "empty_vehicle");
-    rejects((b) => b.cart.vehicles.unshift({ sizeId: "small" }), "empty_vehicle");
-    const b = good();
-    b.cart.vehicles.push({ sizeId: "medium", packageIds: [] });
-    const r = validateWire(b, { nowMs: NOW, mode: "card_only" });
-    expect(r.ok).toBe(false);
-    if (!r.ok) expect(r.message).toMatch(/^Vehicle 2 has nothing chosen/);
-    // Two real vehicles still book.
+  it("leaves out a vehicle with nothing on it beside one that has something (no multi-vehicle discount for nothing)", () => {
+    for (const where of ["push", "unshift"] as const) {
+      const b = good();
+      b.cart.vehicles[where]({ sizeId: "medium", packageIds: [] });
+      const r = validateWire(b, { nowMs: NOW, mode: "card_only" });
+      expect(r.ok).toBe(true);
+      if (!r.ok) continue;
+      expect(r.booking.cart.vehicles.length).toBe(1);
+      expect(r.booking.cart.vehicles[0].packageIds).toEqual(["full-interior", "full-exterior"]);
+    }
+    // Two real vehicles are both kept.
     const two = good();
     two.cart.vehicles.push({ sizeId: "medium", packageIds: ["basic-interior"], addons: [] });
-    expect(validateWire(two, { nowMs: NOW, mode: "card_only" }).ok).toBe(true);
+    const r2 = validateWire(two, { nowMs: NOW, mode: "card_only" });
+    expect(r2.ok && r2.booking.cart.vehicles.length).toBe(2);
+  });
+
+  it("Help me decide keeps a vehicle with nothing on it beside one with a package (the live site's form sends this)", () => {
+    const b = good();
+    b.cart.kind = "advice";
+    b.cart.vehicles.push({ sizeId: "large", packageIds: [] });
+    const r = validateWire(b, { nowMs: NOW, mode: "card_only" });
+    expect(r.ok && r.booking.cart.vehicles.length).toBe(2);
   });
 
   it("Help me decide with two vehicles and nothing on either still passes", () => {

@@ -1826,7 +1826,7 @@ function validateWire(body, opts) {
   const kind = cart["kind"] === "inquiry" ? "inquiry" : cart["kind"] === "advice" ? "advice" : "booking";
   const vehicles = [];
   let anything = false;
-  let bareAt = 0;
+  const bare = [];
   for (const rv of rawVehicles) {
     if (!isObj(rv)) return fail("bad_vehicle", "A vehicle entry was not understood.");
     const v = {};
@@ -1908,13 +1908,14 @@ function validateWire(body, opts) {
         ...rc["noGarage"] === true ? { noGarage: true } : {}
       };
     }
-    if (packageIds.length || addons.length || v.correction) anything = true;
-    else if (!bareAt) bareAt = vehicles.length + 1;
+    const has = Boolean(packageIds.length || addons.length || v.correction);
+    if (has) anything = true;
+    bare.push(!has);
     vehicles.push(v);
   }
   if (!anything && kind !== "advice") return fail("empty_cart", "Pick at least one service.");
-  if (anything && bareAt) {
-    return fail("empty_vehicle", `Vehicle ${bareAt} has nothing chosen. Pick a package for it, or remove it.`);
+  if (anything && kind !== "advice" && bare.some(Boolean)) {
+    for (let i = vehicles.length - 1; i >= 0; i--) if (bare[i]) vehicles.splice(i, 1);
   }
   let slot = null;
   const rawSlot = cart["slot"];

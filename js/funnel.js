@@ -1869,9 +1869,10 @@
       // This turns the booking into a request: no package, no price, no time
       // to commit to, and we come back with what we would recommend.
       // Help me decide turns the whole booking into a request, so it is
-      // offered for the first vehicle only: on vehicle 2 it priced vehicle 1
-      // as a booking under an advice request (validation pass, November 16).
-      (state.active > 0 ? '' :
+      // offered only while there is one vehicle: on vehicle 2, or on vehicle 1
+      // reached back from vehicle 2, it sent vehicle 1's package as an advice
+      // request held for the package's length (validation passes, November 16).
+      (state.vehicles.length > 1 ? '' :
       '<button type="button" class="bk-askrow' + (state.advice ? ' on' : '') + '" data-intent="advice">' +
         pic('ask') + '<span><b>Not sure? Help me decide</b><i>We look at your vehicle and recommend one</i></span>' +
         '<svg class="bk-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M9 6l6 6-6 6"/></svg>' +
@@ -6600,7 +6601,7 @@
     if (t.dataset.size) { v.size = t.dataset.size; return advance(); }
     if (t.dataset.intent) {
       if (t.dataset.intent === 'advice') {
-        if (state.active > 0) return;
+        if (state.vehicles.length > 1) return;
         state.advice = true;
         v.intent = null;
         v.packageIds = [];
@@ -7714,6 +7715,28 @@
     'advice', 'timeMode'
   ];
 
+  /**
+   * A draft saved by an older build can hold what this one never makes: Help
+   * me decide with two vehicles (the live site offered it on vehicle 2), or a
+   * vehicle with nothing chosen carried into checkout, where only the active
+   * vehicle is checked (validation pass 3, November 16). Keep the vehicles
+   * that have a package, plus the one being built on the build page; Help me
+   * decide stays only for a single vehicle.
+   */
+  function tidyRestoredVehicles() {
+    var vs = state.vehicles;
+    var act = vs[state.active] ? state.active : 0;
+    if (state.advice && vs.length > 1) { state.advice = false; act = -1; }
+    if (state.advice) { state.active = 0; return; }
+    var building = !inCheckout(state.step) && act > -1;
+    var kept = vs.filter(function (v, i) { return v.packageIds.length || (building && i === act); });
+    if (!kept.length) kept = [vs[0]];
+    var nowAt = building ? kept.indexOf(vs[act]) : -1;
+    state.vehicles = kept;
+    state.active = nowAt > -1 ? nowAt : 0;
+    if (!building && !kept[0].packageIds.length) state.step = 0;
+  }
+
   function saveDraft() {
     try {
       var keep = {};
@@ -7851,6 +7874,7 @@
           v.packageIds = up.packageIds.filter(function (id) { return P.findPackage(id); });
           v.addons = up.addons.filter(function (a) { return P.findAddon(a.addonId); });
         });
+        tidyRestoredVehicles();
       } catch (e) {
         clearDraft();
         reset();

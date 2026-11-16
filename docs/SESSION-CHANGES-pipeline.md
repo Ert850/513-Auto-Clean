@@ -2277,3 +2277,29 @@ For Emmett's review, server side (not built):
 - **Unchanged:** Help me decide (`kind: "advice"`), where every vehicle is empty on purpose, and an all-empty booking (still `empty_cart`).
 - **Tests:** two new ones in `wire.test.ts`: a bare vehicle before or after a real one is refused with its number, two real vehicles book, and a two-vehicle Help me decide passes. 767 pass.
 - **Where it runs:** `eNov14` and the deploy preview only. The live site gets it with the merge.
+
+### On the deploy preview, and validation pass 3 (November 16)
+
+**a87e5bb on the preview:**
+- **`send-confirmation` and `create-payment`:** a cart with a bare vehicle 1 or 2 was refused with `empty_vehicle`, and an all-empty cart with `empty_cart`. Both functions check the cart before they write or send anything.
+- **At 375 and 320:**
+  - a link with a bare vehicle 2 opens at Time with no saving, at $156.31 for one Basic Interior;
+  - the empty Vehicle 2 page keeps $145;
+  - vehicle 2 has no Help me decide;
+  - a saved two-vehicle draft followed by a one-vehicle link opens with no error;
+  - Browse shows the five not-yet-bookable services as disabled;
+  - "★ Suggested" stays in its row, on its own line at 320;
+  - the leave dialog says "plus 1 extra".
+
+**Validation pass 3** (read-only agent over bdd20b6..a87e5bb) found two problems. Both are fixed; 768 tests pass.
+- **Help me decide could still be switched on with two vehicles.**
+  - *Routes:* "Back to vehicle 1", then Back to Service; or a draft saved on the live site, which offers Help me decide on vehicle 2.
+  - *What happened:* the request went out as Help me decide carrying vehicle 1's package, held for the package's length, while the vehicle needing advice was left out.
+  - *Fix:* Help me decide is offered only while there is one vehicle. On reopening, a draft (`tidyRestoredVehicles()`) ends Help me decide when it has two vehicles. It keeps the vehicles with a package, plus the one being built on the build page.
+  - Checked at 375 and 320: no Help me decide on vehicle 1's Service after coming back. A live-style draft (Help me decide on a bare vehicle 2, saved at checkout) reopens as a Full Interior booking at $253.33, with no error.
+- **The server rule refused what the live form sends.**
+  - *What happened:* a tab opened before the deploy sends Help me decide with vehicle 1's package and a bare vehicle 2.
+  - *Why it mattered:* the live code doesn't wait for the answer, so the customer saw Done, no calendar hold was written, and nobody was told.
+  - *Fix:* `validateWire()` now **leaves out** a bare vehicle beside one with something on it, instead of refusing. That still removes the multi-vehicle discount. Help me decide keeps every vehicle and isn't priced.
+  - *Tests:* a bare vehicle before or after a real one is dropped; two real vehicles are kept; Help me decide with a bare vehicle 2 passes with both.
+  - The `empty_vehicle` refusal no longer exists; an all-empty cart is still `empty_cart`.
