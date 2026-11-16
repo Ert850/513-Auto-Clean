@@ -50,6 +50,27 @@ describe("validateWire: shape", () => {
     rejects((b) => (b.cart.vehicles = [null]), "bad_vehicle");
     rejects((b) => (b.cart.vehicles = [1]), "bad_vehicle");
     rejects((b) => (b.cart.vehicles = [{ packageIds: [] }]), "empty_cart");
+  });
+
+  it("refuses a vehicle with nothing on it beside one that has something (no multi-vehicle discount for nothing)", () => {
+    rejects((b) => b.cart.vehicles.push({ sizeId: "medium", packageIds: [] }), "empty_vehicle");
+    rejects((b) => b.cart.vehicles.unshift({ sizeId: "small" }), "empty_vehicle");
+    const b = good();
+    b.cart.vehicles.push({ sizeId: "medium", packageIds: [] });
+    const r = validateWire(b, { nowMs: NOW, mode: "card_only" });
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.message).toMatch(/^Vehicle 2 has nothing chosen/);
+    // Two real vehicles still book.
+    const two = good();
+    two.cart.vehicles.push({ sizeId: "medium", packageIds: ["basic-interior"], addons: [] });
+    expect(validateWire(two, { nowMs: NOW, mode: "card_only" }).ok).toBe(true);
+  });
+
+  it("Help me decide with two vehicles and nothing on either still passes", () => {
+    const b = good();
+    b.cart.kind = "advice";
+    b.cart.vehicles = [{ sizeId: "small", packageIds: [] }, { sizeId: "large", packageIds: [] }];
+    expect(validateWire(b, { nowMs: NOW, mode: "card_only" }).ok).toBe(true);
     rejects((b) => (b.cart.vehicles = Array(WIRE_LIMITS.maxVehicles + 1).fill(b.cart.vehicles[0])), "too_many_vehicles");
   });
 

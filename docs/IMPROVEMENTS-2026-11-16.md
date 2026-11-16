@@ -32,7 +32,7 @@ Ranked by how much each costs a booking today.
 
 **Help me decide's "Not sure when, either?" box** is pink with a red border, the error look (CLAUDE.md, Colors), like the travel box was. Mockup first.
 
-**Server: refuse a bare vehicle beside a priced one** (validation pass 1). The site no longer sends one; the server would still discount a hand-edited cart. About 5 lines in `wire.ts` plus a test; needs Emmett's yes, because it changes what the booking endpoint accepts.
+~~**Server: refuse a bare vehicle beside a priced one**~~ built on eNov14 with Emmett's yes, November 16 (`empty_vehicle` in `wire.ts`).
 
 **Booking reliability:**
 - **Two customers confirming the same time within about a second can both get in.** The server reads the calendar, then writes. Fix: after writing, read the time again; if another event now overlaps, mark the newer one "CHECK THE TIME" and tell Elijah in the owner email. Server only. (Cycle 2.)
