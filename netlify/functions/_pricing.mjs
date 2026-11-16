@@ -1826,6 +1826,7 @@ function validateWire(body, opts) {
   const kind = cart["kind"] === "inquiry" ? "inquiry" : cart["kind"] === "advice" ? "advice" : "booking";
   const vehicles = [];
   let anything = false;
+  let bareAt = 0;
   for (const rv of rawVehicles) {
     if (!isObj(rv)) return fail("bad_vehicle", "A vehicle entry was not understood.");
     const v = {};
@@ -1908,9 +1909,13 @@ function validateWire(body, opts) {
       };
     }
     if (packageIds.length || addons.length || v.correction) anything = true;
+    else if (!bareAt) bareAt = vehicles.length + 1;
     vehicles.push(v);
   }
   if (!anything && kind !== "advice") return fail("empty_cart", "Pick at least one service.");
+  if (anything && bareAt) {
+    return fail("empty_vehicle", `Vehicle ${bareAt} has nothing chosen. Pick a package for it, or remove it.`);
+  }
   let slot = null;
   const rawSlot = cart["slot"];
   if (rawSlot !== void 0 && rawSlot !== null) {

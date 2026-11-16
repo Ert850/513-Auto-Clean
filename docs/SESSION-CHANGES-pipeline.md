@@ -2269,3 +2269,11 @@ Not confirmed:
 For Emmett's review, server side (not built):
 - **The server accepts a cart with a bare vehicle beside a priced one** (`web/lib/pricing/wire.ts:323-328`) and applies the multi-vehicle discount (`quote.ts:296-303`). The site no longer sends one, but a hand-edited request could.
 - **Proposed:** refuse a vehicle with no package unless every vehicle has none (Help me decide). That's about 5 lines and a test. It changes what the booking endpoint accepts, so it waits for a yes.
+
+### Server: a vehicle with nothing on it is refused (Emmett's yes, November 16)
+
+- **What:** `validateWire()` (`web/lib/pricing/wire.ts`) refuses a cart where any vehicle has no package, add-on or correction while another vehicle does: `empty_vehicle`, "Vehicle N has nothing chosen. Pick a package for it, or remove it."
+- **Why:** the bare vehicle still counted as a second vehicle and took the multi-vehicle discount off the real one. The booking form no longer sends one (`pricedVehicles()`); this closes it for a hand-made request or a tab opened before the deploy.
+- **Unchanged:** Help me decide (`kind: "advice"`), where every vehicle is empty on purpose, and an all-empty booking (still `empty_cart`).
+- **Tests:** two new ones in `wire.test.ts`: a bare vehicle before or after a real one is refused with its number, two real vehicles book, and a two-vehicle Help me decide passes. 767 pass.
+- **Where it runs:** `eNov14` and the deploy preview only. The live site gets it with the merge.

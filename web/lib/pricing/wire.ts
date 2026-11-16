@@ -225,6 +225,8 @@ export function validateWire(body: unknown, opts: ValidateOptions): WireValidati
 
   const vehicles: WireVehicle[] = [];
   let anything = false;
+  // The first vehicle with nothing on it, numbered from 1 (0: none).
+  let bareAt = 0;
 
   for (const rv of rawVehicles) {
     if (!isObj(rv)) return fail("bad_vehicle", "A vehicle entry was not understood.");
@@ -321,11 +323,20 @@ export function validateWire(body: unknown, opts: ValidateOptions): WireValidati
     }
 
     if (packageIds.length || addons.length || v.correction) anything = true;
+    else if (!bareAt) bareAt = vehicles.length + 1;
     vehicles.push(v);
   }
   // The one cart that is allowed to be empty. Everything else with nothing
   // in it is a bug or a poke at the endpoint.
   if (!anything && kind !== "advice") return fail("empty_cart", "Pick at least one service.");
+  // A vehicle with nothing on it beside one that has something still counted
+  // as a second vehicle, so it took the multi-vehicle discount off the real
+  // one (validation pass 1, November 16). The booking form no longer sends
+  // one; this refuses a hand-made or old-tab request. Help me decide sends
+  // vehicles with nothing on them on purpose, all of them, so it passes.
+  if (anything && bareAt) {
+    return fail("empty_vehicle", `Vehicle ${bareAt} has nothing chosen. Pick a package for it, or remove it.`);
+  }
 
   /* ---- slot ---- */
   let slot: number | null = null;
