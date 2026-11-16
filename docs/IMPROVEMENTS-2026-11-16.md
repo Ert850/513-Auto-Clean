@@ -23,6 +23,17 @@ Ranked by how much each costs a booking today.
 
 ## Without mockups
 
+**Short phones, 320×568** (validation pass 2, November 16; screenshots were in the session scratch folder):
+- After a time is picked, the "Go to / Tell us when suits" strip and the footer cover 327 of 568 px.
+- Review's footer is 236 px.
+- Arriving on Time, the first recommended card sits behind the action strip.
+- "More times on <day>" opens its dropdown under the strip.
+- A fix needs a design: for example, folding the strip into the footer, or a shorter footer under 600 px tall. Mockup first.
+
+**Help me decide's "Not sure when, either?" box** is pink with a red border, the error look (CLAUDE.md, Colors), like the travel box was. Mockup first.
+
+**Server: refuse a bare vehicle beside a priced one** (validation pass 1). The site no longer sends one; the server would still discount a hand-edited cart. About 5 lines in `wire.ts` plus a test; needs Emmett's yes, because it changes what the booking endpoint accepts.
+
 **Booking reliability:**
 - **Two customers confirming the same time within about a second can both get in.** The server reads the calendar, then writes. Fix: after writing, read the time again; if another event now overlaps, mark the newer one "CHECK THE TIME" and tell Elijah in the owner email. Server only. (Cycle 2.)
 
