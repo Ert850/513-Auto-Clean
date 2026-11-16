@@ -2025,3 +2025,27 @@ Mockups: `docs/mockups/eNov15-booking-fixes-mockups.png`.
   - a new visitor is drawn once and keeps the version on reload;
   - no script errors.
 - **Also:** `docs/ELIJAH-UPDATE-2026-11-16.pdf`, the handoff to Elijah with all 70 FAQ questions, the 6 to rewrite and 64 new ones (the PDF he asked for).
+
+## Validation of the headline test (November 16)
+
+- **Bug: the control's headline showed first, then changed.**
+  - **Symptom:** a visitor in "across the 513" on a slow phone (1.6 Mbps, 150 ms) saw "Greater Cincinnati." at full opacity for about 0.4 s, then the swap and a shift. With reduced motion it was certain whenever the script was late.
+  - **Root cause:** the swap ran from `js/analytics.js`, which was `defer`, so only after the whole page had parsed. The hero fades in from CSS without waiting for scripts (on purpose: it's the page's largest paint). The comment and `AB-TESTING.md` said "before it fades up", and nothing made that true.
+  - **Fix:** `analytics.js` loads from the head without `defer` (the head partial). A `MutationObserver` swaps each `[data-exp-words]` element as soon as a node follows it, so the parser has closed it. The callback runs before the next paint. The banner and the `data-exp` elements wait for the page to be parsed (`readystatechange` to interactive), the same moment as when the file was deferred.
+- **Gap: nothing checked that a page carries words for every version.** A version added in config without its `data-exp-<version>` attribute would be recorded under its name while its visitors saw the control. `checkExperimentPages()` in `web/scripts/experiments.mjs` now runs in `render-config.mjs` over every page and fails the build. The check also covers `data-exp="test:version"` naming a real test and version. A version can't be called "words".
+- **GA4 events on other pages carried no headline version.** `variantString()` read this page's tests only; it now uses the same list as `AC_EXPS()`.
+- **Docs:**
+  - the runbook lists the headline test in what ships and in what to tell Elijah, with a step to write its real dates into the `note`;
+  - "rebase eNov14" became "merge `origin/main` in", because a rebase needs a force-push;
+  - STATUS no longer lists the test as not started.
+- **Elijah's PDF:** a booking that didn't reach the calendar is subject "NOT ON THE CALENDAR" from the server, and "CHECK THE CALENDAR" only from the backup form. The PDF said only the second; reprinted.
+- **Tests (757 pass):**
+  - the swap waits for the headline to close, then happens before parsing ends;
+  - an ended test shows the winner's words;
+  - GA events on another page carry the version;
+  - the banner still shows once the page is parsed;
+  - the page check, against every page as shipped and six wrong cases.
+- **Checked in headless Chrome on the build** (1.6 Mbps, 150 ms latency, 390 px wide), reading the headline every frame:
+  - versions the-513 and cincinnati, the control, a new visitor, reduced motion, and `analytics.js` held back by 0.8 s;
+  - every time, the first frame with a headline already showed the visitor's version;
+  - no script errors.

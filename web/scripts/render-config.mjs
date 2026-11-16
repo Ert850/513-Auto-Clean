@@ -20,7 +20,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { experimentsForPage } from "./experiments.mjs";
+import { checkExperimentPages, experimentsForPage } from "./experiments.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const TEMPLATE = path.join(root, "js/config.template.js");
@@ -73,6 +73,13 @@ if (/\{\{[A-Z0-9_]+\}\}/.test(out)) {
 // build. JSON is valid JavaScript, and the ids and version names are limited
 // to letters, digits and dashes, so nothing in it can end the statement.
 const experiments = experimentsForPage();
+// And every page's test markup against the file.
+checkExperimentPages(
+  experiments,
+  Object.fromEntries(
+    fs.readdirSync(root).filter((f) => f.endsWith(".html")).map((f) => [f, fs.readFileSync(path.join(root, f), "utf8")]),
+  ),
+);
 
 // The rush fee and discount code files are checked when the pricing code
 // loads. esbuild bundles them without running anything, so load the server

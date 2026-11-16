@@ -40,6 +40,8 @@ export function checkExperiments(input) {
     if (versions.length < 2) bad(where, "needs at least two versions");
     for (const [name, share] of versions) {
       if (!/^[a-z0-9][a-z0-9-]{0,19}$/.test(name)) bad(where, `version "${name}": lower case letters, digits and dashes, at most 20`);
+      // data-exp-words names the test, so a version called "words" would read the test id as its HTML.
+      if (name === "words") bad(where, 'a version can\'t be called "words"');
       if (!Number.isInteger(share) || share < 1) bad(where, `version "${name}": its share must be a whole number, 1 or more`);
     }
     if (x.sources !== undefined) {
@@ -62,4 +64,38 @@ export function checkExperiments(input) {
 /** What the page gets: every test, without names or notes. */
 export function experimentsForPage(file = path.join(root, "config/experiments.json")) {
   return checkExperiments(JSON.parse(fs.readFileSync(file, "utf8")));
+}
+
+/**
+ * Every page that shows a test has to match the file (validation, November 16):
+ * a version added in config without its words on the page would be recorded
+ * under its own name while its visitors saw the control, and nothing would say so.
+ *   data-exp="test:version"   the test and the version exist;
+ *   data-exp-words="test"     the test exists, and every version but the control
+ *                             (whose words are the element's own) has a
+ *                             data-exp-<version> attribute, and no other.
+ * pages: { "index.html": "<html>..." }. Throws naming the page and the test.
+ */
+export function checkExperimentPages(tests, pages) {
+  const byId = new Map(tests.map((t) => [t.id, t]));
+  const bad = (file, what) => {
+    throw new Error(`${file}: ${what} (config/experiments.json, docs/AB-TESTING.md)`);
+  };
+  for (const [file, html] of Object.entries(pages)) {
+    for (const m of html.matchAll(/\bdata-exp="([^"]*)"/g)) {
+      const [id, v] = m[1].split(":");
+      const t = byId.get(id);
+      if (!t) bad(file, `data-exp="${m[1]}" names no test`);
+      if (!t.versions.some(([name]) => name === v)) bad(file, `data-exp="${m[1]}": "${v}" is not a version of ${id}`);
+    }
+    for (const m of html.matchAll(/<[a-zA-Z][^>]*\bdata-exp-words="([^"]*)"[^>]*>/g)) {
+      const id = m[1];
+      const t = byId.get(id);
+      if (!t) bad(file, `data-exp-words="${id}" names no test`);
+      const has = new Set([...m[0].matchAll(/\bdata-exp-([a-z0-9-]+)=/g)].map((a) => a[1]).filter((a) => a !== "words"));
+      const need = t.versions.slice(1).map(([name]) => name);
+      for (const v of need) if (!has.has(v)) bad(file, `${id}: no data-exp-${v} words for version "${v}"`);
+      for (const v of has) if (!need.includes(v)) bad(file, `${id}: data-exp-${v} is not a version other than the control`);
+    }
+  }
 }
