@@ -12,9 +12,8 @@ Elijah's list:
 
 **Mockups:** `docs/mockups/eNov16-next-round-mockups.png`, made like the last round: the eNov14 build beside the same page with the change injected in headless Chrome.
 
-**Approval:**
-- Nothing here is built.
-- G to I need Emmett's go after the mockups.
+**Decision (Emmett, November 16): G to I are on hold.** "G - I requires better photos and videos and makes the website clunkier. Would wait for future input."
+- Nothing here is built. G, H and I wait for better photos and videos, and for new input from Emmett. Don't re-propose them before that.
 - P (pricing) is a plan for Emmett to review before any code.
 
 ## What's already done
@@ -48,7 +47,7 @@ Elijah's list:
    With `addon_add`, these give an attach rate for each add-on and each stain tier (surface against deep). Small change, `funnel.js` only.
    - Check with you: whether the privacy policy's analytics wording covers it. It names analytics in general; no legal change is expected.
 2. **A monthly report from data we already have.**
-   - **Source:** the booking calendar events. They hold every booking's package, add-ons, total, source and A/B versions, and JobsSync already copies them into Elijah's Accounting sheet.
+   - **Source:** the booking calendar events, which hold every booking's package, add-ons, total, source and A/B versions. JobsSync copies only the service, total, pre-tax amount and lead source into Elijah's Accounting sheet, so the report reads the events themselves.
    - **Content:** package mix, attach rates, stain tier mix and average ticket, by month and source.
    - **How:** a script in `web/scripts/` that reads the calendar read-only. No new service, no customer data in the repo.
    - **Back end:** this is the significant part, so it's yours to approve.

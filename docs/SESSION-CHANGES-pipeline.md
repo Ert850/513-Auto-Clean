@@ -2189,3 +2189,31 @@ Checked on https://deploy-preview-13--513-auto-clean.netlify.app (09c3aab) at 37
 - **E:** a Mason ZIP showed "$30 travel" in ink on a white box with a grey rule. A Cincinnati ZIP showed the green "No travel fee".
 - **F:** the button is at 303 to 374 px on `/golf` and `/prestige`, and opens `/book`.
 - No page errors.
+
+## Validation pass over A to F (November 16)
+
+An independent read-only agent reviewed f6eb954..d191609. All 765 tests pass. Fixed, each checked in headless Chrome on the built site:
+- **D: "Back to vehicle 1" on the Help me decide path went to a skipped step.**
+  - *What happened:* Extras showed with no active tab, vehicle 1 read "Help me decide", and the booking stayed an advice booking.
+  - *Cause:* Help me decide (`state.advice`) is a setting for the whole booking, and `backToVehicle()` went to Extras without clearing it.
+  - *Fix:* dropping the vehicle that chose Help me decide now ends Help me decide too.
+  - Checked with the agent's own reproduction: Extras opens with its tab, and vehicle 1 reads Basic Interior.
+- **D: a half-built vehicle 2 could reach checkout.**
+  - *Example:* "Inside and out" with only an interior package.
+  - *Cause:* `firstProblem()` checks only the active vehicle, and `backToVehicle()` kept any vehicle that had a package.
+  - *Fix:* a vehicle that fails its own size, service or package checks is dropped on the way back.
+  - Checked: the "Inside and out" case goes back to one vehicle.
+- **Remove picked the wrong vehicle (older bug; D made it visible).**
+  - *What happened:* with three vehicles, removing vehicle 1 while on vehicle 2 switched to the old vehicle 3.
+  - *Fix:* the active index moves up with the list.
+  - Checked: the medium vehicle stays active.
+- **C: keyboard users could bounce between two lists.**
+  - *Cause:* arrow keys on a closed list fire `input`. Down from "Choose a time" opened Earlier; the next Down hit "‹ Back to standard times", which returned to "Choose a time", and so on.
+  - *Fix:* going back now rests on the group's own item ("Earlier times …"), so the next arrow reaches a standard start.
+  - Checked by stepping option by option.
+- **C: "from" was missing on Help me decide,** where every dollar fee is 0. Groups are now compared by their percentage.
+- **Docs:**
+  - NEXT-ROUND said JobsSync copies add-ons and A/B versions into the Accounting sheet. It copies only the service, total, pre-tax amount and lead source; the report would read the calendar events.
+  - STATUS still listed Earlier and Later times as queued.
+  - book.css's old note about never cutting the phone number now names B's exception.
+- **Left as is:** the dropdown says "‹ Back to standard times" (the November 16 mockup Emmett approved); the November 12 queue note had "‹ Standard times".

@@ -9,6 +9,14 @@ Everything that waits for Imperion to say the toll-free number is verified, in t
 ## 0. The trigger
 
 - [ ] Imperion confirms toll-free verification is approved, in writing. Note the date here.
+- **When to expect it (estimate, November 16):**
+  - **Reference points:** the site went live for review on Saturday, November 14 (PR #12). Imperion's exact submission date isn't recorded here; ask them for it and for the status shown in GoHighLevel.
+  - **Published review times:** HighLevel and Twilio say about 3 business days is usual, and 3 to 5 is common. HighLevel's guide allows up to 4 to 6 weeks.
+  - **So, if they submitted November 14 to 16:**
+    - most likely Thursday, November 19 to Tuesday, November 24;
+    - if slow, early December (Thanksgiving is November 26);
+    - at the outside, late December.
+  - **A rejection restarts the clock.** The known risks are in `TOLL-FREE-VERIFICATION.md`: the first consent box mixes alerts and marketing, and the email is Gmail.
 - [ ] Ask Imperion two things before any change:
   - Can the number go back now, and to which number?
   - Do the Contact form's quote wording and the `/book` consent page still need to stay? Texting (A2P) approval may come at a different time from the toll-free approval.
