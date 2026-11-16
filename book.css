@@ -1819,3 +1819,8 @@ button.bk-tl-s {
 /* Weather limits, said under the heading when they removed days. */
 #bookFunnel .bk-recs-weather { margin: -.35rem 0 .7rem; font-size: .82rem; color: var(--text-soft); }
 #bookFunnel .bk-recs-weather b { color: var(--text); }
+
+/* "You saved" note on its own line under the figure, free to wrap: the price
+   column is nowrap, and "(10% off, tax and rush fee included)" pushed the
+   table wider than a phone (validation cycle 1, November 16). */
+.bk-lines tr.saved td:last-child i { display: block; white-space: normal; text-wrap: balance; }
