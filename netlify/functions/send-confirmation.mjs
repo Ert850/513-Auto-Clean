@@ -4,7 +4,7 @@ import { priceFromWire, validateWire, findPackage, findAddon, vehicleSize, isLiv
 const SHORT_NOTICE_MS = SCHEDULING.shortNoticeHours * 3_600_000;
 /** The drive allowed for when it could not be measured, as the booking form allows. */
 const DRIVE_FALLBACK_MIN = SCHEDULING.driveFallbackMinutes;
-import { blockFeeFor, detailerFor, homeFor, slotStatus, timeFeeWaived } from "./_detailers.mjs";
+import { blockFeeFor, detailerFor, homeFor, inTime, slotStatus, timeFeeWaived } from "./_detailers.mjs";
 import { createBookingEvent, findBookingEvent, gcalAuthMode, gcalConfigured } from "./_gcal.mjs";
 import { addressLine, measureRoundTrip, measuredOneWayMinutes } from "./_routes.mjs";
 import { limited } from "./_ratelimit.mjs";
@@ -321,7 +321,10 @@ export function askedFor(prefer) {
   return [days.join(", "), prefer.flex === true ? "any start that day" : parts.join(", ")].filter(Boolean).join("; ");
 }
 
-function ownerEmail({ contact, when, priced, kind, cart, detailer, asked, notes, consent = {}, calendarFail = "", unchecked = "" }) {
+// extras: where they came from and which A/B test versions they saw. Tests are
+// counted from these emails (docs/AB-TESTING.md), and a booking that never
+// reached the calendar has no event to read them from (validation cycle 2).
+function ownerEmail({ contact, when, priced, kind, cart, detailer, asked, notes, consent = {}, calendarFail = "", unchecked = "", extras = {} }) {
   const a = cart?.address ?? {};
   const where = [a.line1, a.city, a.region, a.zip].filter(Boolean).join(", ");
   const soon = kind === "booking" && cart?.slot && cart.slot - Date.now() < SHORT_NOTICE_MS;
@@ -355,6 +358,9 @@ function ownerEmail({ contact, when, priced, kind, cart, detailer, asked, notes,
 ${detailer ? `<tr><td style="padding:4px 0;color:#5a6069">Detailer</td><td style="padding:4px 0">${esc(detailer.name)}</td></tr>` : ""}
 <tr><td style="padding:4px 0;color:#5a6069">SMS consent</td><td style="padding:4px 0">${consent.sms === true ? "yes" : "no"}</td></tr>
 <tr><td style="padding:4px 0;color:#5a6069">Marketing</td><td style="padding:4px 0">${consent.marketing === true ? "yes" : "no"}</td></tr>
+${extras.source ? `<tr><td style="padding:4px 0;color:#5a6069">Source</td><td style="padding:4px 0">${esc(extras.source)}</td></tr>` : ""}
+${extras.heard ? `<tr><td style="padding:4px 0;color:#5a6069">Heard about us</td><td style="padding:4px 0">${esc(extras.heard)}</td></tr>` : ""}
+${extras.experiments ? `<tr><td style="padding:4px 0;color:#5a6069">A/B tests</td><td style="padding:4px 0">${esc(extras.experiments)}</td></tr>` : ""}
 </table>
 ${
   kind === "advice"
@@ -533,7 +539,6 @@ async function writeCalendar({ contact, cart, priced, extras, payInFull, key, ki
   if (!gcalConfigured()) return { ok: false, reason: "unconfigured" };
   if (!cart.slot) return { ok: false, reason: "no_slot" };
 
-  const events = bookingEvents({ contact, cart, priced, extras, payInFull, kind, detailer, nowMs: Date.now(), measuredMin });
   const phone = String(contact.phone ?? "").replace(/\D/g, "").replace(/^1(?=\d{10}$)/, "");
   const calendarId = detailer ? detailer.bookingsCalendarId : "";
   // A retry of the same booking (Confirm pressed again after an error) finds
@@ -575,6 +580,11 @@ async function writeCalendar({ contact, cart, priced, extras, payInFull, key, ki
   const unchecked = st.status === "unread"
     ? "the calendar could not be read just before it was written, so it was not checked against the other jobs"
     : "";
+  // Built after the re-check, so the end uses the lateness it just found: the
+  // form's figure is from minutes ago, and a job booked since can push the
+  // arrival later (validation cycle 2, November 16: the next job spaced short).
+  const late = Math.max(Number(cart.arrivalLateMin) || 0, st.lateMin || 0);
+  const events = bookingEvents({ contact, cart: { ...cart, arrivalLateMin: late }, priced, extras, payInFull, kind, detailer, nowMs: Date.now(), measuredMin });
   const first = await createBookingEvent({ ...events[0], key, phone, calendarId });
   if (!first.ok) return first;
   if (unchecked) first.unchecked = unchecked;
@@ -653,7 +663,8 @@ export async function handler(event) {
   // the email matches the price the customer saw, and the drive is measured
   // from their home (DETAILER_HOMES).
   const detailer = detailerFor(payload?.detailer, cart);
-  const measured = await measuredOneWayMinutes(cart, homeFor(detailer));
+  // Out of time is the same as unmeasured: the form's fallback drive (_detailers.mjs inTime).
+  const measured = await inTime(measuredOneWayMinutes(cart, homeFor(detailer))).catch(() => null);
   const priced = priceFromWire(cart, {
     measuredOneWayMinutes: measured,
     nowMs: Date.now(),
@@ -682,6 +693,7 @@ export async function handler(event) {
   ctx.asked = cart.slot ? "" : askedFor(rawCart.prefer);
   ctx.flex = !cart.slot && rawCart.prefer?.flex === true;
   ctx.notes = extras.notes;
+  ctx.extras = extras;
 
   // THE CALENDAR FIRST. It is the half that stops the slot being sold again,
   // and it is the half nobody can reconstruct from memory at 11pm.

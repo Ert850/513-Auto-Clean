@@ -15,6 +15,21 @@
 import { parseDetailers, waivesFeeAt, canDo, wireNeeds, loadWindow, blockFeeAt, localMinutesOfDay, DEFAULT_RULES, checkRange, slotStillFree } from "./_pricing.mjs";
 import { readPersonal } from "./personal-busy.mjs";
 
+/*
+ * Every read before a booking is written gets a time limit (validation cycle 2,
+ * November 16). These reads sit in the booking's path, and a slow calendar or
+ * feed could run the function past Netlify's limit before anything was written
+ * or Elijah was told. Out of time counts as "could not read", which each
+ * caller already handles: the fee shown stands, the time is written as one to
+ * check, the personal feed is skipped.
+ */
+const READ_LIMIT_MS = 4000;
+export function inTime(promise, ms = READ_LIMIT_MS) {
+  let timer;
+  const late = new Promise((_, reject) => { timer = setTimeout(() => reject(new Error(`timed out after ${ms} ms`)), ms); });
+  return Promise.race([promise, late]).finally(() => clearTimeout(timer));
+}
+
 /** Elijah's OPEN blocks live on 513 Availability (as js/config.template.js). */
 const OWNER_AVAILABILITY = process.env.GOOGLE_OWNER_AVAILABILITY_ID ||
   "9f26a370ac8629b6df3f7f4e8181aa1086f3acb2b47866e01a1b868cd4ab8161@group.calendar.google.com";
@@ -72,7 +87,7 @@ export async function blockFeeFor(detailer, slotMs, shownBp) {
   const ids = detailer ? [detailer.availabilityCalendarId].filter(Boolean) : ownerFeeCalendars();
   if (apiKey && ids.length) {
     try {
-      const win = await loadWindow({ calendarId: ids[0], extraCalendarIds: ids.slice(1), apiKey }, slotMs - 12 * 3600_000, slotMs + 12 * 3600_000);
+      const win = await inTime(loadWindow({ calendarId: ids[0], extraCalendarIds: ids.slice(1), apiKey }, slotMs - 12 * 3600_000, slotMs + 12 * 3600_000));
       const fee = blockFeeAt(win, slotMs);
       if (fee !== null) return fee;
       // Read fine, but no OPEN block holds this start: the detailer is not
@@ -131,16 +146,16 @@ export async function slotStatus(detailer, job, env = process.env, plainDrive = 
   if (!apiKey || !cfg.calendarId || !range) return { status: "unconfigured" };
   try {
     const [win, personal] = await Promise.all([
-      loadWindow(cfg, range.from, range.to),
+      inTime(loadWindow(cfg, range.from, range.to)),
       // Elijah's personal calendar, on his times only. As in the form, its
       // failing never blocks a booking.
-      detailer ? { body: { busy: [] } } : readPersonal().catch(() => ({})),
+      detailer ? { body: { busy: [] } } : inTime(readPersonal()).catch(() => ({})),
     ]);
     const cal = { open: win.open, busy: [...(win.busy || []), ...(personal.body?.busy || [])] };
     const res = slotStillFree(job, cal);
     if (res.free) return { status: "free", lateMin: res.lateMin };
     if (plainDrive && parseDetailers(env.DETAILERS).crew.length > 1) {
-      const formDrive = await plainDrive().catch(() => null);
+      const formDrive = await inTime(plainDrive()).catch(() => null);
       if (Number.isFinite(formDrive) && formDrive < job.driveMin) {
         const lenient = slotStillFree({ ...job, driveMin: formDrive }, cal);
         if (lenient.free) return { status: "free", lateMin: lenient.lateMin, tight: true };

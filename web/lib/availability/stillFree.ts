@@ -92,6 +92,14 @@ export function slotStillFree(
     ignoreReturnAfterMin: IGNORE_RETURN_AFTER_MIN,
     ignoreOutboundBeforeMin: job.driveMin <= 60 ? IGNORE_OUTBOUND_BEFORE_MIN : undefined,
     arrivalWindowMin: job.arrivalWindowMin,
+    // Paint correction keeps its own starts and days, as the form offers them
+    // (validation cycle 2, November 16: a hand-edited request got a Tuesday 3pm).
+    ...(job.correction
+      ? {
+          preferredStartsMin: { weekday: CORRECTION_RULES.allowedStartsMin, weekend: CORRECTION_RULES.allowedStartsMin },
+          allowedWeekdays: SCHEDULING.correctionWeekdays,
+        }
+      : {}),
   });
   // To the minute, not the millisecond: the grid is rebuilt from a different
   // `now` and need not land on the same instant.

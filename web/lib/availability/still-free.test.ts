@@ -8,7 +8,7 @@ import path from "node:path";
 import { checkRange, slotStillFree, type StillFreeJob } from "./stillFree.js";
 import { localDayStart, localTimeOnDay } from "../time/zone.js";
 // @ts-expect-error: plain ESM Netlify function, no types
-import { slotStatus } from "../../../netlify/functions/_detailers.mjs";
+import { inTime, slotStatus } from "../../../netlify/functions/_detailers.mjs";
 // @ts-expect-error: plain ESM Netlify function, no types
 import { handler } from "../../../netlify/functions/send-confirmation.mjs";
 // @ts-expect-error: plain ESM Netlify function, no types
@@ -40,6 +40,18 @@ describe("slotStillFree: the one check, form and server", () => {
     expect(slotStillFree(job({ arrivalWindowMin: 0 }), { open: OPEN, busy: [{ start: at(10 * 60), end: at(13 * 60) }] }).free).toBe(false);
   });
 
+  it("paint correction keeps its own start times and days in the one-day check (validation cycle 2)", () => {
+    // Saturday after D0 (a Tuesday), open all day.
+    const sat = (min: number) => localTimeOnDay(D0, 4, min, TZ);
+    const open = [{ start: sat(6 * 60), end: sat(22 * 60) }, ...OPEN];
+    const c = (slotMs: number) => slotStillFree(job({ slotMs, correction: true, serviceMin: 180 }), { open, busy: [] }).free;
+    expect(c(sat(8 * 60))).toBe(true);
+    expect(c(sat(15 * 60))).toBe(false); // not one of correction's starts
+    expect(c(at(8 * 60))).toBe(false); // a Tuesday
+    // Other jobs are unchanged.
+    expect(slotStillFree(job({ slotMs: at(15 * 60) }), { open: OPEN, busy: [] }).free).toBe(true);
+  });
+
   it("taken outside the hours", () => {
     expect(slotStillFree(job({ slotMs: at(21 * 60) }), { open: OPEN, busy: [] }).free).toBe(false);
   });
@@ -58,16 +70,20 @@ describe("slotStillFree: the one check, form and server", () => {
 });
 
 /** Google stubbed: 513 Availability has OPEN 6am to 10pm; `jobs` are on 513 Auto Clean. */
-function stubGoogle(jobs: { start: number; end: number }[], opts: { fail?: boolean } = {}) {
+function stubGoogle(jobs: { start: number; end: number }[], opts: { fail?: boolean; findStatus?: number } = {}) {
   const writes: string[] = [];
+  const bodies: { end?: { dateTime: string } }[] = [];
   const mail: string[] = [];
+  const html: string[] = [];
   vi.stubGlobal("fetch", async (url: string, o: { method?: string; body?: string } = {}) => {
     const u = String(url);
     if (u.includes("oauth2.googleapis.com/token")) return new Response(JSON.stringify({ access_token: "t", expires_in: 3600 }));
-    if (u.includes("api.resend.com")) { mail.push(JSON.parse(o.body ?? "{}").subject); return new Response("{}"); }
-    if (o.method === "POST" && u.includes("/events")) { writes.push(u); return new Response(JSON.stringify({ id: "new1" })); }
-    // The retry check (by booking key): nothing there yet.
-    if (u.includes("privateExtendedProperty")) return new Response(JSON.stringify({ items: [] }));
+    if (u.includes("api.resend.com")) { const b = JSON.parse(o.body ?? "{}"); mail.push(b.subject); html.push(b.html); return new Response("{}"); }
+    if (o.method === "POST" && u.includes("/events")) { writes.push(u); bodies.push(JSON.parse(o.body ?? "{}")); return new Response(JSON.stringify({ id: "new1" })); }
+    // The retry check (by booking key): nothing there yet, or Google failing.
+    if (u.includes("privateExtendedProperty")) {
+      return opts.findStatus ? new Response("down", { status: opts.findStatus }) : new Response(JSON.stringify({ items: [] }));
+    }
     if (u.includes("/events?")) {
       if (opts.fail) return new Response("down", { status: 503 });
       const avail = u.includes(encodeURIComponent("avail@x"));
@@ -78,7 +94,7 @@ function stubGoogle(jobs: { start: number; end: number }[], opts: { fail?: boole
     }
     return new Response("no", { status: 500 });
   });
-  return { writes, mail };
+  return { writes, bodies, mail, html };
 }
 
 const ENV = {
@@ -103,6 +119,11 @@ describe("slotStatus: the server reads the calendar again", () => {
     expect((await slotStatus(null, job())).status).toBe("taken");
     stubGoogle([], { fail: true });
     expect((await slotStatus(null, job())).status).toBe("unread");
+  });
+
+  it("a read that hangs counts as unread, not as a wait past Netlify's limit (validation cycle 2)", async () => {
+    await expect(inTime(new Promise(() => {}), 20)).rejects.toThrow(/timed out/);
+    await expect(inTime(Promise.resolve(7), 20)).resolves.toBe(7);
   });
 
   it("nothing to check against without a key", async () => {
@@ -175,6 +196,34 @@ describe("send-confirmation: a taken time is refused, nothing written or sent", 
     expect(r.statusCode).toBe(200);
     expect(g.writes).toHaveLength(1);
     expect(g.mail.some((s) => /^BOOKING, /.test(s))).toBe(true);
+  });
+
+  it("a retry whose key lookup fails is not told its own first try took the time (validation cycle 2, November 16)", async () => {
+    // The first try's event is at 1pm; Google fails the lookup by booking key.
+    const g = stubGoogle([{ start: at(13 * 60), end: at(15 * 60) }], { findStatus: 503 });
+    const r = await post();
+    expect(r.statusCode).toBe(200);
+    expect(g.writes).toHaveLength(0);
+    expect(g.mail.some((s) => /^NOT ON THE CALENDAR, /.test(s))).toBe(true);
+  });
+
+  it("the event ends at the arrival the server just found, not the form's older one (validation cycle 2)", async () => {
+    // A job ending 12:30, booked after the form checked: the 1pm start stands, arriving 30 minutes late.
+    const g = stubGoogle([{ start: at(10 * 60), end: at(12 * 60 + 30) }]);
+    const r = await post();
+    expect(r.statusCode).toBe(200);
+    const { priceFromWire } = await import("../server-entry.js");
+    const minutes = priceFromWire({ vehicles: [{ sizeId: "small", packageIds: ["basic-interior"], addons: [] }], zip: "45220", slot: at(13 * 60) } as never, { nowMs: Date.now() }).serviceDurationMin;
+    expect(Date.parse(g.bodies[0]!.end!.dateTime)).toBe(at(13 * 60) + (30 + minutes) * 60_000);
+  });
+
+  it("the owner email names the source, the answer to where they heard of us, and the A/B test versions (validation cycle 2)", async () => {
+    const g = stubGoogle([]);
+    await post({ experiments: "hero-headline: the-513", source: "golf / print / qr", heard: "Google" });
+    const owner = g.html[g.mail.findIndex((s) => /^BOOKING, /.test(s))]!;
+    expect(owner).toContain("hero-headline: the-513");
+    expect(owner).toContain("golf / print / qr");
+    expect(owner).toContain("Heard about us");
   });
 
   it("unread: written, but the owner is told to check and the customer is not told it is confirmed", async () => {

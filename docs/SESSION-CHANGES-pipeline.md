@@ -2049,3 +2049,22 @@ Mockups: `docs/mockups/eNov15-booking-fixes-mockups.png`.
   - versions the-513 and cincinnati, the control, a new visitor, reduced motion, and `analytics.js` held back by 0.8 s;
   - every time, the first frame with a headline already showed the visitor's version;
   - no script errors.
+
+## Validation cycle 2: the server and the calendar (November 16)
+
+- **A retry could be told its own booking was "taken".**
+  - **Root cause:** `findBookingEvent` (`_gcal.mjs`) returned `null`, meaning "no earlier event", when Google failed the lookup or there was no token. So `lookupFailed` was never set, the first try's own event read as a clash, and the form said "Someone booked that time".
+  - **Fix:** it throws when it couldn't look. The booking then goes through as a request, with nothing written and "NOT ON THE CALENDAR" to Elijah, as designed for an unknown retry. `booking-followup` already catches it.
+- **The event end ignored the arrival delay the server had just found.**
+  - **Root cause:** the events were built before the re-check, from the form's `arrivalLateMin`. A job booked since could push the arrival later, and the next job that day was then spaced short.
+  - **Fix:** the events are built after `slotStatus`, with the larger of the two lateness figures.
+- **The owner email didn't name the A/B test versions, the source or "heard about us".** Those were only in the calendar event, so a booking with no event recorded them nowhere. They're now rows in the email, escaped.
+- **No time limit on the reads before the write** (the calendars, the personal feed, Maps). `inTime()` (4 s) in `_detailers.mjs`: out of time counts as "could not read", which every caller already handles.
+- **Paint correction's starts and days weren't checked on the server's one-day path.** `slotStillFree` now passes them, as the form does.
+- **Not fixed, by design:** two different customers confirming the same time within about a second can both pass, because the check reads and then writes. The window is far smaller than before fix 1. Closing it needs a re-read after writing, which is a design change; it's in the improvements list.
+- **Tests (762 pass):**
+  - the failed-lookup retry;
+  - the event end with the server's lateness;
+  - the owner-email rows;
+  - the time limit;
+  - correction starts and days.
