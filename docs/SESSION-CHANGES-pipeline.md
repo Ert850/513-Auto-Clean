@@ -2095,3 +2095,18 @@ Mockups: `docs/mockups/eNov15-booking-fixes-mockups.png`.
   - the review town;
   - R6's new cases;
   - the photo gate.
+
+## Validation cycle 1: the booking form (November 16)
+
+- **The price table scrolled sideways on phones when a fee met a discount.**
+  - **Root cause:** the new "You saved" note ("(10% off, tax and rush and early start fee included)") sat in the price column, which is `nowrap`. At 375 px the table measured 444 px.
+  - **Fix:** the note is on its own line under the figure and wraps (`book.css`, `tr.saved td:last-child i`).
+  - **Measured at 320, 375 and 414:** the table is 254, 309 and 348 px wide, inside its box; the page doesn't scroll sideways.
+- **The check before Confirm used a different drive for a multi-day job than the search that offered it.**
+  - **Root cause:** `verifySlot` used `driveFor()` (per detailer), while `paintSlotsInner` plans long jobs with `travelAllowanceMin()`. The two plans could differ, so a free time read as taken.
+  - **Fix:** a job past one day is checked with `travelAllowanceMin()`.
+  - **Also:** `measureEachDetailer` re-measures when the job length changes, not only the address, because the drive home is timed from the finish.
+- **Browse list:** Showroom Ready Restoration's row showed the total with Full Interior beside the add-on's 3 hours alone. It now shows the whole job's time.
+- **Done when the calendar couldn't be confirmed:** the title said "Request sent", but the body said "We have your booking". It now says "We have your request for …. We will confirm the time with you shortly."
+- **A detailer with no arrival window (DETAILERS allows 0)** read "10am to 10am" and "within its first 0 minutes". It now reads "arrive 10am" and "We arrive at that time".
+- Tests: 765 pass. The savings sweep the agent ran (12,576 discounted combinations) found no wrong figure.

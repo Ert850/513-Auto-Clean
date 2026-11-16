@@ -424,7 +424,9 @@
           category: a.scope,
           priceCents: base ? base.priceCents + (t.withPackage && t.withPackage[t.totalWith] !== undefined ? t.withPackage[t.totalWith] : t.priceCents) : t.priceCents,
           pricePlus: Boolean(base), totalWith: base ? base.name : '', withList: withList,
-          durationMin: t.durationMin, tagline: a.description, featured: false,
+          // The whole job's time beside the whole job's price (validation cycle 1:
+          // "$445+ total with Full Interior" sat next to the add-on's 3 hrs).
+          durationMin: base ? (base.durationMin || 0) + t.durationMin : t.durationMin, tagline: a.description, featured: false,
           note: a.note || '', detail: t.description || '',
           search: a.name + ' ' + t.label + ' ' + a.description + ' ' + (t.description || '') + ' ' + a.scope
         });
@@ -935,6 +937,8 @@
   function arrivalWindow(ms) {
     var m = localMin(ms);
     var w = windowMin();
+    // A detailer with no arrival window (DETAILERS allows 0): "10am to 10am" said nothing.
+    if (!w) return endLabel(m);
     return endLabel(m).replace(/(am|pm)$/, endLabel(m).slice(-2) === endLabel(m + w).slice(-2) ? '' : '$1') + ' to ' + endLabel(m + w);
   }
 
@@ -1611,10 +1615,14 @@
 
     // The same check the server runs before it writes the job
     // (P.slotStillFree, calendar fix 1), over Cincinnati days.
+    // A job past one day is offered from travelAllowanceMin() (paintSlotsInner),
+    // so it's checked with the same drive, or the plan could differ and a free
+    // time read as taken (validation cycle 1, November 16).
+    var hold = holdMinutes(), d1 = driveFor(who.id);
     var job = {
       slotMs: slot,
-      serviceMin: holdMinutes(),
-      driveMin: driveFor(who.id),
+      serviceMin: hold,
+      driveMin: P.fitsOneDay(hold, P.LONGEST_DAY, d1, d1) ? d1 : travelAllowanceMin(),
       hasExterior: hasExterior(),
       correction: hasCorrection(),
       arrivalWindowMin: who.arrivalWindowMin
@@ -2491,15 +2499,17 @@
   }
   function measureEachDetailer() {
     var line = addressLine();
-    if (travelByKey === line.toUpperCase()) return;
-    travelByKey = line.toUpperCase();
+    // The drive home is timed from the finish, so a different job length is a different measurement.
+    var key = line.toUpperCase() + '|' + holdMinutes();
+    if (travelByKey === key) return;
+    travelByKey = key;
     travelBy = {};
     crew().forEach(function (d) {
       fetch('/api/travel?address=' + encodeURIComponent(line) + '&serviceMin=' + encodeURIComponent(holdMinutes()) +
             '&zip=' + encodeURIComponent(state.address.zip || '') + (d.owner ? '' : '&detailer=' + encodeURIComponent(d.id)), { cache: 'default' })
         .then(function (r) { return r.ok ? r.json() : Promise.reject(new Error(String(r.status))); })
         .then(function (j) {
-          if (travelByKey !== line.toUpperCase()) return;
+          if (travelByKey !== key) return;
           if (j && j.reachable !== false && !j.tooFar && typeof j.minutes === 'number') {
             travelBy[d.id] = j.minutes;
             scheduleSlotsRefresh();
@@ -3987,7 +3997,8 @@
       html += '<p class="bk-wk-none">Nothing open in the next two weeks for this detail. ' +
         'See additional times for later dates, or tell us when suits.</p>';
     } else {
-      html += '<p class="bk-recs-sub">Pick the time that suits you. We arrive within its first ' + spanWords(windowMin()) +
+      html += '<p class="bk-recs-sub">Pick the time that suits you. ' +
+        (windowMin() ? 'We arrive within its first ' + spanWords(windowMin()) : 'We arrive at that time') +
         (dur ? ', and the detail takes about ' + esc(fmtDur(dur)) : '') + '.</p>' + weatherLine(calc);
     }
     picks.forEach(function (pk, i) {
@@ -4632,7 +4643,7 @@
 
   /** "Arriving between 6 and 7am" (owner, November 11). */
   function arrivingBetween(ms) {
-    return 'Arriving between ' + arrivalWindow(ms).replace(' to ', ' and ');
+    return windowMin() ? 'Arriving between ' + arrivalWindow(ms).replace(' to ', ' and ') : 'Arriving at ' + arrivalWindow(ms);
   }
 
   /**
@@ -7426,6 +7437,11 @@
               longWhen(state.slot) +
               '</b>. It is not confirmed until we reply, which depends on whether a detailer can take it. ' +
               'We will be in touch as fast as we can. Your total is <b>' + $(quote.totalCents) + '</b>' + travelWord(quote) + '.'
+          : state.unconfirmed
+          // The calendar could not be confirmed (validation cycle 1, November
+          // 16): the title says "Request sent", so the body says request too.
+          ? 'We have your request for <b>' + longWhen(state.slot) + '</b>. We will confirm the time with you shortly. ' +
+              'Your total is <b>' + $(quote.totalCents) + '</b>' + travelWord(quote) + '.'
           : 'We have your booking' + (state.slot ? ' for <b>' +
               longWhen(state.slot) +
               '</b>' : '') + '. Your total is <b>' + $(quote.totalCents) + '</b>' + travelWord(quote) + '.') +
