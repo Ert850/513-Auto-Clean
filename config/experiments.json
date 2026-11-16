@@ -24,6 +24,17 @@
         "code": 50
       },
       "note": "Owner, November 11, 2026: a discount may not be needed because the story sells. Start the week the golf booklets reach golfers (spring into summer 2027): the checklist is in docs/AB-TESTING.md, 'When to start the golf code test'."
+    },
+    {
+      "id": "hero-headline",
+      "name": "Home hero headline: Greater Cincinnati, Cincinnati, or across the 513",
+      "status": "running",
+      "versions": {
+        "greater-cincinnati": 34,
+        "cincinnati": 33,
+        "the-513": 33
+      },
+      "note": "Emmett, November 16, 2026: a first, low-stakes test to prove the A/B system end to end (split, stickiness, the version in booking emails and calendar events, GA4 and Clarity). Question: does the place in the headline change bookings per home-page visitor? Words: index.html <h1> (data-exp-words). Mockups: docs/mockups/eNov16-hero-513-mockups.png. Starts when eNov14 is live; run 4 weeks, then set status ended with the winner. Expect a lean, not proof, at our traffic."
     }
   ]
 }

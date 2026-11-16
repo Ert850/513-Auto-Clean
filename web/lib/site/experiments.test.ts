@@ -38,16 +38,21 @@ function page(opts: {
   random?: number;
   ga?: string;
   elements?: string[];
+  words?: { test: string; versions: Record<string, string>; html: string }[];
 }) {
   const els = (opts.elements ?? []).map((v) => {
     const classes = new Set<string>();
     return { attr: v, classList: { add: (c: string) => classes.add(c) }, getAttribute: () => v, shown: () => classes.has("exp-on") };
   });
+  const words = (opts.words ?? []).map((w) => ({
+    innerHTML: w.html,
+    getAttribute: (a: string) => (a === "data-exp-words" ? w.test : a.startsWith("data-exp-") ? w.versions[a.slice(9)] ?? null : null),
+  }));
   const gtagCalls: unknown[][] = [];
   const doc = {
     readyState: "interactive",
     addEventListener() {},
-    querySelectorAll: (sel: string) => (sel === "[data-exp]" ? els : []),
+    querySelectorAll: (sel: string) => (sel === "[data-exp]" ? els : sel === "[data-exp-words]" ? words : []),
     createElement: () => ({ setAttribute() {}, addEventListener() {}, set innerHTML(_v: string) {} }),
     head: { appendChild() {} },
     body: { appendChild() {} },
@@ -72,7 +77,7 @@ function page(opts: {
   // gtag is created when analytics loads; record what reaches it.
   const dl = (win["dataLayer"] as unknown[][] | undefined) ?? [];
   for (const a of dl) gtagCalls.push(Array.from(a as ArrayLike<unknown>));
-  return { win: win as Record<string, (...a: unknown[]) => string>, local, els, gtagCalls, dl: () => (win["dataLayer"] as unknown[] | undefined) ?? [] };
+  return { win: win as Record<string, (...a: unknown[]) => string>, local, els, words, gtagCalls, dl: () => (win["dataLayer"] as unknown[] | undefined) ?? [] };
 }
 
 const SPLIT: Test = { id: "golf-code", status: "running", versions: [["no-code", 50], ["code", 50]], sources: ["golf"] };
@@ -134,6 +139,27 @@ describe("the split in the browser (js/analytics.js)", () => {
   it("shows only the elements for the chosen version", () => {
     const p = page({ tests: [SPLIT], search: "?utm_source=golf", random: 0.9, elements: ["golf-code:code", "golf-code:no-code"] });
     expect(p.els.map((e) => e.shown())).toEqual([true, false]);
+  });
+
+  it("swaps a headline's words for a visitor in another version, and leaves the control's for everyone else (November 16)", () => {
+    const HEAD: Test = { id: "hero-headline", status: "running", versions: [["greater-cincinnati", 34], ["cincinnati", 33], ["the-513", 33]] };
+    const w = { test: "hero-headline", html: "in Greater Cincinnati.", versions: { cincinnati: "in Cincinnati.", "the-513": "across the 513." } };
+    expect(page({ tests: [HEAD], random: 0.1, words: [w] }).words[0]!.innerHTML).toBe("in Greater Cincinnati.");
+    expect(page({ tests: [HEAD], random: 0.5, words: [w] }).words[0]!.innerHTML).toBe("in Cincinnati.");
+    expect(page({ tests: [HEAD], random: 0.9, words: [w] }).words[0]!.innerHTML).toBe("across the 513.");
+    expect(page({ tests: [{ ...HEAD, status: "off" }], random: 0.9, words: [w] }).words[0]!.innerHTML).toBe("in Greater Cincinnati.");
+  });
+
+  it("a booking on another page still names the version the visitor was given (November 16)", () => {
+    const HEAD: Test = { id: "hero-headline", status: "running", versions: [["greater-cincinnati", 34], ["cincinnati", 33], ["the-513", 33]] };
+    const local = store();
+    const home = page({ tests: [HEAD], random: 0.9, local, words: [{ test: "hero-headline", html: "x", versions: { "the-513": "y" } }] });
+    expect(home.win.AC_EXPS!()).toBe("hero-headline: the-513");
+    // Services: no headline on this page, so nothing asks; the booking email still says which one they saw.
+    const services = page({ tests: [HEAD], local });
+    expect(services.win.AC_EXPS!()).toBe("hero-headline: the-513");
+    // A test that has ended is not reported.
+    expect(page({ tests: [{ ...HEAD, status: "ended", winner: "cincinnati" }], local }).win.AC_EXPS!()).toBe("");
   });
 
   it("tells Google Analytics only after Accept", () => {
