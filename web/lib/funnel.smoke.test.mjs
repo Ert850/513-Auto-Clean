@@ -495,7 +495,8 @@ describe("the booking funnel opens", () => {
     // that does not match the slot the customer was offered.
     const funnel = fs.readFileSync(path.join(ROOT, "js/funnel.js"), "utf8");
     expect(funnel, "the funnel must not invent its own hold").toContain("P.ADVICE_HOLD_MIN");
-    expect(funnel).toMatch(/function holdMinutes\(\) \{ return totalDurationMin\(\) \|\| P\.ADVICE_HOLD_MIN; \}/);
+    // Help me decide holds at least the advice block (validation pass 4); anything else its own length.
+    expect(funnel).toMatch(/function holdMinutes\(\) \{[\s\S]{0,160}state\.advice \? Math\.max\(totalDurationMin\(\), P\.ADVICE_HOLD_MIN\) : totalDurationMin\(\) \|\| P\.ADVICE_HOLD_MIN;/);
 
     const conf = fs.readFileSync(path.join(ROOT, "netlify/functions/send-confirmation.mjs"), "utf8");
     expect(conf, "the calendar event must use the same block").toContain("ADVICE_HOLD_MIN");

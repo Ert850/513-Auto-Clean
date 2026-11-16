@@ -1914,7 +1914,11 @@ function validateWire(body, opts) {
     vehicles.push(v);
   }
   if (!anything && kind !== "advice") return fail("empty_cart", "Pick at least one service.");
+  const droppedVehicles = [];
   if (anything && kind !== "advice" && bare.some(Boolean)) {
+    bare.forEach((b, i) => {
+      if (b) droppedVehicles.push(i + 1);
+    });
     for (let i = vehicles.length - 1; i >= 0; i--) if (bare[i]) vehicles.splice(i, 1);
   }
   let slot = null;
@@ -2026,7 +2030,7 @@ function validateWire(body, opts) {
     ...address ? { address } : {},
     payInFull
   };
-  return { ok: true, booking: { cart: clean, contact, consent, kind, payInFull } };
+  return { ok: true, booking: { cart: clean, contact, consent, kind, payInFull, ...droppedVehicles.length ? { droppedVehicles } : {} } };
 }
 function driveTooFar(oneWayMinutes) {
   return typeof oneWayMinutes === "number" && oneWayMinutes > MAX_ONE_WAY_MINUTES;
