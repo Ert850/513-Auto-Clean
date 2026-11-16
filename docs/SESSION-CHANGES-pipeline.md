@@ -2303,3 +2303,8 @@ For Emmett's review, server side (not built):
   - *Fix:* `validateWire()` now **leaves out** a bare vehicle beside one with something on it, instead of refusing. That still removes the multi-vehicle discount. Help me decide keeps every vehicle and isn't priced.
   - *Tests:* a bare vehicle before or after a real one is dropped; two real vehicles are kept; Help me decide with a bare vehicle 2 passes with both.
   - The `empty_vehicle` refusal no longer exists; an all-empty cart is still `empty_cart`.
+
+**e1d1c0b on the preview:**
+- **`create-payment`:** carts with a bare vehicle 1 or 2 now pass the cart check and stop at the next step (`mandate_required`, sent on purpose with no authorization, so nothing reaches Stripe). An all-empty cart is still `empty_cart`.
+- **Not sent:** a request that would pass every check. It would write a booking or contact Stripe. That the bare vehicle is left out is covered by `wire.test.ts`.
+- **At 375 and 320:** no Help me decide on vehicle 1's Service after coming back from vehicle 2. A live-style draft (Help me decide on a bare vehicle 2, saved at checkout) reopens as Full Interior at $253.33, with no errors.
