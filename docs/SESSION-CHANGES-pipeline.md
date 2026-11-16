@@ -2068,3 +2068,30 @@ Mockups: `docs/mockups/eNov15-booking-fixes-mockups.png`.
   - the owner-email rows;
   - the time limit;
   - correction starts and days.
+
+## Validation cycle 3: city and service pages (November 16)
+
+- **R1, "a review from this area", passed for any Cincinnati review.**
+  - **Root cause:** the check matched the review's town against `placeNames()`, which splits "Price Hill, Cincinnati, OH" into `cincinnati` too.
+  - **Fix:** `reviewFromArea()` takes the review's own town (before a comma or bracket) and requires it to be the page's name, a neighborhood or an `areaServed` place, whole.
+- **Unchecked photos had no gate.** Elijah's 5 pairs would have led the home carousel on the live site.
+  - **Fix:** they carry `"reviewed": false`. `build-dist` fails on one outside a preview (`isPreviewBuild`), and `_howToAdd` says how.
+  - `third-row-seat-stains` is a portrait before against a landscape after. That's written into the runbook's review step.
+- **Drafts reached any build that wasn't exactly `CONTEXT=production`,** for example a laptop build deployed with `--prod`.
+  - **Fix:** `distPages()` includes drafts only on Netlify previews or with `PREVIEW_BUILD=1`.
+  - The test now checks the behaviour across contexts, not the source line.
+- **R6 holes:**
+  - a hyphenated count ("a 15-minute drive", "two-hour job", "30-mile") wasn't caught; now it is;
+  - a travel promise ("free travel", "no travel fee"), the spec's own example, is caught too.
+  - "Removal" is left alone: "Pet Hair Removal" is the catalog's own name, a parked question for Emmett.
+- **One job could be "local" to two city pages.** The build now fails on a pair used as a local job on more than one page.
+- **Service-page structured data stated the small-car "from" price as exact.** It's now a `priceSpecification` with `minPrice`.
+- **R2 gaps:** service pages are now compared with the city pages, `faq.html` and `about.html` as well. It passes today.
+- **Alt text:** the home "Paint Correction + Ceramic Coatings" button's photo is the headlight pair, and its alt now says so.
+  - The label is Elijah's (November 13). Showroom Ready does include a real ceramic coating, so it stays.
+- **Checked:** `/slug` addresses without `.html` answer 200 on the Deploy Preview (Netlify serves `slug.html`). Only the local demo server returned 404.
+- **Tests (765 pass):**
+  - drafts across contexts;
+  - the review town;
+  - R6's new cases;
+  - the photo gate.

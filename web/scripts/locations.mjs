@@ -57,6 +57,33 @@ export function publishedPages() {
 }
 
 /**
+ * The generated pages a build copies into dist/. Drafts only where a preview is
+ * the point: Netlify's Deploy Previews, branch deploys and `netlify dev`, or a
+ * local build run with PREVIEW_BUILD=1 (isPreviewBuild). Anything else, including a laptop
+ * build later deployed with `netlify deploy --prod`, gets published pages
+ * alone (validation cycle 3, November 16: "anything but production" let
+ * drafts reach any other route to the live site).
+ */
+export const PREVIEW_CONTEXTS = ["deploy-preview", "branch-deploy", "dev"];
+export function isPreviewBuild(env = process.env) {
+  return PREVIEW_CONTEXTS.includes(env.CONTEXT) || env.PREVIEW_BUILD === "1";
+}
+export function distPages(env = process.env) {
+  return isPreviewBuild(env) ? generatedPages() : publishedPages();
+}
+
+/**
+ * Before/after pairs nobody has checked yet ("reviewed": false in
+ * data/gallery.json): plates, faces, house numbers, papers left in the car,
+ * mismatched crops. They show on previews so a person can check them; any
+ * other build fails while one is left (validation cycle 3, November 16: the
+ * home Results carousel would have shown Elijah's five unchecked pairs first).
+ */
+export function unreviewedPairs(gallery) {
+  return (gallery.pairs ?? []).filter((p) => p.reviewed === false).map((p) => p.slug);
+}
+
+/**
  * Numbers typed into page wording that should come from a setting
  * (CLAUDE.md, SEO-COMPLIANCE.md R6): a $ or % figure, or a count of minutes,
  * hours, days, weeks, months, miles or degrees, or a clock time. {price:...}
@@ -68,11 +95,13 @@ const UNIT = "(?:minutes?|mins?|hours?|hrs?|days?|weeks?|months?|miles?|mi|degre
 const TYPED = new RegExp([
   "\\$\\s?\\d",                                                      // $50
   "\\d\\s?%",                                                         // 10%
-  `\\b${COUNT}(?:\\s*(?:-|to)\\s*${COUNT})?\\s+(?:[a-z]+\\s+)?${UNIT}\\b`, // 3 hours, two to four days, 2 business days, an hour
+  `\\b${COUNT}(?:\\s*(?:-|to)\\s*${COUNT})?[\\s-]+(?:[a-z]+\\s+)?${UNIT}\\b`, // 3 hours, two to four days, 2 business days, a 15-minute drive
   "\\ban?\\s+(?:hour|day)\\b",                                            // within an hour, a day ahead
   "\\d+\\s*°",                                                       // 40°
   "\\b\\d{1,2}(?::\\d\\d)?\\s?(?:am|pm|a\\.m\\.|p\\.m\\.)(?![a-z])",       // 6pm, 7:30 am
   "\\b(?:noon|midnight|next day|same day|overnight)\\b",
+  // A travel promise is a setting too (SEO-COMPLIANCE.md R6's own example; validation cycle 3).
+  "\\b(?:free\\s+(?:travel|trip|drive)|no\\s+(?:travel|trip)\\s+(?:fee|charge))\\b",
 ].join("|"), "gi");
 export function typedNumbers(text) {
   const t = String(text).replace(/\{(price|addon):[a-z0-9-]+\}/g, "");
@@ -108,6 +137,25 @@ export function placeNames(loc) {
   return [loc.name, ...(loc.neighborhoods ?? []), ...(loc.areaServed ?? []), ...(loc.roads ?? [])]
     .flatMap((n) => String(n ?? "").toLowerCase().split(/\s*(?:&|,|\band\b|\/)\s*/))
     .map((n) => n.trim()).filter((n) => n.length > 2);
+}
+
+/**
+ * Where a review counts as "from this area" (R1): the page's name, its
+ * neighborhoods and its areaServed places, each whole, never a city-wide word.
+ * "Price Hill, Cincinnati, OH" gives "price hill", not "cincinnati": any
+ * Cincinnati review passed the Delhi gate (validation cycle 3, November 16).
+ */
+export function reviewPlaces(loc) {
+  return [
+    ...String(loc.name ?? "").toLowerCase().split(/\s*(?:&|\band\b|\/)\s*/),
+    ...(loc.neighborhoods ?? []).map((n) => String(n).toLowerCase()),
+    ...(loc.areaServed ?? []).map((n) => String(n).toLowerCase().split(",")[0]),
+  ].map((n) => n.trim()).filter((n) => n.length > 2);
+}
+/** A review's town ("Delhi Township, OH", "Sayler Park (Cincinnati)") is one of the page's. */
+export function reviewFromArea(loc, area) {
+  const town = String(area ?? "").toLowerCase().split(/[,(]/)[0].trim();
+  return Boolean(town) && reviewPlaces(loc).includes(town);
 }
 
 /** Words of some text with the given place names and every ZIP blanked to one token each (SEO-COMPLIANCE.md R2). */
