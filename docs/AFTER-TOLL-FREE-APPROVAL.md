@@ -31,9 +31,15 @@ Both are one word in a config file, and a test proves each switch restores the o
 
 ## 3. Merge eNov14 (Emmett's separate yes; the PR is merged by Emmett)
 
-From `STATUS-2026-11-15.md`, "Before eNov14 can merge". eNov14 is 46+ commits ahead of `main`, open as draft PR [#13](https://github.com/Ert850/513-Auto-Clean/pull/13).
+From `STATUS-2026-11-15.md`, "Before eNov14 can merge". eNov14 is about 55 commits ahead of `main`, open as draft PR [#13](https://github.com/Ert850/513-Auto-Clean/pull/13).
 - [ ] **Elijah's 5 gallery pairs** (commit 4e0279f): a person reviews them for the bag and papers in two before photos and the landscape-against-portrait pair (`PLAN-eNov14.md` A3), or they're dropped from `data/gallery.json`. Don't ship them as they are.
   - They carry `"reviewed": false`, so **the production build fails until each is set to `true` or removed** (validation cycle 3). The live site keeps its last deploy meanwhile.
+  - **Where each is used** (dropping one means changing these too, or the build fails):
+    - `third-row-seat-stains`: the home "Spills and Stains" button (`config/home-services.json`), the Delhi hero, the stain page's hero;
+    - `captain-chair`: the home "Interior" button, the Delhi hero, the interior page's proof;
+    - `soul-cargo`: the Delhi hero;
+    - `civic-front-floor`: the interior page's proof;
+    - `forester-front-floor`: the Indian Hill hero.
   - `third-row-seat-stains` is objectively mismatched: a portrait before against a landscape after, from another angle. It's the first card in the home carousel and the Delhi hero, and the only stain pair. Re-crop the after to match, or drop it.
 - [ ] `git fetch`. If `main` moved (it shouldn't have), merge `origin/main` into eNov14; never rebase it, which would need a force-push. The squash merge makes the history shape irrelevant. The build passes and every test passes (`cd web && TZ=America/New_York npx vitest run`).
 - [ ] A final validation and dropped-task agent over the whole PR diff.
@@ -50,7 +56,7 @@ From `STATUS-2026-11-15.md`, "Before eNov14 can merge". eNov14 is 46+ commits ah
   - the home headline A/B test `hero-headline` starts: about two thirds of home visitors see "Cincinnati." or "across the 513." instead of "Greater Cincinnati.".
 - [ ] **After the deploy:**
   - `node web/scripts/check-live.mjs` for the server variables (ignore its STALE line until it's fixed), and `curl` a page to confirm the new `?v=` stamps;
-  - one real-calendar check that a booking writes to the right calendar (Emmett's yes for a real test booking, then delete it).
+  - one real-calendar check that a booking writes to the right calendar (Emmett's yes for a real test booking). **Warn Elijah first** (CLAUDE.md): JobsSync can copy its TOTAL into his Accounting sheet before the event is deleted. Delete the event, and the sheet row if one was made.
 - [ ] **The headline test's dates:** write the real start date and the stop date (4 weeks on) into the `hero-headline` `note` in `config/experiments.json` (`AB-TESTING.md`, "Running a test", step 3), and register the `exp_variant_string` custom dimension in GA4 if it isn't yet (step 2). On the deploy, open the home page in a private window a few times: each visit keeps its own headline on reload.
 - [ ] **A week later:** Netlify's usage page for edge-function invocations. The preview's password gate runs on every production request and returns at once.
 
@@ -64,6 +70,7 @@ From `QUEUE-AFTER-FRIDAY.md`, "After toll-free approval: remove Emmett's email".
   - [ ] ask GitHub Support to purge the PR #13 refs and cached views of f9a0f6b (a PR keeps its commits reachable by hash).
 - **If `eNov14` must stay** (or the merge isn't a squash): `git filter-repo --replace-text` on `eNov14` before the merge, and a force-push of `eNov14` only, with Emmett's yes naming that branch. Never force-push `main`.
 - [ ] Before either: `git log -p -S` for the address and any other personal detail (addresses, phone numbers) on every branch, including `eNov6`.
+- [ ] **`context_outline.txt` (on `main` since 77636b4) holds Elijah's personal phone, full legal name and payment handles** (validation cycle 5). Ask Emmett and Elijah whether to remove it from the repo, and from history with the step above. It's on `main`, so removing it is a PR to `main`, after the freeze.
 - [ ] Tell Elijah (and his agent, which pushes to `eNov6`) whether to re-clone. It's needed only if a branch they use was rewritten.
 
 ## 5. Questions parked until after the freeze (ask Emmett)
@@ -76,7 +83,11 @@ From `QUEUE-AFTER-FRIDAY.md`, "After toll-free approval: remove Emmett's email".
 
 ## 6. Things that were waiting on the freeze, not on Imperion
 
-- [ ] **The privacy policy's "the next time you tap Book Now"** becomes device-neutral ("open Book Now"), like the form. Legal text: bump the date in `web/lib/site/legal.ts`, then `npm run lock:legal` (CLAUDE.md).
+- [ ] **Legal wording, in one update** (bump the date in `web/lib/site/legal.ts`, then `npm run lock:legal`, CLAUDE.md):
+  - the privacy policy's "the next time you tap Book Now" becomes device-neutral ("open Book Now"), like the form;
+  - **the terms' travel charge:** "measured at the time you picked" no longer matches the price, which averages the drive out and the drive back, with the drive back timed at the job's end (calendar fix 3). Say "the drive out and back, in the traffic of those hours" (validation cycle 5);
+  - the privacy policy's "we try two versions of a page": `hero-headline` has three, so say "different versions";
+  - US spelling: "kilometre" becomes "kilometer", and "outdoor tap" becomes "outdoor faucet" (together with the booking form's question, `funnel.js`, and the event line, so they keep matching).
 - [ ] **Automated texts and reminders** (`capabilities.ts` `automatedTexts`, held off on purpose so Done never promises reminders nobody sends; Emmett approved holding it, November 13). Turn it on only once GoHighLevel sends them, through the same legal steps, because the terms and privacy wording changes with it.
 
 - [ ] **Turnstile:** ready in code. Before setting `TURNSTILE_SECRET_KEY` in Production, test once on a Deploy Preview with Cloudflare's always-pass test keys, then the real ones (`QUEUE`, "From the final pre-release review").

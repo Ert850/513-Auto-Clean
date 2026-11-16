@@ -50,13 +50,8 @@ Work that's agreed but deliberately not started before Friday. Newest first. Any
 
 - **The problem:** an earlier commit of `docs/TEST-SITE-SETUP.md` (fixed in d723e73) contains Emmett's personal email address. The repo is public, so it can still be read in that commit's history.
 - **Why not now:** removing it means rewriting history, so every commit hash changes, a force-push is needed, and open PRs and other branches break. `main` is frozen for verification, and force-pushing is against the owner rules without his explicit yes.
-- **When:** after toll-free verification is approved and eNov14 is merged, with Emmett's explicit yes for the force-push.
-- **How:**
-  - `git filter-repo --replace-text` over every branch, replacing the address;
-  - force-push every affected branch;
-  - ask GitHub Support to purge cached views of the old commits (the commit is reachable by its hash until they do);
-  - tell Elijah and anyone with a clone to re-clone.
-- **Also check** that nothing else personal is in the history (`git log -p -S`): other addresses, phone numbers, home addresses.
+- **When:** after toll-free verification is approved and eNov14 is merged, with Emmett's yes for each step.
+- **How:** superseded by `docs/AFTER-TOLL-FREE-APPROVAL.md` step 4 (squash-merge PR #13, delete `eNov14`, ask GitHub Support to purge). `main` is never force-pushed.
 
 ## Monday: the 513 Auto Clean logo in the booking emails (Elijah, November 14)
 

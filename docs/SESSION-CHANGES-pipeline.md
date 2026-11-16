@@ -2110,3 +2110,23 @@ Mockups: `docs/mockups/eNov15-booking-fixes-mockups.png`.
 - **Done when the calendar couldn't be confirmed:** the title said "Request sent", but the body said "We have your booking". It now says "We have your request for …. We will confirm the time with you shortly."
 - **A detailer with no arrival window (DETAILERS allows 0)** read "10am to 10am" and "within its first 0 minutes". It now reads "arrive 10am" and "We arrive at that time".
 - Tests: 765 pass. The savings sweep the agent ran (12,576 discounted combinations) found no wrong figure.
+
+## Validation cycle 5: wording, docs, privacy (November 16)
+
+- **Dropping an unchecked pair could leave its photos on the home page.** The home buttons named image files directly, so the photo gate never saw them.
+  - **Fix:** `render-site.mjs` fails the build when a home button's `ba-<slug>-` photo isn't a pair in `data/gallery.json`. An unchecked pair already fails any build except a preview.
+  - The runbook's review step now lists every place each of the 5 pairs is used.
+- **Runbook:**
+  - warn Elijah before the after-deploy real test booking (JobsSync can copy its total into his sheet);
+  - one legal update after the freeze, covering four things:
+    - the privacy policy's "tap";
+    - the terms' travel wording, which no longer matches the price (the drive out and back, with the drive back timed at the job's end);
+    - "two versions" (the headline test has three);
+    - "kilometre" and "outdoor tap";
+  - the personal details in `context_outline.txt` (on `main` since 77636b4) are recorded as a question for Emmett and Elijah, not deleted here;
+  - the commit count is updated.
+- **QUEUE** no longer describes the old force-push plan for the email; it points to runbook step 4.
+- **Catalog spelling:** "door jambs", "oxidizes".
+- **City map:** `role="region"` instead of `role="img"`, which had hidden Leaflet's zoom buttons and links from screen readers.
+- **STATUS:** the test count, and `PREVIEW_BUILD=1` for local builds while the pairs are unchecked.
+- Tests: 765 pass.
