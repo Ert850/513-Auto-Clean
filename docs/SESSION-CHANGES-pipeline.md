@@ -2346,3 +2346,11 @@ From now on, every pass root-causes each finding and sweeps the whole codebase f
 - `funnel.smoke.test.mjs`: the hold rule.
 
 **Owner's call, not built:** with two vehicles there is no Help me decide; the notes box and "I have a question" remain.
+
+**63e332e on the preview at 375 and 320.** The test browser blocked every booking, payment, email and lead-capture request, and first confirmed the deployed script had the fix. Results:
+- **(a):** Confirm on a draft with an unfinished vehicle 2 opens "Vehicle 2", Package, "Pick an exterior package too."
+- **(b):** a coming-soon package and an unknown size are cleaned out of a draft.
+- **(b):** the two-vehicle Help me decide draft shows its note.
+- No page errors.
+
+**Not run on the preview,** because each needs a request that would book: the server-side changes (no-time Help me decide skips the calendar write, the advice hold, the CHECK THE PRICE email, separate visits priced). They're covered by unit tests, and the `"visits":2` request was checked against the local build.
