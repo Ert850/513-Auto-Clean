@@ -2217,3 +2217,55 @@ An independent read-only agent reviewed f6eb954..d191609. All 765 tests pass. Fi
   - STATUS still listed Earlier and Later times as queued.
   - book.css's old note about never cutting the phone number now names B's exception.
 - **Left as is:** the dropdown says "‹ Back to standard times" (the November 16 mockup Emmett approved); the November 12 queue note had "‹ Standard times".
+
+### The A to F fixes on the deploy preview (November 16)
+
+bdd20b6 on the preview at 375 and 320 px. Each case was confirmed, with no page errors:
+- Help me decide on vehicle 2, then "Back to vehicle 1": Extras opens with its tab, and vehicle 1 shows Basic Interior.
+- An unfinished vehicle 2 is dropped on the way back.
+- Removing vehicle 1 while on vehicle 2 of 3 keeps the medium car active.
+- Arrowing through the start dropdown: Earlier, then back to "Earlier times", then a standard start books.
+
+## Validation passes 1 and 2 (November 16)
+
+Two read-only agents ran at the same time:
+- **Pass 1** reviewed the code for vehicles and the start dropdown.
+- **Pass 2** walked the whole booking path as a phone customer at 375×667, 320×568 and 390×844, from five entries.
+
+Fixed, each checked in headless Chrome on the built site; 765 tests pass:
+- **An empty vehicle took 10% off the real one.**
+  - *Example:* a link with a bare second vehicle opened at checkout with "multi-vehicle saving applied" for one Basic Interior. The empty Vehicle 2 page showed the saving too.
+  - *Cause:* the price, the server payload (`wireCart`) and quote links all used every vehicle, while the checks only look at the active one.
+  - *Fix:* `pricedVehicles()` leaves out a vehicle with no package while another has one (with Help me decide, none has one, and all are sent). `cart()`, `wireCart()` and quote links use it, and `applyQuote()` keeps only those.
+  - Checked: the link shows one vehicle with no saving; the empty Vehicle 2 page keeps $145.
+- **A quote link opened over a saved draft crashed the form** (`TypeError` in `vSize`).
+  - *Cause:* `applyQuote()` replaced the vehicles but kept the draft's `active`, `advice` and `browse`.
+  - *Fix:* it now resets all three.
+  - Checked: a two-vehicle draft, then a one-vehicle link, opens at Time with no error.
+- **Help me decide on vehicle 2 turned the whole booking into a request** while vehicle 1 kept its package and price.
+  - *Fix:* Help me decide is offered for the first vehicle only.
+  - Checked: vehicle 2's Service step has no "Help me decide".
+- **A not-yet-bookable package could be picked from Browse,** skipping the package check, and was refused by the server at Confirm.
+  - *Fix:* coming-soon packages show as "Soon" and can't be picked, as on the Package step.
+  - Checked: Paint Correction and Protection, Ceramic Coating and the other three are disabled.
+  - Also, "Add a vehicle" now checks the vehicle being left first.
+- **Browse stayed on after "Back to vehicle 1",** so vehicle 1's Service "Change" opened the catalogue. "Back to vehicle 1" and "Add a vehicle" now close it.
+- **Early and late fee starts were grouped by noon.** They're now grouped by the day's own standard starts: early is before the first, late is after the last. A fee start in between (a midday fee block) stays in the list with its fee.
+- **At 320 px, "★ Suggested" was cut off** in the phone day list ("Suggeste"). Below 360 px it may drop to its own line. Checked: it wraps inside its row.
+- **Wording:** the leave summary said "add-on", while the form says "Extras". It now says "extra".
+
+Not changed, each needs a mockup and Emmett's go (added to `IMPROVEMENTS-2026-11-16.md`):
+- **320×568 phones:**
+  - After a time is picked, the bars cover about 57% of the Time step.
+  - On Review the footer is 236 px.
+  - Arriving on Time shows no time above the action strip.
+  - "More times on <day>" opens its dropdown under the strip.
+- **Help me decide's "Not sure when, either?" box** is pink with a red border, the error look; its footer is an empty strip.
+- **Keyboard focus** falls to the page after a size, service or package card (already on the list).
+
+Not confirmed:
+- **The late fee before Review's receipt.** With a late-fee start, Review's top section shows the total (fee included), but the Time row's two lines cut off before the fee, and no fee line was found before the receipt. Whether the final receipt itemizes it wasn't checked here; that behaviour predates today.
+
+For Emmett's review, server side (not built):
+- **The server accepts a cart with a bare vehicle beside a priced one** (`web/lib/pricing/wire.ts:323-328`) and applies the multi-vehicle discount (`quote.ts:296-303`). The site no longer sends one, but a hand-edited request could.
+- **Proposed:** refuse a vehicle with no package unless every vehicle has none (Help me decide). That's about 5 lines and a test. It changes what the booking endpoint accepts, so it waits for a yes.

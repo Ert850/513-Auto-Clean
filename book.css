@@ -1856,3 +1856,10 @@ button.bk-tl-s {
   border: 0; background: none; padding: .2rem 0; font: inherit; font-weight: 700; cursor: pointer;
   color: var(--red); text-decoration: underline; text-underline-offset: 2px;
 }
+
+/* At 320 px "★ Suggested" ran past its row in the phone day list and read
+   "Suggeste" under the "or 10:30am" button (validation pass, November 16).
+   Below 360 px the tag may drop to its own line under the time. */
+@media (max-width: 359.98px) {
+  #bookFunnel .bk-wk-item { flex-wrap: wrap; row-gap: .1rem; }
+}

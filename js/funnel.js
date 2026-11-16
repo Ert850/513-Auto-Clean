@@ -244,9 +244,19 @@
     return state.vehicles.some(function (v) { return Boolean(v.correctionTier); });
   }
 
+  /**
+   * The vehicles that are priced and booked. One with no package yet (vehicle 2
+   * mid-build, or brought in by a link) is left out while another has one: it
+   * took 10% off the real one (validation pass, November 16). With Help me
+   * decide no vehicle has a package, and all of them are sent.
+   */
+  function pricedVehicles() {
+    var some = state.vehicles.some(function (v) { return v.packageIds.length; });
+    return some ? state.vehicles.filter(function (v) { return v.packageIds.length; }) : state.vehicles;
+  }
   function cart() {
     return {
-      vehicles: state.vehicles.map(function (v) {
+      vehicles: pricedVehicles().map(function (v) {
         var size = v.size ? P.vehicleSize(v.size) : null;
         return {
           label: v.label || 'Vehicle',
@@ -378,6 +388,9 @@
       if (p.requiresPriorDetail) return;
       out.push({
         kind: 'package', id: p.id, name: p.name, category: p.category,
+        // Shown, not pickable, as on the Package step: a pick jumped past the
+        // package check and the server refused it at Confirm (validation pass, November 16).
+        unavailable: p.comingSoon ? (p.comingSoonNote || 'Not bookable yet.') : '',
         priceCents: p.priceCents, pricePlus: Boolean(p.pricePlus),
         durationMin: p.durationMin, tagline: p.tagline, featured: p.featured,
         note: p.note || '',
@@ -1855,10 +1868,14 @@
       // Nobody should have to already know what they want in order to ask.
       // This turns the booking into a request: no package, no price, no time
       // to commit to, and we come back with what we would recommend.
+      // Help me decide turns the whole booking into a request, so it is
+      // offered for the first vehicle only: on vehicle 2 it priced vehicle 1
+      // as a booking under an advice request (validation pass, November 16).
+      (state.active > 0 ? '' :
       '<button type="button" class="bk-askrow' + (state.advice ? ' on' : '') + '" data-intent="advice">' +
         pic('ask') + '<span><b>Not sure? Help me decide</b><i>We look at your vehicle and recommend one</i></span>' +
         '<svg class="bk-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M9 6l6 6-6 6"/></svg>' +
-      '</button>' +
+      '</button>') +
       '<button type="button" class="bk-browsebar" id="bkBrowse">' +
         '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>' +
         '<span><b>Browse through all options</b><i>Every package and price, side by side</i></span>' +
@@ -2434,6 +2451,7 @@
       state.advice = false;
     }
     state.active = Math.max(0, i - 1);
+    state.browse = false;
     go(indexOfStep('addons'));
   }
 
@@ -2867,7 +2885,7 @@
     var payload = {
       v: 1,
       ts: Math.floor(Date.now() / 1000),
-      vs: state.vehicles.map(function (v) {
+      vs: pricedVehicles().map(function (v) {
         var out = {};
         if (v.size) out.z = v.size;
         if (v.intent) out.i = v.intent;
@@ -2924,7 +2942,14 @@
       if (raw.g) v.noGarage = true;
       return v;
     });
+    // Only the finished vehicles, and nothing kept from a saved draft that
+    // describes other vehicles: a draft's active vehicle 2 against a one-vehicle
+    // link crashed the form (validation pass, November 16).
+    state.vehicles = pricedVehicles();
     if (!state.vehicles.length) state.vehicles = [newVehicle()];
+    state.active = 0;
+    state.advice = false;
+    state.browse = false;
 
     if (payload.ad) {
       state.address.line1 = payload.ad[0] || '';
@@ -4172,7 +4197,16 @@
       });
       // Early and late fee starts fold into one item each (improvement C,
       // Emmett's wording, November 12): a Saturday listed 26 starts.
-      var group = function (ms) { return !timeFeeApplies(ms) ? 'std' : localMin(ms) < 12 * 60 ? 'early' : 'late'; };
+      // Early is a fee start before the day's first standard start, late one
+      // after its last; a fee start in between (a midday fee block) stays in
+      // the list with its fee. A day with no standard start splits at noon.
+      var std = startsOnDay(lead).filter(function (ms) { return !timeFeeApplies(ms); });
+      var firstStd = std.length ? Math.min.apply(null, std) : null, lastStd = std.length ? Math.max.apply(null, std) : null;
+      var group = function (ms) {
+        if (!timeFeeApplies(ms)) return 'std';
+        if (firstStd === null) return localMin(ms) < 12 * 60 ? 'early' : 'late';
+        return ms < firstStd ? 'early' : ms > lastStd ? 'late' : 'std';
+      };
       var ids = function (g) { return others.filter(function (ms) { return group(ms) === g; }).join(','); };
       inner.innerHTML = best.map(chip).join('') +
         (others.length
@@ -6050,7 +6084,8 @@
 
   function wireCart() {
     return {
-      vehicles: state.vehicles.map(function (v) {
+      // The same vehicles the price shown was made from (pricedVehicles).
+      vehicles: pricedVehicles().map(function (v) {
         return {
           label: v.label || '',
           sizeId: v.size,
@@ -6565,6 +6600,7 @@
     if (t.dataset.size) { v.size = t.dataset.size; return advance(); }
     if (t.dataset.intent) {
       if (t.dataset.intent === 'advice') {
+        if (state.active > 0) return;
         state.advice = true;
         v.intent = null;
         v.packageIds = [];
@@ -6828,6 +6864,11 @@
     if (t.dataset.pay) { state.payInFull = t.dataset.pay === 'now'; return render(); }
 
     if (t.id === 'bkAddVeh') {
+      // The vehicle being left has to be finished: only the active one is
+      // checked before checkout (validation pass, November 16).
+      var unfinished = firstProblem();
+      if (unfinished) { showProblem(unfinished); return; }
+      state.browse = false;
       state.vehicles.push(newVehicle());
       state.active = state.vehicles.length - 1;
       return go(0);
@@ -7729,7 +7770,8 @@
       var names = v.packageIds.map(function (id) { return (P.findPackage(id) || {}).name; }).filter(Boolean);
       var size = v.size ? P.vehicleSize(v.size) : null;
       var line = [size ? size.label : '', names.join(' + ')].filter(Boolean).join(', ');
-      if (v.addons.length) line += ' plus ' + v.addons.length + ' add-on' + (v.addons.length === 1 ? '' : 's');
+      // "Extras", the form's own word for them (validation pass, November 16).
+      if (v.addons.length) line += ' plus ' + v.addons.length + ' extra' + (v.addons.length === 1 ? '' : 's');
       if (line) bits.push(line);
     });
     if (state.slot) {
