@@ -3188,7 +3188,13 @@ function slotStillFree(job, win) {
     hasExterior: job.hasExterior,
     ignoreReturnAfterMin: IGNORE_RETURN_AFTER_MIN,
     ignoreOutboundBeforeMin: job.driveMin <= 60 ? IGNORE_OUTBOUND_BEFORE_MIN : void 0,
-    arrivalWindowMin: job.arrivalWindowMin
+    arrivalWindowMin: job.arrivalWindowMin,
+    // Paint correction keeps its own starts and days, as the form offers them
+    // (validation cycle 2, November 16: a hand-edited request got a Tuesday 3pm).
+    ...job.correction ? {
+      preferredStartsMin: { weekday: CORRECTION_RULES.allowedStartsMin, weekend: CORRECTION_RULES.allowedStartsMin },
+      allowedWeekdays: SCHEDULING.correctionWeekdays
+    } : {}
   });
   const hit = slots.find((ms) => Math.abs(ms - job.slotMs) < 6e4);
   return { free: hit !== void 0, lateMin: hit !== void 0 ? late.get(hit) ?? 0 : 0 };
