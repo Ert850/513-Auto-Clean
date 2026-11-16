@@ -2130,3 +2130,21 @@ Mockups: `docs/mockups/eNov15-booking-fixes-mockups.png`.
 - **City map:** `role="region"` instead of `role="img"`, which had hidden Leaflet's zoom buttons and links from screen readers.
 - **STATUS:** the test count, and `PREVIEW_BUILD=1` for local builds while the pairs are unchecked.
 - Tests: 765 pass.
+
+## Validation cycle 4: the site in the browser (November 16)
+
+Nothing it found was new on this branch except the draft pages' favicon. These were fixed:
+- **Time picker at 700×400 left room for about one row.** `pinWeek()` left out the "Go to a date" bar, which pins to the bottom of the same scrolling area. It now subtracts that bar too.
+  - Checked: at 700×400 the week bar and the strip unpin (`nopin`).
+- **Focus dropped to the page when the leave dialog closed.** It now lands on × (`renderLeave`).
+  - Checked: after "Back to my quote", focus is on `bkClose`.
+- **Discounted package prices were red** (`.bk-cut`). They're ink now: red means the brand or an error (CLAUDE.md, Colors).
+- **The city and service page templates had no favicon** (a 404 on `/favicon.ico`). They now carry the same icon link as the other pages.
+
+Left for the improvements list (each needs a mockup and a go first):
+- the checkout tab strip at 320 px (349 px wide, under Back and ×);
+- the 1440 step tabs (715 px wide inside 680);
+- focus after a card advances the step;
+- phone tap targets under 40 px ("How it works" 17 px tall, "Change to suggested?", "Tell us when suits", Back and × at 34 px).
+
+All the fold tests pass at 1440×790, and nothing scrolls sideways on 15 pages at six widths. The headline versions fit at every width.
