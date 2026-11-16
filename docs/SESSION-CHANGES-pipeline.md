@@ -2175,3 +2175,17 @@ From `IMPROVEMENTS-2026-11-16.md`, as in the mockups. Checked in headless Chrome
   - add a vehicle, go back, add again and finish it;
   - a ZIP with a travel fee;
   - `/golf` on a phone.
+
+### A to F on the deploy preview (November 16)
+
+Checked on https://deploy-preview-13--513-auto-clean.netlify.app (09c3aab) at 375 and 320 px, in headless Chrome with phone emulation. Screenshots: `docs/mockups/eNov16-preview-check-375-320.png`.
+- **A:** at both widths the bar fits exactly, nothing scrolls sideways, and "Checkout" sits between Back and ×.
+- **B:**
+  - at 375×667 the first recommended time ends at 491 px, with the bar at 602;
+  - at 320×640 it ends at 518, with the bar at 575;
+  - the done rows are 41 px.
+- **C:** Monday listed 14 standard starts between "Earlier times (+$70.50 fee)" and "Later times (+$70.50 fee)". Later opened its starts and went back; picking 6:30pm booked it.
+- **D:** "Vehicle 2" and its summary; going back by the link and by Back both work. A finished vehicle 2 is kept.
+- **E:** a Mason ZIP showed "$30 travel" in ink on a white box with a grey rule. A Cincinnati ZIP showed the green "No travel fee".
+- **F:** the button is at 303 to 374 px on `/golf` and `/prestige`, and opens `/book`.
+- No page errors.
