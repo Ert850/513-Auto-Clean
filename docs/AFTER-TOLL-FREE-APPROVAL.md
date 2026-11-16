@@ -33,7 +33,7 @@ Both are one word in a config file, and a test proves each switch restores the o
 
 From `STATUS-2026-11-15.md`, "Before eNov14 can merge". eNov14 is 46+ commits ahead of `main`, open as draft PR [#13](https://github.com/Ert850/513-Auto-Clean/pull/13).
 - [ ] **Elijah's 5 gallery pairs** (commit 4e0279f): a person reviews them for the bag and papers in two before photos and the landscape-against-portrait pair (`PLAN-eNov14.md` A3), or they're dropped from `data/gallery.json`. Don't ship them as they are.
-- [ ] `git fetch`. Rebase eNov14 on `origin/main` if `main` moved (it shouldn't have). The build passes and every test passes (`cd web && TZ=America/New_York npx vitest run`).
+- [ ] `git fetch`. If `main` moved (it shouldn't have), merge `origin/main` into eNov14; never rebase it, which would need a force-push. The squash merge makes the history shape irrelevant. The build passes and every test passes (`cd web && TZ=America/New_York npx vitest run`).
 - [ ] A final validation and dropped-task agent over the whole PR diff.
 - [ ] The preview at https://deploy-preview-13--513-auto-clean.netlify.app:
   - one test booking (writes to the TEST calendar, emails Emmett), then delete the event;
@@ -44,10 +44,12 @@ From `STATUS-2026-11-15.md`, "Before eNov14 can merge". eNov14 is 46+ commits ah
   - the booking-form fixes;
   - hover only on mouse devices;
   - the booking email logo, which shows once these emails send from the live deploy;
-  - the city and service pages, which stay out of production as drafts (`publishedPages()`).
+  - the city and service pages, which stay out of production as drafts (`publishedPages()`);
+  - the home headline A/B test `hero-headline` starts: about two thirds of home visitors see "Cincinnati." or "across the 513." instead of "Greater Cincinnati.".
 - [ ] **After the deploy:**
   - `node web/scripts/check-live.mjs` for the server variables (ignore its STALE line until it's fixed), and `curl` a page to confirm the new `?v=` stamps;
   - one real-calendar check that a booking writes to the right calendar (Emmett's yes for a real test booking, then delete it).
+- [ ] **The headline test's dates:** write the real start date and the stop date (4 weeks on) into the `hero-headline` `note` in `config/experiments.json` (`AB-TESTING.md`, "Running a test", step 3), and register the `exp_variant_string` custom dimension in GA4 if it isn't yet (step 2). On the deploy, open the home page in a private window a few times: each visit keeps its own headline on reload.
 - [ ] **A week later:** Netlify's usage page for edge-function invocations. The preview's password gate runs on every production request and returns at once.
 
 ## 4. Remove Emmett's email from the public git history (Emmett's separate yes)
@@ -80,7 +82,7 @@ From `QUEUE-AFTER-FRIDAY.md`, "After toll-free approval: remove Emmett's email".
 
 ## 7. Tell Elijah
 
-- [ ] What shipped (step 3's list), that the Confirm freeze is fixed, and which number is live (step 1).
+- [ ] What shipped (step 3's list), that the Confirm freeze is fixed, which number is live (step 1), and that the headline test has started and when it ends.
 - [ ] If step 4 ran, ask him to re-clone.
 
 ## Not on this list on purpose
