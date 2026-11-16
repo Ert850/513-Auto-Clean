@@ -548,6 +548,11 @@ for (const f of PAGES) fs.writeFileSync(path.join(root, f), pages[f]);
   if (!Array.isArray(cfg.buttons) || !cfg.buttons.length) bad("buttons is missing");
   const img = (src) => {
     if (typeof src !== "string" || !/^images\/[A-Za-z0-9._-]+$/.test(src) || !fs.existsSync(path.join(root, src))) bad(`"${src}" is not a file in images/`);
+    // A before/after photo belongs to a gallery pair, so the photo check
+    // ("reviewed" in data/gallery.json) covers it, and dropping a pair can't
+    // leave its photos on the home page (validation cycle 5, November 16).
+    const ba = /^images\/ba-(.+)-(?:before|after)-\d+\.(?:webp|jpg)$/.exec(src);
+    if (ba && !(JSON.parse(read("data/gallery.json")).pairs ?? []).some((p) => p.slug === ba[1])) bad(`"${src}" is from "${ba[1]}", which isn't a pair in data/gallery.json`);
     return src;
   };
   const cards = cfg.buttons.map((b, i) => {

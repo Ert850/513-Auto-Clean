@@ -26,7 +26,7 @@ var COMPONENTS = [
   c("int-mats-dress", "Wash and dress floor mats", "interior", 20),
   c("int-leather", "Condition leather", "interior", 30),
   c("int-glass", "Clean glass", "interior", 15),
-  c("int-jams", "Clean door jams", "interior", 15),
+  c("int-jams", "Clean door jambs", "interior", 15),
   c("int-crevice", "Brush detail every crack and crevice", "interior", 45),
   /* ---- interior: showroom ---- */
   c("int-steam-full", "Full upholstery and applicable trim steam treatment", "interior", 60),
@@ -111,7 +111,7 @@ var PACKAGES = [
     name: "Full Interior",
     category: "interior",
     tagline: "A deep, top to bottom detail that makes it feel new again.",
-    note: "Everything in Basic, then the deep work: engrained particles pulled out of the carpet, upholstery shampooed and scrubbed, mats washed and dressed, leather conditioned, glass and door jams cleaned, and every crack and crevice brush detailed. Stain reduction is part of it. It does NOT guarantee a stain comes out completely, steam sanitize the whole vehicle, or remove the seats to get underneath them. Most engrained fibers and pet hair come out at this level, but the truly stubborn ones woven deep into the carpet backing need the individual fiber lifting in Showroom Ready Restoration. Deep set stains want the Stain Treatment extra and lingering smells want the Ozone Odor Reset.",
+    note: "Everything in Basic, then the deep work: engrained particles pulled out of the carpet, upholstery shampooed and scrubbed, mats washed and dressed, leather conditioned, glass and door jambs cleaned, and every crack and crevice brush detailed. Stain reduction is part of it. It does NOT guarantee a stain comes out completely, steam sanitize the whole vehicle, or remove the seats to get underneath them. Most engrained fibers and pet hair come out at this level, but the truly stubborn ones woven deep into the carpet backing need the individual fiber lifting in Showroom Ready Restoration. Deep set stains want the Stain Treatment extra and lingering smells want the Ozone Odor Reset.",
     notIncluded: ["Every set-in stain gone completely: some only fade", "Steam sanitizing the whole vehicle", "Taking the seats out to clean underneath"],
     tip: "Deep stains or smells? Add a Stain Treatment or the Ozone Odor Reset. The most stubborn pet hair needs Showroom Ready Restoration.",
     priceCents: 23500,
@@ -368,7 +368,7 @@ var ADDONS = [
     scope: "interior",
     icon: "molecule",
     description: "An ozone treatment for smells that linger, run after the source is cleaned.",
-    note: "A generator converts the oxygen in the air (O2) into ozone (O3). That extra atom is unstable, so it breaks away and oxidises odor molecules, bacteria and smoke residue on contact. Because it works as a gas it reaches the vents, headliner and seat foam that wiping cannot. It then reverts to ordinary oxygen and leaves nothing behind. The vehicle is sealed while it runs and aired out afterwards. How much it helps depends on the smell and how long it has set in. It has to be paired with a stain treatment, or with a Full Interior or above, because ozone cannot remove what is still soaked into the fabric.",
+    note: "A generator converts the oxygen in the air (O2) into ozone (O3). That extra atom is unstable, so it breaks away and oxidizes odor molecules, bacteria and smoke residue on contact. Because it works as a gas it reaches the vents, headliner and seat foam that wiping cannot. It then reverts to ordinary oxygen and leaves nothing behind. The vehicle is sealed while it runs and aired out afterwards. How much it helps depends on the smell and how long it has set in. It has to be paired with a stain treatment, or with a Full Interior or above, because ozone cannot remove what is still soaked into the fabric.",
     tiers: [{ id: "std", label: "Ozone treatment", priceCents: 5e3, durationMin: 60 }],
     // Ozone attacks what is left in the air and the plastics. Running it over
     // material that has not been extracted first mostly wastes the customer's
@@ -613,7 +613,7 @@ var COATING_EXPLAINER = {
   does: [
     "Makes the paint strongly hydrophobic, so water beads up and rolls off instead of sheeting and drying into spots",
     "Keeps dirt, brake dust and road film from keying into the surface, so the car stays cleaner between washes and washes far faster",
-    "Blocks UV, which is what oxidises and fades paint over time",
+    "Blocks UV, which is what oxidizes and fades paint over time",
     "Resists the things that actually etch paint: bird droppings, bug guts, tree sap, road salt",
     "Adds real depth and gloss, and holds it rather than dulling after a month"
   ],
