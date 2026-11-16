@@ -2420,12 +2420,19 @@
   }
   /**
    * Back from the vehicle being built to the one before it, on Extras, where
-   * "Add a vehicle" was. A vehicle with no package yet is dropped on the way:
-   * it was only just added, and an empty vehicle cannot be booked.
+   * "Add a vehicle" was. A vehicle that is not finished (no size, service or
+   * package, a half-chosen "both", or Help me decide) is dropped on the way:
+   * only the active vehicle is checked before checkout, so keeping it would
+   * book it unfinished (validation, November 16). Help me decide is a setting
+   * for the whole booking, so it ends with the vehicle that chose it; the
+   * vehicles left all have packages, or "Add a vehicle" was not reachable.
    */
   function backToVehicle() {
     var i = state.active;
-    if (!state.vehicles[i].packageIds.length) state.vehicles.splice(i, 1);
+    if (state.advice || vSize() || vIntent() || vPackage()) {
+      state.vehicles.splice(i, 1);
+      state.advice = false;
+    }
     state.active = Math.max(0, i - 1);
     go(indexOfStep('addons'));
   }
@@ -4197,9 +4204,10 @@
     var folder = function (csv, name, value) {
       var ms = list(csv);
       if (!ms.length) return '';
-      var deltas = ms.map(deltaFor);
-      var low = ms[deltas.indexOf(Math.min.apply(null, deltas))];
-      var same = deltas.every(function (d) { return d === deltas[0]; });
+      // By the percentage: on Help me decide every dollar amount is 0.
+      var bps = ms.map(surchargeBp);
+      var low = ms[bps.indexOf(Math.min.apply(null, bps))];
+      var same = bps.every(function (b) { return b === bps[0]; });
       return '<option value="' + value + '">' + esc(name + ' (' + (same ? '' : 'from ') + feeText(low) + ' fee)') + '  \u203a</option>';
     };
     if (mode === 'early' || mode === 'late') {
@@ -6826,7 +6834,10 @@
     }
     if (t.dataset.vehback !== undefined) return backToVehicle();
     if (t.dataset.delveh) {
-      state.vehicles.splice(Number(t.dataset.delveh), 1);
+      var gone = Number(t.dataset.delveh);
+      state.vehicles.splice(gone, 1);
+      // The vehicles after the removed one move up one place, the active one included.
+      if (gone < state.active) state.active--;
       state.active = Math.min(state.active, state.vehicles.length - 1);
       return render();
     }
@@ -6985,8 +6996,14 @@
     if (t.dataset.otherstart !== undefined) {
       if (!t.value) return;
       if (t.value === 'early' || t.value === 'late' || t.value === 'std') {
-        t.innerHTML = otherStartOptions(t.dataset.std, t.dataset.early, t.dataset.late, t.value);
-        t.value = '';
+        var from = t.dataset.mode || '', to = t.value;
+        t.innerHTML = otherStartOptions(t.dataset.std, t.dataset.early, t.dataset.late, to);
+        t.dataset.mode = to === 'std' ? '' : to;
+        // Back from a group rests on that group's own item, not on "Choose a
+        // time": arrow keys on a closed list fire input, and resting on the
+        // first line sent the next arrow straight back into the group, so a
+        // keyboard user bounced between the two lists (validation, November 16).
+        t.value = to === 'std' ? from : '';
         t.focus();
         // Open it again where the browser allows; otherwise it waits, focused, for one more tap.
         try { if (t.showPicker) t.showPicker(); } catch (err) { /* needs a fresh tap */ }
