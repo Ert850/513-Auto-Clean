@@ -2002,3 +2002,26 @@ Mockups: `docs/mockups/eNov15-booking-fixes-mockups.png`.
 - **`DETAILERS-GUIDE.md`** and **`STATUS-2026-11-13.md`** (marked superseded) corrected.
 - **CLAUDE.md:** the Git rule now names `eNov14`, plus a freeze rule and "How Emmett wants work done".
 - **Memory:** the browser to use for Google and Netlify; the dangling `[[ghl-keys-request]]` link removed.
+
+## The headline A/B test, a demo of the test system (Emmett, November 16)
+
+- **What:** test `hero-headline`, `running`, splitting the home page headline three ways:
+  - "Professional mobile detailing in Greater Cincinnati." (control, 34);
+  - "…in Cincinnati." (33);
+  - "…across the 513." (33).
+
+  Emmett wants it as a first test to prove the system end to end. It starts when eNov14 is live; run 4 weeks, then end it with the winner.
+- **New: changing words without hiding them** (`data-exp-words` in `js/analytics.js`):
+  - **What it does:** the page keeps the control's words, so Google reads "Greater Cincinnati" and there's one `<h1>`. A visitor in another version gets the HTML from `data-exp-<version>` swapped in before the headline fades up.
+  - **Why not the old way:** `data-exp` hides every version until a script picks one, so a headline would start empty and the page would carry three.
+- **Bug found by the demo, fixed:**
+  - **Symptom:** a booking named only the tests asked about on the page where it was made. A visitor shown a headline on the home page who booked from Services was recorded with no version.
+  - **Root cause:** `AC_EXPS()` read this page's choices only.
+  - **Fix:** it now also lists every running test the visitor is in, from storage. Ended tests aren't reported.
+- **Tests:** `experiments.test.ts`: the swap for each version and for an off test; a booking on another page naming the version. 745 pass.
+- **Checked in the browser, on the build:**
+  - each version shows its own headline (one `<h1>`, the red ending right);
+  - on Services, `AC_EXPS()` names that version, which is what the booking email carries;
+  - a new visitor is drawn once and keeps the version on reload;
+  - no script errors.
+- **Also:** `docs/ELIJAH-UPDATE-2026-11-16.pdf`, the handoff to Elijah with all 70 FAQ questions, the 6 to rewrite and 64 new ones (the PDF he asked for).

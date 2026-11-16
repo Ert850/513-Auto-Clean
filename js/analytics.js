@@ -107,9 +107,20 @@
     return v;
   };
 
-  /** "golf-code: code", for the booking email. Empty when in no test. */
+  /**
+   * "golf-code: code", for the booking email. Empty when in no test.
+   * Every running test this visitor is in, not only the ones this page asked
+   * about: someone shown a headline on the home page who books from Services
+   * was recorded with no version (found with the headline test, November 16).
+   */
   window.AC_EXPS = function () {
-    return Object.keys(given).map(function (id) { return id + ': ' + given[id]; }).join(', ');
+    var out = {}, all = storedTests();
+    TESTS.forEach(function (t) {
+      if (t.status !== 'running') return;
+      if (t.versions.some(function (x) { return x[0] === all[t.id]; })) out[t.id] = all[t.id];
+    });
+    Object.keys(given).forEach(function (id) { out[id] = given[id]; });
+    return Object.keys(out).map(function (id) { return id + ': ' + out[id]; }).join(', ');
   };
 
   function variantString() {
@@ -135,8 +146,23 @@
       if (window.AC_EXP(parts[0]) === parts[1]) el.classList.add('exp-on');
     });
   }
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', showTestElements);
-  else showTestElements();
+  /*
+   * A version's words in an element the page needs either way (a headline):
+   * data-exp-words="test-id" and, per version, data-exp-<version>="its HTML".
+   * The page carries the control's words, so search engines and anyone
+   * without scripts read those; only a visitor in another version gets
+   * theirs, swapped in before the element fades up (.reveal).
+   */
+  function swapTestWords() {
+    document.querySelectorAll('[data-exp-words]').forEach(function (el) {
+      var v = window.AC_EXP(el.getAttribute('data-exp-words'));
+      var html = v ? el.getAttribute('data-exp-' + v) : null;
+      if (html) el.innerHTML = html;
+    });
+  }
+  function showTests() { showTestElements(); swapTestWords(); }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', showTests);
+  else showTests();
 
   /** Record an event. Does nothing unless analytics is loaded. */
   window.AC_TRACK = function (name, params) {

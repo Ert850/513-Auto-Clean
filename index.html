@@ -52,9 +52,9 @@
      so the Content-Security-Policy can forbid inline scripts outright.
      js/config.js holds publishable keys only. Secret keys never go in a page.
      analytics.js loads nothing until the visitor accepts the banner. -->
-<script src="js/config.js?v=a90f154329"></script>
+<script src="js/config.js?v=0b0ba12eaf"></script>
 <script src="js/vendors.js?v=b1b3811463"></script>
-<script src="js/analytics.js?v=025f45f5ea" defer></script>
+<script src="js/analytics.js?v=2f7f0dde04" defer></script>
 <!-- CHROME:HEAD:END -->
 <!-- book.css styles the booking modal, which is not open when the page first
      paints, so it is linked at the end of the body rather than blocking the
@@ -656,7 +656,8 @@
            the trust badge; the build stamps the count and js/reviews.js keeps
            it live. -->
       <span class="hero-badge reveal"><span class="hb-stars" aria-hidden="true">★★★★★</span> <span class="hb-text">Rated 5.0 from 32 reviews on Google</span></span>
-      <h1 class="reveal" data-d="1">Professional mobile detailing in <span class="grad">Greater Cincinnati.</span></h1>
+      <!-- A/B test "hero-headline" (config/experiments.json): the control's words are here; js/analytics.js swaps in a version's. -->
+      <h1 class="reveal" data-d="1" data-exp-words="hero-headline" data-exp-cincinnati="Professional mobile detailing in &lt;span class=&quot;grad&quot;&gt;Cincinnati.&lt;/span&gt;" data-exp-the-513="Professional mobile detailing across &lt;span class=&quot;grad&quot;&gt;the 513.&lt;/span&gt;">Professional mobile detailing in <span class="grad">Greater Cincinnati.</span></h1>
       <p class="hero-sub reveal" data-d="2">UC student-owned team bringing professional interior and exterior detailing to you.</p>
       <p class="hero-sub hero-sub2 reveal" data-d="2">Support genuine people you can trust when you go with us.</p>
       <div class="hero-cta reveal" data-d="3">
