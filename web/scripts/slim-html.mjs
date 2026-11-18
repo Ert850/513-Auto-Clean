@@ -29,5 +29,5 @@ const TOKEN = /<!--[\s\S]*?-->|<(script|style|pre|textarea)\b[^>]*>[\s\S]*?<\/\1
 export function slimHtml(html) {
   const kept = [];
   const held = html.replace(TOKEN, (m, tag) => (tag ? `\u0000${kept.push(m) - 1}\u0000` : ""));
-  return held.replace(/[ \t]*\n\s*/g, "\n").replace(/\u0000(\d+)\u0000/g, (_, i) => kept[Number(i)]);
+  return held.replace(/[ \t\r]*\n[ \t\r\n]*/g, "\n").replace(/\u0000(\d+)\u0000/g, (_, i) => kept[Number(i)]);
 }

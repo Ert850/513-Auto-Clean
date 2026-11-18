@@ -104,6 +104,7 @@ Read this before changing anything. Every rule below came from a real bug or an 
   - `js/pricing.bundle.js`, `netlify/functions/_pricing.mjs`, `js/config.js`, `dist/`;
   - every `?v=` stamp;
   - everything between `CHROME:*` markers (source: `web/partials/`);
+  - `CITYGUIDES:OH|KY|IN` in `service-area.html` and `SERVICEGUIDES` in `services.html` (source: `config/locations/`, `config/services/`, `web/scripts/page-links.mjs`);
   - `CONTACT:HEAD|CARD` in `contact.html` (source: `config/contact-form.json`, `web/scripts/contact-form.mjs`) and `BOOKPAGE:VIDEO|AREAS` in `booking.html` (source: `config/booking-page.json`, the footer partial's area list).
 - If the legal wording changes, bump the date in `web/lib/site/legal.ts`, then run `npm run lock:legal`.
 - **Settings live in `config/*.json`, never in code.** The rush fee window is `config/rush-fee.json` (a default plus first-match rules by source, booking kind, package and dates), read through `rushWindow()` by the browser and the server alike. A fixed `minLeadDays: 3` read in four places is why changing it to 2 meant hunting. Never write a day count, fee or discount amount into wording: say it from the setting (`rushWin()`; `feeText()`; promo amounts are stamped from `config/promo-codes.json` by `render-site.mjs`, which fails the build on a code the file doesn't know). "GOLF10 takes 10% off" was typed into `lp-golf.html` while the 10 lived in the file. Discount codes are `config/promo-codes.json` (no `until` means never ends; end dates are Cincinnati dates, never the server's UTC clock). A/B tests are `config/experiments.json` (`docs/AB-TESTING.md`): never rename a running test or its versions, and count bookings per version from the booking emails, not from analytics alone. Scheduling numbers (soonest start, short notice, arrival window, drive fallback, correction days, how far ahead) are `config/scheduling.json`, read through `SCHEDULING` by the form and the functions alike (calendar fix 5, November 14).
@@ -128,7 +129,7 @@ Read this before changing anything. Every rule below came from a real bug or an 
   - *How it works:* source links stay `about.html` (pages open locally). `web/scripts/site-urls.mjs` rewrites dist/ for every page with a canonical tag (links, canonical, `og:url`, JSON-LD, sitemap) and writes `dist/_redirects` (`/about.html /about 301!`). `pretty_urls` is pinned in `netlify.toml`.
   - *The build fails (`checkDist`) when:*
     - a page doesn't have exactly one `<h1>`;
-    - anything still names a page by `.html`;
+    - anything still names a page by `.html` (pages, the sitemap and the scripts' `href="..."` strings; other addresses in code, such as `script.js`'s map of old home-page sections, go through the 301), or an absolute same-site `.html` address isn't a real page without its own address;
     - a canonical isn't the clean address;
     - an indexable page is missing from the sitemap, or a noindex page is in it;
     - a page has neither a canonical nor noindex;

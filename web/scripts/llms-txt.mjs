@@ -10,14 +10,18 @@
  *   description, at its one address (site-urls.mjs);
  * - packages and "from" prices come from the catalog, the same source as the
  *   price cards (no business number is typed here);
- * - phone and hours come from config/business.json (and BUSINESS_PHONE).
+ * - what the prices mean is read from the Services page's own sentence;
+ * - phone and hours come from config/business.json (the build's phone stamp
+ *   swaps in BUSINESS_PHONE like every other file).
  */
 import fs from "node:fs";
 import path from "node:path";
+import { tagWith } from "./site-urls.mjs";
+import { BOOK_PAGE } from "./book-links.mjs";
 
 const meta = (html, re) => (re.exec(html)?.[1] ?? "").replace(/&amp;/g, "&").replace(/&quot;/g, '"').replace(/&#39;/g, "'").trim();
 const title = (html) => meta(html, /<title>([^<]*)<\/title>/).replace(/\s*\|\s*513 Auto Clean$/, "").replace(/^513 Auto Clean\s*\|\s*/, "");
-const description = (html) => meta(html, /<meta name="description" content="([^"]*)"/);
+const description = (html) => meta(tagWith(html, "meta", /\bname="description"/) ?? "", /\bcontent="([^"]*)"/);
 const money = (cents) => "$" + (cents / 100).toLocaleString("en-US", { minimumFractionDigits: cents % 100 ? 2 : 0 });
 
 /** The policies go under "Optional": the spec's place for what can be skipped. */
@@ -45,6 +49,10 @@ export function llmsTxt({ dist, catalog, phone, hours }) {
     .filter((p) => !p.comingSoon && !p.requiresPriorDetail)
     .sort((a, b) => a.category.localeCompare(b.category) || a.sortOrder - b.sortOrder);
   const origin = new URL(home.url).origin;
+  // What the prices mean, in the Services page's own words (read, not copied).
+  const services = fs.readFileSync(path.join(dist, "services.html"), "utf8");
+  const meaning = /Prices are starting points[^<]*/.exec(services)?.[0].trim();
+  if (!meaning) throw new Error('llms-txt: services.html no longer says "Prices are starting points..."; update llms-txt.mjs');
 
   return [
     "# 513 Auto Clean",
@@ -53,11 +61,11 @@ export function llmsTxt({ dist, catalog, phone, hours }) {
     "",
     `- Phone: ${phone}`,
     `- Hours: ${hours}`,
-    `- Book online: ${origin}/book`,
+    `- Book online: ${origin}${BOOK_PAGE}`,
     "",
     // Free text belongs before the first H2 (llmstxt.org): the H2 sections are
     // lists of links. The Services page's own words for what the prices mean.
-    "Packages, with starting prices for most cars; larger or heavily soiled vehicles may vary. The booking form shows the price for your vehicle as you choose.",
+    `Packages and starting prices. ${meaning} The booking form shows the price for your vehicle as you choose.`,
     "",
     ...packages.map((p) => `- ${p.name} (${p.category}), from ${money(p.priceCents)}: ${p.tagline}`),
     "",
