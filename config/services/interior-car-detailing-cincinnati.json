@@ -1,0 +1,65 @@
+{
+  "_read_me": "Service page (draft). Prices, contents and times come from the catalog; only the words are here. Photos: proofPairs are gallery slugs (pending Elijah's photo review). Publish needs 2+ before/after pairs of this service.",
+  "status": "draft",
+  "slug": "interior-car-detailing-cincinnati",
+  "name": "Interior Car Detailing",
+  "explains": { "tab": "interior", "link": "About interior detailing" },
+  "serviceType": "Interior car detailing",
+  "title": "Interior Car Detailing in Cincinnati | 513 Auto Clean",
+  "meta": "Mobile interior detailing in Cincinnati: Basic, Full and Full Interior + Steam, from {price:basic-interior}. We come to your driveway. Pay when it's done.",
+  "eyebrow": "Interior detailing",
+  "h1": "Interior car detailing in Cincinnati, done in your driveway",
+  "sub": "Seats, carpet, mats and every crack and crevice, cleaned at your house by our UC student-owned crew. Pick a level below and see your price before you book.",
+  "book": {
+    "intent": "interior"
+  },
+  "hero": {
+    "pair": "pethair"
+  },
+  "packages": [
+    "basic-interior",
+    "full-interior",
+    "full-steam-interior"
+  ],
+  "levelsH2": "Pick your level",
+  "proofPairs": [
+    "civic-front-floor",
+    "captain-chair",
+    "crv-interior",
+    "sonic-interior"
+  ],
+  "howH2": "How it works",
+  "steps": [
+    "Pick your package and vehicle size online. You see the full price, travel and tax included, before you book.",
+    "We show up at your home or work with our own supplies and equipment. An outdoor outlet helps if you have one.",
+    "We work through the car top to bottom: vacuum and blowout, then shampoo, surfaces, mats and the small details.",
+    "You look it over, then pay on site."
+  ],
+  "honest": "a Full Interior lifts most dirt, hair and staining, but it doesn't repair tears, burns or worn fabric, and some old stains never fully come out. We tell you what to expect before we start.",
+  "addonsH2": "Add to any interior",
+  "addons": [
+    "pet-hair",
+    "stain",
+    "ozone",
+    "showroom-restoration"
+  ],
+  "faq": [
+    {
+      "q": "How long does an interior detail take?",
+      "a": "It depends on the package, the size of the car and how much is in it. The booking form shows the time for your car before you book."
+    },
+    {
+      "q": "Do you need my water or power?",
+      "a": "No. We bring what we need. An outdoor outlet helps if you have one."
+    },
+    {
+      "q": "Do I need to be home?",
+      "a": "No, as long as we can get into the car. You can leave us the keys and go about your day."
+    }
+  ],
+  "proofServices": [
+    "full-interior",
+    "basic-interior",
+    "pet-hair"
+  ]
+}

@@ -88,6 +88,17 @@ describe("T1: the phone number", () => {
     expect(phoneHashSalt(undefined)).toBe("");
   });
 
+  it("covers every file the build writes into dist/, including _redirects and llms.txt, because it runs after them", () => {
+    const dir = sampleDist();
+    fs.writeFileSync(path.join(dir, "llms.txt"), `- Phone: ${REPO_PHONE.display}\n`);
+    fs.writeFileSync(path.join(dir, "_redirects"), `/call tel:${REPO_PHONE.e164} 302\n`);
+    const { changed } = stampPhone(dir, NEW);
+    expect(changed).toEqual(expect.arrayContaining(["llms.txt", "_redirects"]));
+    const build = read("web/scripts/build-dist.mjs");
+    const at = (s: string) => build.indexOf(s);
+    for (const writer of ["applyCleanUrls(dist)", 'path.join(dist, "llms.txt")']) expect(at(writer), writer).toBeLessThan(at("stampPhone(dist)"));
+  });
+
   it("a bad value stops the build with the reason", () => {
     expect(() => stampPhone(sampleDist(), "513-279-291")).toThrow(/BUSINESS_PHONE.*not 10 US digits/);
   });
@@ -138,7 +149,7 @@ describe("T2: the Contact form", () => {
     expect(card).toContain('value="QUOTE REQUEST from 513autoclean.com"');
     expect(card).toMatch(/<button type="submit"[^>]*>\s*Request Quote/);
     expect(card).toContain("No spam, ever. We only use your info to send your quote.");
-    expect(contactHead(as("quote"))).toContain("<h2>Request a quote</h2>");
+    expect(contactHead(as("quote"))).toContain("<h1>Request a quote</h1>");
   });
 
   it("script.js sends each box as yes or no, so the email says which", () => {

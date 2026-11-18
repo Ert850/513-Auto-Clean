@@ -1,0 +1,83 @@
+{
+  "_read_me": "City page (draft). Facts: docs/SEO-COMPLIANCE.md section 6. Prices are {price:<package id>} tokens filled from the catalog. Before publishing: 2+ jobs from these ZIPs with photos (localJobs) and 1+ Google review from here (reviews), confirmed by Elijah (docs/ELIJAH-LOCAL-PROOF.md).",
+  "status": "draft",
+  "slug": "mobile-detailing-delhi-price-hill-oh",
+  "name": "Delhi & Price Hill",
+  "areaServed": [
+    "Delhi Township, OH",
+    "Price Hill, Cincinnati, OH"
+  ],
+  "title": "Mobile Detailing in Delhi & Price Hill, OH | 513 Auto Clean",
+  "meta": "Mobile car detailing at your home or work in Delhi Township and Price Hill. Full Interiors from {price:full-interior}. See your price first, pay when it's done.",
+  "eyebrow": "West side Cincinnati",
+  "h1": "Mobile car detailing in Delhi and Price Hill",
+  "sub": "We come to your house or work in Delhi Township or Price Hill and clean your car where it's parked. You see the whole price, travel and tax included, before you book.",
+  "book": {
+    "intent": "interior"
+  },
+  "hero": {
+    "pairs": ["third-row-seat-stains", "pethair", "soul-cargo", "captain-chair"]
+  },
+  "localParagraph": "If you have a driveway, that's usually where we set up. Street parking can work too, as long as there's a safe, legal spot right beside the car with room to open every door. If there's nowhere good to work near you, tick \"I do not have a good location for a detail near me\" when you book and we'll meet at a nearby lot. We bring what we need, and an outdoor outlet helps if you have one. You don't have to be home, and the car can be at work: tell us where it's parked.\n\nFor most people it's the inside that needs the work: car seats, dogs, work boots and months of commuting. That's what a Full Interior is for. If there's a stain or a smell you're worried about, mention it when you book, and we'll tell you what to expect before we start.",
+  "whatH2": "What you can book",
+  "highlights": [
+    "Full Interior + Steam, from {price:full-steam-interior}: the deep clean, then every surface steamed",
+    "Full Interior, from {price:full-interior}: seats and carpet shampooed, mats washed, leather conditioned",
+    "Basic Interior, from {price:basic-interior}: a thorough vacuum and wipe-down between deep cleans",
+    "Stain treatment, from {addon:stain}, added to any interior"
+  ],
+  "neighborhoods": [
+    "Delhi Hills",
+    "Delshire",
+    "Mount St. Joseph",
+    "Sayler Park",
+    "East Price Hill",
+    "West Price Hill",
+    "Lower Price Hill",
+    "Incline District",
+    "Sedamsville"
+  ],
+  "area": "West side",
+  "zips": [
+    "45233",
+    "45238",
+    "45205",
+    "45204"
+  ],
+  "map": {
+    "center": [
+      39.104,
+      -84.6
+    ],
+    "radiusMiles": 3.3,
+    "zips": {
+      "45205": {
+        "lat": 39.11,
+        "lon": -84.574
+      },
+      "45204": {
+        "lat": 39.094,
+        "lon": -84.567
+      }
+    }
+  },
+  "nearby": [],
+  "localJobs": [],
+  "reviews": [],
+  "faq": [
+    {
+      "q": "I only have street parking. Can you still do it?",
+      "a": "Often, yes, if there's a safe, legal spot right beside your car. If there isn't, tick \"I do not have a good location for a detail near me\" when you book and we'll meet at a nearby lot."
+    },
+    {
+      "q": "Can you do my car while I'm at work?",
+      "a": "Yes, if your lot allows it. Add a note about where the car is parked and how we'll get the keys."
+    },
+    {
+      "q": "How is travel priced to Delhi or Price Hill?",
+      "a": "By the drive to your address. The booking form works it out and puts it in your total, with tax, before you book. Nothing is added after."
+    }
+  ],
+  "localH2": "Driveway, street or work lot",
+  "faqH2": "Common questions"
+}

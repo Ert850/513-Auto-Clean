@@ -229,11 +229,16 @@ function eventsUrl(calendarId) {
 /**
  * The event a booking wrote, found by its booking key within a day of its
  * start, or null. Only events this site wrote carry the key.
+ *
+ * THROWS WHEN IT COULDN'T LOOK. Null means "no earlier event", so a failed
+ * read returned as null made a retry's own first event look like someone
+ * else's job: the customer was told their time was taken (validation cycle 2,
+ * November 16). Callers catch it and treat the answer as unknown.
  */
 export async function findBookingEvent({ key, calendarId, aroundMs }) {
   if (!gcalConfigured() || !key || !aroundMs) return null;
   const token = await accessToken();
-  if (!token) return null;
+  if (!token) throw new Error("gcal find: no access token");
   const q = new URLSearchParams({
     privateExtendedProperty: `bookingKey=${String(key).slice(0, 120)}`,
     timeMin: new Date(aroundMs - 86_400_000).toISOString(),
@@ -243,8 +248,9 @@ export async function findBookingEvent({ key, calendarId, aroundMs }) {
   });
   const res = await fetch(`${eventsUrl(calendarId)}?${q}`, { headers: { Authorization: `Bearer ${token}` } });
   if (!res.ok) {
-    console.error("gcal find", res.status, (await res.text()).slice(0, 300));
-    return null;
+    const body = (await res.text()).slice(0, 300);
+    console.error("gcal find", res.status, body);
+    throw new Error(`gcal find ${res.status}`);
   }
   const j = await res.json();
   return (j.items ?? []).find((e) => e.status !== "cancelled") ?? null;

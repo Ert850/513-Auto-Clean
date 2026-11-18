@@ -105,3 +105,12 @@ describe("the /book consent boxes", () => {
     expect(odd.ok && odd.booking.consent.marketing).toBeUndefined();
   });
 });
+
+describe("navigation links are never Book links", () => {
+  it("the hero's View Services goes to the Services page, not the booking form", () => {
+    const hero = read("index.html").split('class="hero-cta')[1].split("</div>")[0];
+    const view = /<a\b[^>]*>(?:(?!<\/a>)[\s\S])*View Services/.exec(hero)?.[0] ?? "";
+    expect(view).toContain('href="services.html"');
+    expect(view).not.toMatch(/book\.html|data-book-/);
+  });
+});

@@ -1,0 +1,65 @@
+{
+  "_read_me": "City page (draft). Facts: docs/SEO-COMPLIANCE.md section 6. 45249 (Symmes, Montgomery) is kept for a later Montgomery page. Before publishing: 2+ jobs from 45243 with photos and 1+ Google review from here, confirmed by Elijah.",
+  "status": "draft",
+  "slug": "mobile-detailing-indian-hill-madeira-oh",
+  "name": "Indian Hill & Madeira",
+  "areaServed": [
+    "Indian Hill, OH",
+    "Madeira, OH"
+  ],
+  "title": "Mobile Detailing in Indian Hill & Madeira | 513 Auto Clean",
+  "meta": "We detail your car in your own driveway in Indian Hill and Madeira. Full Interior + Steam from {price:full-steam-interior}. Exact price first, pay when it's done.",
+  "eyebrow": "Northeast Cincinnati",
+  "h1": "Mobile car detailing in Indian Hill and Madeira",
+  "sub": "We come to your home in Indian Hill or Madeira and detail your car in the driveway or the garage. You see the whole price, travel and tax included, before you book.",
+  "book": {
+    "package": "full-steam-interior"
+  },
+  "hero": {
+    "pairs": ["forester-front-floor", "jeep-cargo", "sonic-interior", "crv-interior"]
+  },
+  "localParagraph": "Most homes here have a driveway or a garage, and either one is a good place for us to work. In a garage we can keep going through rain or hard sun, so tick the garage box when you book. If the house sits back from the road or there's a gate, add a note about where to park and how to get in. You don't need to be home, as long as we can get into the car.\n\nCar seats, dogs, sports gear and road trips all end up in the back seat sooner or later. Full Interior + Steam is the one we'd pick for a family car. If yours needs more than that, ask about Showroom Ready Restoration.",
+  "whatH2": "What you can book",
+  "highlights": [
+    "Full Interior + Steam, from {price:full-steam-interior}: our most popular detail",
+    "Full Interior, from {price:full-interior}: seats and carpet shampooed, mats washed, leather conditioned",
+    "Pet hair removal, {addon:pet-hair}, added to any interior",
+    "Showroom Ready Restoration: added to a Full Interior, and done by Elijah himself"
+  ],
+  "neighborhoods": [
+    "Indian Hill",
+    "Madeira",
+    "Downtown Madeira",
+    "South Kenwood"
+  ],
+  "area": "Northeast",
+  "zips": [
+    "45243"
+  ],
+  "map": {
+    "center": [
+      39.185,
+      -84.335
+    ],
+    "radiusMiles": 3.2
+  },
+  "nearby": [],
+  "localJobs": [],
+  "reviews": [],
+  "faq": [
+    {
+      "q": "Can you work at a house with a long driveway or a gate?",
+      "a": "Yes. We need a level spot next to the car. If the house is far back from the road or gated, tell us where to park and how to get in when you book."
+    },
+    {
+      "q": "Can you work inside my garage?",
+      "a": "Yes, and it's often the best spot, because rain and sun don't matter there. Leave room to open every door of the car."
+    },
+    {
+      "q": "Is there a travel fee to Indian Hill?",
+      "a": "Travel is worked out from the drive to your address, and it's in your total, with tax, before you confirm. No surprise charges later."
+    }
+  ],
+  "localH2": "In your driveway or garage",
+  "faqH2": "Common questions"
+}

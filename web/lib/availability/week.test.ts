@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { zonedToUtc } from "../time/zone.js";
-import { addWeeks, buildWeek, dayOpenShare, startsPossible, daySuggestions, lastRowForSlots, STARTS_PER_DAY, stretchStarts, timelineRange, recommendBestDays, TIME_RECOMMENDATION_RULES, weekStartOf } from "./week.js";
+import { recommendStarts } from "./slots.js";
+import { addWeeks, buildWeek, dayOpenShare, startsPossible, daySuggestions, lastRowForSlots, STARTS_PER_DAY, stretchStarts, timelineRange, recommendBestDays, TIME_RECOMMENDATION_RULES, weekStartOf, weekFromToday } from "./week.js";
 
 const TZ = "America/New_York";
 const at = (mo: number, d: number, h: number, mi = 0) => zonedToUtc(2026, mo, d, h, mi, 0, TZ);
@@ -13,6 +14,17 @@ describe("weekStartOf / addWeeks", () => {
     expect(weekStartOf(at(11, 15, 0, 5))).toBe(at(11, 15, 0));
     // Saturday 11:59pm still belongs to the week before
     expect(weekStartOf(at(11, 21, 23, 59))).toBe(at(11, 15, 0));
+  });
+
+  it("weekFromToday: this week starts today, later weeks whole weeks on (Emmett, November 15)", () => {
+    const wed = at(11, 18, 9);
+    expect(weekFromToday(at(11, 18, 15), wed)).toBe(at(11, 18, 0));
+    expect(weekFromToday(at(11, 24, 23), wed)).toBe(at(11, 18, 0));
+    expect(weekFromToday(at(11, 25, 1), wed)).toBe(at(11, 25, 0));
+    // Never before today, and whole local days across the clock change.
+    expect(weekFromToday(at(11, 10, 12), wed)).toBe(at(11, 18, 0));
+    expect(weekFromToday(at(11, 3, 12), at(10, 28, 9))).toBe(at(10, 28, 0));
+    expect(weekFromToday(at(11, 4, 12), at(10, 28, 9))).toBe(at(11, 4, 0));
   });
 
   it("steps whole weeks across the clock change (DST ends 1 Nov 2026)", () => {
@@ -114,6 +126,32 @@ describe("recommendBestDays (best times from the calendars, round 15)", () => {
       ["weekend", at(11, 21, 0), at(11, 21, 18), "kris"],
     ]);
     expect(picks[1]!.daysAway).toBe(3);
+  });
+
+  it("a first no-rush day on a weekend is the weekend pick; the later weekend day is just 'also' (November 15)", () => {
+    // Thursday 19: rush Thu and Fri, so the first no-rush day is Saturday.
+    const thu = at(11, 19, 7);
+    const rushToSat = (ms: number) => ms < at(11, 21, 0);
+    const picks = recommendBestDays({ members: [kris, elijah], travelGapMin: 60, isRush: rushToSat, nowMs: thu, isPremium: () => false });
+    expect(picks.slice(0, 3).map((p) => [p.reason, p.dayStart])).toEqual([
+      ["soonest", at(11, 17, 0)],
+      ["afterRushWeekend", at(11, 21, 0)],
+      ["also", at(11, 22, 0)],
+    ]);
+    expect(TIME_RECOMMENDATION_RULES.version).toBe("best-2");
+  });
+
+  it("'This weekend' is only the coming weekend, and the next card follows it in date order (validation, November 15)", () => {
+    const thu = at(11, 19, 7);
+    const rushToSat = (ms: number) => ms < at(11, 21, 0);
+    // Sunday full: the card after "This weekend" is Monday, not next Saturday.
+    const noSun = { ...elijah, starts: elijah.starts.filter((ms) => ms < at(11, 22, 0) || ms >= at(11, 23, 0)), best: elijah.best.filter((ms) => ms < at(11, 22, 0) || ms >= at(11, 23, 0)) };
+    const krisNoSun = { ...kris, starts: kris.starts.filter((ms) => ms < at(11, 22, 0) || ms >= at(11, 23, 0)), best: kris.best.filter((ms) => ms < at(11, 22, 0) || ms >= at(11, 23, 0)) };
+    const picks = recommendBestDays({ members: [krisNoSun, noSun], travelGapMin: 60, isRush: rushToSat, nowMs: thu, isPremium: () => false });
+    expect(picks.slice(1, 3).map((p) => [p.reason, p.dayStart])).toEqual([["afterRushWeekend", at(11, 21, 0)], ["also", at(11, 23, 0)]]);
+    // A first no-rush weekend day a week or more away keeps "In N days".
+    const far = recommendBestDays({ members: [kris, elijah], travelGapMin: 60, isRush: (ms) => ms < at(11, 21, 0), nowMs: at(11, 14, 7), isPremium: () => false });
+    expect(far.find((p) => p.dayStart === at(11, 21, 0))?.reason).not.toBe("afterRushWeekend");
   });
 
   it("More times are the other detailers' best times that day, never every half hour", () => {
@@ -240,5 +278,48 @@ describe("timelineRange (no dead grey rows, November 11)", () => {
   it("stops at midnight, and is null with nothing in view", () => {
     expect(timelineRange([h(22)], 180, { early: false, late: true }, REG)).toEqual({ from: h(22), last: h(22), to: h(24) });
     expect(timelineRange([h(8)], 60, shut, REG)).toBeNull();
+  });
+});
+
+describe("calendar fix 4: a detailer's standard-price evening is standard in the week", () => {
+  const weekStart = at(11, 15, 0);
+  const now = at(11, 10, 9);
+  // Kris on Tuesday: 6pm and 6:30pm, standard price on his calendar; 7pm has a fee.
+  const slots = [at(11, 17, 18), at(11, 17, 18, 30), at(11, 17, 19)];
+  const feeFrom7 = (ms: number) => ms >= at(11, 17, 19);
+
+  it("the clock alone calls 6pm a fee and stars nothing", () => {
+    const week = buildWeek({ slots, weekStart, travelGapMin: 60, nowMs: now, needsPriority: () => false });
+    const six = week.days[2]!.cells.find((c) => c.hourMin === 18 * 60)!;
+    expect(six.premium).toBe(true);
+    expect(six.suggested).toBe(false);
+  });
+
+  it("with the calendar's fee, 6pm is standard and can be starred; 7pm keeps its fee", () => {
+    const week = buildWeek({ slots, weekStart, travelGapMin: 60, nowMs: now, needsPriority: () => false, isPremium: feeFrom7 });
+    const tue = week.days[2]!;
+    const six = tue.cells.find((c) => c.hourMin === 18 * 60)!;
+    const seven = tue.cells.find((c) => c.hourMin === 19 * 60)!;
+    expect(six.premium).toBe(false);
+    expect(six.suggested).toBe(true);
+    expect(seven.premium).toBe(true);
+    expect(seven.suggested).toBe(false);
+  });
+
+  it("the recommendation ranking takes the calendar's fee too, so a fee start never outranks a standard 6pm", () => {
+    // 8am carries a fee on this calendar, 6pm doesn't. By the clock both are
+    // fee starts, so the ranking fell back to all and could pick 8am.
+    const starts = [at(11, 17, 8), at(11, 17, 18)];
+    const fee = (ms: number) => ms === at(11, 17, 8);
+    const picked = recommendStarts({ starts, travelGapMin: 60, isPremium: fee, limit: 2 }).map((r) => r.ms);
+    expect(picked).toEqual([at(11, 17, 18)]);
+  });
+
+  it("the form folds by the fee, not by 10am to 6pm", () => {
+    const src = require("node:fs").readFileSync(require("node:path").join(__dirname, "../../../js/funnel.js"), "utf8");
+    expect(src).not.toMatch(/REG_FROM|REG_TO/);
+    expect(src).toContain("isPremium: timeFeeApplies");
+    const folds = src.slice(src.indexOf("function foldsOpen("), src.indexOf("function foldButton("));
+    expect(folds).toContain("timeFeeApplies(");
   });
 });

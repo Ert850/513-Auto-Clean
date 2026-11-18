@@ -7,6 +7,7 @@
  * mirror with eventual consistency and rate limits.
  */
 import { localWeekday } from "../time/zone.js";
+import { SCHEDULING } from "./scheduling.js";
 
 /**
  * Days and weekdays are Cincinnati's, never the visitor's. new Date().getDay()
@@ -378,8 +379,8 @@ export interface TimeBand {
  * what stops the oldest bug in this feature coming back: a time sold inside
  * a band labelled standard, then billed at the premium rate.
  */
-/** The arrival window customers are told: "we arrive between 6 and 7pm". */
-export const ARRIVAL_WINDOW_MIN = 60;
+/** The arrival window customers are told: "we arrive between 6 and 7pm" (config/scheduling.json). */
+export const ARRIVAL_WINDOW_MIN = SCHEDULING.arrivalWindowMinutes;
 
 export const TIME_BANDS: TimeBand[] = [
   {
@@ -585,6 +586,8 @@ export function recommendStarts(req: {
    */
   preferMin?: number;
   limit?: number;
+  /** Does this start carry an early or late fee? Defaults to the clock's bands. */
+  isPremium?: (ms: number) => boolean;
   timeZone?: string;
 }): Recommendation[] {
   const all = [...new Set(req.starts)].sort((a, b) => a - b);
@@ -602,7 +605,10 @@ export function recommendStarts(req: {
    * The rush fee is different and is not filtered here: it applies to every
    * hour of a near-term day, so no choice within that day avoids it.
    */
-  const standard = all.filter((ms) => !bandOf(localMinutesOfDay(ms, req.timeZone))?.premium);
+  // The calendar's fee when the caller knows it (daySuggestions; calendar fix
+  // 4), else the clock's bands.
+  const premium = req.isPremium ?? ((ms: number) => Boolean(bandOf(localMinutesOfDay(ms, req.timeZone))?.premium));
+  const standard = all.filter((ms) => !premium(ms));
   const starts = standard.length ? standard : all;
 
   const limit = req.limit ?? 2;

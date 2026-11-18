@@ -495,13 +495,57 @@ describe("the booking funnel opens", () => {
     // that does not match the slot the customer was offered.
     const funnel = fs.readFileSync(path.join(ROOT, "js/funnel.js"), "utf8");
     expect(funnel, "the funnel must not invent its own hold").toContain("P.ADVICE_HOLD_MIN");
-    expect(funnel).toMatch(/function holdMinutes\(\) \{ return totalDurationMin\(\) \|\| P\.ADVICE_HOLD_MIN; \}/);
+    // Help me decide holds at least the advice block (validation pass 4); anything else its own length.
+    expect(funnel).toMatch(/function holdMinutes\(\) \{[\s\S]{0,160}state\.advice \? Math\.max\(totalDurationMin\(\), P\.ADVICE_HOLD_MIN\) : totalDurationMin\(\) \|\| P\.ADVICE_HOLD_MIN;/);
 
     const conf = fs.readFileSync(path.join(ROOT, "netlify/functions/send-confirmation.mjs"), "utf8");
     expect(conf, "the calendar event must use the same block").toContain("ADVICE_HOLD_MIN");
     // Zero is not null, so `?? 120` never caught an advice booking and the
     // event would have ended the moment it started.
     expect(conf).not.toMatch(/priced\.serviceDurationMin \?\? 120/);
+  });
+
+  it("the bar's struck price and You saved come from one no-discount price, labelled (November 15)", () => {
+    const src = fs.readFileSync(path.join(ROOT, "js/funnel.js"), "utf8");
+    const bar = src.slice(src.indexOf("function renderTotal()"), src.indexOf("function fmtDur("));
+    expect(bar).toMatch(/'<s>' \+ \$\(undiscounted\(\)\.totalCents\)/);
+    expect(bar).not.toMatch(/grossBeforeMultiCents/);
+    // The words and the arithmetic are web/lib/pricing/savings.ts (savings.test.ts); the form only passes the no-discount total in.
+    expect(bar).toMatch(/P\.barLabel\(quote\)/);
+    const table = src.slice(src.indexOf("function savings("), src.indexOf("function lineTable("));
+    expect(table).toMatch(/P\.savingSummary\(quote, undiscounted\(\)\.totalCents\)/);
+    expect(src).toMatch(/You saved<\/td><td>' \+ \$\(won\.cents\) \+ \(won\.note/);
+  });
+
+  it("Confirm can't loop on its own free check (froze the page, November 15)", () => {
+    // verifySlot says "free" without stamping the time when it has nothing to
+    // check against; advance() then re-checked forever. checkThenAdvance must
+    // stamp the check before it advances.
+    const src = fs.readFileSync(path.join(ROOT, "js/funnel.js"), "utf8");
+    const body = src.slice(src.indexOf("function checkThenAdvance()"), src.indexOf("function advance()"));
+    expect(body).toMatch(/if \(free\) \{[\s\S]*?lastFreeCheck = Date\.now\(\);[\s\S]*?return advance\(\);/);
+  });
+
+  it("draws the bot check for every booking once there is a site key, card or no card", () => {
+    // November 15: the box sat inside the card step, which is gone while
+    // cards are off, and the server wants its token on every booking.
+    const P = env.window.ACPricing;
+    const url = P.quoteUrl(
+      {
+        v: 1,
+        ts: Math.floor(Date.now() / 1000),
+        vs: [{ z: "small", i: "interior", p: ["basic-interior"] }],
+        ad: ["1 Main St", "Cincinnati", "OH", "45220"],
+        ct: ["Ada", "5135551212", "ada@example.com"],
+        sl: Date.now() + 6 * 86_400_000,
+      },
+      "https://513autoclean.com/",
+    );
+    const without = agreeToReview(loadFunnel(url.slice(url.indexOf("#"))));
+    expect(without, "no key, no box").not.toContain("bkTurnstile");
+    const withKey = agreeToReview(loadFunnel(url.slice(url.indexOf("#")), { turnstileSiteKey: "1x00000000000000000000AA" }));
+    expect(withKey).toContain("bkTurnstile");
+    if (!env.window.ACPricing.isLive("cardOnFile")) expect(withKey, "even with cards off").not.toContain("bkMandate");
   });
 
   it("brings the card step back the moment a Stripe key exists", () => {
@@ -995,7 +1039,8 @@ describe("what the screen says about money and time", () => {
   });
 
   it("takes bookings up to a year ahead, as the live site does, and no further", () => {
-    expect(src(), "November 11: the same limit as the live site").toContain("var MAX_BOOK_DAYS = 365;");
+    // The year now lives in config/scheduling.json (calendar fix 5; its value is checked in scheduling.test.ts).
+    expect(src(), "November 11: the same limit as the live site").toContain("var MAX_BOOK_DAYS = P.SCHEDULING.bookAheadDays;");
     const code = fn("paintWeek", 1200);
     expect(code, "the forward chevron stops at the cap").toContain("lastBookableMs()");
   });

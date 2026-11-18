@@ -12,7 +12,23 @@
  * job they do, so a request cannot pick a calendar or claim a waiver.
  * Anything else is the owner.
  */
-import { parseDetailers, waivesFeeAt, canDo, wireNeeds, loadWindow, blockFeeAt, localMinutesOfDay, DEFAULT_RULES } from "./_pricing.mjs";
+import { parseDetailers, waivesFeeAt, canDo, wireNeeds, loadWindow, blockFeeAt, localMinutesOfDay, DEFAULT_RULES, checkRange, slotStillFree } from "./_pricing.mjs";
+import { readPersonal } from "./personal-busy.mjs";
+
+/*
+ * Every read before a booking is written gets a time limit (validation cycle 2,
+ * November 16). These reads sit in the booking's path, and a slow calendar or
+ * feed could run the function past Netlify's limit before anything was written
+ * or Elijah was told. Out of time counts as "could not read", which each
+ * caller already handles: the fee shown stands, the time is written as one to
+ * check, the personal feed is skipped.
+ */
+const READ_LIMIT_MS = 4000;
+export function inTime(promise, ms = READ_LIMIT_MS) {
+  let timer;
+  const late = new Promise((_, reject) => { timer = setTimeout(() => reject(new Error(`timed out after ${ms} ms`)), ms); });
+  return Promise.race([promise, late]).finally(() => clearTimeout(timer));
+}
 
 /** Elijah's OPEN blocks live on 513 Availability (as js/config.template.js). */
 const OWNER_AVAILABILITY = process.env.GOOGLE_OWNER_AVAILABILITY_ID ||
@@ -71,7 +87,7 @@ export async function blockFeeFor(detailer, slotMs, shownBp) {
   const ids = detailer ? [detailer.availabilityCalendarId].filter(Boolean) : ownerFeeCalendars();
   if (apiKey && ids.length) {
     try {
-      const win = await loadWindow({ calendarId: ids[0], extraCalendarIds: ids.slice(1), apiKey }, slotMs - 12 * 3600_000, slotMs + 12 * 3600_000);
+      const win = await inTime(loadWindow({ calendarId: ids[0], extraCalendarIds: ids.slice(1), apiKey }, slotMs - 12 * 3600_000, slotMs + 12 * 3600_000));
       const fee = blockFeeAt(win, slotMs);
       if (fee !== null) return fee;
       // Read fine, but no OPEN block holds this start: the detailer is not
@@ -92,6 +108,64 @@ export async function blockFeeFor(detailer, slotMs, shownBp) {
   const clock = (m < r.earlyBeforeMinutes || m >= r.lateFromMinutes) && !timeFeeWaived(detailer, slotMs) ? r.timeOfDayBp : 0;
   const shown = Number(shownBp);
   return Number.isFinite(shown) && shown >= 0 && shown <= clock ? Math.round(shown) : null;
+}
+
+/** The server-only calendar key first, else the browser key (see blockFeeFor). */
+function calendarKey(env = process.env) {
+  return env.GOOGLE_CALENDAR_SERVER_KEY || env.GOOGLE_CALENDAR_API_KEY || env.GOOGLE_API_KEY || "";
+}
+
+/**
+ * Is this start still free for whoever was given it, on the calendar as it
+ * is right now (calendar fix 1, November 14)? The same calendars the booking
+ * form reads for them (calendarCfgFor in js/funnel.js) and the same check
+ * (slotStillFree), so the two cannot disagree about what is free.
+ *
+ * "free", "taken", "unread" (a calendar failed: the booking goes through as
+ * a request, never silently onto a taken time), or "unconfigured" (nothing
+ * to check against, as in the form).
+ *
+ * The drive: with one detailer the form allows for the drive measured at the
+ * appointment, as `job.driveMin` is here. With several, it allows for each
+ * one's drive measured with no time of day (measureEachDetailer), which
+ * `plainDrive()` measures the same way. When only the longer drive makes the
+ * time fail, it was offered in good faith and is kept (`tight`); a refusal
+ * is only for a real clash on the form's own terms (review, November 14:
+ * a zero-minute retry let a real clash through).
+ */
+export async function slotStatus(detailer, job, env = process.env, plainDrive = null) {
+  const apiKey = calendarKey(env);
+  const busyOnly = String(env.GOOGLE_BUSY_ONLY_CALENDAR_IDS || "").split(",").map((x) => x.trim()).filter(Boolean);
+  const cfg = detailer
+    ? { calendarId: detailer.availabilityCalendarId, busyOnlyIds: [detailer.bookingsCalendarId].filter(Boolean), apiKey }
+    : { calendarId: env.GOOGLE_CALENDAR_ID || OWNER_CALENDAR, extraCalendarIds: [env.GOOGLE_OWNER_AVAILABILITY_ID || OWNER_AVAILABILITY], busyOnlyIds: busyOnly, apiKey };
+  // The arrival window of whoever has the time, as the form uses it.
+  const who = detailer ?? parseDetailers(env.DETAILERS).crew.find((x) => x.owner);
+  job = { ...job, arrivalWindowMin: who?.arrivalWindowMin };
+  const range = checkRange(job);
+  if (!apiKey || !cfg.calendarId || !range) return { status: "unconfigured" };
+  try {
+    const [win, personal] = await Promise.all([
+      inTime(loadWindow(cfg, range.from, range.to)),
+      // Elijah's personal calendar, on his times only. As in the form, its
+      // failing never blocks a booking.
+      detailer ? { body: { busy: [] } } : inTime(readPersonal()).catch(() => ({})),
+    ]);
+    const cal = { open: win.open, busy: [...(win.busy || []), ...(personal.body?.busy || [])] };
+    const res = slotStillFree(job, cal);
+    if (res.free) return { status: "free", lateMin: res.lateMin };
+    if (plainDrive && parseDetailers(env.DETAILERS).crew.length > 1) {
+      const formDrive = await inTime(plainDrive()).catch(() => null);
+      if (Number.isFinite(formDrive) && formDrive < job.driveMin) {
+        const lenient = slotStillFree({ ...job, driveMin: formDrive }, cal);
+        if (lenient.free) return { status: "free", lateMin: lenient.lateMin, tight: true };
+      }
+    }
+    return { status: "taken" };
+  } catch (e) {
+    console.error("still free", String(e).slice(0, 200));
+    return { status: "unread" };
+  }
 }
 
 /**

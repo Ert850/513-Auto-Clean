@@ -13,7 +13,7 @@ import vm from "node:vm";
 // @ts-expect-error: plain ESM build script, no types
 import { root } from "../../scripts/chrome.mjs";
 // @ts-expect-error: plain ESM build script, no types
-import { checkExperiments, experimentsForPage } from "../../scripts/experiments.mjs";
+import { checkExperimentPages, checkExperiments, experimentsForPage } from "../../scripts/experiments.mjs";
 
 const SRC = fs.readFileSync(path.join(root, "js/analytics.js"), "utf8");
 
@@ -38,19 +38,35 @@ function page(opts: {
   random?: number;
   ga?: string;
   elements?: string[];
+  words?: { test: string; versions: Record<string, string>; html: string }[];
+  /** "loading": the script runs from the head while the page is still arriving. */
+  readyState?: string;
 }) {
   const els = (opts.elements ?? []).map((v) => {
     const classes = new Set<string>();
     return { attr: v, classList: { add: (c: string) => classes.add(c) }, getAttribute: () => v, shown: () => classes.has("exp-on") };
   });
+  const docEl = {};
+  const words = (opts.words ?? []).map((w) => ({
+    innerHTML: w.html,
+    // Parsed already, unless a test says the parser is still inside it.
+    nextSibling: {} as unknown,
+    parentNode: docEl,
+    getAttribute: (a: string) => (a === "data-exp-words" ? w.test : a.startsWith("data-exp-") ? w.versions[a.slice(9)] ?? null : null),
+  }));
   const gtagCalls: unknown[][] = [];
+  const listeners: Record<string, (() => void)[]> = {};
+  const appended: number[] = [];
+  const observers: { cb: () => void; on: boolean }[] = [];
   const doc = {
-    readyState: "interactive",
-    addEventListener() {},
-    querySelectorAll: (sel: string) => (sel === "[data-exp]" ? els : []),
+    readyState: opts.readyState ?? "interactive",
+    documentElement: docEl,
+    addEventListener(t: string, f: () => void) { (listeners[t] ??= []).push(f); },
+    removeEventListener(t: string, f: () => void) { listeners[t] = (listeners[t] ?? []).filter((x) => x !== f); },
+    querySelectorAll: (sel: string) => (sel === "[data-exp]" ? els : sel === "[data-exp-words]" ? words : []),
     createElement: () => ({ setAttribute() {}, addEventListener() {}, set innerHTML(_v: string) {} }),
     head: { appendChild() {} },
-    body: { appendChild() {} },
+    body: { appendChild: () => void appended.push(1) },
   };
   const local = opts.local ?? store();
   const win: Record<string, unknown> = {
@@ -67,12 +83,27 @@ function page(opts: {
     Math: Object.assign(Object.create(Math), { random: () => opts.random ?? 0.1 }),
     JSON,
     Date,
+    MutationObserver: class {
+      o: { cb: () => void; on: boolean };
+      constructor(cb: () => void) { this.o = { cb, on: false }; observers.push(this.o); }
+      observe() { this.o.on = true; }
+      disconnect() { this.o.on = false; }
+    },
   };
   vm.runInNewContext(SRC, ctx);
   // gtag is created when analytics loads; record what reaches it.
   const dl = (win["dataLayer"] as unknown[][] | undefined) ?? [];
   for (const a of dl) gtagCalls.push(Array.from(a as ArrayLike<unknown>));
-  return { win: win as Record<string, (...a: unknown[]) => string>, local, els, gtagCalls, dl: () => (win["dataLayer"] as unknown[] | undefined) ?? [] };
+  return {
+    win: win as Record<string, (...a: unknown[]) => string>, local, els, words, gtagCalls,
+    dl: () => (win["dataLayer"] as unknown[] | undefined) ?? [],
+    /** The parser added nodes: what a MutationObserver hears before the next paint. */
+    mutate: () => observers.filter((o) => o.on).forEach((o) => o.cb()),
+    /** The page is parsed. */
+    parsed: () => { doc.readyState = "interactive"; (listeners["readystatechange"] ?? []).slice().forEach((f) => f()); },
+    observing: () => observers.some((o) => o.on),
+    bannerShown: () => appended.length > 0,
+  };
 }
 
 const SPLIT: Test = { id: "golf-code", status: "running", versions: [["no-code", 50], ["code", 50]], sources: ["golf"] };
@@ -136,6 +167,66 @@ describe("the split in the browser (js/analytics.js)", () => {
     expect(p.els.map((e) => e.shown())).toEqual([true, false]);
   });
 
+  it("swaps a headline's words for a visitor in another version, and leaves the control's for everyone else (November 16)", () => {
+    const HEAD: Test = { id: "hero-headline", status: "running", versions: [["greater-cincinnati", 34], ["cincinnati", 33], ["the-513", 33]] };
+    const w = { test: "hero-headline", html: "in Greater Cincinnati.", versions: { cincinnati: "in Cincinnati.", "the-513": "across the 513." } };
+    expect(page({ tests: [HEAD], random: 0.1, words: [w] }).words[0]!.innerHTML).toBe("in Greater Cincinnati.");
+    expect(page({ tests: [HEAD], random: 0.5, words: [w] }).words[0]!.innerHTML).toBe("in Cincinnati.");
+    expect(page({ tests: [HEAD], random: 0.9, words: [w] }).words[0]!.innerHTML).toBe("across the 513.");
+    expect(page({ tests: [{ ...HEAD, status: "off" }], random: 0.9, words: [w] }).words[0]!.innerHTML).toBe("in Greater Cincinnati.");
+    // Ended: everyone gets the winner's words.
+    expect(page({ tests: [{ ...HEAD, status: "ended", winner: "the-513" }], random: 0.1, words: [w] }).words[0]!.innerHTML).toBe("across the 513.");
+  });
+
+  it("swaps the words as soon as the parser closes the headline, not when the page is done (validation, November 16)", () => {
+    // The hero fades in from CSS without waiting for scripts, so a swap at the
+    // end of parsing showed the control's words first on a slow phone.
+    const HEAD: Test = { id: "hero-headline", status: "running", versions: [["greater-cincinnati", 34], ["the-513", 66]] };
+    const p = page({ tests: [HEAD], random: 0.9, readyState: "loading", words: [{ test: "hero-headline", html: "in Greater", versions: { "the-513": "across the 513." } }] });
+    const h1 = p.words[0]!;
+    // The network chunk ended inside the headline: leave it alone, or the rest of its words would land after ours.
+    h1.nextSibling = null;
+    p.mutate();
+    expect(h1.innerHTML).toBe("in Greater");
+    // The next node arrived, so the headline is whole: swapped before the browser paints again.
+    h1.nextSibling = {};
+    p.mutate();
+    expect(h1.innerHTML).toBe("across the 513.");
+    expect(p.observing()).toBe(true);
+    p.parsed();
+    expect(p.observing()).toBe(false);
+    expect(h1.innerHTML).toBe("across the 513.");
+  });
+
+  it("a booking on another page still names the version the visitor was given (November 16)", () => {
+    const HEAD: Test = { id: "hero-headline", status: "running", versions: [["greater-cincinnati", 34], ["cincinnati", 33], ["the-513", 33]] };
+    const local = store();
+    const home = page({ tests: [HEAD], random: 0.9, local, words: [{ test: "hero-headline", html: "x", versions: { "the-513": "y" } }] });
+    expect(home.win.AC_EXPS!()).toBe("hero-headline: the-513");
+    // Services: no headline on this page, so nothing asks; the booking email still says which one they saw.
+    const services = page({ tests: [HEAD], local });
+    expect(services.win.AC_EXPS!()).toBe("hero-headline: the-513");
+    // A test that has ended is not reported.
+    expect(page({ tests: [{ ...HEAD, status: "ended", winner: "cincinnati" }], local }).win.AC_EXPS!()).toBe("");
+  });
+
+  it("Google Analytics events on another page carry the version too (validation, November 16)", () => {
+    const HEAD: Test = { id: "hero-headline", status: "running", versions: [["greater-cincinnati", 34], ["the-513", 66]] };
+    const local = store({ "ac-analytics": "granted" });
+    page({ tests: [HEAD], random: 0.9, local, ga: "G-TEST", words: [{ test: "hero-headline", html: "x", versions: { "the-513": "y" } }] });
+    const services = page({ tests: [HEAD], local, ga: "G-TEST" });
+    (services.win.AC_TRACK as unknown as (n: string, p?: object) => void)("booking_submitted", {});
+    const events = services.dl().map((a) => Array.from(a as ArrayLike<unknown>));
+    expect(events).toContainEqual(["event", "booking_submitted", { exp_variant_string: "ac-hero-headline-the-513" }]);
+  });
+
+  it("loaded from the head, the consent banner still waits for the page and then shows", () => {
+    const p = page({ tests: [], ga: "G-TEST", readyState: "loading" });
+    expect(p.bannerShown()).toBe(false);
+    p.parsed();
+    expect(p.bannerShown()).toBe(true);
+  });
+
   it("tells Google Analytics only after Accept", () => {
     const declined = page({ tests: [SPLIT], search: "?utm_source=golf", ga: "G-TEST", elements: ["golf-code:code"] });
     expect(declined.dl()).toEqual([]);
@@ -156,4 +247,26 @@ describe("the split in the browser (js/analytics.js)", () => {
     const p = page({ tests: [SPLIT], local: blocked as unknown as ReturnType<typeof store>, session: blocked as unknown as ReturnType<typeof store> });
     expect(p.win.AC_EXP!("golf-code")).toBe("no-code");
   });
+});
+
+describe("the pages match config/experiments.json (validation, November 16)", () => {
+  const pages = () =>
+    Object.fromEntries(fs.readdirSync(root).filter((f: string) => f.endsWith(".html")).map((f: string) => [f, fs.readFileSync(path.join(root, f), "utf8")]));
+  it("every page as shipped", () => {
+    expect(() => checkExperimentPages(experimentsForPage(), pages())).not.toThrow();
+  });
+  const T = [{ id: "h", status: "running", versions: [["a", 1], ["b", 1], ["c", 1]] as [string, number][] }];
+  const ok = '<h1 data-exp-words="h" data-exp-b="B" data-exp-c="C">A</h1>';
+  it("accepts words for every version but the control", () => expect(() => checkExperimentPages(T, { "x.html": ok })).not.toThrow());
+  const wrong: [string, string][] = [
+    ["a version's words missing", '<h1 data-exp-words="h" data-exp-b="B">A</h1>'],
+    ["words for a version the test doesn't have", '<h1 data-exp-words="h" data-exp-b="B" data-exp-c="C" data-exp-d="D">A</h1>'],
+    ["words for the control (its words are the element's own)", '<h1 data-exp-words="h" data-exp-a="A" data-exp-b="B" data-exp-c="C">A</h1>'],
+    ["an unknown test", '<h1 data-exp-words="nope">A</h1>'],
+    ["an element for an unknown version", '<p data-exp="h:z">Z</p>'],
+    ["an element for an unknown test", '<p data-exp="nope:a">A</p>'],
+  ];
+  for (const [what, html] of wrong) it(`refuses ${what}`, () => expect(() => checkExperimentPages(T, { "x.html": html })).toThrow(/x\.html/));
+  it('refuses a version called "words"', () =>
+    expect(() => checkExperiments({ experiments: [{ id: "x", status: "off", versions: { a: 1, words: 1 } }] })).toThrow(/words/));
 });

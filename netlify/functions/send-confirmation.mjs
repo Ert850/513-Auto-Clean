@@ -1,7 +1,12 @@
-import { priceFromWire, validateWire, findPackage, findAddon, vehicleSize, isLive, ADVICE_HOLD_MIN, ARRIVAL_WINDOW_MIN, businessPhone, multiDayEvents, LONG_JOB_STARTS, CORRECTION_RULES } from "./_pricing.mjs";
-import { blockFeeFor, detailerFor, homeFor, timeFeeWaived } from "./_detailers.mjs";
+import { priceFromWire, validateWire, findPackage, findAddon, vehicleSize, isLive, ADVICE_HOLD_MIN, ARRIVAL_WINDOW_MIN, businessPhone, multiDayEvents, LONG_JOB_STARTS, CORRECTION_RULES, wireNeeds, SCHEDULING } from "./_pricing.mjs";
+
+/** Inside this, a booking is a request until a detailer accepts it (config/scheduling.json). */
+const SHORT_NOTICE_MS = SCHEDULING.shortNoticeHours * 3_600_000;
+/** The drive allowed for when it could not be measured, as the booking form allows. */
+const DRIVE_FALLBACK_MIN = SCHEDULING.driveFallbackMinutes;
+import { blockFeeFor, detailerFor, homeFor, inTime, slotStatus, timeFeeWaived } from "./_detailers.mjs";
 import { createBookingEvent, findBookingEvent, gcalAuthMode, gcalConfigured } from "./_gcal.mjs";
-import { measuredOneWayMinutes } from "./_routes.mjs";
+import { addressLine, measureRoundTrip, measuredOneWayMinutes } from "./_routes.mjs";
 import { limited } from "./_ratelimit.mjs";
 import { verifyTurnstile } from "./_turnstile.mjs";
 
@@ -71,13 +76,13 @@ function text(v, max) {
 
 const ACCESS = { yes: "yes", no: "no", unsure: "not sure" };
 
+/** "Monday, November 16 at 10am": the booking form's clock style (review, November 13: emails said "10:00 AM"). */
 function whenLabel(slot) {
   if (!slot) return null;
-  return new Date(slot).toLocaleString("en-US", {
-    timeZone: "America/New_York",
-    weekday: "long", month: "long", day: "numeric",
-    hour: "numeric", minute: "2-digit",
+  const day = new Date(slot).toLocaleDateString("en-US", {
+    timeZone: "America/New_York", weekday: "long", month: "long", day: "numeric",
   });
+  return `${day} at ${clock(slot)}`;
 }
 
 /* ------------------------------------------------------------------ */
@@ -102,11 +107,19 @@ const PHONE = (() => {
 // `preview` is the inbox preview line (the grey text under the subject). Hidden
 // in the email itself; the padding stops mail apps filling the rest of the
 // line with body text.
+// The logo at the top of every email (Emmett's pick A, November 14): the
+// bottle on its own white tile, so it stays visible when a mail app goes dark.
+// From the site Netlify publishes (URL is set by Netlify), else the domain.
+const LOGO = `${(process.env.URL || "https://513autoclean.com").replace(/\/$/, "")}/images/email-logo.png`;
+
 const SHELL = (title, inner, preview = "") => `<!doctype html>
 <html><body style="margin:0;padding:24px;background:#f4f5f2;font:16px/1.6 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#14171d">
 ${preview ? `<div style="display:none;max-height:0;overflow:hidden;opacity:0;font-size:1px;line-height:1px;color:transparent">${esc(preview)}${"&#847;&zwnj;&nbsp;".repeat(60)}</div>` : ""}
 <div style="max-width:560px;margin:0 auto;background:#fff;border-radius:12px;padding:28px">
-<p style="margin:0 0 4px;font-size:12px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:#c41414">513 Auto Clean</p>
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 10px;border-collapse:collapse"><tr>
+<td style="width:40px;height:40px;padding:0;vertical-align:middle"><img src="${LOGO}" width="40" height="40" alt="513 Auto Clean logo" style="display:block;width:40px;height:40px;border:1px solid #e2e4df;border-radius:9px;background:#ffffff"></td>
+<td style="padding:0 0 0 10px;vertical-align:middle;font-size:12px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:#c41414">513 Auto Clean</td>
+</tr></table>
 <h1 style="margin:0 0 16px;font-size:24px;line-height:1.2">${title}</h1>
 ${inner}
 <p style="margin:24px 0 0;padding-top:16px;border-top:1px solid #e2e4df;font-size:13px;color:#5a6069">
@@ -145,11 +158,11 @@ ${rows}
 ${travelKnown ? "" : `<p style="margin:0;font-size:13px;color:#5a6069">Travel is worked out from your address and added when we confirm.</p>`}`;
 }
 
-/** "10 AM", "10:30 AM", in Cincinnati time. */
+/** "10am", "10:30am", in Cincinnati time: the booking form's style. */
 function clock(ms) {
   return new Date(ms)
     .toLocaleString("en-US", { timeZone: "America/New_York", hour: "numeric", minute: "2-digit" })
-    .replace(":00", "");
+    .replace(":00", "").replace(" AM", "am").replace(" PM", "pm");
 }
 
 /** "About 2 hours", "About 4.5 hours", to the half hour; "…, over 2 days" for a multi-day job. */
@@ -160,7 +173,7 @@ export function durationText(minutes, days = 1) {
 
 /**
  * The days a booked job runs over: the same plan the calendar events are
- * written from (null for one day). The measured drive, else 30 minutes
+ * written from (null for one day). The measured drive, else the fallback
  * (travelAllowanceMin), and the correction start times.
  */
 function planDays({ cart, kind, minutes, measuredMin }) {
@@ -169,12 +182,12 @@ function planDays({ cart, kind, minutes, measuredMin }) {
   return multiDayEvents({
     slotMs: cart.slot,
     serviceMinutes: minutes,
-    travelMin: Number.isFinite(measuredMin) ? measuredMin : 30,
+    travelMin: Number.isFinite(measuredMin) ? measuredMin : DRIVE_FALLBACK_MIN,
     preferredStartsMin: corr ? CORRECTION_RULES.allowedStartsMin : LONG_JOB_STARTS,
   });
 }
 
-export function customerEmail({ contact, when, priced, kind, slot, cart, detailer, measured, textsOk, flex, asked, calendarOk = true }) {
+export function customerEmail({ contact, when, priced, kind, slot, cart, detailer, measured, textsOk, flex, asked, calendarOk = true, unchecked = false }) {
   const name = esc(String(contact.name || "").split(" ")[0] || "there");
 
   if (kind === "inquiry" || !when) {
@@ -207,14 +220,16 @@ ${receiptRows(priced)}`,
    * leave. That gets a line saying so rather than a blanket hedge on every
    * booking.
    */
-  const soon = slot !== null && slot - Date.now() < 24 * 60 * 60 * 1000;
+  const soon = slot !== null && slot - Date.now() < SHORT_NOTICE_MS;
   // Short notice is a request until a detailer accepts it, as the booking
   // form says (owner, November 10; session audit, November 11: this email
   // used to tell the same customer it was "confirmed and booked in").
   // And only when the calendar write worked: a failed write leaves the time
   // sellable, so it is a request until Elijah puts it on by hand (final
   // review, November 13: it said "booked in" with nothing on the calendar).
-  const confirmed = isLive("liveCalendar") && !soon && calendarOk;
+  // Nor when the time could not be checked again just before it was written
+  // (calendar fix 1, November 14): it is held, but Elijah makes sure first.
+  const confirmed = isLive("liveCalendar") && !soon && calendarOk && !unchecked;
 
   /*
    * A HELD TIME WITH NO PRICE ON IT.
@@ -306,15 +321,18 @@ export function askedFor(prefer) {
   return [days.join(", "), prefer.flex === true ? "any start that day" : parts.join(", ")].filter(Boolean).join("; ");
 }
 
-function ownerEmail({ contact, when, priced, kind, cart, detailer, asked, notes, consent = {}, calendarFail = "" }) {
+// extras: where they came from and which A/B test versions they saw. Tests are
+// counted from these emails (docs/AB-TESTING.md), and a booking that never
+// reached the calendar has no event to read them from (validation cycle 2).
+export function ownerEmail({ contact, when, priced, kind, cart, detailer, asked, notes, consent = {}, calendarFail = "", unchecked = "", extras = {}, dropped = [] }) {
   const a = cart?.address ?? {};
   const where = [a.line1, a.city, a.region, a.zip].filter(Boolean).join(", ");
-  const soon = kind === "booking" && cart?.slot && cart.slot - Date.now() < 24 * 60 * 60 * 1000;
+  const soon = kind === "booking" && cart?.slot && cart.slot - Date.now() < SHORT_NOTICE_MS;
   return {
     subject:
       // "HELP ME DECIDE" first, because it is the one that needs something
       // from him before the day rather than just turning up.
-      `${calendarFail ? "NOT ON THE CALENDAR, " : ""}${kind === "advice" ? "HELP ME DECIDE" : kind === "inquiry" ? "REQUEST" : soon ? "SHORT NOTICE REQUEST" : "BOOKING"}, ${contact.name}, ` +
+      `${calendarFail ? "NOT ON THE CALENDAR, " : unchecked ? "CHECK THE TIME, " : dropped.length ? "CHECK THE PRICE, " : ""}${kind === "advice" ? "HELP ME DECIDE" : kind === "inquiry" ? "REQUEST" : soon ? "SHORT NOTICE REQUEST" : "BOOKING"}, ${contact.name}, ` +
       `${kind === "advice" ? "no package yet" : $(priced?.totalCents ?? 0)}${when ? `, ${when}` : ""}`,
     // Elijah's inbox preview (November 13): price, job, date and time, place.
     html: ((title, inner) => SHELL(title, inner, [
@@ -328,7 +346,13 @@ function ownerEmail({ contact, when, priced, kind, cart, detailer, asked, notes,
         ? cart?.slot ? "Time held, package to work out" : "Help me decide, no time yet"
         : kind === "inquiry" ? "New request" : soon ? "Short-notice request, not confirmed until you accept it" : "New booking",
       (calendarFail
-        ? `<p style="margin:0 0 14px;padding:10px 12px;background:#fdecea;border-left:3px solid #c62828;color:#7f1d1d"><strong>NOT ON THE CALENDAR</strong> (${esc(calendarFail)}). The time is still open to other customers: add it by hand now.</p>`
+        ? `<p style="margin:0 0 14px;padding:10px 12px;background:#fdecea;border-left:3px solid #c62828;color:#7f1d1d"><strong>NOT ON THE CALENDAR</strong>${/^this time is already taken/.test(calendarFail) ? `: ${esc(calendarFail)}.` : `(${esc(calendarFail)}). The time is still open to other customers: add it by hand now.`}</p>`
+        : "") +
+      (dropped.length
+        ? `<p style="margin:0 0 14px;padding:10px 12px;background:#fdf3e3;border-left:3px solid #f0a93f"><strong>CHECK THE PRICE:</strong> vehicle ${dropped.join(" and ")} had nothing chosen, so ${dropped.length > 1 ? "they were" : "it was"} left out of this booking. Their screen may have shown a lower multi-vehicle price; the total here is the real one. Confirm it with them.</p>`
+        : "") +
+      (unchecked
+        ? `<p style="margin:0 0 14px;padding:10px 12px;background:#fdf3e3;border-left:3px solid #f0a93f"><strong>CHECK THIS TIME:</strong> ${esc(unchecked)}. It is on the calendar. Make sure nothing else is booked then, and confirm it with them: their email says we will confirm.</p>`
         : "") +
       `<table style="width:100%;font-size:14px;border-collapse:collapse">
 <tr><td style="padding:4px 0;color:#5a6069;width:90px">Who</td><td style="padding:4px 0">${esc(contact.name)}<br>${esc(contact.phone)}${contact.email ? `<br>${esc(contact.email)}` : ""}</td></tr>
@@ -337,6 +361,9 @@ function ownerEmail({ contact, when, priced, kind, cart, detailer, asked, notes,
 ${detailer ? `<tr><td style="padding:4px 0;color:#5a6069">Detailer</td><td style="padding:4px 0">${esc(detailer.name)}</td></tr>` : ""}
 <tr><td style="padding:4px 0;color:#5a6069">SMS consent</td><td style="padding:4px 0">${consent.sms === true ? "yes" : "no"}</td></tr>
 <tr><td style="padding:4px 0;color:#5a6069">Marketing</td><td style="padding:4px 0">${consent.marketing === true ? "yes" : "no"}</td></tr>
+${extras.source ? `<tr><td style="padding:4px 0;color:#5a6069">Source</td><td style="padding:4px 0">${esc(extras.source)}</td></tr>` : ""}
+${extras.heard ? `<tr><td style="padding:4px 0;color:#5a6069">Heard about us</td><td style="padding:4px 0">${esc(extras.heard)}</td></tr>` : ""}
+${extras.experiments ? `<tr><td style="padding:4px 0;color:#5a6069">A/B tests</td><td style="padding:4px 0">${esc(extras.experiments)}</td></tr>` : ""}
 </table>
 ${
   kind === "advice"
@@ -429,7 +456,7 @@ export function eventDescription({ contact, cart, priced, extras, payInFull, kin
 
 /** The event title (read by JobsSync too: "Kris:" names the detailer). */
 export function eventTitle({ kind, slotMs, nowMs, detailer, names, contactName }) {
-  return (kind === "booking" && slotMs - nowMs < 24 * 60 * 60 * 1000 ? "SHORT NOTICE, accept or decline: " : "") +
+  return (kind === "booking" && slotMs - nowMs < SHORT_NOTICE_MS ? "SHORT NOTICE, accept or decline: " : "") +
     (detailer ? `${detailer.name}: ` : "") + (kind === "advice"
     ? `HELP ME DECIDE, ${contactName}`
     : `${names.join(" + ") || "Detail"}, ${contactName}`);
@@ -453,7 +480,9 @@ export function bookingEvents({ contact, cart, priced, extras, payInFull, kind, 
    * the moment it started and Google would have refused it outright. It holds
    * the same block the customer was offered on the booking screen.
    */
-  const minutes = priced.serviceDurationMin || (kind === "advice" ? ADVICE_HOLD_MIN : 120);
+  // Help me decide holds at least the advice block, even when a package came
+  // with it (an older tab): the event says "Holding 4 hours" (validation pass 4).
+  const minutes = kind === "advice" ? Math.max(priced.serviceDurationMin || 0, ADVICE_HOLD_MIN) : priced.serviceDurationMin || 120;
   const location = [cart.address?.line1, cart.address?.city, cart.address?.region, cart.address?.zip]
     .filter(Boolean)
     .join(", ");
@@ -496,22 +525,74 @@ export function bookingEvents({ contact, cart, priced, extras, payInFull, kind, 
       });
 }
 
-async function writeCalendar({ contact, cart, priced, extras, payInFull, key, kind, detailer, measuredMin }) {
+/**
+ * The job the time check looks at, as the booking form builds it
+ * (verifySlot): the hours held, the drive of whoever has the time (else the
+ * form's fallback, driveFallbackMinutes), exterior work and correction.
+ */
+export function stillFreeJob({ cart, priced, kind, measuredMin }) {
+  return {
+    slotMs: cart.slot,
+    serviceMin: kind === "advice" ? Math.max(priced?.serviceDurationMin || 0, ADVICE_HOLD_MIN) : priced?.serviceDurationMin || ADVICE_HOLD_MIN,
+    driveMin: Number.isFinite(measuredMin) ? measuredMin : DRIVE_FALLBACK_MIN,
+    hasExterior: kind !== "advice" && wireNeeds(cart).includes("exterior"),
+    correction: (cart.vehicles ?? []).some((v) => Boolean(v.correction)),
+  };
+}
+
+async function writeCalendar({ contact, cart, priced, extras, payInFull, key, kind, detailer, measuredMin, standardHours = false }) {
   if (!gcalConfigured()) return { ok: false, reason: "unconfigured" };
   if (!cart.slot) return { ok: false, reason: "no_slot" };
 
-  const events = bookingEvents({ contact, cart, priced, extras, payInFull, kind, detailer, nowMs: Date.now(), measuredMin });
   const phone = String(contact.phone ?? "").replace(/\D/g, "").replace(/^1(?=\d{10}$)/, "");
   const calendarId = detailer ? detailer.bookingsCalendarId : "";
   // A retry of the same booking (Confirm pressed again after an error) finds
   // the event the first try wrote, by its booking key, and stops there
   // (final review, November 13: two events and four emails).
+  let lookupFailed = false;
   if (key) {
-    const existing = await findBookingEvent({ key, calendarId, aroundMs: cart.slot }).catch(() => null);
+    const existing = await findBookingEvent({ key, calendarId, aroundMs: cart.slot }).catch(() => { lookupFailed = true; return null; });
     if (existing) return { ok: true, id: existing.id, duplicate: true };
   }
+  /*
+   * STILL FREE? (calendar fix 1, November 14.) The form checked a few
+   * minutes ago, but two people can pick the same time seconds apart, and a
+   * request edited by hand skips the form. So the calendar is read again here,
+   * after the retry check above (a retry's own event would read as a clash).
+   * Taken: nothing is written and no email goes out; the form says so and
+   * reopens Time. Unread: written, but as a time to check, never as
+   * confirmed.
+   *
+   * Taken, but turning them away would be wrong (review, November 14): they
+   * have paid; their browser could not read the calendar, so they chose from
+   * standard hours and would only be sent round again; or the retry lookup
+   * failed, so the clash may be their own first try. Then nothing is written
+   * onto the taken time either: it goes through as a request, the customer is
+   * told we will confirm, and the owner email says why. Never a second job.
+   */
+  const st = await slotStatus(detailer, stillFreeJob({ cart, priced, kind, measuredMin }), process.env,
+    () => measureRoundTrip({ dest: { address: addressLine(cart.address), ...(homeFor(detailer) ? { origin: homeFor(detailer) } : {}) } })
+      .then((d) => (d?.reachable ? d.minutes : null)));
+  if (st.tight) console.log("still free: only with the form's drive", cart.slot);
+  if (st.status === "taken") {
+    const why = payInFull ? "they have already paid"
+      : standardHours ? "their browser could not read the calendar, so they chose from standard hours"
+      : lookupFailed ? "we could not check whether this was a repeat of a booking they had just made"
+      : "";
+    if (!why) return { ok: false, reason: "taken", taken: true };
+    return { ok: false, reason: `this time is already taken (${why}). Nothing was put on the calendar: offer them another time` };
+  }
+  const unchecked = st.status === "unread"
+    ? "the calendar could not be read just before it was written, so it was not checked against the other jobs"
+    : "";
+  // Built after the re-check, so the end uses the lateness it just found: the
+  // form's figure is from minutes ago, and a job booked since can push the
+  // arrival later (validation cycle 2, November 16: the next job spaced short).
+  const late = Math.max(Number(cart.arrivalLateMin) || 0, st.lateMin || 0);
+  const events = bookingEvents({ contact, cart: { ...cart, arrivalLateMin: late }, priced, extras, payInFull, kind, detailer, nowMs: Date.now(), measuredMin });
   const first = await createBookingEvent({ ...events[0], key, phone, calendarId });
   if (!first.ok) return first;
+  if (unchecked) first.unchecked = unchecked;
   // Days 2 and on: their own key, so day 1 stays the one a follow-up finds.
   for (let i = 1; i < events.length; i++) {
     const r = await createBookingEvent({ ...events[i], key: key ? `${key}:day${i + 1}` : key, phone, calendarId });
@@ -587,7 +668,8 @@ export async function handler(event) {
   // the email matches the price the customer saw, and the drive is measured
   // from their home (DETAILER_HOMES).
   const detailer = detailerFor(payload?.detailer, cart);
-  const measured = await measuredOneWayMinutes(cart, homeFor(detailer));
+  // Out of time is the same as unmeasured: the form's fallback drive (_detailers.mjs inTime).
+  const measured = await inTime(measuredOneWayMinutes(cart, homeFor(detailer))).catch(() => null);
   const priced = priceFromWire(cart, {
     measuredOneWayMinutes: measured,
     nowMs: Date.now(),
@@ -616,17 +698,24 @@ export async function handler(event) {
   ctx.asked = cart.slot ? "" : askedFor(rawCart.prefer);
   ctx.flex = !cart.slot && rawCart.prefer?.flex === true;
   ctx.notes = extras.notes;
+  ctx.extras = extras;
 
   // THE CALENDAR FIRST. It is the half that stops the slot being sold again,
   // and it is the half nobody can reconstruct from memory at 11pm.
+  // Nothing to write without a time, whatever the kind: Help me decide with
+  // "tell us when suits" told Elijah "NOT ON THE CALENDAR, add it by hand"
+  // because only "inquiry" was treated as having no time (validation pass 4).
+  const noTime = !cart.slot;
   const calendar =
-    kind === "inquiry"
-      ? { ok: false, reason: "inquiry" }
+    noTime
+      ? { ok: false, reason: "no_time" }
       : await writeCalendar({
           contact, cart, priced, extras, payInFull, kind,
           key: text(payload?.idempotencyKey, 120),
           detailer,
           measuredMin: measured,
+          // The form offered standard hours because it could not read the calendar.
+          standardHours: payload?.standardHours === true,
         }).catch((err) => {
           console.error("calendar write", err);
           return { ok: false, reason: "threw" };
@@ -639,11 +728,18 @@ export async function handler(event) {
   if (calendar.duplicate) {
     return json(200, { sent: false, duplicate: true, calendar: calendarOut });
   }
+  // Someone else has the time now: no event, no emails. The form reopens
+  // Time with the times still open (js/funnel.js record).
+  if (calendar.taken) {
+    return json(409, { error: "slot_taken", taken: true });
+  }
   if (!apiKey) {
     return json(200, { sent: false, reason: "unconfigured", calendar: calendarOut });
   }
-  ctx.calendarOk = kind === "inquiry" || calendar.ok === true;
-  ctx.calendarFail = kind === "inquiry" || calendar.ok ? "" : String(calendar.reason || "write failed");
+  ctx.calendarOk = noTime || calendar.ok === true;
+  ctx.calendarFail = noTime || calendar.ok ? "" : String(calendar.reason || "write failed");
+  ctx.dropped = checked.booking.droppedVehicles || [];
+  ctx.unchecked = calendar.unchecked || "";
 
   // Elijah's copy first. If only one of the two can get through, it has to be
   // the one that means the job happens.

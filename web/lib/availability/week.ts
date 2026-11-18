@@ -53,6 +53,18 @@ export function weekStartOf(ms: number, timeZone = TZ): number {
   return localTimeOnDay(day, -localWeekday(day + 12 * 3600_000, timeZone), 0, timeZone);
 }
 
+/**
+ * The first day of the week `ms` falls in, counting weeks from today rather
+ * than from Sunday (Emmett, November 15: on a Wednesday the picker opened on
+ * three greyed past days). Today's week starts today; later ones are whole
+ * weeks on from it. Safe across clock changes.
+ */
+export function weekFromToday(ms: number, nowMs: number, timeZone = TZ): number {
+  const today = localDayStart(nowMs, timeZone);
+  const days = Math.round((localDayStart(ms, timeZone) - today) / 86_400_000);
+  return localTimeOnDay(today, days > 0 ? Math.floor(days / 7) * 7 : 0, 0, timeZone);
+}
+
 /** The Sunday `n` weeks from `weekStart`, safe across clock changes. */
 export function addWeeks(weekStart: number, n: number, timeZone = TZ): number {
   return localTimeOnDay(weekStart, 7 * n, 0, timeZone);
@@ -174,9 +186,17 @@ export function buildWeek(req: {
    * round 15). Without it, each day's packing suggestions are starred.
    */
   suggested?: number[];
+  /**
+   * Does this start carry an early or late fee, for whoever would take it?
+   * From the calendars (the funnel's timeFeeApplies), so a detailer's
+   * standard-price 6pm is starred and unfolded like any other (calendar fix
+   * 4, November 14). Without it, the clock's bands, as before.
+   */
+  isPremium?: (ms: number) => boolean;
   timeZone?: string;
 }): Week {
   const tz = req.timeZone ?? TZ;
+  const isPremium = req.isPremium ?? ((ms: number) => Boolean(bandOf(localMinutesOfDay(ms, tz))?.premium));
   const today = localDayStart(req.nowMs, tz);
   const days: WeekDay[] = [];
   let openCount = 0;
@@ -191,15 +211,7 @@ export function buildWeek(req: {
     // 10am and 4pm (and 1pm at weekends). Never an early or late start.
     const suggestedSet = req.suggested
       ? new Set(req.suggested.filter((ms) => ms >= dayStart && ms < next))
-      : new Set(
-          recommendStarts({
-            starts,
-            busy: req.busy ?? [],
-            travelGapMin: req.travelGapMin,
-            limit: weekday === 0 || weekday === 6 ? 3 : 2,
-            timeZone: tz,
-          }).map((r) => r.ms),
-        );
+      : new Set(daySuggestions({ starts, busy: req.busy ?? [], travelGapMin: req.travelGapMin, isPremium, timeZone: tz }));
 
     const byHour = new Map<number, number[]>();
     for (const ms of starts) {
@@ -214,7 +226,7 @@ export function buildWeek(req: {
       const suggested = list.find((ms) => suggestedSet.has(ms));
       // A suggested start wins; otherwise on the hour, otherwise the first.
       const pick = suggested ?? list.find((ms) => localMinutesOfDay(ms, tz) === hourMin) ?? list[0]!;
-      const premium = Boolean(bandOf(hourMin)?.premium);
+      const premium = isPremium(pick);
       cells.push({
         hourMin,
         starts: list,
@@ -261,7 +273,10 @@ export function buildWeek(req: {
  * place to tune it, and the hook analytics plugs into.
  *
  *   version         sent with every analytics event about these picks
- *   reasons         tried in order, each on a day no other pick uses:
+ *   reasons         tried in order, each on a day no other pick uses
+ *                   (a first no-rush day on a Saturday or Sunday is the
+ *                   weekend pick, "afterRushWeekend", and the later weekend
+ *                   day is just "also"; Emmett, November 15):
  *                   "soonest"    the first day with a best time
  *                   "afterRush"  the first day past the rush window, shown to
  *                                the customer as "In 4 days", not as a price
@@ -270,14 +285,14 @@ export function buildWeek(req: {
  *   extraWhenRoom   more ("also") days, only when the screen has room
  */
 export const TIME_RECOMMENDATION_RULES = {
-  version: "best-1",
+  version: "best-2",
   reasons: ["soonest", "afterRush", "weekend"] as DayReason[],
   shown: 3,
   extraWhenRoom: 2,
 };
 
 export type DayReason = "soonest" | "afterRush" | "weekend";
-export type PickReason = DayReason | "also";
+export type PickReason = DayReason | "afterRushWeekend" | "also";
 
 /** One detailer's offer, in priority order (Kris before Elijah). */
 export interface MemberTimes {
@@ -325,6 +340,7 @@ export function daySuggestions(req: {
     starts: open,
     busy: req.busy ?? [],
     travelGapMin: req.travelGapMin,
+    isPremium: premium,
     limit: weekday === 0 || weekday === 6 ? 3 : 2,
     timeZone: tz,
   }).map((r) => r.ms);
@@ -422,10 +438,23 @@ export function recommendBestDays(req: {
     picks.push({ dayStart: d.dayStart, reason, ms: d.ms, who: d.who, more: d.more, daysAway: d.daysAway });
   };
   const avail = () => days.filter((d) => !used.has(d.dayStart));
+  // "This weekend" means the coming one: a Saturday or Sunday before the next
+  // Monday, never one a week or more away (validation, November 15).
+  const todayWd = localWeekday(today + 12 * 3600_000, tz);
+  const toMonday = todayWd === 0 ? 1 : 8 - todayWd;
+  const thisWeekend = (d: (typeof days)[number]) => (d.weekday === 0 || d.weekday === 6) && d.daysAway < toMonday;
   for (const reason of rules.reasons) {
     if (reason === "soonest") { const d = avail()[0]; if (d) take(d, "soonest"); }
-    if (reason === "afterRush") { const d = avail().find((x) => !req.isRush(x.ms)); if (d) take(d, "afterRush"); }
-    if (reason === "weekend") { const d = avail().find((x) => x.weekday === 0 || x.weekday === 6); if (d) take(d, "weekend"); }
+    if (reason === "afterRush") { const d = avail().find((x) => !req.isRush(x.ms)); if (d) take(d, thisWeekend(d) ? "afterRushWeekend" : "afterRush"); }
+    if (reason === "weekend") {
+      const ar = picks.find((p) => p.reason === "afterRushWeekend");
+      // The weekend is already picked: the next open day after it, in date
+      // order, rather than a weekend day a week on (validation, November 15).
+      const d = ar
+        ? avail().find((x) => x.dayStart > ar.dayStart && !req.isRush(x.ms))
+        : avail().find((x) => x.weekday === 0 || x.weekday === 6);
+      if (d) take(d, ar ? "also" : "weekend");
+    }
   }
   for (const d of avail()) {
     if (picks.length >= rules.shown + rules.extraWhenRoom) break;

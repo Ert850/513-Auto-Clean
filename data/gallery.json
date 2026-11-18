@@ -8,14 +8,101 @@
     "4. Add an entry below with that same <slug>, a caption, and alt text.",
     "5. Optional: set video to a clip URL. Nothing renders one yet, but the",
     "   field is here so adding them later is a data change, not a code change.",
-    "6. Optional: tag with a service id so the gallery can filter by package."
+    "6. Optional: tag with a service id so the gallery can filter by package.",
+    "7. Set \"reviewed\": false on a new pair until a person has checked it (plates, faces, house numbers, papers, matching crops); then true, or delete the field. Previews show it; any other build fails while one is false."
   ],
   "pairs": [
+    {
+      "slug": "third-row-seat-stains",
+      "caption": "Third-row seat stains treated, Full Interior",
+      "altBefore": "Before: stained light third-row seat in a Kia SUV",
+      "altAfter": "After: third-row seat cleaned and stain treated",
+      "services": [
+        "full-interior",
+        "stain"
+      ],
+      "video": null,
+      "widths": [
+        420,
+        760,
+        1120
+      ],
+      "source": "Elijah, Drive 03 Website, November 14",
+      "reviewed": false
+    },
+    {
+      "slug": "soul-cargo",
+      "caption": "Cargo area cleared and deep cleaned, Full Interior",
+      "altBefore": "Before: Kia Soul cargo area with debris",
+      "altAfter": "After: Kia Soul cargo area deep cleaned",
+      "services": [
+        "full-interior"
+      ],
+      "video": null,
+      "widths": [
+        420,
+        760,
+        1120
+      ],
+      "source": "Elijah, Drive 03 Website, November 14",
+      "reviewed": false
+    },
+    {
+      "slug": "civic-front-floor",
+      "caption": "Front floor and mat restored, Full Interior",
+      "altBefore": "Before: Honda Civic front floor and mat with dirt and debris",
+      "altAfter": "After: Honda Civic front floor and mat cleaned",
+      "services": [
+        "full-interior"
+      ],
+      "video": null,
+      "widths": [
+        420,
+        760,
+        1120
+      ],
+      "source": "Elijah, Drive 03 Website, November 14",
+      "reviewed": false
+    },
+    {
+      "slug": "captain-chair",
+      "caption": "Captain's chair deep cleaned, Full Interior",
+      "altBefore": "Before: minivan captain's chair with grime on the seat",
+      "altAfter": "After: minivan captain's chair deep cleaned",
+      "services": [
+        "full-interior"
+      ],
+      "video": null,
+      "widths": [
+        420,
+        760,
+        1120
+      ],
+      "source": "Elijah, Drive 03 Website, November 14",
+      "reviewed": false
+    },
+    {
+      "slug": "forester-front-floor",
+      "caption": "Front floor and mat deep cleaned, Full Interior",
+      "altBefore": "Before: Subaru Forester front floor with salt and dirt",
+      "altAfter": "After: Subaru Forester front floor deep cleaned",
+      "services": [
+        "full-interior"
+      ],
+      "video": null,
+      "widths": [
+        420,
+        760,
+        1120
+      ],
+      "source": "Elijah, Drive 03 Website, November 14",
+      "reviewed": false
+    },
     {
       "slug": "pethair",
       "caption": "Pet hair removal, Full Interior",
       "altBefore": "Before: heavy pet hair on the floor and carpet",
-      "altAfter": "After: pet hair removed from vehicle floor and seats",
+      "altAfter": "After: vehicle floor and seats cleaned of pet hair",
       "services": [
         "full-interior",
         "pet-hair"

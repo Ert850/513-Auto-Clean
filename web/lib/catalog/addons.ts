@@ -219,9 +219,9 @@ export const ADDONS: Addon[] = [
     name: "Ozone Odor Reset",
     scope: "interior",
     icon: "molecule",
-    description: "Ozone (O3) destroys the compounds causing the smell, not just the smell.",
+    description: "An ozone treatment for smells that linger, run after the source is cleaned.",
     note:
-      "A generator converts the oxygen in the air (O2) into ozone (O3). That extra atom is unstable, so it breaks away and oxidises odor molecules, bacteria and smoke residue on contact. Because it works as a gas it reaches the vents, headliner and seat foam that wiping cannot. It then reverts to ordinary oxygen and leaves nothing behind. The vehicle is sealed while it runs and aired out afterwards. Expect a 60 to 90% reduction in organic odors. It has to be paired with a stain treatment, or with a Full Interior or above, because ozone cannot remove what is still soaked into the fabric.",
+      "A generator converts the oxygen in the air (O2) into ozone (O3). That extra atom is unstable, so it breaks away and oxidizes odor molecules, bacteria and smoke residue on contact. Because it works as a gas it reaches the vents, headliner and seat foam that wiping cannot. It then reverts to ordinary oxygen and leaves nothing behind. The vehicle is sealed while it runs and aired out afterwards. How much it helps depends on the smell and how long it has set in. It has to be paired with a stain treatment, or with a Full Interior or above, because ozone cannot remove what is still soaked into the fabric.",
     tiers: [{ id: "std", label: "Ozone treatment", priceCents: 5000, durationMin: 60 }],
     // Ozone attacks what is left in the air and the plastics. Running it over
     // material that has not been extracted first mostly wastes the customer's
@@ -579,7 +579,7 @@ export const COATING_EXPLAINER = {
   does: [
     "Makes the paint strongly hydrophobic, so water beads up and rolls off instead of sheeting and drying into spots",
     "Keeps dirt, brake dust and road film from keying into the surface, so the car stays cleaner between washes and washes far faster",
-    "Blocks UV, which is what oxidises and fades paint over time",
+    "Blocks UV, which is what oxidizes and fades paint over time",
     "Resists the things that actually etch paint: bird droppings, bug guts, tree sap, road salt",
     "Adds real depth and gloss, and holds it rather than dulling after a month",
   ],

@@ -131,7 +131,7 @@ export function bookPageConsent(cfg) {
 export function contactHead(cfg) {
   const w = cfg.modes[cfg.mode];
   return `          <span class="eyebrow">Contact Us</span>
-          <h2>${w.heading}</h2>
+          <h1>${w.heading}</h1>
           <p>${fill(w.intro)}</p>
 `;
 }
@@ -141,7 +141,7 @@ export function contactCard(cfg) {
   const quote = cfg.mode === "quote";
   const w = cfg.modes[cfg.mode];
   const fields = quote ? CONTACT_ROW + VEHICLE_ROW + QUESTION_PAIR(w) + TICKS(w) : QUESTION_PAIR(w) + CONTACT_ROW + VEHICLE_ROW;
-  return `        <h3>${w.cardTitle}</h3>
+  return `        <h2>${w.cardTitle}</h2>
         <p class="fc-sub">${fill(w.cardSub)}</p>
         <form id="inquiryForm" class="js-w3form${quote ? " inq-quote" : ""}" action="https://api.web3forms.com/submit" method="POST" novalidate${quote ? ` data-success="${w.success.replace(/"/g, "&quot;")}"` : ""}>
           <input type="hidden" name="access_key" value="8a502fe3-2a53-4904-98e9-b18dabb1f579" />

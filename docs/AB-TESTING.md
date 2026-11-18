@@ -7,11 +7,13 @@ Built November 11, 2026, after the owner asked to test whether showing GOLF10 on
 - **Who's in a test:** a visitor in a running test is given one version at random on their first view. It's stored in their browser, so they see the same page on every visit. With `sources: ["golf"]` only people who arrived through 513autoclean.com/golf join. Once in, they stay in, even when they come back another way.
 - **Everyone else:** they see the **first** version listed, the control, and nothing is stored for them.
 - **Showing a version on a page:** an element shown for one version only carries `data-exp="test-id:version"`, for example `<p data-exp="golf-code:code">Use GOLF10 for 10% off</p>`. It's hidden until the version is chosen, so the wrong one never flashes up. In code: `window.AC_EXP("golf-code")`.
+- **Changing the words of something the page always needs** (a headline): keep the control's words in the page, and put each other version's HTML in an attribute: `<h1 data-exp-words="hero-headline" data-exp-cincinnati="…">…</h1>`. `js/analytics.js` swaps them in for a visitor in that version before the first paint: it loads from the head without `defer` and swaps each element as soon as the parser has closed it, so a slow phone never shows the control's words first. The build fails if a page's `data-exp-<version>` attributes don't match the test's versions (`checkExperimentPages`). Search engines, and anyone without scripts, read the control. Don't use `data-exp` for this: it hides every version until one is picked, so a headline would start empty and the page would carry several.
+- **Every booking names every running test the visitor is in**, wherever they book: a headline seen on the home page is still in the email for a booking made from Services. Until November 16 only the tests asked about on the booking's own page were listed.
 - **Where the results go:**
   - **Every booking:** the booking email (an "A/B TESTS" line) and the calendar event name the version. This works even when the visitor declined analytics, so **count bookings per version from these**.
   - **Google Analytics, after Accept only:**
     - an `experience_impression` event with `exp_variant_string`, for example `ac-golf-code-code` (Google's own pattern for outside testing tools);
-    - every other event carries the same parameter.
+    - every other event carries the same parameter, naming every running test the visitor is in (a booking on Services still names the home page's headline).
   - **Clarity, after Accept only:** a tag, `exp_golf-code = code`. Filter recordings and heatmaps by it.
 - **Privacy:** the privacy policy says all of this. The stored version identifies nobody.
 

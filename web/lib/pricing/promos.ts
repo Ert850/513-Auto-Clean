@@ -65,6 +65,15 @@ export function checkPromoCodes(input: unknown): Promo[] {
     if (usd !== undefined && (typeof usd !== "number" || !(usd > 0))) bad(where, "dollarsOff must be more than 0");
     const until = o["until"];
     if (until !== undefined && !isRealDate(until)) bad(where, "until must be a real date like 2027-06-30");
+    // The words repeat the amount ("10% off"): they must say the amount the
+    // code takes, or a changed percentOff would leave the label promising
+    // the old one (review, November 13; CLAUDE.md, numbers come from settings).
+    for (const k of ["label", "blurb"]) {
+      const words = typeof o[k] === "string" ? (o[k] as string) : "";
+      // Only the amount OFF: a blurb may also state its minimum ("on a detail of $150 or more").
+      for (const m of words.matchAll(/(\d+(?:\.\d+)?)\s*%\s*off/gi)) if (Number(m[1]) !== pct) bad(where, `${k} says ${m[0]} but percentOff is ${pct ?? "not set"}`);
+      for (const m of words.matchAll(/\$\s*(\d+(?:\.\d+)?)\s*off/gi)) if (Number(m[1]) !== usd) bad(where, `${k} says ${m[0]} but dollarsOff is ${usd ?? "not set"}`);
+    }
     const min = o["minServiceDollars"];
     if (min !== undefined && (typeof min !== "number" || min < 0)) bad(where, "minServiceDollars must be 0 or more");
     return {

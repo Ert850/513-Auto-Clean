@@ -251,6 +251,8 @@ export { mileageFeeCents } from "./pricing/mileage.js";
 export { cancellationLadder } from "./pricing/cancellation.js";
 export { CAPABILITIES, DRAFT_KEEP_DAYS, copyFor, isLive, liveProcessors } from "./site/capabilities.js";
 export { LONG_JOB_STARTS, multiDayEvents } from "./availability/multiDay.js";
+export { checkRange, slotStillFree } from "./availability/stillFree.js";
+export { SCHEDULING } from "./availability/scheduling.js";
 export { HOURS, REPO_PHONE, businessPhone, hoursText, parsePhone, phoneTrace, swapPhone } from "./site/business.js";
 export { estimateOneWayMinutes } from "./travel/zipRanges.js";
 
@@ -273,3 +275,5 @@ export {
   unavailableReason,
   vehicleSize,
 };
+export { BOOK_LINK_PARAMS, BOOK_INTENTS, arrivalQuery, parseArrival } from "./booking/bookLinks.js";
+export { zipGeo } from "./travel/zipGeo.js";
