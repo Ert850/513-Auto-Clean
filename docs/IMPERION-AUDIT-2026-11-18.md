@@ -41,7 +41,12 @@ So Semrush, and any search engine, saw two addresses for each page. The links we
   - a published page missing from the sitemap, or a draft in it;
   - a missing redirect.
 - **Netlify's setting is now in `netlify.toml`** (`pretty_urls = true`), so the dashboard can't change it unseen. The build already writes clean links, so it rewrites nothing.
+- **Found by the validation pass and fixed:**
+  - **The hero's Contact Us button showed on phones again.** It was hidden by matching `a[href="contact.html"]`, which a clean link no longer matches. The same rule had already stopped working on the deploy preview, because of Netlify's rewrite. It's a class now (`.hero-contact`).
+  - **The card payment's return address** is now `/#book` instead of `/index.html#book`, so it never depends on a redirect.
 - **Left on purpose:** links that scripts build in the browser (the booking form's Terms and Privacy links, old home-page section links) still say `.html`. They reach the page through the 301.
+
+**Links to the new pages:** options are mocked up in `CITY-SERVICE-LINKS.md`. They include a fix for the City guides list, which would land at the bottom of Range & Travel.
 
 **Also guarded:** a page with only one linking page would get the same Semrush notice. The main pages are in every page's header and footer.
 - **The new city and service pages** are only linked from what their generator links them from: the Range & Travel city list, nearby cities, and each other.
@@ -54,6 +59,7 @@ So Semrush, and any search engine, saw two addresses for each page. The links we
 **Cause:** the sub-pages (Services, About, FAQ, Range & Travel, Contact) were cut out of the old one-page home page. Each page's title was a section heading (h2) under the home page's h1, and stayed one when it became its own page. The two print landing pages had the same gap.
 
 **Fix:**
+- **Not changed:** the h3s under each title (package cards, state cards) now follow an h1 directly. Lighthouse's accessibility audit may note the skipped level; Semrush doesn't check it.
 - **Each page's title is now its h1,** with the same look: the stylesheet rules match both h1 and h2, and no size, margin or position changed at 1440, 820, 375 or 320 px.
 - **Contact:** its title is an h1 on the Contact page. The copy of that section on the home page keeps an h2, since the home page's headline is its h1.
 - **The build fails** unless every published page has exactly one h1.
@@ -80,7 +86,7 @@ These are `/book` and the same page with a package in the address (`/book?packag
 
 **Fix:**
 - **The build now drops comments and indentation from the published pages** (`web/scripts/slim-html.mjs`). Script, style, pre and textarea contents are left exactly as written.
-- **Contact rose from 10.0% to 12.4% text,** and every other page also improved. Pages are 15 to 20% smaller.
+- **Contact rose from 10.0% to about 12% text,** and every other page also improved. Pages are 15 to 20% smaller.
 - **Checked:** every page was compared element by element before and after, at three widths. Nothing moved. The only differences were the home headline A/B test, which picks a version per visitor.
 - **What's left:**
   - The rest of Contact's weight is the form itself and the shared header and footer.

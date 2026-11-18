@@ -134,6 +134,7 @@ Read this before changing anything. Every rule below came from a real bug or an 
     - a page has neither a canonical nor noindex;
     - a published page is linked from fewer than 2 other pages (Semrush's "one incoming internal link").
   - *A local server* that only serves files 404s on `/about`: open `about.html`, or map it like Netlify does.
+- **Never select an element by its link address** (`a[href="contact.html"]`). The published address differs from the source (`/contact`), so the rule silently stops matching: the hero's Contact Us button came back on phones. Use a class or data attribute.
 - **Every page has exactly one `<h1>`: its title.** The sub-page titles were h2s, left over from when they were sections of the home page. The title rules use `:is(h1, h2)`, so the change kept their look. The Contact section copied into the home page is demoted to h2 there (`render-site.mjs`).
 - **Published pages are slimmed (`web/scripts/slim-html.mjs`):** comments and indentation are dropped in dist/ only (script, style, pre and textarea untouched). Comments in source pages are for editors; never put anything a page needs at run time in a comment.
 - **`/llms.txt` is generated (`web/scripts/llms-txt.mjs`)** from the sitemap's pages, the catalog and `config/business.json`. Never hand-write it.
