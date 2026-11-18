@@ -138,7 +138,7 @@ describe("T2: the Contact form", () => {
     expect(card).toContain('value="QUOTE REQUEST from 513autoclean.com"');
     expect(card).toMatch(/<button type="submit"[^>]*>\s*Request Quote/);
     expect(card).toContain("No spam, ever. We only use your info to send your quote.");
-    expect(contactHead(as("quote"))).toContain("<h2>Request a quote</h2>");
+    expect(contactHead(as("quote"))).toContain("<h1>Request a quote</h1>");
   });
 
   it("script.js sends each box as yes or no, so the email says which", () => {

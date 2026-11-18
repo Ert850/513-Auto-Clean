@@ -60,7 +60,7 @@ describe("validateWire: shape", () => {
       expect(r.ok).toBe(true);
       if (!r.ok) continue;
       expect(r.booking.cart.vehicles.length).toBe(1);
-      expect(r.booking.cart.vehicles[0].packageIds).toEqual(["full-interior", "full-exterior"]);
+      expect(r.booking.cart.vehicles[0]?.packageIds).toEqual(["full-interior", "full-exterior"]);
     }
     // Two real vehicles are both kept.
     const two = good();

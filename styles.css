@@ -119,7 +119,7 @@ p, li, figcaption, label, legend, summary, blockquote { text-wrap: pretty; }
 .wrap { width: 100%; max-width: var(--maxw); margin-inline: auto; padding-inline: var(--pad); }
 section { padding-block: clamp(40px, 5vw, 72px); position: relative; }
 .section-head { max-width: 660px; margin-bottom: clamp(26px, 3.4vw, 40px); }
-.section-head h2 { font-size: clamp(1.85rem, 4vw, 2.7rem); margin: .45rem 0 .7rem; }
+.section-head :is(h1, h2) { font-size: clamp(1.85rem, 4vw, 2.7rem); margin: .45rem 0 .7rem; }
 .section-head p { color: var(--text-soft); font-size: 1.02rem; line-height: 1.6; }
 .center { text-align: center; margin-inline: auto; }
 .center .eyebrow { justify-content: center; }
@@ -484,7 +484,7 @@ section { padding-block: clamp(40px, 5vw, 72px); position: relative; }
 .about-photo .sig b { font-family: var(--font-display); font-size: 1.05rem; display: block; }
 .about-photo .sig span { font-size: .82rem; color: var(--text-inv-soft); }
 .about-photo .sig .ico { color: var(--red-bright); margin-bottom: .4rem; display: inline-flex; }
-.about-copy h2 { font-size: clamp(2rem, 5vw, 3rem); margin: .6rem 0 1.2rem; }
+.about-copy :is(h1, h2) { font-size: clamp(2rem, 5vw, 3rem); margin: .6rem 0 1.2rem; }
 .about-copy p { color: var(--text-soft); margin-bottom: 1.1rem; font-size: 1.05rem; }
 .about-copy p strong { color: var(--text); }
 .promises { display: grid; gap: .7rem; margin: 1.6rem 0 2rem; }
@@ -1095,8 +1095,8 @@ main > section:first-child { padding-top: clamp(20px, 2vw, 24px); }
 /* A sub-page's title is a compact page header, the size Contact already used
    (.inq-head). The home page's 2.7 to 3rem section titles took two or three
    lines and 140px of a laptop screen before any of the page's content. */
-main > section:first-child .section-head h2,
-main > section:first-child .about-copy h2 { font-size: clamp(1.7rem, 2.6vw, 2.3rem); margin: .35rem 0 .5rem; }
+main > section:first-child .section-head :is(h1, h2),
+main > section:first-child .about-copy :is(h1, h2) { font-size: clamp(1.7rem, 2.6vw, 2.3rem); margin: .35rem 0 .5rem; }
 /* :where() keeps this at one class, so a layout rule such as .svc-intro's
    can still take the margin away. */
 main > section:first-child :where(.section-head) { margin-bottom: clamp(18px, 2vw, 26px); }
@@ -1108,7 +1108,7 @@ main > section:first-child :where(.section-head) { margin-bottom: clamp(18px, 2v
    tighter than a home-page section's so the Book buttons stay on a 1440x790
    screen. */
 .svc-intro .section-head { max-width: 46rem; margin-bottom: 12px; }
-main > section:first-child .svc-intro .section-head h2 { margin: 0 0 .4rem; }
+main > section:first-child .svc-intro .section-head :is(h1, h2) { margin: 0 0 .4rem; }
 .svc-intro .svc-tabs-row { margin-bottom: 14px; }
 @media (min-width: 1000px) { main > #services { padding-top: 12px; } }
 /* Two sections on the same paper with no rule between them stacked both
@@ -1190,7 +1190,7 @@ body > #quote { padding-block: clamp(40px, 4.4vw, 64px); }
 @media (min-width: 1000px) {
   .about { padding-bottom: 0; }
   .about-grid { grid-template-columns: 20rem minmax(0, 1fr); gap: clamp(40px, 4.5vw, 64px); }
-  .about-copy h2 { margin-bottom: .7rem; }
+  .about-copy :is(h1, h2) { margin-bottom: .7rem; }
   .about-copy > p { max-width: 40rem; line-height: 1.65; margin-bottom: 0; }
   .about-copy .promises { margin: 1rem 0 1.25rem; gap: .5rem; }
   /* Transparent (the body is the same paper): with no gap between the two
@@ -1206,7 +1206,7 @@ body > #quote { padding-block: clamp(40px, 4.4vw, 64px); }
    the form below a laptop screen). */
 .inq-head { margin-bottom: 1.4rem; }
 .inq-grid:has(.inq-head) { margin-top: 0; }
-.inq-head h2 { font-size: clamp(1.7rem, 2.6vw, 2.3rem); }
+.inq-head :is(h1, h2) { font-size: clamp(1.7rem, 2.6vw, 2.3rem); }
 @media (max-width: 999px) { .inq-head { flex: 1 1 100%; margin-bottom: .2rem; } }
 
 .inq-side { align-self: start; }

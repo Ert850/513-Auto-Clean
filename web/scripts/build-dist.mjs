@@ -18,6 +18,10 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { stampPhone } from "./phone-stamp.mjs";
+import { slimHtml } from "./slim-html.mjs";
+import { applyCleanUrls, checkDist } from "./site-urls.mjs";
+import { llmsTxt } from "./llms-txt.mjs";
+import { SEED_CATALOG, businessPhone, hoursText } from "../../netlify/functions/_pricing.mjs";
 import { routeDist } from "./book-links.mjs";
 import { distPages, isPreviewBuild, unreviewedPairs } from "./locations.mjs";
 
@@ -124,6 +128,16 @@ for (const rel of MINIFY) {
 }
 bytes -= saved;
 
+// Pages: comments and indentation out, everything visible unchanged (slim-html.mjs).
+for (const rel of FILES.filter((f) => f.endsWith(".html"))) {
+  const to = path.join(dist, rel);
+  const source = fs.readFileSync(to, "utf8");
+  const out = slimHtml(source);
+  fs.writeFileSync(to, out);
+  saved += Buffer.byteLength(source) - Buffer.byteLength(out);
+  bytes -= Buffer.byteLength(source) - Buffer.byteLength(out);
+}
+
 // The published phone number: BUSINESS_PHONE in Netlify, swapped into every
 // page and script here (A2P plan T1). Unset, nothing changes. See phone-stamp.mjs.
 {
@@ -135,6 +149,24 @@ bytes -= saved;
 {
   const moved = routeDist(dist, JSON.parse(fs.readFileSync(path.join(root, "config/booking-page.json"), "utf8")));
   if (moved) console.log(`book links: ${moved} links now go to /book`);
+}
+
+// One address per page, then the AI guide that lists them, then the checks
+// that everything a crawler reads agrees (site-urls.mjs, llms-txt.mjs).
+{
+  const pages = applyCleanUrls(dist);
+  fs.writeFileSync(path.join(dist, "llms.txt"), llmsTxt({
+    dist,
+    catalog: SEED_CATALOG,
+    phone: businessPhone(process.env.BUSINESS_PHONE).display,
+    hours: hoursText(),
+  }));
+  const problems = checkDist(dist);
+  if (problems.length) {
+    console.error("build-dist: the published pages disagree about their addresses or headings:\n  " + problems.join("\n  "));
+    process.exit(1);
+  }
+  console.log(`addresses: ${pages.length} pages at clean addresses, llms.txt written`);
 }
 
 /* ---- images: only what the page can reach ---- */

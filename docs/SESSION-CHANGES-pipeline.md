@@ -2354,3 +2354,27 @@ From now on, every pass root-causes each finding and sweeps the whole codebase f
 - No page errors.
 
 **Not run on the preview,** because each needs a request that would book: the server-side changes (no-time Help me decide skips the calendar write, the advice hold, the CHECK THE PRICE email, separate visits priced). They're covered by unit tests, and the `"visits":2` request was checked against the local build.
+
+## Imperion's site audit (November 18)
+
+Five Semrush findings on the live site. Causes and fixes are in `docs/IMPERION-AUDIT-2026-11-18.md`, which is written to forward. Nothing reaches the live site before the eNov14 merge.
+
+- **One address per page (`/about`; owner's pick after research and a Netlify test).**
+  - **Root cause:** the address was decided in two places. Netlify's dashboard-only Pretty URLs rewrote links to `/about`, while the canonicals and sitemap said `/about.html`, and nothing compared them.
+  - **Fix:** `web/scripts/site-urls.mjs` (rewrite in dist/, `_redirects`, `checkDist` at build), and `pretty_urls` pinned in `netlify.toml`.
+- **One h1 per page.** Sub-page titles were h2s from the one-page era. Now h1, with the CSS on `:is(h1, h2)`. The home page's copy of the Contact section keeps an h2.
+- **Slimmer published HTML** (`web/scripts/slim-html.mjs`): Contact went from 10.0% to 12.4% text.
+- **`/llms.txt`,** generated (`web/scripts/llms-txt.mjs`).
+- **`/book` noindex:** intended, unchanged.
+- **New guard:** a published page linked from fewer than 2 pages fails the build. The city and service pages will need more links (a mockup) before the first one is published.
+- **Fixed in passing:** a type error in my own earlier `wire.test.ts` line.
+
+**What to test:**
+- **Deploy preview:**
+  - `/about.html` returns a 301 to `/about`, and `/about` returns 200;
+  - `/index.html` returns a 301 to `/`;
+  - `/llms.txt` loads;
+  - `/sitemap.xml` lists clean addresses;
+  - nav and footer links have no `.html`.
+- **Every page title looks as before** at 1440 and 375.
+- **Tests:** `cd web && TZ=America/New_York npx vitest run lib/site/seo-audit.test.ts`.

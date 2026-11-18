@@ -131,7 +131,7 @@ export function bookPageConsent(cfg) {
 export function contactHead(cfg) {
   const w = cfg.modes[cfg.mode];
   return `          <span class="eyebrow">Contact Us</span>
-          <h2>${w.heading}</h2>
+          <h1>${w.heading}</h1>
           <p>${fill(w.intro)}</p>
 `;
 }

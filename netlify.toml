@@ -14,6 +14,15 @@
   functions = "netlify/functions"
   command = "npm run build"
 
+# Netlify's Pretty URLs: on, as it has been since launch, and written here so
+# the dashboard can't change it unseen (until November 18 it lived only
+# there, rewrote every link to /about while the pages declared /about.html,
+# and split each page into two addresses). The build now writes clean links
+# itself (web/scripts/site-urls.mjs), so this rewrites nothing; it stays on
+# because the redirects were tested with it on.
+[build.processing.html]
+  pretty_urls = true
+
 [build.environment]
   NODE_VERSION = "22"
 
@@ -85,19 +94,10 @@
 # Redirects
 # ---------------------------------------------------------------------------
 
-# TEMPORARY URL-FORM TEST (November 18, deploy preview only, reverted before
-# merge): which direction of .html <-> clean redirect loops on Netlify. Both
-# targets are draft pages, never published to production.
-[[redirects]]
-  from = "/car-stain-odor-treatment-cincinnati.html"
-  to = "/car-stain-odor-treatment-cincinnati"
-  status = 301
-  force = true
-[[redirects]]
-  from = "/interior-car-detailing-cincinnati"
-  to = "/interior-car-detailing-cincinnati.html"
-  status = 301
-  force = true
+# Each page's old .html address (/about.html) 301s to its one address
+# (/about): dist/_redirects, written by web/scripts/site-urls.mjs from the
+# pages themselves, so a new page needs nothing here. Netlify reads that file
+# before the rules below.
 
 # PRINTED QR CODES: /golf (golf course booklet) and /prestige (Prestige Living
 # magazine). These two addresses are in print from 2027 for about a year and

@@ -482,7 +482,10 @@ for (const f of PAGES) fs.writeFileSync(path.join(root, f), pages[f]);
   const a = html.indexOf('<section class="inquiry" id="inquiry">');
   const b = html.indexOf("</section>", a);
   if (a < 0 || b < 0) throw new Error("render-site: the inquiry section was not found in contact.html");
-  const section = html.slice(a, b + "</section>".length).replace(/^<!-- CONTACT:(?:HEAD|CARD):(?:START|END) -->\n/gm, "");
+  // Its title is contact.html's h1, the page's heading; on the home page the
+  // hero is the h1, so the copy's title is a section heading again (h2).
+  const section = html.slice(a, b + "</section>".length).replace(/^<!-- CONTACT:(?:HEAD|CARD):(?:START|END) -->\n/gm, "")
+    .replace(/<h1>([\s\S]*?)<\/h1>/, "<h2>$1</h2>");
   let home = read("index.html");
   const hs = "<!-- CONTACT:SECTION:START -->\n";
   const he = "<!-- CONTACT:SECTION:END -->";
