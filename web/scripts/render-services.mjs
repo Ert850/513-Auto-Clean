@@ -20,6 +20,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { root, loadServices, loadLocations, pageFile, overlap, contained, typedNumbers, configWords, mainText, normalWords } from "./locations.mjs";
 import { findPackage, findAddon, componentsOf, SEED_CATALOG, vehicleSize, tierPriceFor } from "../../netlify/functions/_pricing.mjs";
+import { explainsProblems, tabGuides } from "./page-links.mjs";
 
 const SITE = "https://513autoclean.com";
 const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -151,7 +152,7 @@ ${p.packages.map((id) => {
     SIZES: `Prices are for a small car. ${esc(sizes)}. You see your exact total, with travel and tax, before you book.`,
     FAQ_H2: esc(p.faqH2 ?? "Common questions"),
     FAQ: p.faq.map((q) => `    <details class="loc-q"><summary>${esc(q.q)}</summary><p>${esc(q.a)}</p></details>`).join("\n"),
-    WHERE: `    <p class="svp-where">We come to you anywhere in our <a href="service-area.html">service area</a>${cities.length ? `, including ${cities.map((c) => `<a href="${c.slug}">${esc(c.name)}</a>`).join(", ")}` : ""}.</p>`,
+    WHERE: `    <p class="svp-where">We come to you anywhere in our <a href="service-area.html">service area</a>${cities.length ? `, including ${cities.map((c) => `<a href="${pageFile(c)}">${esc(c.name)}</a>`).join(", ")}` : ""}.</p>`,
   };
   let html = tpl.replace(/\{\{(\w+)\}\}/g, (m, k) => { if (!(k in fill)) throw new Error(`render-services: no value for {{${k}}}`); return fill[k]; });
   const out = path.join(root, pageFile(p));
@@ -181,7 +182,17 @@ for (let i = 0; i < versus.length; i++) for (let k = i + 1; k < versus.length; k
   if (o > 0.3) problems.push(`${A.name} and ${B.name} share ${o.toFixed(2)} of their text (max 0.30)`);
   if (c > 0.5) problems.push(`${A.name} and ${B.name}: over half of one page's text is in the other`);
 }
+problems.push(...explainsProblems(pages, findAddon));
 if (problems.length) throw new Error("render-services:\n  " + problems.join("\n  "));
+
+// Services page tab row: links to the published pages that explain a tab (page-links.mjs).
+{
+  let s = read("services.html");
+  const a = "<!-- SERVICEGUIDES:START -->", b = "<!-- SERVICEGUIDES:END -->";
+  if (s.indexOf(a) < 0 || s.indexOf(b) < 0) throw new Error("render-services: SERVICEGUIDES markers not found in services.html");
+  s = s.slice(0, s.indexOf(a) + a.length) + tabGuides(pages) + s.slice(s.indexOf(b));
+  fs.writeFileSync(path.join(root, "services.html"), s);
+}
 
 const published = pages.filter(live);
 let sm = read("sitemap.xml");

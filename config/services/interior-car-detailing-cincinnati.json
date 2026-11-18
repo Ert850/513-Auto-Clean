@@ -3,6 +3,7 @@
   "status": "draft",
   "slug": "interior-car-detailing-cincinnati",
   "name": "Interior Car Detailing",
+  "explains": { "tab": "interior", "link": "About interior detailing" },
   "serviceType": "Interior car detailing",
   "title": "Interior Car Detailing in Cincinnati | 513 Auto Clean",
   "meta": "Mobile interior detailing in Cincinnati: Basic, Full and Full Interior + Steam, from {price:basic-interior}. We come to your driveway. Pay when it's done.",

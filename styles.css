@@ -390,6 +390,20 @@ section { padding-block: clamp(40px, 5vw, 72px); position: relative; }
    carries the space below; the button wraps under the tabs on narrow screens. */
 .svc-tabs-row { display: flex; flex-wrap: wrap; align-items: center; gap: .8rem 1rem; margin-bottom: 2.5rem; }
 .svc-tabs-row .svc-tabs { margin-bottom: 0; }
+/* "About interior detailing" (page-links.mjs): beside See all add-ons, shown
+   only with its own tab. Phones: its own line under the add-ons button. */
+.svc-guide { margin-left: auto; font-weight: 700; color: var(--red-deep); text-decoration: none; }
+/* Hidden by visibility, so it keeps its space and See all add-ons doesn't
+   jump sideways on a tab switch. Phones: on its own line, so it just goes. */
+.svc-tabs-row:has(.svc-tab.active[data-panel="interior"]) .svc-guide:not([data-guide-for="interior"]),
+.svc-tabs-row:has(.svc-tab.active[data-panel="exterior"]) .svc-guide:not([data-guide-for="exterior"]) { visibility: hidden; }
+@media (max-width: 767.98px) {
+  .svc-guide { order: 1; flex-basis: 100%; margin: .1rem 0 0; font-size: .95rem; }
+  .svc-tabs-row:has(.svc-tab.active[data-panel="interior"]) .svc-guide:not([data-guide-for="interior"]),
+  .svc-tabs-row:has(.svc-tab.active[data-panel="exterior"]) .svc-guide:not([data-guide-for="exterior"]) { display: none; }
+}
+/* An add-on card's link to the page that explains it, at the card's small link size. */
+.addon-guide { display: block; margin: .35rem 0 .5rem; font-size: .82rem; font-weight: 700; color: var(--red-deep); text-decoration: none; }
 .svc-tab {
   padding: .65rem 1.4rem; border-radius: 999px; font-weight: 700; font-size: .98rem; color: var(--text-soft);
   transition: color .25s, background .25s, box-shadow .25s; display: inline-flex; align-items: center; gap: .5rem;
@@ -730,6 +744,10 @@ main > .areas:first-child .section-head { margin-bottom: 18px; }
 .area-col h3 svg { width: 17px; height: 17px; color: var(--red); align-self: center; }
 .area-col .codes { font-size: .72rem; color: var(--red-deep); font-weight: 700; letter-spacing: .05em; }
 .area-col .area-sum { margin-top: .2rem; color: var(--text-soft); }
+/* A state's city guides (page-links.mjs): the names in ink, each kept whole. */
+.area-col .area-guides { margin-top: .25rem; }
+.area-guides a { color: var(--text); font-weight: 700; text-decoration: none; white-space: nowrap; }
+@media (hover: hover) { .area-guides a:hover { color: var(--red-deep); } }
 .area-more { margin-top: 0; }
 .area-more summary + .area-grp { margin-top: .5rem; }
 .area-col p { font-size: .88rem; color: var(--text); line-height: 1.6; margin: 0; }
@@ -840,6 +858,8 @@ main > .areas:first-child .section-head { margin-bottom: 18px; }
 .footer .f-socials svg { width: 18px; height: 18px; }
 .footer h4 { color: #fff; font-family: var(--font-body); font-size: .82rem; letter-spacing: .12em; text-transform: uppercase; margin-bottom: 1.1rem; }
 .footer .f-links { display: grid; gap: .6rem; }
+/* With the Detailing column (published service pages), five columns from 1000px. */
+@media (min-width: 1000px) { .footer-grid:has(> .f-detailing) { grid-template-columns: 1.4fr 1fr 1.1fr 1fr 1.2fr; } }
 .footer .f-links a { font-size: .95rem; transition: color .2s, padding-left .2s; }
 @media (hover: hover) { .footer .f-links a:hover { color: var(--red-bright); padding-left: .3rem; } }
 .footer .f-contact li { display: flex; align-items: center; gap: .6rem; font-size: .95rem; margin-bottom: .7rem; }
@@ -1805,8 +1825,6 @@ main > .bookpage:first-child { padding-block: clamp(16px, 2.2vw, 30px); }
 .loc-q summary { cursor: pointer; font-weight: 700; }
 .loc-q p { margin: .6rem 0 0; line-height: 1.6; }
 .loc-final { margin-top: 1.4rem; display: flex; flex-wrap: wrap; gap: .7rem; }
-.loc-hub { margin-top: 1rem; }
-.loc-hub h3 { font-size: 1.05rem; margin: 0 0 .5rem; }
 /* City pages, round 2: hero with a job photo, the "what we do" box, the map. */
 .loc-hero-grid { display: grid; grid-template-columns: 1fr; gap: 1.4rem; align-items: center; }
 @media (min-width: 1000px) { .loc-hero-grid { grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 2.4rem; } }

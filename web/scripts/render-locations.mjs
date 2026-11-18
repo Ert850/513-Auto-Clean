@@ -19,6 +19,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { root, loadLocations, loadServices, pageFile, overlap, contained, typedNumbers, configWords, mainText, placeNames, normalWords, reviewFromArea } from "./locations.mjs";
 import { findPackage, findAddon, zipGeo } from "../../netlify/functions/_pricing.mjs";
+import { STATES, stateOf, stateGuides } from "./page-links.mjs";
 
 const SITE = "https://513autoclean.com";
 // docs/SEO-COMPLIANCE.md section 2: Jaccard on word 5-grams of each page's own
@@ -167,7 +168,7 @@ ${loc.reviews.map((r) => { const x = reviews.reviews.find((y) => y.author === r.
     HERO: carouselHero(loc.hero.pairs.map(pair)),
     WHAT_H2: esc(loc.whatH2 ?? "What we do there"),
     // Each published service page (SEO-COMPLIANCE.md R7); none while they're drafts.
-    SERVICE_LINKS: loadServices().filter(live).map((s) => `      <a class="loc-what-more" href="${s.slug}">${esc(s.name)} &rarr;</a>\n`).join(""),
+    SERVICE_LINKS: loadServices().filter(live).map((s) => `      <a class="loc-what-more" href="${pageFile(s)}">${esc(s.name)} <span aria-hidden="true">&rarr;</span></a>\n`).join(""),
     MAP: esc(JSON.stringify({ center: loc.map.center, radiusMiles: loc.map.radiusMiles,
       zips: loc.zips.map((z) => { const g = zipGeo(z) ?? (loc.map.zips ?? {})[z]; return g ? { zip: z, lat: g.lat, lon: g.lon } : null; }).filter(Boolean) })),
     LOCAL_H2: esc(loc.localH2 ?? "Where we set up"),
@@ -176,7 +177,7 @@ ${loc.reviews.map((r) => { const x = reviews.reviews.find((y) => y.author === r.
     AREAS_H2: esc(loc.areasH2 ?? "Where we go"),
     NEIGHBORHOODS: loc.neighborhoods.map((t) => `          <li>${esc(t)}</li>`).join("\n"),
     ZIPS: loc.zips.map((t) => `          <li>${esc(t)}</li>`).join("\n"),
-    NEARBY: nearby.length ? `      <p class="loc-areas-l">Also nearby</p>\n      <ul class="loc-chips">\n${nearby.map((l) => `        <li><a href="${l.slug}">${esc(l.name)}</a></li>`).join("\n")}\n      </ul>` : "",
+    NEARBY: nearby.length ? `      <p class="loc-areas-l">Also nearby</p>\n      <ul class="loc-chips">\n${nearby.map((l) => `        <li><a href="${pageFile(l)}">${esc(l.name)}</a></li>`).join("\n")}\n      </ul>` : "",
     JOBS: jobs, REVIEWS: revs,
     FAQ_H2: esc(loc.faqH2 ?? "Common questions"),
     FAQ: loc.faq.map((q) => `    <details class="loc-q"><summary>${esc(q.q)}</summary><p>${esc(q.a)}</p></details>`).join("\n"),
@@ -213,9 +214,10 @@ for (let i = 0; i < versus.length; i++) for (let k = i + 1; k < versus.length; k
   else if (o > WARN_OVERLAP) console.warn(`render-locations: warning, ${A.name} and ${B.name} share ${o.toFixed(2)} of their text`);
   if (c > MAX_CONTAINED) problems.push(`${A.name} and ${B.name}: over half of one page's text is in the other`);
 }
+for (const loc of locs) { try { stateOf(loc); } catch (e) { problems.push(`${loc.file}: ${e.message}`); } }
 if (problems.length) throw new Error("render-locations:\n  " + problems.join("\n  "));
 
-// The sitemap and the hub list only published (non-draft) pages.
+// The sitemap and the state cards list only published (non-draft) pages.
 const published = locs.filter(live);
 const region = (file, name, body) => {
   let s = read(file);
@@ -226,7 +228,8 @@ const region = (file, name, body) => {
   fs.writeFileSync(path.join(root, file), s);
 };
 region("sitemap.xml", "LOCATIONS", published.map((l) => `\n  <url>\n    <loc>${SITE}/${l.slug}</loc>\n    <changefreq>monthly</changefreq>\n    <priority>0.7</priority>\n  </url>`).join("") + "\n  ");
-region("service-area.html", "LOCATIONS", published.length
-  ? `\n        <div class="loc-hub"><h3>City guides</h3><ul class="loc-chips">${published.map((l) => `<li><a href="${l.slug}">${esc(l.name)}</a></li>`).join("")}</ul></div>\n        `
-  : "\n        ");
+// Range & Travel: each state's card lists its city guides (page-links.mjs).
+// Not a list after the tool: that had no place in its grid and landed below
+// "Get an exact quote" (docs/CITY-SERVICE-LINKS.md).
+for (const st of STATES) region("service-area.html", `CITYGUIDES:${st}`, stateGuides(locs, st));
 console.log(`locations: ${locs.length} city pages (${published.length} published, ${locs.length - published.length} draft)`);

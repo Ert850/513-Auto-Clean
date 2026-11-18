@@ -52,7 +52,7 @@ So Semrush, and any search engine, saw two addresses for each page. The links we
 - **The new city and service pages** are only linked from what their generator links them from: the Range & Travel city list, nearby cities, and each other.
 - **Today:** all four are drafts, so nothing links to them yet.
 - **From now on,** the build fails if a published page is linked from fewer than two other pages.
-- **Still to design:** where else they get linked from (for example a service page from its package on the Services page). That's a page design change, so it needs a mockup before the first one is published.
+- **Built (owner's pick C, November 18; `CITY-SERVICE-LINKS.md`):** every published city and service page is linked from the footer of every page, its state's card on Range & Travel, and (service pages) the Services page. Checked with all four drafts published in a local build: each is linked from 12 pages.
 
 ## 2. Pages without an h1
 
