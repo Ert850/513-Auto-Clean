@@ -85,6 +85,20 @@
 # Redirects
 # ---------------------------------------------------------------------------
 
+# TEMPORARY URL-FORM TEST (November 18, deploy preview only, reverted before
+# merge): which direction of .html <-> clean redirect loops on Netlify. Both
+# targets are draft pages, never published to production.
+[[redirects]]
+  from = "/car-stain-odor-treatment-cincinnati.html"
+  to = "/car-stain-odor-treatment-cincinnati"
+  status = 301
+  force = true
+[[redirects]]
+  from = "/interior-car-detailing-cincinnati"
+  to = "/interior-car-detailing-cincinnati.html"
+  status = 301
+  force = true
+
 # PRINTED QR CODES: /golf (golf course booklet) and /prestige (Prestige Living
 # magazine). These two addresses are in print from 2027 for about a year and
 # can never change (marketing/qr/README.md). Never delete them or rename them:
