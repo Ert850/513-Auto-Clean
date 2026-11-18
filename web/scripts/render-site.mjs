@@ -33,10 +33,12 @@ import {
   packagesFor,
   unavailableReason,
   BOOK_INTENTS,
+  arrivalQuery,
 } from "../../netlify/functions/_pricing.mjs";
 import { contactCard, contactHead, loadContactForm, bookPageConsent } from "./contact-form.mjs";
 import { loadServices } from "./locations.mjs";
 import { addonGuide } from "./page-links.mjs";
+import { BOOK_PAGE } from "./book-links.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 // The catalog is split across pages now: packages on the home page, add-ons
@@ -332,7 +334,9 @@ function offersHtml() {
         ? "https://schema.org/PreOrder"
         : "https://schema.org/InStock",
       category: p.category,
-      url: "https://513autoclean.com/book.html",
+      // The booking page with this package chosen (book-links.mjs), not
+      // book.html, which is a 301 to /#book and then a script hop.
+      url: `https://513autoclean.com${BOOK_PAGE}${arrivalQuery("package", p.id)}`,
     }));
 
   const blob = {

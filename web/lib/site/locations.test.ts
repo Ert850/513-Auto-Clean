@@ -15,13 +15,14 @@ describe("city pages", () => {
   it("every city page gets the shared chrome", () => {
     for (const l of locs) expect(CHROME_PAGES).toContain(pageFile(l));
   });
-  it("drafts carry noindex and stay out of the sitemap and the hub; published pages don't", () => {
+  it("drafts carry noindex and stay out of the sitemap and Range & Travel's state cards; published pages don't", () => {
     for (const l of locs) {
       const html = read(pageFile(l));
       const draft = l.status === "draft";
       expect(html.includes('name="robots" content="noindex"'), l.slug).toBe(draft);
       expect(read("sitemap.xml").includes(`/${l.slug}<`), l.slug).toBe(!draft);
-      expect(read("service-area.html").includes(`href="${l.slug}"`), l.slug).toBe(!draft);
+      // Written to the .html file like every source link (page-links.mjs).
+      expect(read("service-area.html").includes(`href="${pageFile(l)}"`), l.slug).toBe(!draft);
     }
   });
   it("titles and descriptions fit Google's lengths (as rendered, prices filled in)", () => {

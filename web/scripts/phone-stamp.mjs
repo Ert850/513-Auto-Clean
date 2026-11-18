@@ -19,7 +19,8 @@ import fs from "node:fs";
 import path from "node:path";
 import { REPO_PHONE, businessPhone, phoneTrace, swapPhone } from "../../netlify/functions/_pricing.mjs";
 
-const TEXT = /\.(html|js|mjs|css|json|xml|txt|webmanifest|svg)$/;
+// _redirects and _headers have no extension (Netlify reads them from dist/).
+const TEXT = /\.(html|js|mjs|css|json|xml|txt|webmanifest|svg)$|^_(redirects|headers)$/;
 
 function* walk(dir) {
   for (const e of fs.readdirSync(dir, { withFileTypes: true })) {

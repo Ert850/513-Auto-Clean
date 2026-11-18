@@ -33,6 +33,9 @@ describe("slimHtml: comments and indentation out, what shows unchanged", () => {
   it("a comment that mentions <script is still only a comment", () => {
     expect(slimHtml("<p>a</p>\n<!-- the <script> below loads late -->\n<p>b</p>\n<script>x()</script>")).toBe("<p>a</p>\n<p>b</p>\n<script>x()</script>");
   });
+  it("never eats a non-breaking space next to a line break", () => {
+    expect(slimHtml("<p>a\n\u00a0b\u00a0\n  c</p>")).toBe("<p>a\n\u00a0b\u00a0\nc</p>");
+  });
   it("keeps spaces on one line, so inline words keep their gaps", () => {
     expect(slimHtml("<p>a <i>b</i> <!-- x --> c</p>")).toBe("<p>a <i>b</i>  c</p>");
   });
@@ -105,6 +108,23 @@ describe("one address per page", () => {
     expect(p).toContain("lost.html: no canonical tag and no noindex");
     expect(p).toContain("about.html: still names a page by its .html address");
   });
+  it("scripts' links are rewritten and checked too, and absolute .html addresses must be real pages", () => {
+    const dir = site();
+    fs.mkdirSync(path.join(dir, "js"));
+    fs.writeFileSync(path.join(dir, "js/f.js"), `a='<a href="contact.html">x</a>';location.href="about.html#r";m={faq:"about.html"}`);
+    fs.appendFileSync(path.join(dir, "index.html"), `<script type="application/ld+json">{"url":"${SITE}/book.html","u2":"${SITE}/booking.html"}</script>`);
+    fs.writeFileSync(path.join(dir, "booking.html"), '<html><head><meta name="robots" content="noindex" /></head><body><h1>B</h1></body></html>');
+    applyCleanUrls(dir);
+    const js = fs.readFileSync(path.join(dir, "js/f.js"), "utf8");
+    expect(js).toBe(`a='<a href="/contact">x</a>';location.href="/about#r";m={faq:"about.html"}`);
+    const p = checkDist(dir).join("\n");
+    expect(p).toContain(`index.html: ${SITE}/book.html is not an address a visitor should be sent to`);
+    expect(p).not.toContain("booking.html is not an address");
+    fs.writeFileSync(path.join(dir, "js/g.js"), `x='<a href="faq.html">'`);
+    fs.writeFileSync(path.join(dir, "faq.html"), `<html><head><link rel="canonical" href="${SITE}/faq.html" /></head><body><h1>F</h1></body></html>`);
+    expect(checkDist(dir).join("\n")).toContain("js/g.js: still names a page by its .html address");
+  });
+
   it("the sitemap lists no draft and no address that isn't a page", () => {
     const dir = site({ "sitemap.xml": `<urlset><url><loc>${SITE}/</loc></url><url><loc>${SITE}/about</loc></url><url><loc>${SITE}/contact</loc></url><url><loc>${SITE}/draft</loc></url><url><loc>${SITE}/gone</loc></url></urlset>` });
     applyCleanUrls(dir);
@@ -134,6 +154,8 @@ describe("one address per page", () => {
       "sitemap.xml": `<urlset><url><loc>${SITE}/</loc></url><url><loc>${SITE}/about.html</loc></url><url><loc>${SITE}/contact.html</loc></url><url><loc>${SITE}/terms.html</loc></url></urlset>`,
     });
     applyCleanUrls(dir);
+    // What the prices mean is read from the Services page, never typed (dist/ is all llmsTxt reads).
+    fs.writeFileSync(path.join(dir, "services.html"), "<p>Prices are starting points for most cars; bigger may vary.</p>");
     const catalog = { packages: [
       { name: "Basic", category: "interior", sortOrder: 1, priceCents: 14500, tagline: "Clean." },
       { name: "Soon", category: "exterior", sortOrder: 0, priceCents: 1, tagline: "x", comingSoon: true },
@@ -143,6 +165,10 @@ describe("one address per page", () => {
     expect(txt.startsWith("# 513 Auto Clean\n\n> D\n")).toBe(true);
     expect(txt).toContain(`- [T](${SITE}/about): D`);
     expect(txt).toContain("- Basic (interior), from $145: Clean.");
+    expect(txt).toContain("Packages and starting prices. Prices are starting points for most cars; bigger may vary.");
+    expect(txt).toContain(`- Book online: ${SITE}/book`);
+    fs.writeFileSync(path.join(dir, "services.html"), "<p>Reworded.</p>");
+    expect(() => llmsTxt({ dist: dir, catalog, phone: "x", hours: "y" })).toThrow(/Prices are starting points/);
     expect(txt).not.toMatch(/Soon|Upkeep/);
     expect(txt).toMatch(new RegExp(`## Optional\\n\\n- \\[Terms\\]\\(${SITE}/terms\\): Rules\\.`));
   });
