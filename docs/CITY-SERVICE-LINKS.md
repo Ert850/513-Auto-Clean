@@ -1,6 +1,17 @@
 # Links to the city and service pages: options, November 18, 2026
 
-**Mockups:** `docs/mockups/eNov18-city-service-links.png`. They're real screenshots of the eNov14 build at 1440 and 375 px, with each option injected in headless Chrome, as if all four draft pages were published. Nothing is built.
+**Built: option C (both), owner's pick, November 18.** `web/scripts/page-links.mjs` writes every link. It's checked with all four drafts published in a local build:
+- each page is linked from 12 pages;
+- at 1440×790 the Services Book buttons are at 698 px and the Indiana card ends at 747 px, as mocked up;
+- nothing scrolls sideways at 1440, 820, 375 or 320.
+
+**How each spot reads its settings:** a service page names what it explains in its config (`"explains": { "tab": "interior" | "exterior" }` or `{ "addon": "<id>" }`, plus `"link"`, the link's words). A city page's state comes from its `areaServed`.
+
+**From 820 to 999 px** the footer keeps its 4 columns, so "Get in Touch" wraps under the logo. The mockup didn't show this width; a screenshot went to Emmett on November 18.
+
+**Not visible in the mockup, decided in the build:** while the Exterior tab is open, the Interior link keeps its space on wide screens, so "See all add-ons" doesn't jump sideways.
+
+**Mockups:** `docs/mockups/eNov18-city-service-links.png`. They're real screenshots of the eNov14 build at 1440 and 375 px, with each option injected in headless Chrome, as if all four draft pages were published.
 
 ## Why this is needed
 
@@ -12,7 +23,7 @@
   | A city page | the City guides list on Range & Travel; nearby cities (none yet: Delhi and Indian Hill are on opposite sides); the service pages' "We come to you anywhere in our service area, including..." |
   | A service page | the city pages' "what we do" links only |
 
-- **The build now enforces a minimum:** it fails if a published page is linked from fewer than 2 other pages. So publishing one city page alone, or any service page before a city page, would fail today. That's on purpose: Semrush would flag it.
+- **The build now enforces a minimum:** it fails if a published page is linked from fewer than 2 other pages. Before option C, publishing one city page alone, or any service page before a city page, would have failed. With the footer, any page passes.
 
 **Bug found while mocking up:**
 - **What happens:** the City guides list that `render-locations.mjs` already writes into Range & Travel has no place in that page's grid, so the browser puts it after everything else. That's at the bottom of the left column on a laptop, and below "Get an exact quote" on a phone (see the "As built today" panels).
@@ -21,7 +32,7 @@
 
 ## The options
 
-**A. Footer links on every page.**
+**A. Footer links on every page** (every page with the shared footer: all but Privacy, Terms and 404, which keep their short footers).
 - **What changes:**
   - a "Detailing" column lists the published service pages;
   - the published city guides go at the top of "Service Areas".

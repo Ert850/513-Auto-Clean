@@ -18,6 +18,7 @@
  *   contact  "Contact Us": the form itself on contact.html, the page elsewhere
  *   areas    footer place links: in-page on service-area.html, that page elsewhere
  *   hours    the opening hours in words, from config/business.json (the same on every page)
+ *   detailing, cityguides  links to the published service and city pages (page-links.mjs; the same on every page)
  *   locpill  the red "Cincinnati, OH" pill in the top bar, beside the phone: booking.html only
  *            (A2P plan T7; moved out of the header, owner's pick, November 13)
  */
@@ -27,7 +28,8 @@ import { fileURLToPath } from "node:url";
 import { hoursText } from "../../netlify/functions/_pricing.mjs";
 
 export const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
-import { generatedPages } from "./locations.mjs";
+import { generatedPages, loadLocations, loadServices } from "./locations.mjs";
+import { footerDetailing, footerCities } from "./page-links.mjs";
 // The city and service pages (config/locations/, config/services/) join automatically.
 export const CHROME_PAGES = ["index.html", "services.html", "about.html", "service-area.html", "faq.html", "contact.html", "lp-golf.html", "lp-prestige.html", "booking.html", ...generatedPages()];
 const PARTS = ["HEAD", "HEADER", "FOOTER", "SCRIPTS"];
@@ -50,6 +52,9 @@ export function valuesFor(page, html) {
     contact: page === "contact.html" ? "#inquiry" : "contact.html",
     areas: page === "service-area.html" ? "" : "service-area.html",
     hours: hoursText(),
+    // Published service and city pages, linked from every page (page-links.mjs).
+    detailing: footerDetailing(loadServices()),
+    cityguides: footerCities(loadLocations()),
     // In the top bar, not the header: in the header it took the room of two
     // links (owner's pick, November 13, docs/mockups/a2p-decision-4-*).
     locpill: page === "booking.html" ? '\n      <span class="loc-pill tb-loc"><i aria-hidden="true"></i>Cincinnati, OH</span>' : "",

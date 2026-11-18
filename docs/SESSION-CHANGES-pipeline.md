@@ -2393,3 +2393,19 @@ Noted, not changed:
 Test: at 375 the home hero shows Book Now and View Services only; at 1440 it also shows Contact Us.
 
 **Links to the city and service pages:** mocked up (`docs/CITY-SERVICE-LINKS.md`, `docs/mockups/eNov18-city-service-links.png`). Nothing is built. Found while mocking: the City guides list as built lands at the bottom of the Range & Travel tool.
+
+## Links to the city and service pages built (November 18, owner's pick C)
+
+- **`web/scripts/page-links.mjs`** writes every link to a city or service page, for published pages only:
+  - footer on every page: a Detailing column (package pages first) and the city guides first under Service Areas;
+  - Range & Travel: each state's card lists its city guides. This replaces the City guides list that would have landed after the tool, below "Get an exact quote";
+  - Services: the tab row ("About interior detailing", shown with the Interior tab only, by CSS), and the Stain Treatment card ("More on stains and odors").
+- **Settings:** `config/services/*.json` `explains` (a tab or an add-on, plus the link's words), validated at build. A city's state comes from `areaServed`.
+- **Today:** with all four pages drafts, the site is unchanged.
+- **Checked with all four published (local build, publish gates bypassed temporarily, never committed):**
+  - each page is linked from 12 pages, and `checkDist` passes;
+  - at 1440×790 the Book buttons are at 698 px and the Indiana card ends at 747 px (legend 757);
+  - the Interior link hides on the Exterior tab;
+  - nothing scrolls sideways at 1440, 820, 375 or 320.
+- **Tests:** `web/lib/site/page-links.test.ts`.
+- **Fixed in passing:** a page whose `explains` named both a tab and an add-on was claiming the tab, so the next page got the blame.

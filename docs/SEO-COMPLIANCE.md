@@ -27,7 +27,7 @@ Google's [2015 doorway update](https://developers.google.com/search/blog/2015/03
 **Is there an official "% unique" threshold? No.** No Google document gives a uniqueness percentage or a minimum word count for location pages, and the helpful content guide says outright there is no preferred word count. Imperion's "at least 40 to 50% unique" is an agency rule of thumb, not a Google rule. It is a sensible floor, but a page can be 60% unique and still a doorway if the unique part is reworded filler. The practical bar is: **would the page still be worth reading to someone in that area if search engines didn't exist?** That means facts only that area has: jobs done there with photos, reviews from customers there, the ZIPs and neighborhoods we actually drive to, travel and timing for that area, and answers to that area's questions.
 
 **What makes a location page helpful rather than a doorway (our reading of the above):**
-- It is reachable in the normal navigation (the `/service-areas/` hub is in the nav, nearby-city links, footer), never an island.
+- It is reachable in the normal navigation, never an island. As built: the footer on every page, its state's card on Range & Travel, and nearby-city links (R7).
 - It answers that area's real questions (is my ZIP covered, what does travel add from here, do you come to a long private drive, what jobs have you done near me).
 - Its unique content is evidence (photos, reviews, jobs), not prose about the town's history.
 - It lets the visitor act on the page (Book opens in place, as on every page), not only funnel them to the home page.
@@ -45,7 +45,7 @@ Proposed data: one `config/cities/<slug>.json` per page (settings live in config
 - the local paragraph (R3);
 - the ZIP and neighborhood list (R4);
 - 3 FAQ answers that only make sense for that area (R5).
-A missing photo, review or answer keeps `"publish": false`, which also keeps the page out of `FILES`, `PAGES`, the sitemap and the hub.
+A missing photo, review or answer keeps `"status": "draft"`, which also keeps the page out of production, the sitemap and every link to it (`page-links.mjs`).
 
 **R2. Similarity limit between any two city pages: Jaccard of word 5-gram shingles above 0.30 fails the build, above 0.20 warns.**
 - *Text measured:* the visible text inside `<main>` only (the `CHROME:*` header and footer are shared on every page by design and would swamp the score). Lowercase, strip punctuation, collapse spaces.
@@ -63,7 +63,7 @@ A missing photo, review or answer keeps `"publish": false`, which also keeps the
 
 **R6. Numbers from settings only:** travel cost, durations, prices and hours come from `config/*.json` and the catalog through the existing stamps, as everywhere on the site. A city page is the most tempting place to type "travel is free to Delhi"; the build must fail on it like any other page.
 
-**R7. Links:** each city page links to the hub, to 3 or 4 nearby city pages that are published (a link to an unpublished page fails the build), to every relevant service page, and Book (`book.html`, opens in place). The hub links to every published city page.
+**R7. Links (as built, November 18: `web/scripts/page-links.mjs`, `CITY-SERVICE-LINKS.md`):** every published city page is linked from the footer of every page and from its state's card on Range & Travel; every published service page from the footer and from the Services page. The build fails if a published page is linked from fewer than 2 other pages. The original spec: each city page links to the hub, to 3 or 4 nearby city pages that are published (a link to an unpublished page fails the build), to every relevant service page, and Book (`book.html`, opens in place). The hub links to every published city page.
 
 ## 3. Page structure checklist
 

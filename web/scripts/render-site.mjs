@@ -35,6 +35,8 @@ import {
   BOOK_INTENTS,
 } from "../../netlify/functions/_pricing.mjs";
 import { contactCard, contactHead, loadContactForm, bookPageConsent } from "./contact-form.mjs";
+import { loadServices } from "./locations.mjs";
+import { addonGuide } from "./page-links.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 // The catalog is split across pages now: packages on the home page, add-ons
@@ -232,6 +234,8 @@ ${panel("exterior")}
 /* ---------------- add-ons ---------------- */
 
 function addonsHtml() {
+  // A published service page that explains an add-on is linked from its card (page-links.mjs).
+  const services = loadServices();
   const card = (a) => {
     const why = unavailableReason(a);
     const priced = a.tiers.filter((t) => t.priceCents !== null);
@@ -270,7 +274,7 @@ function addonsHtml() {
     // clocks said only that all fifteen take time.
     return `        <div class="addon${why ? " addon-off" : ""} reveal">
           <span class="addon-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${addonIcon(a.icon)}</svg></span>
-          <div class="addon-body"><b>${esc(a.name)}${why ? "<sup>*</sup>" : ""}</b><span>${esc(a.description)}</span>${price}${how}</div>
+          <div class="addon-body"><b>${esc(a.name)}${why ? "<sup>*</sup>" : ""}</b><span>${esc(a.description)}</span>${addonGuide(services, a.id)}${price}${how}</div>
         </div>`;
   };
 
