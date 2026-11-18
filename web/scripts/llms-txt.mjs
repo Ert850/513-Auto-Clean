@@ -11,8 +11,9 @@
  * - packages and "from" prices come from the catalog, the same source as the
  *   price cards (no business number is typed here);
  * - what the prices mean is read from the Services page's own sentence;
- * - phone and hours come from config/business.json (the build's phone stamp
- *   swaps in BUSINESS_PHONE like every other file).
+ * - phone and hours come from config/business.json and BUSINESS_PHONE
+ *   (businessPhone() reads it); the build's phone stamp runs after this file
+ *   is written and checks no old number is left.
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -51,7 +52,8 @@ export function llmsTxt({ dist, catalog, phone, hours }) {
   const origin = new URL(home.url).origin;
   // What the prices mean, in the Services page's own words (read, not copied).
   const services = fs.readFileSync(path.join(dist, "services.html"), "utf8");
-  const meaning = /Prices are starting points[^<]*/.exec(services)?.[0].trim();
+  // Up to the sentence's full stop, line breaks collapsed; a tag inside it fails loudly below.
+  const meaning = /Prices are starting points[^<.]*\./.exec(services)?.[0].replace(/\s+/g, " ");
   if (!meaning) throw new Error('llms-txt: services.html no longer says "Prices are starting points..."; update llms-txt.mjs');
 
   return [

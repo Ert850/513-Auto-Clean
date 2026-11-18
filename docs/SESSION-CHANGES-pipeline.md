@@ -2388,7 +2388,7 @@ Five Semrush findings on the live site. Causes and fixes are in `docs/IMPERION-A
 
 Noted, not changed:
 - heading levels skip from h1 to h3 under page titles;
-- links that scripts build still say `.html` and take one 301.
+- links that scripts build still said `.html` (fixed in the next pass: only `script.js`'s map of old sections is left).
 
 Test: at 375 the home hero shows Book Now and View Services only; at 1440 it also shows Contact Us.
 
@@ -2409,3 +2409,30 @@ Test: at 375 the home hero shows Book Now and View Services only; at 1440 it als
   - nothing scrolls sideways at 1440, 820, 375 or 320.
 - **Tests:** `web/lib/site/page-links.test.ts`.
 - **Fixed in passing:** a page whose `explains` named both a tab and an add-on was claiming the tab, so the next page got the blame.
+
+## Validation passes on the audit and links work (November 18): code and browser
+
+Two passes ran: one over code and build, one over the deploy preview in a browser (no submissions; every write request blocked). The browser pass found no regressions a visitor would notice. Fixed, by root cause:
+- **A step that wrote into dist/ ran after the phone stamp,** so the stamp's "no old number left" check couldn't see `llms.txt` or `_redirects`. The stamp now runs after every writer, covers files with no extension (`_redirects`, `_headers`), and a test pins the order.
+- **Links in the scripts and the structured data still said `.html`,** the same class as Netlify's rewrite.
+  - Root cause: the address rewrite and its check only read pages.
+  - Now: dist/js `href="..."` strings are rewritten and checked, and any absolute same-site `.html` address must be a real page.
+  - The JSON-LD offers go to `/book?package=<id>`.
+  - The `?v=` hash folds in the published page list (`urlSalt`, drafts excluded, so publishing one busts the cache).
+- **llms.txt reads what it claims to read:** the Services price sentence (the build fails if it's reworded), `BOOK_PAGE`, and the description whatever the attribute order.
+- **A test keyed on the old city link form** would have failed on the first publish. It uses `pageFile()` now.
+- **The slimmer** no longer eats a non-breaking space next to a line break.
+- **Stale comments** in `site-urls.mjs`, `build-dist.mjs` and `llms-txt.mjs` were corrected.
+
+**Left as they are:** see "Known and left as they are" in `docs/IMPERION-AUDIT-2026-11-18.md`:
+- heading levels;
+- the build-time review count;
+- `/book`'s own Book links;
+- `/404` answering 200;
+- the source sitemap's mixed forms;
+- the Stripe redirect-method risk, which needs the owner's Stripe dashboard.
+
+**Test:**
+- `BUSINESS_PHONE=8663715948 PREVIEW_BUILD=1 npm run build` gives the swapped number in `dist/llms.txt` and no old number anywhere;
+- `dist/js/funnel.js` and `dist/js/analytics.js` link to `/terms`, `/privacy` and `/contact`;
+- `dist/index.html`'s JSON-LD offers link to `/book?package=...`.
