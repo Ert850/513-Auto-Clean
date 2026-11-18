@@ -2454,3 +2454,18 @@ Two passes ran: one over code and build, one over the deploy preview in a browse
   - 51 of 52 identical.
   - The 52nd is a 4×8 px animated mark on the home page that moves by a pixel between runs anyway.
 - **Test:** headings read top to bottom with a screen reader's heading list (VoiceOver rotor) on Services, Range & Travel and Contact.
+
+## Home hero "View Services" goes to the Services page (November 19, Emmett: "Why is the main home page view services button redirecting to the booking page?")
+
+- **What happened:** "View Services" took visitors to the booking page (`/book?browse=1`). This has been on the live site since November 14.
+- **Root cause:**
+  - The button was written as a booking-form link (`book.html` with `data-book-browse`, which opened the form's package list in place) from the September site onward.
+  - The November 14 switch that sends every Book link to `/book` (`bookLinks: "page"`, for the consent boxes) rewrites every `book.html` link, and couldn't tell this one from a Book button.
+  - The clean-address work didn't change it.
+- **Fix:** a plain link to `services.html` (published as `/services`). CLAUDE.md now says a link is a Book link only if its words are a booking action, and a test pins the hero.
+- **Every other link was checked** against the live site and against its own words. 62 destinations, each loading with its section present.
+  - **Three differences from live, all decided earlier:**
+    - the phone menu's names match the nav ("Services", "Range & Travel"; November 15);
+    - the four home service buttons open the booking form with that service (Elijah's `linkTo: "book"` in `config/home-services.json`; `"page"` sends them to the Services page);
+    - every page's address is clean (November 18).
+- **Test:** on the home page, View Services opens Services at 1440 and 375, and Book Now still opens `/book`.
