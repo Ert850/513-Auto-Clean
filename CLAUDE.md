@@ -229,6 +229,7 @@ Read this before changing anything. Every rule below came from a real bug or an 
 - **When the owner must choose between layouts, render the options** as real screenshots of the page, with the changes injected in headless Chrome (see `fold-shots/*option*`). They pick quickly and precisely from images, and the pick is logged.
 
 - **The Google rating is in two places on the home page:** the hero pill (`.hero-badge .hb-text`) and the trust badge (`#google-badge .g-text`). Both use the same words, the build stamps both from `data/reviews.json` (the `Rated … from N reviews on Google` regex in `render-site.mjs`), and `js/reviews.js` `syncBadges()` updates both. A new copy of the rating needs all three, or it will drift.
+- **A link is a Book link only if its words are a booking action** ("Book Now", "Book Full Interior", "Get an exact quote"). Anything else (View Services, a page name) links to its page, never `book.html` or a `data-book-*` attribute. With `bookLinks: "page"` every `book.html` link goes to `/book`, which turned "View Services" into a trip to the booking page (November 14 to 19). The home service buttons are the one exception, by Elijah's setting (`config/home-services.json` `linkTo`).
 - **The hero has one solid button (Book Now).** View Services and Contact Us are `btn-ghost on-dark`; on phones they share a row. Don't bring back `btn-light` there.
 
 ## Results carousel (built November 10)
