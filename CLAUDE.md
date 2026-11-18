@@ -123,6 +123,20 @@ Read this before changing anything. Every rule below came from a real bug or an 
   - `FILES` in `web/scripts/build-dist.mjs`, or it is never published;
   - `PAGES` in `web/scripts/stamp-assets.mjs`;
   - `sitemap.xml`.
+- **One address per page: `/about`, never `/about.html` (Imperion audit and owner's pick, November 18; `docs/IMPERION-AUDIT-2026-11-18.md`).**
+  - *Why:* Netlify's Pretty URLs, set only in its dashboard, rewrote every link to `/about` at deploy while the canonicals and sitemap said `/about.html`, and both loaded. Every page had two addresses, so Semrush counted "one incoming link", and nothing in the repo could see it.
+  - *How it works:* source links stay `about.html` (pages open locally). `web/scripts/site-urls.mjs` rewrites dist/ for every page with a canonical tag (links, canonical, `og:url`, JSON-LD, sitemap) and writes `dist/_redirects` (`/about.html /about 301!`). `pretty_urls` is pinned in `netlify.toml`.
+  - *The build fails (`checkDist`) when:*
+    - a page doesn't have exactly one `<h1>`;
+    - anything still names a page by `.html`;
+    - a canonical isn't the clean address;
+    - an indexable page is missing from the sitemap, or a noindex page is in it;
+    - a page has neither a canonical nor noindex;
+    - a published page is linked from fewer than 2 other pages (Semrush's "one incoming internal link").
+  - *A local server* that only serves files 404s on `/about`: open `about.html`, or map it like Netlify does.
+- **Every page has exactly one `<h1>`: its title.** The sub-page titles were h2s, left over from when they were sections of the home page. The title rules use `:is(h1, h2)`, so the change kept their look. The Contact section copied into the home page is demoted to h2 there (`render-site.mjs`).
+- **Published pages are slimmed (`web/scripts/slim-html.mjs`):** comments and indentation are dropped in dist/ only (script, style, pre and textarea untouched). Comments in source pages are for editors; never put anything a page needs at run time in a comment.
+- **`/llms.txt` is generated (`web/scripts/llms-txt.mjs`)** from the sitemap's pages, the catalog and `config/business.json`. Never hand-write it.
 - **Phones and desktop always agree, above all on package prices and details** (Elijah, November 13: "Claude often will update one but not both"). Every price, package name, list of what's included and duration comes from `web/lib/catalog/` through the generated regions, the booking form and the price list; there is never a phone-only or desktop-only copy of it. After any package or price change:
   - grep `dist/` for the old figure: it must be gone from every page, the structured data, the FAQ, `funnel.js` and the price list;
   - look at the changed section at 375 and 1440: the same items in the same order, only the layout differs.

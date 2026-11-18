@@ -64,6 +64,11 @@ From `STATUS-2026-11-15.md`, "Before eNov14 can merge". eNov14 is about 55 commi
   - the home headline A/B test `hero-headline` starts: about two thirds of home visitors see "Cincinnati." or "across the 513." instead of "Greater Cincinnati.".
 - [ ] **After the deploy:**
   - `node web/scripts/check-live.mjs` for the server variables (ignore its STALE line until it's fixed), and `curl` a page to confirm the new `?v=` stamps;
+  - **Addresses (Imperion's audit, `IMPERION-AUDIT-2026-11-18.md`):**
+    - `curl -sI https://513autoclean.com/about.html` is a 301 to `/about`, and `/about` is 200;
+    - `/llms.txt` loads, and `sitemap.xml` lists clean addresses;
+    - resubmit the sitemap in Google Search Console and check "Google-selected canonical" for two pages;
+    - ask Imperion to re-run the Semrush audit;
   - one real-calendar check that a booking writes to the right calendar (Emmett's yes for a real test booking). **Warn Elijah first** (CLAUDE.md): JobsSync can copy its TOTAL into his Accounting sheet before the event is deleted. Delete the event, and the sheet row if one was made.
 - [ ] **The headline test's dates:** write the real start date and the stop date (4 weeks on) into the `hero-headline` `note` in `config/experiments.json` (`AB-TESTING.md`, "Running a test", step 3), and register the `exp_variant_string` custom dimension in GA4 if it isn't yet (step 2). On the deploy, open the home page in a private window a few times: each visit keeps its own headline on reload.
 - [ ] **A week later:** Netlify's usage page for edge-function invocations. The preview's password gate runs on every production request and returns at once.
