@@ -21,11 +21,13 @@
  * The source keeps "about.html" links so pages still open from the file
  * system and on a plain local server. Pages without a canonical tag (the
  * booking page at /book, the print landing pages, 404) keep their addresses.
- * Links built by scripts at run time (funnel.js, script.js) still say .html
- * and reach the page through the 301.
+ * Links in the scripts' HTML strings are rewritten in dist/js too (see
+ * publishedTextFiles); other addresses in code, such as script.js's map of
+ * old home-page sections, reach the page through the 301.
  */
 import fs from "node:fs";
 import path from "node:path";
+import { generatedPages, publishedPages } from "./locations.mjs";
 
 export const SITE = "https://513autoclean.com";
 
@@ -60,7 +62,11 @@ export function cleanLinks(text, files) {
  * keep links the build would now write differently.
  */
 export function urlSalt(dir) {
-  return "\0urls:" + cleanPages(dir).join(",");
+  // Published pages only, the same in every build context: publishing a
+  // draft is its "status" alone, and it must change the stamps, because from
+  // then on production rewrites links to it.
+  const drafts = new Set(generatedPages().filter((f) => !publishedPages().includes(f)));
+  return "\0urls:" + cleanPages(dir).filter((f) => !drafts.has(f)).join(",");
 }
 
 /** Netlify _redirects: each old .html address to its clean one. */
@@ -69,21 +75,21 @@ export function redirectsFor(files) {
     files.map((f) => `/${f} ${cleanPath(f)} 301!`).join("\n") + "\n";
 }
 
-/** Rewrites every page, the sitemap and the scripts' HTML in dist/, and writes _redirects. */
 /**
- * Pages, the sitemap, and the scripts: funnel.js and analytics.js build
- * links in HTML strings (Terms, Privacy, Contact), which visitors and
- * crawlers that run scripts see. Only href="..."-shaped strings are rewritten
- * there (which includes location.href = '...'); anything else, such as
- * script.js's map of old home-page sections, reaches the page through the 301. Rewriting dist/js changes a script without changing its
- * source, so stamp-assets.mjs folds the page list into the ?v= hash
- * (urlSalt), as it does for the phone number.
+ * The published files whose addresses the build rewrites and checks: pages,
+ * the sitemap, and the scripts. funnel.js and analytics.js build links in
+ * HTML strings (Terms, Privacy, Contact), which visitors and crawlers that run
+ * scripts see. Only href="..."-shaped strings are rewritten there (which
+ * includes location.href = '...'). Rewriting dist/js changes a script without
+ * changing its source, so stamp-assets.mjs folds the page list into the ?v=
+ * hash (urlSalt), as it does for the phone number.
  */
 export function publishedTextFiles(dist) {
   const js = fs.existsSync(path.join(dist, "js")) ? fs.readdirSync(path.join(dist, "js")).filter((x) => x.endsWith(".js")).map((x) => path.join("js", x)) : [];
   return [...fs.readdirSync(dist).filter((x) => /\.(html|xml|js)$/.test(x)), ...js];
 }
 
+/** Rewrites every file publishedTextFiles() lists, and writes _redirects. */
 export function applyCleanUrls(dist) {
   const files = cleanPages(dist);
   for (const f of publishedTextFiles(dist)) {
@@ -115,7 +121,8 @@ export function checkDist(dist) {
     const text = fs.readFileSync(path.join(dist, f), "utf8");
     if (files.length && stale.test(text)) problems.push(`${f}: still names a page by its .html address (${stale.exec(text)[0]}...)`);
   }
-  for (const [f, text] of [...Object.entries(html), ["sitemap.xml", sitemap]]) {
+  const others = publishedTextFiles(dist).filter((x) => !x.endsWith(".html") && x !== "sitemap.xml").concat(fs.existsSync(path.join(dist, "llms.txt")) ? ["llms.txt"] : []);
+  for (const [f, text] of [...Object.entries(html), ["sitemap.xml", sitemap], ...others.map((x) => [x, fs.readFileSync(path.join(dist, x), "utf8")])]) {
     for (const [, page] of text.matchAll(absHtml)) {
       if (!html[page] || files.includes(page)) problems.push(`${f}: ${SITE}/${page} is not an address a visitor should be sent to`);
     }

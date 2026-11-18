@@ -153,7 +153,7 @@ const cleanPageCount = applyCleanUrls(dist).length;
 fs.writeFileSync(path.join(dist, "llms.txt"), llmsTxt({
   dist,
   catalog: SEED_CATALOG,
-  phone: businessPhone().display, // the repo's number; the stamp below swaps it like every other file
+  phone: businessPhone().display, // reads BUSINESS_PHONE itself; the stamp below then checks no old number is left
   hours: hoursText(),
 }));
 

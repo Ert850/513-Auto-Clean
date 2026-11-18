@@ -44,7 +44,11 @@ So Semrush, and any search engine, saw two addresses for each page. The links we
 - **Found by the validation pass and fixed:**
   - **The hero's Contact Us button showed on phones again.** It was hidden by matching `a[href="contact.html"]`, which a clean link no longer matches. The same rule had already stopped working on the deploy preview, because of Netlify's rewrite. It's a class now (`.hero-contact`).
   - **The card payment's return address** is now `/#book` instead of `/index.html#book`, so it never depends on a redirect.
-- **Left on purpose:** links that scripts build in the browser (the booking form's Terms and Privacy links, old home-page section links) still say `.html`. They reach the page through the 301.
+- **Second validation pass, also fixed:**
+  - **Links in the scripts:** the booking form's and cookie banner's Terms, Privacy and Contact links are rewritten to clean addresses and checked like the pages.
+  - **Structured data:** the offers now point at `/book?package=...`, not `book.html` (a 301, then a script hop).
+  - **Phone stamp:** it runs after every file the build writes, including `llms.txt`.
+- **Left on purpose:** `script.js`'s map of old home-page sections (`/#faq` goes to the FAQ page) still says `.html` and takes one 301. Only old bookmarks and links reach it.
 
 **Links to the new pages:** options are mocked up in `CITY-SERVICE-LINKS.md`. They include a fix for the City guides list, which would land at the bottom of Range & Travel.
 
@@ -104,6 +108,15 @@ These are `/book` and the same page with a package in the address (`/book?packag
   - the bookable packages with their starting prices, from the same catalog as the price cards.
 - **It can't drift from the site,** and no price is typed into it.
 - **Honest status:** Google says its search ignores llms.txt, and that having one is fine. It's for the AI assistants that read it.
+
+## Known and left as they are (validation, November 18)
+
+- **Heading levels skip under the new page titles** (h1 straight to h3 on Services, Range & Travel and Contact; h1 to h4 on FAQ). The footer column titles have always been h4s. Lighthouse's accessibility audit can note it; Semrush doesn't. Fixing it means re-levelling headings across the site with the same look: a separate change.
+- **The review count is copied at build time** into the home page's description, the structured data and `llms.txt` (32 today, while the live badge shows 33 after loading). It's refreshed on every deploy.
+- **The booking page's own Book links stay `book.html`:** on that page the form opens in place (CLAUDE.md, the booking page).
+- **`/404` answers 200** (it is the 404 page itself, noindex). A missing page like `/nope` correctly answers 404.
+- **The source `sitemap.xml` mixes forms** (main pages `.html`, new pages clean). The published one is all clean.
+- **Card payments, unrelated to the audit:** `create-payment.mjs` turns on Stripe's automatic payment methods. If a method that leaves the page (Cash App, Klarna, Affirm, Amazon Pay) is ever switched on in Stripe's dashboard, a payment could complete with no booking recorded. It needs a look at the Stripe dashboard (owner).
 
 ## After the merge (in `AFTER-TOLL-FREE-APPROVAL.md`, step 3)
 
