@@ -7238,7 +7238,7 @@
           return fn.call(sp.stripe, {
             elements: sp.elements,
             redirect: 'if_required',
-            confirmParams: { return_url: location.origin + '/index.html#book' }
+            confirmParams: { return_url: location.origin + '/#book' }
           });
         })
         .then(function (r) {

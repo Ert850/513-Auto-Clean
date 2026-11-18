@@ -21,13 +21,13 @@
  * Runs on dist/ only (build-dist.mjs). The source keeps its comments and the
  * CHROME, CATALOG and other markers the generators need.
  */
-const KEEP = /<(script|style|pre|textarea)\b[^>]*>[\s\S]*?<\/\1>/gi;
+// One left-to-right pass: whichever starts first wins, so a comment that
+// mentions "<script" is still just a comment, and "<!--" inside a script
+// string stays in the script.
+const TOKEN = /<!--[\s\S]*?-->|<(script|style|pre|textarea)\b[^>]*>[\s\S]*?<\/\1>/gi;
 
 export function slimHtml(html) {
   const kept = [];
-  const held = html.replace(KEEP, (block) => `\u0000${kept.push(block) - 1}\u0000`);
-  const slim = held
-    .replace(/<!--[\s\S]*?-->/g, "")
-    .replace(/[ \t]*\n\s*/g, "\n");
-  return slim.replace(/\u0000(\d+)\u0000/g, (_, i) => kept[Number(i)]);
+  const held = html.replace(TOKEN, (m, tag) => (tag ? `\u0000${kept.push(m) - 1}\u0000` : ""));
+  return held.replace(/[ \t]*\n\s*/g, "\n").replace(/\u0000(\d+)\u0000/g, (_, i) => kept[Number(i)]);
 }

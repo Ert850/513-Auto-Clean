@@ -312,8 +312,10 @@ section { padding-block: clamp(40px, 5vw, 72px); position: relative; }
 .hero-cta { display: flex; flex-wrap: wrap; gap: .65rem; margin-bottom: 1.1rem; }
 /* Elijah's second line under the hero, closer to the first (November 14). */
 .hero-sub2 { margin-top: -.5rem; }
-/* Phones: Book Now and View Services in the hero; the bottom bar carries Contact Us (Emmett, November 14). */
-@media (max-width: 767.98px) { .hero-cta a[href="contact.html"] { display: none; } }
+/* Phones: Book Now and View Services in the hero; the bottom bar carries Contact Us (Emmett, November 14).
+   By class, never by href: the published link is /contact (site-urls.mjs), and
+   Netlify's link rewriting had already stopped a[href="contact.html"] matching. */
+@media (max-width: 767.98px) { .hero-cta .hero-contact { display: none; } }
 
 /* The four service buttons under the hero (config/home-services.json). */
 .svc-pick { background: var(--paper); padding: clamp(28px, 5vh, 48px) 0 clamp(20px, 3vh, 32px); }

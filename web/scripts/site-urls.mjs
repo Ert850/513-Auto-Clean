@@ -33,8 +33,10 @@ export const SITE = "https://513autoclean.com";
 export const cleanPath = (file) => (file === "index.html" ? "/" : "/" + file.replace(/\.html$/, ""));
 
 const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-const canonicalOf = (html) => /<link rel="canonical" href="([^"]*)"/.exec(html)?.[1] ?? null;
-const isNoindex = (html) => /<meta name="robots" content="[^"]*noindex/.test(html);
+// Attribute order doesn't matter: <link href=... rel="canonical"> counts too.
+const tagWith = (html, tag, attr) => [...html.matchAll(new RegExp(`<${tag}\\b[^>]*>`, "gi"))].map((m) => m[0]).find((t) => attr.test(t));
+const canonicalOf = (html) => /\bhref="([^"]*)"/.exec(tagWith(html, "link", /\brel="canonical"/) ?? "")?.[1] ?? null;
+const isNoindex = (html) => /\bcontent="[^"]*noindex/.test(tagWith(html, "meta", /\bname="robots"/) ?? "");
 
 /** The pages that have their own address: every dist page with a canonical tag. */
 export function cleanPages(dist) {

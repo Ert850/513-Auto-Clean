@@ -55,16 +55,15 @@ export function llmsTxt({ dist, catalog, phone, hours }) {
     `- Hours: ${hours}`,
     `- Book online: ${origin}/book`,
     "",
+    // Free text belongs before the first H2 (llmstxt.org): the H2 sections are
+    // lists of links. The Services page's own words for what the prices mean.
+    "Packages, with starting prices for most cars; larger or heavily soiled vehicles may vary. The booking form shows the price for your vehicle as you choose.",
+    "",
+    ...packages.map((p) => `- ${p.name} (${p.category}), from ${money(p.priceCents)}: ${p.tagline}`),
+    "",
     "## Pages",
     "",
     ...pages.filter((p) => !OPTIONAL.has(p.rel)).map(line),
-    "",
-    "## Packages",
-    "",
-    // The Services page's own words for what the prices mean.
-    "Starting prices for most cars; larger or heavily soiled vehicles may vary. The booking form shows the price for your vehicle as you choose.",
-    "",
-    ...packages.map((p) => `- ${p.name} (${p.category}), from ${money(p.priceCents)}: ${p.tagline}`),
     "",
     "## Optional",
     "",

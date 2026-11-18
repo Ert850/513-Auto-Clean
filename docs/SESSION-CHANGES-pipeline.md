@@ -2378,3 +2378,18 @@ Five Semrush findings on the live site. Causes and fixes are in `docs/IMPERION-A
   - nav and footer links have no `.html`.
 - **Every page title looks as before** at 1440 and 375.
 - **Tests:** `cd web && TZ=America/New_York npx vitest run lib/site/seo-audit.test.ts`.
+
+**Validation pass on the audit fixes (November 18).** Fixed:
+- the hero's Contact Us button was hidden on phones by matching `a[href="contact.html"]`, which a clean link no longer matches. It's `.hero-contact` now. This rule was already broken on the live site and the preview by Netlify's rewrite;
+- the card payment's `return_url` is `/#book`;
+- the slimmer is one left-to-right pass, so a comment mentioning `<script` can't hide real markup;
+- canonical and noindex detection no longer depend on attribute order;
+- llms.txt keeps free text before its first H2, as the format asks.
+
+Noted, not changed:
+- heading levels skip from h1 to h3 under page titles;
+- links that scripts build still say `.html` and take one 301.
+
+Test: at 375 the home hero shows Book Now and View Services only; at 1440 it also shows Contact Us.
+
+**Links to the city and service pages:** mocked up (`docs/CITY-SERVICE-LINKS.md`, `docs/mockups/eNov18-city-service-links.png`). Nothing is built. Found while mocking: the City guides list as built lands at the bottom of the Range & Travel tool.

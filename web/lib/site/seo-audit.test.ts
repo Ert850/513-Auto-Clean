@@ -10,7 +10,7 @@ import path from "node:path";
 // @ts-expect-error plain ESM build scripts
 import { slimHtml } from "../../scripts/slim-html.mjs";
 // @ts-expect-error plain ESM build scripts
-import { SITE, cleanPath, cleanLinks, redirectsFor, applyCleanUrls, checkDist } from "../../scripts/site-urls.mjs";
+import { SITE, cleanPath, cleanLinks, cleanPages, redirectsFor, applyCleanUrls, checkDist } from "../../scripts/site-urls.mjs";
 // @ts-expect-error plain ESM build scripts
 import { llmsTxt } from "../../scripts/llms-txt.mjs";
 
@@ -29,6 +29,9 @@ describe("slimHtml: comments and indentation out, what shows unchanged", () => {
       "<textarea>\n  typed\n</textarea>",
     ];
     for (const k of keep) expect(slimHtml(`<div>\n  ${k}\n</div>`)).toBe(`<div>\n${k}\n</div>`);
+  });
+  it("a comment that mentions <script is still only a comment", () => {
+    expect(slimHtml("<p>a</p>\n<!-- the <script> below loads late -->\n<p>b</p>\n<script>x()</script>")).toBe("<p>a</p>\n<p>b</p>\n<script>x()</script>");
   });
   it("keeps spaces on one line, so inline words keep their gaps", () => {
     expect(slimHtml("<p>a <i>b</i> <!-- x --> c</p>")).toBe("<p>a <i>b</i>  c</p>");
@@ -53,6 +56,12 @@ describe("one address per page", () => {
     expect(out).toContain('href="book.html"');
     expect(out).toContain('href="terms.html"');
     expect(out).toContain('data-src="about.html"');
+  });
+  it("reads canonical and noindex tags whatever their attribute order", () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "seo-order-"));
+    fs.writeFileSync(path.join(dir, "a.html"), `<link href="${SITE}/a.html" rel="canonical">`);
+    fs.writeFileSync(path.join(dir, "b.html"), '<meta content="noindex" name="robots">');
+    expect(cleanPages(dir)).toEqual(["a.html"]);
   });
   it("redirects each old address to the clean one, forced (the .html file still exists)", () => {
     expect(redirectsFor(["about.html", "index.html"])).toContain("/about.html /about 301!\n/index.html / 301!\n");
