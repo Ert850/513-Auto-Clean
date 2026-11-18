@@ -69,7 +69,7 @@ export function footerDetailing(services) {
   // Package pages (a tab) before add-on pages, as in the approved mockup.
   const live = services.filter(isPublished).sort((a, b) => Number(!a.explains?.tab) - Number(!b.explains?.tab));
   if (!live.length) return "";
-  return `\n      <div class="f-detailing">\n        <h4>Detailing</h4>\n        <div class="f-links">\n${live.map((s) => `          ${link(s)}`).join("\n")}\n        </div>\n      </div>`;
+  return `\n      <div class="f-detailing">\n        <h2>Detailing</h2>\n        <div class="f-links">\n${live.map((s) => `          ${link(s)}`).join("\n")}\n        </div>\n      </div>`;
 }
 
 /** Footer: the published city guides, first in Service Areas, or nothing. */

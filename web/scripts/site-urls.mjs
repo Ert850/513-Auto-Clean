@@ -130,6 +130,8 @@ export function checkDist(dist) {
   for (const [f, text] of Object.entries(html)) {
     const h1 = (text.match(/<h1[\s>]/g) ?? []).length;
     if (h1 !== 1) problems.push(`${f}: ${h1} <h1> headings (a page needs exactly one)`);
+    const skip = headingSkip(text);
+    if (skip) problems.push(`${f}: heading levels skip (${skip}); each heading is at most one level below the one before`);
     if (files.length && stale.test(text)) problems.push(`${f}: still names a page by its .html address (${stale.exec(text)[0]}...)`);
     if (!files.includes(f) && !isNoindex(text)) problems.push(`${f}: no canonical tag and no noindex, so search engines get no address for it`);
   }
@@ -164,6 +166,25 @@ export function checkDist(dist) {
 }
 
 export const MIN_LINKERS = 2;
+
+/**
+ * The first place a page's headings skip a level ("h1 then h3 Basic
+ * Interior"), or null. Screen readers list headings as an outline, and
+ * Lighthouse flags a skip. The sub-page titles became h1 (November 18) while
+ * the headings under them stayed h3/h4, and the footer's column titles were
+ * h4 on every page. Headings inside scripts and templates aren't part of the
+ * page's outline.
+ */
+export function headingSkip(html) {
+  const outline = html.replace(/<(script|style|template)\b[\s\S]*?<\/\1>/gi, "");
+  let prev = 0;
+  for (const [, n, inner] of outline.matchAll(/<h([1-6])\b[^>]*>([\s\S]*?)<\/h\1>/gi)) {
+    const level = Number(n);
+    if (level > prev + 1) return `h${prev || "(none)"} then h${level} "${inner.replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim().slice(0, 40)}"`;
+    prev = level;
+  }
+  return null;
+}
 
 /** The clean path a link points to on this site ("/about"), or null. */
 function linkTarget(href) {

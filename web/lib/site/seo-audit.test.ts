@@ -10,7 +10,7 @@ import path from "node:path";
 // @ts-expect-error plain ESM build scripts
 import { slimHtml } from "../../scripts/slim-html.mjs";
 // @ts-expect-error plain ESM build scripts
-import { SITE, cleanPath, cleanLinks, cleanPages, redirectsFor, applyCleanUrls, checkDist } from "../../scripts/site-urls.mjs";
+import { SITE, cleanPath, cleanLinks, cleanPages, redirectsFor, applyCleanUrls, checkDist, headingSkip } from "../../scripts/site-urls.mjs";
 // @ts-expect-error plain ESM build scripts
 import { llmsTxt } from "../../scripts/llms-txt.mjs";
 
@@ -65,6 +65,12 @@ describe("one address per page", () => {
     fs.writeFileSync(path.join(dir, "a.html"), `<link href="${SITE}/a.html" rel="canonical">`);
     fs.writeFileSync(path.join(dir, "b.html"), '<meta content="noindex" name="robots">');
     expect(cleanPages(dir)).toEqual(["a.html"]);
+  });
+  it("headings never skip a level, wherever the page starts", () => {
+    expect(headingSkip("<h1>T</h1><h2>a</h2><h3>b</h3><h2>c</h2><h3>d</h3><h4>e</h4><h2>f</h2>")).toBeNull();
+    expect(headingSkip('<h1>T</h1><h3 class="x">Basic <b>Interior</b></h3>')).toBe('h1 then h3 "Basic Interior"');
+    expect(headingSkip("<h2>No title</h2>")).toBe('h(none) then h2 "No title"');
+    expect(headingSkip("<h1>T</h1><script>x='<h4>not here</h4>'</script><template><h5>nor</h5></template><h2>ok</h2>")).toBeNull();
   });
   it("redirects each old address to the clean one, forced (the .html file still exists)", () => {
     expect(redirectsFor(["about.html", "index.html"])).toContain("/about.html /about 301!\n/index.html / 301!\n");

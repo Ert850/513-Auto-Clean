@@ -2425,7 +2425,7 @@ Two passes ran: one over code and build, one over the deploy preview in a browse
 - **Stale comments** in `site-urls.mjs`, `build-dist.mjs` and `llms-txt.mjs` were corrected.
 
 **Left as they are:** see "Known and left as they are" in `docs/IMPERION-AUDIT-2026-11-18.md`:
-- heading levels;
+- heading levels (fixed in the next change);
 - the build-time review count;
 - `/book`'s own Book links;
 - `/404` answering 200;
@@ -2436,3 +2436,21 @@ Two passes ran: one over code and build, one over the deploy preview in a browse
 - `BUSINESS_PHONE=8663715948 PREVIEW_BUILD=1 npm run build` gives the swapped number in `dist/llms.txt` and no old number anywhere;
 - `dist/js/funnel.js` and `dist/js/analytics.js` link to `/terms`, `/privacy` and `/contact`;
 - `dist/index.html`'s JSON-LD offers link to `/book?package=...`.
+
+## Heading levels without skips (November 18, Emmett: "Yes, fix headings")
+
+- **Root cause:** the sub-page titles were promoted to h1 while the headings under them stayed h3/h4, and the footer's column titles were h4 on every page.
+- **Now every page's outline steps one level at a time:**
+  - package cards take a `level` in `servicesHtml` (h2 on Services, h3 on the home page), and the correction tier is one below;
+  - add-on groups are h3;
+  - state cards h2, county groups h3;
+  - Contact's side and form titles h2, and its copy on the home page shifts every heading down one level;
+  - footer titles h2 (the partial and `page-links.mjs`).
+- **Guard:** `headingSkip()` in `checkDist` fails the build on any skip, drafts included; there's a test.
+- **Same look:** the stylesheet matches both levels.
+  - Two widened rules first caught a neighbouring heading: `.area-col :is(h2, h3)` restyled the county labels, and `.inq-side :is(h2, h3)` shrank the home page's Contact title. Both now target only their own heading, and CLAUDE.md has the rule.
+  - The package card rule is scoped to the card's own title for the same reason.
+- **Checked:** every element's box, font size, weight and colour, before against after, on 13 pages at 1440, 820, 375 and 320, with the home headline A/B version pinned.
+  - 51 of 52 identical.
+  - The 52nd is a 4×8 px animated mark on the home page that moves by a pixel between runs anyway.
+- **Test:** headings read top to bottom with a screen reader's heading list (VoiceOver rotor) on Services, Range & Travel and Contact.
