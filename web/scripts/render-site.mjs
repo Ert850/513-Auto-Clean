@@ -77,7 +77,7 @@ const TICK =
  * find out what the "+" on Showroom Ready meant. It now lives inside that
  * card, beside the package it belongs to.
  */
-function correctionBlock() {
+function correctionBlock(level = 4) {
   const baseMin = findPackage("showroom-exterior")?.durationMin ?? 0;
 
   // Hours are shown because the price only makes sense beside them: this is
@@ -99,7 +99,7 @@ function correctionBlock() {
   // checklists, and its `.svc-card ul.feat li { display: flex }` outranked
   // this list's own layout and split every tier into three squeezed columns.
   return `<div class="svc-corr">
-            <h4>Paint correction and ceramic coating</h4>
+            <h${level}>Paint correction and ceramic coating</h${level}>
             <details class="svc-explain">
               <summary>How it works: ${esc(COATING_EXPLAINER.heading)}</summary>
               <div class="how-body">
@@ -132,7 +132,10 @@ function correctionBlock() {
 // teaser there.
 const FOLD_AT = 3;
 
-function packageCard(p, { fold = false } = {}) {
+// `level`: the card titles' heading level, one below the section's heading:
+// h3 on the home page (under its h2 sections), h2 on services.html (under the
+// page's h1). The correction tier's heading is one below that.
+function packageCard(p, { fold = false, level = 3 } = {}) {
   const comps = componentsOf(p, SEED_CATALOG);
   const base = p.supersetOf ? findPackage(p.supersetOf) : null;
   const shown = base ? comps.slice(componentsOf(base, SEED_CATALOG).length) : comps;
@@ -160,7 +163,7 @@ function packageCard(p, { fold = false } = {}) {
   // in has just spelled the rest out.
   const bookLabel = p.name.replace(/\s*\([^)]*\)\s*$/, "");
 
-  const body = `          <h3>${esc(p.name)}</h3>
+  const body = `          <h${level}>${esc(p.name)}</h${level}>
           <div class="svc-meta">
             <span class="price">${price}</span>
             <span class="dur"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v4l3 2"/></svg> ${time}</span>
@@ -189,7 +192,7 @@ ${feats}
   // tiers on the right. Wrapping the left half keeps that a two-child grid
   // rather than a pile of items each needing its own placement rule.
   const inner = wide
-    ? `          <div class="swide-main">\n${body}\n          </div>\n          ${correctionBlock()}`
+    ? `          <div class="swide-main">\n${body}\n          </div>\n          ${correctionBlock(level + 1)}`
     : body;
 
   return `        <article class="svc-card${p.featured ? " featured" : ""}${wide} reveal">
@@ -199,12 +202,12 @@ ${p.featured ? '          <span class="svc-tag">Most Popular</span>\n' : ""}${
         </article>`;
 }
 
-function servicesHtml({ fold = false } = {}) {
+function servicesHtml({ fold = false, level = 3 } = {}) {
   const panel = (cat) => {
     const cards = packagesFor(cat)
       // Maintenance is returning-customer pricing and is not offered publicly.
       .filter((p) => !p.requiresPriorDetail)
-      .map((p) => packageCard(p, { fold }))
+      .map((p) => packageCard(p, { fold, level }))
       .join("\n\n");
     return `    <div class="svc-panel${cat === "interior" ? " active" : ""}" id="panel-${cat}">
       <div class="svc-grid">
@@ -285,7 +288,8 @@ function addonsHtml() {
     // ADDONS directly is what keeps this page in the same order as the funnel.
     const list = addonsFor(scope);
     if (!list.length) return "";
-    return `      <h4 class="addon-grp">${scope === "interior" ? "Interior" : "Exterior"}</h4>
+    // h3: under the section's h2 ("Add-ons for any package").
+    return `      <h3 class="addon-grp">${scope === "interior" ? "Interior" : "Exterior"}</h3>
       <div class="addon-grid">
 ${list.map(card).join("\n")}
       </div>`;
@@ -366,7 +370,7 @@ const pages = Object.fromEntries(PAGES.map((f) => [f, read(f)]));
 // The full cards on both: the home page shows them as it always has, and
 // services.html carries them above the add-ons.
 pages["index.html"] = splice("index.html", pages["index.html"], "SERVICES", servicesHtml());
-pages["services.html"] = splice("services.html", pages["services.html"], "SERVICES", servicesHtml({ fold: true }));
+pages["services.html"] = splice("services.html", pages["services.html"], "SERVICES", servicesHtml({ fold: true, level: 2 }));
 pages["index.html"] = splice("index.html", pages["index.html"], "OFFERS", offersHtml());
 pages["services.html"] = splice("services.html", pages["services.html"], "ADDONS", addonsHtml());
 pages["faq.html"] = splice("faq.html", pages["faq.html"], "FAQPRICE", faqPriceText(), { inline: true });
@@ -490,10 +494,10 @@ for (const f of PAGES) fs.writeFileSync(path.join(root, f), pages[f]);
   const a = html.indexOf('<section class="inquiry" id="inquiry">');
   const b = html.indexOf("</section>", a);
   if (a < 0 || b < 0) throw new Error("render-site: the inquiry section was not found in contact.html");
-  // Its title is contact.html's h1, the page's heading; on the home page the
-  // hero is the h1, so the copy's title is a section heading again (h2).
+  // On contact.html its title is the page's h1 and the rest h2s; on the home
+  // page the hero is the h1, so every heading in the copy is one level down.
   const section = html.slice(a, b + "</section>".length).replace(/^<!-- CONTACT:(?:HEAD|CARD):(?:START|END) -->\n/gm, "")
-    .replace(/<h1>([\s\S]*?)<\/h1>/, "<h2>$1</h2>");
+    .replace(/<(\/?)h([1-5])\b/g, (m, close, n) => `<${close}h${Number(n) + 1}`);
   let home = read("index.html");
   const hs = "<!-- CONTACT:SECTION:START -->\n";
   const he = "<!-- CONTACT:SECTION:END -->";

@@ -63,7 +63,10 @@ So Semrush, and any search engine, saw two addresses for each page. The links we
 **Cause:** the sub-pages (Services, About, FAQ, Range & Travel, Contact) were cut out of the old one-page home page. Each page's title was a section heading (h2) under the home page's h1, and stayed one when it became its own page. The two print landing pages had the same gap.
 
 **Fix:**
-- **Not changed:** the h3s under each title (package cards, state cards) now follow an h1 directly. Lighthouse's accessibility audit may note the skipped level; Semrush doesn't check it.
+- **Heading levels re-levelled under the titles (Emmett, November 18):**
+  - every heading under a title is one level below it: the Services package cards, the Range & Travel state cards and county groups, Contact's side and form titles, the add-on groups, and the footer's column titles (h4 to h2 on every page);
+  - the look is unchanged: every element's box, type and colour was compared before and after on 13 pages at 1440, 820, 375 and 320;
+  - the build fails on any skipped level (`headingSkip`).
 - **Each page's title is now its h1,** with the same look: the stylesheet rules match both h1 and h2, and no size, margin or position changed at 1440, 820, 375 or 320 px.
 - **Contact:** its title is an h1 on the Contact page. The copy of that section on the home page keeps an h2, since the home page's headline is its h1.
 - **The build fails** unless every published page has exactly one h1.
@@ -111,7 +114,6 @@ These are `/book` and the same page with a package in the address (`/book?packag
 
 ## Known and left as they are (validation, November 18)
 
-- **Heading levels skip under the new page titles** (h1 straight to h3 on Services, Range & Travel and Contact; h1 to h4 on FAQ). The footer column titles have always been h4s. Lighthouse's accessibility audit can note it; Semrush doesn't. Fixing it means re-levelling headings across the site with the same look: a separate change.
 - **The review count is copied at build time** into the home page's description, the structured data and `llms.txt` (32 today, while the live badge shows 33 after loading). It's refreshed on every deploy.
 - **The booking page's own Book links stay `book.html`:** on that page the form opens in place (CLAUDE.md, the booking page).
 - **`/404` answers 200** (it is the 404 page itself, noindex). A missing page like `/nope` correctly answers 404.
