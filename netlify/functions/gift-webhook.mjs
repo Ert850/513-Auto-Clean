@@ -44,25 +44,34 @@ export async function issue(stripe, sessionId, secret, nowMs = Date.now()) {
   const payCents = Number(meta.gift_pay_cents) || session.amount_total || 0;
   const buyer = session.customer_details?.email || "";
   const toEmail = meta.gift_to_email || "";
-  const card = cardFromMeta(meta);
+  // The send date only while it's still to come: a card paid on its send day
+  // has gone already, and the emails mustn't promise it for later (pass 2).
+  const card = { ...cardFromMeta(meta), sendOn: meta.gift_deliver === "pending" ? meta.gift_send_on || "" : "" };
   const marks = {};
   const problems = [];
   const sendOnce = async (flag, to, msg) => {
-    if (meta[flag] === "1" || !to) return;
-    if (mail && (await mail(to, msg))) marks[flag] = "1";
-    else problems.push(`${flag.replace("gift_mail_", "")} email not sent${mail ? "" : " (no RESEND_API_KEY)"}`);
+    if (meta[flag] === "1" || !to) return true;
+    if (mail && (await mail(to, msg))) { marks[flag] = "1"; return true; }
+    problems.push(`the ${flag.replace("gift_mail_", "")} email didn't send${mail ? "" : " (no RESEND_API_KEY)"}`);
+    return false;
   };
   await sendOnce("gift_mail_buyer", buyer, buyerEmail({ card, code, link, payCents, toEmail }));
   if (meta.gift_deliver === "now") {
-    await sendOnce("gift_mail_to", toEmail, recipientEmail({ card, code, link }));
-    if (marks.gift_mail_to || meta.gift_mail_to === "1") marks.gift_deliver = "sent";
+    if (await sendOnce("gift_mail_to", toEmail, recipientEmail({ card, code, link }))) {
+      marks.gift_deliver = "sent";
+    } else {
+      // Handed to the hourly run (gift-deliver.mjs): three tries, then Elijah
+      // is told. Not Stripe's retries: a refused address would fail for days
+      // and could get the endpoint switched off (validation pass 2).
+      Object.assign(marks, { gift_deliver: "pending", gift_send_on: cincinnatiDay(nowMs) });
+    }
   }
-  await sendOnce("gift_mail_owner", owner(), ownerEmail({
+  const ownerOk = await sendOnce("gift_mail_owner", owner(), ownerEmail({
     card, code, payCents, buyer, toEmail, problem: problems.join("; ") || (buyer ? "" : "Stripe gave no buyer email: send the card yourself."),
   }));
   if (Object.keys(marks).length) await stripe.paymentIntents.update(pi.id, { metadata: marks });
-  // A failed email is retried by Stripe (the 500 below); what was sent stays marked.
-  if (problems.length) throw new Error(problems.join("; "));
+  // Only Elijah's email is worth Stripe's retries: it carries any other failure.
+  if (!ownerOk) throw new Error(problems.join("; "));
   return "issued";
 }
 
@@ -84,10 +93,10 @@ export async function settle(stripe, piId, change, eventId, nowMs = Date.now()) 
   if (change.kind === "dispute_open") {
     metadata = { gift_status: "disputed", gift_status_before: was, gift_log: log("frozen: payment disputed") };
     words = "The card's payment is disputed. The card is frozen until the dispute closes.";
-  } else if (change.kind === "dispute_closed" && change.won) {
+  } else if (change.kind === "dispute_closed" && !change.lost) {
     const back = pi.metadata.gift_status_before && pi.metadata.gift_status_before !== "disputed" ? pi.metadata.gift_status_before : "active";
     metadata = { gift_status: back, gift_log: log("dispute won: card back on") };
-    words = "The dispute was closed in your favour. The card works again.";
+    words = "The dispute was closed and the money is kept. The card works again.";
   } else if (change.kind === "dispute_closed") {
     metadata = { gift_status: "void", gift_balance_cents: "0", gift_log: log("void: dispute lost") };
     words = "The dispute was lost. The card is cancelled.";
@@ -137,7 +146,8 @@ export async function handler(event) {
     } else if (ev.type === "charge.dispute.created") {
       result = await settle(stripe, o.payment_intent, { kind: "dispute_open" }, ev.id);
     } else if (ev.type === "charge.dispute.closed") {
-      result = await settle(stripe, o.payment_intent, { kind: "dispute_closed", won: o.status === "won" }, ev.id);
+      // Only a lost dispute cancels: "won" and "warning_closed" (an inquiry the bank closed) keep the money (pass 2).
+      result = await settle(stripe, o.payment_intent, { kind: "dispute_closed", lost: o.status === "lost" }, ev.id);
     }
     return reply(200, result);
   } catch (err) {

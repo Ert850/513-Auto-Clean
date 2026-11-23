@@ -96,6 +96,8 @@
       .catch(function () { say('We couldn’t load the card just now. Please refresh in a minute; it’s also in your email.'); });
   }
   load();
+  // Another card's link opened in this tab changes only the part after the #: load that card.
+  window.addEventListener('hashchange', function () { if (/[#&]s=cs_/.test(location.hash)) location.reload(); });
 
   document.addEventListener('click', function (e) {
     var t = e.target.closest && e.target.closest('[data-gc-print],[data-gc-share]');
