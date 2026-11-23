@@ -1,9 +1,10 @@
 import Stripe from "stripe";
-import { MAX_BOOKING_CENTS, driveTooFar, priceFromWire, validateWire } from "./_pricing.mjs";
+import { MAX_BOOKING_CENTS, driveTooFar, isLive, priceFromWire, validateWire } from "./_pricing.mjs";
 import { blockFeeFor, detailerFor, homeFor, timeFeeWaived } from "./_detailers.mjs";
 import { measuredOneWayMinutes } from "./_routes.mjs";
 import { limited } from "./_ratelimit.mjs";
 import { verifyTurnstile } from "./_turnstile.mjs";
+import { requestKey } from "./_requestkey.mjs";
 
 /**
  * Creates the Stripe intent the funnel's payment step confirms against.
@@ -44,6 +45,18 @@ function safeMessage(err) {
   return "Payment setup failed. Nothing was charged.";
 }
 
+/**
+ * Only methods that finish on the page (review, November 23, P4 and P5).
+ *
+ * This was `automatic_payment_methods`, so whatever the dashboard had on was
+ * offered: Cash App, Klarna and Affirm send the customer to another site and
+ * back to /#book, where nothing finishes the booking (money taken, no
+ * booking), and a bank debit comes back "processing", not paid. Card covers
+ * Apple Pay and Google Pay; Link pays inside the form. A new method is a
+ * code change now, made together with whatever it needs on its return.
+ */
+const PAYMENT_METHODS = ["card", "link"];
+
 export async function handler(event) {
   if (event?.httpMethod !== "POST") return json(405, { error: "POST only" });
   if (limited(event, "create-payment", 30)) return json(429, { error: "slow_down" });
@@ -63,6 +76,20 @@ export async function handler(event) {
   }
 
   const mode = payload?.mode === "pay_now" ? "pay_now" : "card_only";
+
+  /*
+   * OFF MEANS OFF, whatever keys are set (review, November 23, P7).
+   *
+   * The switches in capabilities.ts decide what the booking form offers and
+   * what the terms promise, but this function ran whenever STRIPE_SECRET_KEY
+   * existed: anyone could create Stripe customers and intents on the
+   * business's account while the site said no card is taken. The same test
+   * as the form's (wantCard, canPayNow): a card needs cardOnFile, paying in
+   * full needs payInFull as well.
+   */
+  if (!isLive("cardOnFile") || (mode === "pay_now" && !isLive("payInFull"))) {
+    return json(503, { error: "off", message: "Payments are not switched on yet." });
+  }
   const checked = validateWire(payload, { nowMs: Date.now(), mode });
   if (!checked.ok) return json(400, { error: checked.error, message: checked.message });
   const { cart, contact, consent, kind, payInFull } = checked.booking;
@@ -108,26 +135,29 @@ export async function handler(event) {
   }
 
   const stripe = new Stripe(key);
-  const idempotencyKey =
-    typeof payload?.idempotencyKey === "string" && /^[A-Za-z0-9_-]{8,64}$/.test(payload.idempotencyKey)
-      ? payload.idempotencyKey
-      : undefined;
+  // Every create below gets its own key, derived from the booking's (P3).
+  const opts = (what, params) => {
+    const idempotencyKey = requestKey(payload?.idempotencyKey, what, params);
+    return idempotencyKey ? { idempotencyKey } : undefined;
+  };
 
   try {
-    // Phone is our identity key, so an existing customer is reused rather
-    // than duplicated on every booking. It is E.164 by now, so the search
-    // query cannot be broken by punctuation.
-    let customerId;
-    const found = await stripe.customers.search({ query: `phone:'${contact.phone}'`, limit: 1 });
-    customerId = found.data[0]?.id;
-    if (!customerId) {
-      const created = await stripe.customers.create({
-        name: contact.name,
-        phone: contact.phone,
-        ...(contact.email ? { email: contact.email } : {}),
-      });
-      customerId = created.id;
-    }
+    /*
+     * A NEW CUSTOMER PER BOOKING, never one found by phone (P8).
+     *
+     * This searched Stripe for a customer with the phone typed into the form
+     * and reused the first match. Nobody checks that phone, so a booking
+     * could put its card and payment under somebody else's customer. And the
+     * create had no idempotency key, so every retry made another customer.
+     * Now it is created with the booking's key: a retry of the same booking
+     * finds the same customer.
+     */
+    const customerParams = {
+      name: contact.name,
+      phone: contact.phone,
+      ...(contact.email ? { email: contact.email } : {}),
+    };
+    const customerId = (await stripe.customers.create(customerParams, opts("customer", customerParams))).id;
 
     const metadata = {
       total_cents: String(priced.totalCents),
@@ -147,28 +177,21 @@ export async function handler(event) {
       media_consent: String(consent.media ?? ""),
     };
 
-    const opts = idempotencyKey ? { idempotencyKey } : undefined;
-
     if (payInFull) {
-      const pi = await stripe.paymentIntents.create(
-        {
-          amount: priced.totalCents,
-          currency: "usd",
-          customer: customerId,
-          // Whatever is enabled in the dashboard shows up here: cards, Apple
-          // Pay, Google Pay, Link, ACH, Cash App and so on. Enabling a new
-          // method is a dashboard toggle, not a code change.
-          automatic_payment_methods: { enabled: true },
-          // Only keep the card for later if they actually agreed to that.
-          // Paying today and being charged in three weeks are two different
-          // permissions and only one of them was given here.
-          ...(consent.mandateAccepted ? { setup_future_usage: "off_session" } : {}),
-          statement_descriptor_suffix: "513AUTOCLEAN",
-          description: `513 Auto Clean, ${contact.name}`.slice(0, 200),
-          metadata,
-        },
-        opts,
-      );
+      const piParams = {
+        amount: priced.totalCents,
+        currency: "usd",
+        customer: customerId,
+        payment_method_types: PAYMENT_METHODS,
+        // Only keep the card for later if they actually agreed to that.
+        // Paying today and being charged in three weeks are two different
+        // permissions and only one of them was given here.
+        ...(consent.mandateAccepted ? { setup_future_usage: "off_session" } : {}),
+        statement_descriptor_suffix: "513AUTOCLEAN",
+        description: `513 Auto Clean, ${contact.name}`.slice(0, 200),
+        metadata,
+      };
+      const pi = await stripe.paymentIntents.create(piParams, opts("payment", piParams));
       return json(200, {
         clientSecret: pi.client_secret,
         kind: "payment",
@@ -177,15 +200,13 @@ export async function handler(event) {
       });
     }
 
-    const si = await stripe.setupIntents.create(
-      {
-        customer: customerId,
-        usage: "off_session",
-        automatic_payment_methods: { enabled: true },
-        metadata,
-      },
-      opts,
-    );
+    const siParams = {
+      customer: customerId,
+      usage: "off_session",
+      payment_method_types: PAYMENT_METHODS,
+      metadata,
+    };
+    const si = await stripe.setupIntents.create(siParams, opts("setup", siParams));
     return json(200, {
       clientSecret: si.client_secret,
       kind: "setup",
