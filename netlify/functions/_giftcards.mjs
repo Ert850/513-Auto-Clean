@@ -128,7 +128,7 @@ export async function ensureIssued(stripe, session, secret, nowMs = Date.now()) 
     gift_status: meta.gift_status || "active",
     gift_issued: today,
     gift_deliver: !toEmail ? "none" : due ? "now" : "pending",
-    gift_log: `${today} issued ${dollars(card.valueCents)}`,
+    gift_log: appendLog(meta.gift_log, `${today} issued ${dollars(card.valueCents)}`),
   };
   await stripe.paymentIntents.update(pi.id, { metadata: issued });
   return { pi, meta: { ...meta, ...issued } };

@@ -90,22 +90,30 @@ export async function deliverDue(stripe, secret, nowMs = Date.now(), mail, start
  * test endpoint, a missing event): send what it would have, and tell Elijah
  * once to check it (pre-merge pass).
  */
-export async function catchUp(stripe, secret, nowMs = Date.now()) {
+export async function catchUp(stripe, secret, nowMs = Date.now(), startMs = Date.now(), gapMs = GAP_MS) {
   const since = Math.floor(nowMs / 1000) - 7 * 86_400;
   const page = await stripe.paymentIntents.search({
     query: `metadata['kind']:'giftcard' AND -metadata['gift_mail_owner']:'1' AND created>${since}`,
     limit: 50,
   });
-  // Checked here too: search can trail a change by a minute.
-  const stranded = page.data.filter((p) => p.metadata?.gift_code_hash && p.metadata?.gift_session && p.metadata.gift_mail_owner !== "1" && (p.created || 0) * 1000 < nowMs - STRANDED_MS);
+  // Checked here too: search can trail a change by a minute. Cancelled or
+  // disputed cards send nothing, so they'd come back every hour: skipped.
+  const stranded = page.data.filter((p) => {
+    const m = p.metadata || {};
+    return m.gift_code_hash && m.gift_session && m.gift_mail_owner !== "1" && m.gift_status !== "void" && m.gift_status !== "disputed" && (p.created || 0) * 1000 < nowMs - STRANDED_MS;
+  });
+  let done = 0;
   for (const pi of stranded) {
+    if (Date.now() - startMs > BUDGET_MS) break;
     try {
-      await issue(stripe, pi.metadata.gift_session, secret, nowMs, "Stripe's webhook never reached the site for this card, so the hourly run sent these emails. Check the webhook's signing secret (STRIPE_WEBHOOK_SECRET) and its events in Stripe.");
+      await issue(stripe, pi.metadata.gift_session, secret, nowMs, "The webhook didn't finish for this card (it may not be reaching the site: check its signing secret, STRIPE_WEBHOOK_SECRET, and its events in Stripe), so the hourly run sent these emails.");
+      done++;
     } catch (err) {
       console.error("gift-deliver catch-up", String(err?.message || err).slice(0, 200));
     }
+    await new Promise((r) => setTimeout(r, gapMs));
   }
-  return stranded.length;
+  return done;
 }
 
 export async function handler() {
@@ -118,8 +126,14 @@ export async function handler() {
   const mail = (to, msg) => sendMail(apiKey, from, to, msg);
   try {
     const stripe = new Stripe(key);
-    const caught = await catchUp(stripe, secret);
-    const out = { ...(await deliverDue(stripe, secret, Date.now(), mail)), caught };
+    const out = await deliverDue(stripe, secret, Date.now(), mail);
+    // After the scheduled sends, and on its own: a failure here must never
+    // stop Christmas morning's cards (final pre-merge pass).
+    try {
+      out.caught = await catchUp(stripe, secret);
+    } catch (err) {
+      console.error("gift-deliver catch-up search", String(err?.message || err).slice(0, 200));
+    }
     if (out.gaveUp.length) {
       await sendMail(apiKey, from, owner, {
         subject: `CHECK: ${out.gaveUp.length} gift card email(s) couldn't be delivered`,

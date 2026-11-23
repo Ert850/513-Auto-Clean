@@ -10,7 +10,7 @@ type Meta = Record<string, string>;
 type PI = { id: string; amount: number; metadata: Meta };
 type Session = { id: string; url: string; metadata: Meta; payment_status: string; amount_total: number; payment_intent: string; customer_details?: { email?: string } };
 
-const db = { sessions: new Map<string, Session>(), pis: new Map<string, PI>(), calls: [] as { what: string; params: unknown; opts: unknown }[] };
+const db = { sessions: new Map<string, Session>(), pis: new Map<string, PI>(), calls: [] as { what: string; params: unknown; opts: unknown }[], failNegation: false };
 
 vi.mock("stripe", () => ({
   default: class FakeStripe {
@@ -42,6 +42,7 @@ vi.mock("stripe", () => ({
         return structuredClone(pi);
       },
       search: async ({ query }: { query: string }) => {
+        if (db.failNegation && query.includes("-metadata")) throw new Error("search refused");
         const m = /metadata\['(\w+)'\]:'([^']*)'/.exec(query)!;
         return { data: [...db.pis.values()].filter((p) => p.metadata[m[1]!] === m[2]).map((p) => structuredClone(p)), has_more: false };
       },
@@ -75,7 +76,7 @@ const realFetch = globalThis.fetch;
 
 beforeEach(() => {
   resetRateLimits();
-  db.sessions.clear(); db.pis.clear(); db.calls.length = 0;
+  db.sessions.clear(); db.pis.clear(); db.calls.length = 0; db.failNegation = false;
   mail = []; mailOk = true;
   for (const [k, v] of Object.entries(ENV)) vi.stubEnv(k, v);
   vi.useFakeTimers({ now: IN_SALE, toFake: ["Date"] });
@@ -517,5 +518,28 @@ describe("pre-merge fixes", () => {
     await buy();
     const keys = db.calls.filter((c) => c.what === "sessions.create").map((c) => (c.opts as { idempotencyKey: string }).idempotencyKey);
     expect(keys[0]).toBe(keys[1]);
+  });
+});
+
+describe("final pre-merge fixes", () => {
+  it("a catch-up search that fails doesn't stop the scheduled sends", async () => {
+    const s = await paidSession({ sendOn: "2026-12-24" });
+    await hook({ type: "checkout.session.completed", data: { object: { id: s.id } } });
+    vi.setSystemTime(Date.parse("2026-12-24T15:00:00Z"));
+    db.failNegation = true;
+    mail = [];
+    const r = await deliver.handler();
+    expect(r.statusCode).toBe(200);
+    expect(mail.map((m) => m.to)).toContain("sam@example.com");
+    expect(db.pis.get(s.payment_intent)!.metadata.gift_deliver).toBe("sent");
+  });
+
+  it("Back then Continue within a few minutes is the same request to Stripe", async () => {
+    await buy();
+    vi.setSystemTime(IN_SALE + 60_000);
+    await buy();
+    const [a, b] = db.calls.filter((c) => c.what === "sessions.create") as { params: unknown; opts: { idempotencyKey: string } }[];
+    expect(b!.params).toEqual(a!.params);
+    expect(b!.opts.idempotencyKey).toBe(a!.opts.idempotencyKey);
   });
 });

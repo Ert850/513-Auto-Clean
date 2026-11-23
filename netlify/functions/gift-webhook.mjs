@@ -50,7 +50,12 @@ export async function issue(stripe, sessionId, secret, nowMs = Date.now(), note 
   const problems = [];
   const sendOnce = async (flag, to, msg) => {
     if (meta[flag] === "1" || !to) return true;
-    if (mail && (await mail(to, msg))) { marks[flag] = "1"; return true; }
+    if (mail && (await mail(to, msg))) {
+      // Marked at once, not after all three: a run cut short mustn't send it again (final pre-merge pass).
+      marks[flag] = "1";
+      await stripe.paymentIntents.update(pi.id, { metadata: { [flag]: "1" } });
+      return true;
+    }
     problems.push(`the ${flag.replace("gift_mail_", "")} email didn't send${mail ? "" : " (no RESEND_API_KEY)"}`);
     return false;
   };
