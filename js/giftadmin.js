@@ -6,15 +6,12 @@
 (function () {
   'use strict';
   var $ = function (id) { return document.getElementById(id); };
-  var keyIn = $('gcaKey'), codeIn = $('gcaCode'), remember = $('gcaRemember'), msg = $('gcaMsg');
-  var STORE = 'ac-gift-admin-key';
+  // The key is never stored by the page: any script on the site could read
+  // browser storage (validation pass 1). The phone's password manager can fill it.
+  var keyIn = $('gcaKey'), codeIn = $('gcaCode'), msg = $('gcaMsg');
   var current = null;
   var armed = null;
-
-  try {
-    var saved = localStorage.getItem(STORE);
-    if (saved) { keyIn.value = saved; remember.checked = true; }
-  } catch (e) { /* private mode */ }
+  try { localStorage.removeItem('ac-gift-admin-key'); } catch (e) { /* private mode */ }
 
   function dollars(c) { return '$' + (c % 100 ? (c / 100).toFixed(2) : String(c / 100)); }
   function rid() {
@@ -42,7 +39,7 @@
       .then(function (r) { return r.json().catch(function () { return {}; }); })
       .then(function (j) {
         if (j.card) show(j.card);
-        msg.textContent = j.error ? (WORDS[j.error] || 'That didn’t work (' + j.error + ').') : '';
+        msg.textContent = j.error ? (WORDS[j.error] || 'That didn’t work (' + j.error + ').') : j.repeated ? 'Already done: nothing was changed twice.' : '';
         return j;
       })
       .catch(function () { msg.textContent = 'No connection. Try again.'; return {}; });
@@ -85,10 +82,6 @@
 
   $('gcaFind').addEventListener('submit', function (e) {
     e.preventDefault();
-    try {
-      if (remember.checked) localStorage.setItem(STORE, keyIn.value);
-      else localStorage.removeItem(STORE);
-    } catch (err) { /* private mode */ }
     call({ action: 'lookup' });
   });
 

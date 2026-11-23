@@ -1,0 +1,57 @@
+# Gift cards: switching on the Stripe checkout
+
+The code is on branch `eNov16`. It takes no money until these steps are done. Each step needs Elijah's (or Emmett's) own login, so none of them were done for you.
+
+## 1. Stripe (dashboard.stripe.com, the business's account)
+
+1. **Payment methods:** make sure Cards and Link are on (Settings, Payments, Payment methods). Apple Pay and Google Pay come with Cards.
+   - Klarna isn't offered: its rules don't allow gift cards.
+2. **Webhook:** Developers, Webhooks, Add endpoint.
+   - Test site, in test mode: `https://deploy-preview-13--513-auto-clean.netlify.app/api/gift-webhook`
+   - Live, at the merge: `https://513autoclean.com/api/gift-webhook`
+   - Events:
+     - `checkout.session.completed`
+     - `checkout.session.async_payment_succeeded`
+     - `charge.refunded`
+     - `charge.dispute.created`
+     - `charge.dispute.closed`
+   - Copy the endpoint's **Signing secret** (`whsec_...`).
+3. **Receipts (optional):** Settings, Customer emails, "Successful payments". Stripe then also sends its own receipt. Our email already says what was paid.
+
+## 2. Netlify (Site configuration, Environment variables)
+
+| Variable | What | Where |
+|---|---|---|
+| `STRIPE_SECRET_KEY` | already used by the booking form's payment code | test key (`sk_test_`) for Deploy Previews, live key for Production |
+| `STRIPE_WEBHOOK_SECRET` | the endpoint's signing secret from step 1 | one per endpoint: the test one for Deploy Previews, the live one for Production |
+| `GIFT_CODE_SECRET` | makes every card code. At least 32 random characters. **Never change it once a card is sold**: every code would change | the same value in every context that shares cards (Production). A different one for previews is fine |
+| `GIFT_ADMIN_KEY` | Elijah's key for `/gift-admin`. At least 16 characters | Production (and previews to test) |
+| `RESEND_API_KEY`, `RESEND_FROM`, `OWNER_EMAIL` | already set for the booking emails | unchanged |
+| `GIFT_REBUILD_HOOK` (optional) | a Netlify build hook (Site configuration, Build &amp; deploy, Build hooks). The site rebuilds itself on the sale's first day and the day after it ends, so the page's HTML matches the checkout. Without it the page still corrects itself in the browser | Production |
+
+Make a random secret on a Mac:
+
+```bash
+openssl rand -base64 36
+```
+
+Without `STRIPE_WEBHOOK_SECRET` or `GIFT_CODE_SECRET`, the checkout refuses to open, so nobody pays for a card that can't be issued.
+
+## 3. Test on the test site, in Stripe test mode
+
+1. Open `/gift-cards` on the test site. The prices show 20% off only between the sale's dates (November 27 to December 25, Cincinnati time); before that they show full price.
+2. Buy the $50 card with the test card `4242 4242 4242 4242`, any future date and any CVC. Put your own second email as "Their email".
+3. Expect:
+   - the certificate page with the code;
+   - an email to you, one to the second address, and one to `OWNER_EMAIL`;
+   - in Stripe's test dashboard, the payment's metadata shows `gift_status: active`.
+4. Try "On a date" with tomorrow's date: no email to them today. Scheduled sending runs only on the live site, at 8 AM Cincinnati time.
+5. On `/gift-admin`, with `GIFT_ADMIN_KEY`, look up the code, take $10 off, then check the history.
+6. Refund the test payment in Stripe: the card shows "Cancelled" on `/gift-admin`.
+
+## 4. At the merge
+
+- `config/gift-cards.json` has `checkout.enabled: true` on `eNov16`. A production build fails if gift cards are on while the checkout is off.
+- The terms (section 4, Gift cards) and the privacy policy (Stripe for gift cards) are dated November 23, 2026 and appear only while gift cards are sold.
+- After the sale: with `GIFT_REBUILD_HOOK` set, the site rebuilds itself on December 26 at full prices. Set `mode` to `"regular"` (keep selling at face value) or `"off"` whenever you like after that.
+- **Keep `checkout.enabled` true once a card has been sold.** It keeps the gift card terms and the privacy entry for Stripe on the site while cards are out, even with `mode` "off". Cards already sold keep working either way: the certificate and `/gift-admin` stay.

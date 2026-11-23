@@ -216,13 +216,14 @@ export const CAPABILITIES: Capability[] = [
   },
   {
     id: "giftCardSales",
-    what: "Selling gift cards online, paid on Stripe's own page",
-    // Follows config/gift-cards.json: on while gift cards are on and the
-    // Stripe checkout is switched on (November 23). The terms then carry the
-    // gift card rules, and the privacy policy names Stripe and what a gift
-    // purchase collects. Cards already sold keep working when this goes off.
-    live: GIFT_CARDS.mode !== "off" && GIFT_CARDS.checkout.enabled,
-    blockedBy: "config/gift-cards.json: mode off, or checkout.enabled false",
+    what: "Gift cards sold online, paid on Stripe's own page",
+    // Follows config/gift-cards.json checkout.enabled, NOT mode: the terms'
+    // gift card rules ("never expires", refunds) and the privacy policy's
+    // Stripe entry must stay while any card sold online is out, even after
+    // the page is switched off (validation pass 1). Leave checkout.enabled
+    // true once a card has been sold.
+    live: GIFT_CARDS.checkout.enabled,
+    blockedBy: "config/gift-cards.json checkout.enabled false",
   },
 ];
 

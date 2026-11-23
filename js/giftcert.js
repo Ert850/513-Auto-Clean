@@ -15,6 +15,7 @@
   var thanks = document.getElementById('gcThanks');
   var KEY = 'ac-gift-session';
   var SESSION = /^cs_(test|live)_[A-Za-z0-9]{10,200}$/;
+  var isNew = false;
 
   function store(get, val) {
     try { return get ? sessionStorage.getItem(KEY) : sessionStorage.setItem(KEY, val); } catch (e) { return null; }
@@ -23,7 +24,8 @@
   var s = params.get('s');
   if (s && SESSION.test(s)) {
     store(false, s);
-    if (params.get('new') === '1' && thanks) thanks.hidden = false;
+    // Shown once the card has loaded, not while the payment may still be going through.
+    isNew = params.get('new') === '1';
     try { history.replaceState(null, '', location.pathname); } catch (e) { /* the address keeps it; harmless */ }
   } else {
     s = store(true);
@@ -70,15 +72,17 @@
     else if (c.status === 'used' || c.balanceCents === 0) state = 'This card has been used in full.';
     else if (c.balanceCents < c.valueCents) state = dollars(c.balanceCents) + ' left on this card.';
     if (state) box.appendChild(el('p', 'gc-cert-state', state));
-    if (c.sendOn) box.appendChild(el('p', 'gc-cert-note', 'We’ll email it to them on ' + longDay(c.sendOn) + '.'));
+    if (c.sendOn) box.appendChild(el('p', 'gc-cert-note', 'We’ll email it to ' + (c.toName || 'them') + ' on ' + longDay(c.sendOn) + '.'));
     actions.hidden = false;
     how.hidden = false;
+    if (isNew && thanks) thanks.hidden = false;
   }
 
   var tries = 0;
   function load() {
     if (!s) { say('We couldn’t find a gift card here. Open the link in your gift card email, or contact us and we’ll resend it.'); return; }
-    fetch('/api/gift-card?s=' + encodeURIComponent(s), { cache: 'no-store' })
+    // In the body, never the address: the session opens the card.
+    fetch('/api/gift-card', { method: 'POST', cache: 'no-store', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ s: s }) })
       .then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { return { status: r.status, j: j }; }); })
       .then(function (r) {
         if (r.status === 200) return draw(r.j);

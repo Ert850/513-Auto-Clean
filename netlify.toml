@@ -51,10 +51,16 @@
 [functions]
   node_bundler = "esbuild"
 
-# Cards scheduled for a later day go out at 8 AM Cincinnati time (13:00 UTC;
-# 9 AM during daylight time, which the sale never meets). Published site only.
+# Cards scheduled for a later day go out from 8 AM Cincinnati time, hourly
+# until 6 PM, so a busy morning finishes in a later run (13:00 to 23:00 UTC;
+# an hour later in the clock's terms during daylight time). Published site only.
 [functions."gift-deliver"]
-  schedule = "0 13 * * *"
+  schedule = "0 13-23 * * *"
+
+# A fresh build on the sale's first day and the day after it ends, at about
+# 00:15 Cincinnati time (05:15 UTC), so the page's HTML matches the checkout.
+[functions."gift-rebuild"]
+  schedule = "15 5 * * *"
 
 # ---------------------------------------------------------------------------
 # Lighthouse, on every build

@@ -30,6 +30,8 @@ export interface GiftCardConfig {
   checkout: { enabled: boolean };
   /** Days after buying in which an unused card can be refunded. */
   refundDays: number;
+  /** How many days ahead a card can be scheduled to be emailed. */
+  scheduleDays: number;
 }
 
 /** What a buyer calls each size (VEHICLE_SIZES ids). */
@@ -122,6 +124,7 @@ export function giftCardProblems(cfg: GiftCardConfig): string[] {
   if (!Number.isInteger(min) || !Number.isInteger(max) || min < 5 || min >= max) out.push("custom.min and custom.max must be whole dollars, min below max");
   if (typeof cfg.checkout?.enabled !== "boolean") out.push("checkout.enabled must be true or false");
   if (!Number.isInteger(cfg.refundDays) || cfg.refundDays < 0 || cfg.refundDays > 365) out.push("refundDays must be a whole number of days, 0 to 365");
+  if (!Number.isInteger(cfg.scheduleDays) || cfg.scheduleDays < 1 || cfg.scheduleDays > 365) out.push("scheduleDays must be a whole number of days, 1 to 365");
   return out;
 }
 

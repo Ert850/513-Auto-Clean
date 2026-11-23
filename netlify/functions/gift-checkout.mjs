@@ -1,8 +1,7 @@
 import Stripe from "stripe";
 import { GIFT_CARDS, cincinnatiDay, giftOffer } from "./_pricing.mjs";
-import { GIFT_KIND, dollars, giftSecret, siteUrl } from "./_giftcards.mjs";
+import { GIFT_KIND, dollars, giftSecret, plain, siteUrl } from "./_giftcards.mjs";
 import { limited } from "./_ratelimit.mjs";
-import { verifyTurnstile } from "./_turnstile.mjs";
 import { requestKey } from "./_requestkey.mjs";
 
 /**
@@ -27,14 +26,16 @@ const PAYMENT_METHODS = ["card", "link"];
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
-/** How far ahead a card can be scheduled. */
-const MAX_AHEAD_DAYS = 60;
+/** How long Stripe's page stays open: a session started on the sale's last day can't be paid at the sale price days later. */
+const SESSION_MINUTES = 60;
 
 /** Trimmed text with no control characters, at most `max` long; "" when absent. */
 function text(v, max) {
   if (v === undefined || v === null) return "";
   if (typeof v !== "string") return null;
-  const s = v.replace(/[\u0000-\u001f\u007f]+/g, " ").trim();
+  // No control characters (no header tricks), no direction overrides or
+  // zero-width marks (no disguised text in an email from the business).
+  const s = plain(v).replace(/[\u0000-\u001f\u007f]+/g, " ").trim();
   return s.length <= max ? s : null;
 }
 
@@ -48,7 +49,7 @@ export function giftDetails(p, nowMs) {
   if ([toName, toEmail, fromName, message, sendOn].includes(null)) return { error: "bad_details" };
   if (toEmail && !EMAIL.test(toEmail)) return { error: "bad_email" };
   const today = cincinnatiDay(nowMs);
-  const last = cincinnatiDay(nowMs + MAX_AHEAD_DAYS * 86_400_000);
+  const last = cincinnatiDay(nowMs + GIFT_CARDS.scheduleDays * 86_400_000);
   if (sendOn && (!DAY.test(sendOn) || sendOn < today || sendOn > last)) return { error: "bad_date" };
   // A date in the future means "send it to them then": there has to be a "them".
   if (sendOn && sendOn > today && !toEmail) return { error: "date_needs_email" };
@@ -76,8 +77,9 @@ export async function handler(event) {
   } catch {
     return json(400, { error: "bad_json" });
   }
-  const bot = await verifyTurnstile(payload?.turnstileToken, event);
-  if (bot) return json(400, { error: bot });
+  // No Turnstile here: the page draws none, so switching it on site-wide
+  // would refuse every purchase (validation pass 1). Opening a session costs
+  // nothing; the payment itself is screened by Stripe on its own page.
 
   const now = Date.now();
   const offer = giftOffer(payload?.value, now);
@@ -117,7 +119,9 @@ export async function handler(event) {
     }],
     // Kept on the session and on the payment: the payment is where the card lives.
     metadata,
-    payment_intent_data: { metadata, description: name, statement_descriptor_suffix: "GIFT CARD" },
+    // No statement suffix: with a long account prefix Stripe would refuse it.
+    payment_intent_data: { metadata, description: name },
+    expires_at: Math.floor(now / 1000) + SESSION_MINUTES * 60,
     // After the #, so the session (which opens the card) never reaches a server log or analytics.
     success_url: `${base}/gift-certificate#s={CHECKOUT_SESSION_ID}&new=1`,
     cancel_url: `${base}/gift-cards`,

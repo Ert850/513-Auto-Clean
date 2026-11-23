@@ -231,7 +231,7 @@ describe("gift-webhook", () => {
 });
 
 describe("gift-card (the certificate page's lookup)", () => {
-  const get = (s: string) => card.handler({ httpMethod: "GET", queryStringParameters: { s } });
+  const get = (s: string) => card.handler({ httpMethod: "POST", headers: {}, body: JSON.stringify({ s }) });
   it("shows the card once paid, and nothing about the buyer", async () => {
     await buy();
     const s = [...db.sessions.values()].at(-1)!;
@@ -274,5 +274,101 @@ describe("the test site's login gate", () => {
   it("lets Stripe's signed webhook through, and nothing else", async () => {
     const { config } = await import("../../netlify/edge-functions/test-gate.js");
     expect(config.excludedPath).toEqual(["/api/gift-webhook", "/.netlify/functions/gift-webhook"]);
+  });
+});
+
+describe("validation pass 1 fixes", () => {
+  const completed = (id: string) => ({ type: "checkout.session.completed", data: { object: { id } } });
+
+  it("the certificate page records the card, so Elijah can find it even if the webhook never comes", async () => {
+    const s = await paidSession();
+    const r = await card.handler({ httpMethod: "POST", headers: {}, body: JSON.stringify({ s: s.id }) });
+    expect(r.statusCode).toBe(200);
+    const code = G.codeFor(s.id, SECRET);
+    expect(db.pis.get(s.payment_intent)!.metadata.gift_code_hash).toBe(G.codeHash(code, SECRET));
+    expect((await post(admin, { key: ENV.GIFT_ADMIN_KEY, action: "lookup", code })).statusCode).toBe(200);
+    // No email from a page load: those stay the webhook's.
+    expect(mail).toHaveLength(0);
+    // And the webhook later still sends them, once.
+    await hook(completed(s.id));
+    await hook(completed(s.id));
+    expect(mail.map((m) => m.to).sort()).toEqual(["buyer@example.com", "owner@example.com", "sam@example.com"]);
+  });
+
+  it("a card paid on its send day goes out now, not at tomorrow's run", async () => {
+    const s = await paidSession({ sendOn: "2026-12-02" });
+    vi.setSystemTime(Date.parse("2026-12-02T20:00:00Z"));
+    await hook(completed(s.id));
+    expect(db.pis.get(s.payment_intent)!.metadata.gift_deliver).toBe("sent");
+    expect(mail.some((m) => m.to === "sam@example.com")).toBe(true);
+  });
+
+  it("a scheduled email that keeps failing gives up after three tries", async () => {
+    const s = await paidSession({ sendOn: "2026-12-24" });
+    await hook(completed(s.id));
+    const stripe = new (await import("stripe")).default("x") as never;
+    const fail = async () => false;
+    for (let i = 0; i < 3; i++) await deliver.deliverDue(stripe, SECRET, Date.parse("2026-12-24T15:00:00Z"), fail);
+    expect(db.pis.get(s.payment_intent)!.metadata).toMatchObject({ gift_deliver: "failed", gift_deliver_tries: "3" });
+    const again = await deliver.deliverDue(stripe, SECRET, Date.parse("2026-12-24T16:00:00Z"), fail);
+    expect(again.failed).toBe(0);
+  });
+
+  it("a redeem retried after a lost answer changes nothing the second time", async () => {
+    const s = await paidSession();
+    await hook(completed(s.id));
+    const code = G.codeFor(s.id, SECRET);
+    const redeem = () => post(admin, { key: ENV.GIFT_ADMIN_KEY, action: "redeem", code, amountCents: 1000, requestId: "req_same_one" });
+    await redeem();
+    const r = JSON.parse((await redeem()).body);
+    expect(r).toMatchObject({ repeated: true, card: { balanceCents: 4000 } });
+  });
+
+  it("resending to the person it's for counts as delivered", async () => {
+    const s = await paidSession({ sendOn: "2026-12-24" });
+    await hook(completed(s.id));
+    await post(admin, { key: ENV.GIFT_ADMIN_KEY, action: "resend", to: "recipient", code: G.codeFor(s.id, SECRET), requestId: "req_resend_1" });
+    expect(db.pis.get(s.payment_intent)!.metadata.gift_deliver).toBe("sent");
+  });
+
+  it("a dispute freezes the card; won, it works again; the same event twice is applied once", async () => {
+    const s = await paidSession();
+    await hook(completed(s.id));
+    const ev = (type: string, id: string, extra = {}) => ({ id, type, data: { object: { payment_intent: s.payment_intent, ...extra } } });
+    await hook(ev("charge.dispute.created", "evt_1"));
+    expect(db.pis.get(s.payment_intent)!.metadata.gift_status).toBe("disputed");
+    const before = mail.length;
+    await hook(ev("charge.dispute.created", "evt_1"));
+    expect(mail.length).toBe(before);
+    await hook(ev("charge.dispute.closed", "evt_2", { status: "won" }));
+    expect(db.pis.get(s.payment_intent)!.metadata.gift_status).toBe("active");
+    await hook(ev("charge.dispute.closed", "evt_3", { status: "lost" }));
+    expect(db.pis.get(s.payment_intent)!.metadata).toMatchObject({ gift_status: "void", gift_balance_cents: "0" });
+  });
+
+  it("links name the live domain on the live site, and a Deploy Preview's own address there", () => {
+    expect(G.siteUrl({ URL: "https://513autoclean.com", DEPLOY_PRIME_URL: "https://main--513-auto-clean.netlify.app" })).toBe("https://513autoclean.com");
+    expect(G.siteUrl({ URL: "https://513autoclean.com", DEPLOY_PRIME_URL: "https://deploy-preview-13--513-auto-clean.netlify.app" })).toBe("https://deploy-preview-13--513-auto-clean.netlify.app");
+  });
+
+  it("names can't carry hidden direction marks into an email", async () => {
+    await buy({ from: { name: "Al‮ex" } });
+    expect([...db.sessions.values()].at(-1)!.metadata.gift_from_name).toBe("Alex");
+  });
+
+  it("the checkout page expires within the hour, and asks for no bot check", async () => {
+    vi.stubEnv("TURNSTILE_SECRET_KEY", "x".repeat(30));
+    expect((await buy()).statusCode).toBe(200);
+    const c = db.calls[0]! as { params: { expires_at: number } };
+    expect(c.params.expires_at - Math.floor(IN_SALE / 1000)).toBe(3600);
+  });
+
+  it("rebuilds only on the sale's first day and the day after it ends", async () => {
+    const { rebuildDue } = await import("../../netlify/functions/gift-rebuild.mjs");
+    const cfg = { mode: "sale", sale: { percentOff: 20, starts: "2026-11-27", ends: "2026-12-25" } };
+    expect(rebuildDue(cfg, Date.parse("2026-11-27T05:15:00Z"))).toBe(true);
+    expect(rebuildDue(cfg, Date.parse("2026-12-26T05:15:00Z"))).toBe(true);
+    expect(rebuildDue(cfg, Date.parse("2026-12-25T05:15:00Z"))).toBe(false);
+    expect(rebuildDue({ ...cfg, mode: "regular" }, Date.parse("2026-11-27T05:15:00Z"))).toBe(false);
   });
 });
