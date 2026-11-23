@@ -75,6 +75,7 @@
   var soon = cfg.mode === 'sale' && !sale && P.cincinnatiDay(Date.now()) < cfg.sale.starts;
   document.querySelectorAll('.gc-off, .gc-sale-only').forEach(function (e) { e.hidden = !sale; });
   document.querySelectorAll('.gc-sale-soon').forEach(function (e) { e.hidden = !soon; });
+  document.querySelectorAll('.gc-holiday').forEach(function (e) { e.hidden = !sale && !soon; });
   if (sale !== built) {
     document.querySelectorAll('.gc-tier[data-gc-value]').forEach(function (t) {
       var cents = Number(t.getAttribute('data-gc-value')) * 100;

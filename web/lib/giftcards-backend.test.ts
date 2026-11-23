@@ -492,3 +492,30 @@ describe("validation pass 3 fixes", () => {
     expect(db.pis.get(s.payment_intent)!.metadata.gift_deliver_tries).toBeUndefined();
   }, 15_000);
 });
+
+describe("pre-merge fixes", () => {
+  it("a card the webhook never handled gets its emails from the hourly run, and Elijah is told to check the webhook", async () => {
+    const bodies: { to: string; html: string }[] = [];
+    globalThis.fetch = (async (_u: string, init?: { body?: string }) => {
+      const b = JSON.parse(String(init?.body)); bodies.push({ to: b.to[0], html: b.html });
+      return new Response("{}", { status: 200 });
+    }) as typeof fetch;
+    const s = await paidSession();
+    await card.handler({ httpMethod: "POST", headers: {}, body: JSON.stringify({ s: s.id }) });
+    (db.pis.get(s.payment_intent) as PI & { created?: number }).created = Math.floor(IN_SALE / 1000) - 3600;
+    const stripe = new (await import("stripe")).default("x") as never;
+    expect(await deliver.catchUp(stripe, SECRET, IN_SALE)).toBe(1);
+    expect(bodies.map((b) => b.to).sort()).toEqual(["buyer@example.com", "owner@example.com", "sam@example.com"]);
+    expect(bodies.find((b) => b.to === "owner@example.com")!.html).toContain("STRIPE_WEBHOOK_SECRET");
+    // Once only.
+    expect(await deliver.catchUp(stripe, SECRET, IN_SALE)).toBe(0);
+  });
+
+  it("a double tap a second later still opens one checkout", async () => {
+    await buy();
+    vi.setSystemTime(IN_SALE + 1500);
+    await buy();
+    const keys = db.calls.filter((c) => c.what === "sessions.create").map((c) => (c.opts as { idempotencyKey: string }).idempotencyKey);
+    expect(keys[0]).toBe(keys[1]);
+  });
+});

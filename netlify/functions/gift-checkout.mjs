@@ -129,8 +129,10 @@ export async function handler(event) {
 
   try {
     const stripe = new Stripe(key);
-    // A double tap makes one session, a changed card a new one (P3).
-    const idem = requestKey(payload?.requestKey, "gift-session", params);
+    // A double tap makes one session, a changed card a new one (P3). The key
+    // leaves out the expiry, which moves every second (pre-merge pass).
+    const { expires_at: _moves, ...same } = params;
+    const idem = requestKey(payload?.requestKey, "gift-session", same);
     const session = await stripe.checkout.sessions.create(params, idem ? { idempotencyKey: idem } : undefined);
     return json(200, { url: session.url });
   } catch (err) {

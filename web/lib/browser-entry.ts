@@ -15,7 +15,10 @@ import {
   vehicleSize,
   upgradeLegacy,
 } from "./catalog/seed.js";
-import { cincinnatiDay, coverage, coverTable, GIFT_CARDS, saleOn } from "./catalog/giftCards.js";
+import { cincinnatiDay, coverage, coverTable, GIFT_CARDS as GIFT_ALL, saleOn } from "./catalog/giftCards.js";
+
+/** Only what the page needs: not the file's notes (pre-merge pass). */
+const GIFT_CARDS = { mode: GIFT_ALL.mode, sale: GIFT_ALL.sale, scheduleDays: GIFT_ALL.scheduleDays, refundDays: GIFT_ALL.refundDays };
 import {
   ADDONS,
   addonBlockedReason,
