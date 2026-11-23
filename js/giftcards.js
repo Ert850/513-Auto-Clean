@@ -41,8 +41,9 @@
   // Same markup as gift-cards.mjs priceRow and coverList.
   function priceHtml(cents) {
     var p = pay(cents);
-    if (p === cents) return '<strong>' + dollars(p) + '</strong>';
-    return '<strong>' + dollars(p) + '</strong> <s><span class="sr-only">instead of </span>' + dollars(cents) +
+    var lead = '<span class="gc-pay">You pay</span> <strong>' + dollars(p) + '</strong>';
+    if (p === cents) return lead;
+    return lead + ' <s><span class="sr-only">instead of </span>' + dollars(cents) +
       '</s> <span class="gc-save">Save ' + dollars(cents - p) + '</span>';
   }
   function listHtml(cents) {

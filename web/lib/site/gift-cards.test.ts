@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
 // @ts-expect-error plain ESM build scripts
-import { giftCalc, giftHead, giftPages, giftTerms, giftTiers, giftTopLink, loadGiftCards, priceRow } from "../../scripts/gift-cards.mjs";
+import { cardFace, giftCalc, giftHead, giftPages, giftTerms, giftTiers, giftTopLink, loadGiftCards, priceRow } from "../../scripts/gift-cards.mjs";
 // @ts-expect-error plain ESM build scripts
 import { CHROME_PAGES, valuesFor } from "../../scripts/chrome.mjs";
 
@@ -15,14 +15,17 @@ const as = (mode: string) => ({ ...cfg, mode });
 describe("gift card page", () => {
   it("the sale shows the price you pay, the value struck through and the saving, all from the setting", () => {
     const sale = { ...cfg, mode: "sale", sale: { ...cfg.sale, percentOff: 20 } };
-    expect(priceRow(5000, sale)).toBe('<p class="gc-price"><strong>$40</strong> <s><span class="sr-only">instead of </span>$50</s> <span class="gc-save">Save $10</span></p>');
+    expect(priceRow(5000, sale)).toBe('<p class="gc-price"><span class="gc-pay">You pay</span> <strong>$40</strong> <s><span class="sr-only">instead of </span>$50</s> <span class="gc-save">Save $10</span></p>');
     expect(priceRow(3700, sale)).toContain("<strong>$29.60</strong>");
-    expect(priceRow(5000, as("regular"))).toBe('<p class="gc-price"><strong>$50</strong></p>');
+    expect(priceRow(5000, as("regular"))).toBe('<p class="gc-price"><span class="gc-pay">You pay</span> <strong>$50</strong></p>');
+    // The card face carries the sale's percentage only during the sale.
+    expect(cardFace(5000, sale)).toContain('<span class="gc-off">20% off</span>');
+    expect(cardFace(5000, as("regular"))).not.toContain("gc-off");
   });
 
   it("regular mode says nothing about a sale", () => {
     const html = [giftHead(as("regular")), giftTiers(as("regular")), giftCalc(as("regular")), giftTopLink(as("regular"))].join("");
-    expect(html).not.toMatch(/<s>|Save \$|% off|through December|Holiday/);
+    expect(html + cardFace(5000, as("regular"))).not.toMatch(/<s>|Save \$|% off|through December|Holiday/);
   });
 
   it("no amount, percentage or date is typed into the page: the generated regions match the setting", () => {
