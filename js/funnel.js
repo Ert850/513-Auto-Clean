@@ -6163,11 +6163,17 @@
     if (!state.mandate) {
       mount.innerHTML = '<p class="bk-hint">Tick the authorization above to load the secure payment form.</p>';
       root._stripe = null;
+      payMountSeq++;   // and a form still loading must not appear (P2)
       return;
     }
-    // Already mounted: leave it alone rather than rebuilding a live card
-    // field underneath somebody's fingers.
-    if (root._stripe) return;
+    // Already mounted HERE: leave it alone rather than rebuilding a live card
+    // field underneath somebody's fingers. Only here: a full render() draws a
+    // new #bkPayMount, and the element in the old one left the page with it.
+    // This used to return on any root._stripe, so after choosing "pay now"
+    // (a render) the screen said "Loading payment options..." for good, and
+    // Confirm used the old, unseen card-only form (review, November 23, P2).
+    if (root._stripe && root._stripe.mount === mount) return;
+    root._stripe = null;
     return mountStripe(mount);
   }
 
@@ -6254,6 +6260,8 @@
     else mount.innerHTML = html;
   }
 
+  /** Which payment form request is the current one (P2). */
+  var payMountSeq = 0;
   function mountStripe(mount) {
     // A fresh attempt, so a problem that has since been fixed is not
     // remembered for the life of the page.
@@ -6280,6 +6288,7 @@
         'Use 4242 4242 4242 4242, any future date, any CVC. Real cards will be declined.</p>'
       : '';
 
+    var seq = ++payMountSeq;
     fetch('/api/create-payment', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -6319,9 +6328,13 @@
           clientSecret: r.j.clientSecret,
           appearance: { theme: 'flat', variables: { colorPrimary: '#e01a1a', borderRadius: '10px' } }
         });
+        // Redrawn, unticked or asked again while this was loading: a later
+        // request has the mount, and this one must not become the form
+        // Confirm uses (P2).
+        if (seq !== payMountSeq || mount.isConnected === false) return;
         mount.innerHTML = testBanner + '<div id="bkStripeEl"></div>';
         elements.create('payment', { layout: 'tabs' }).mount(mount.querySelector('#bkStripeEl'));
-        root._stripe = { stripe: stripe, elements: elements, kind: r.j.kind };
+        root._stripe = { stripe: stripe, elements: elements, kind: r.j.kind, mount: mount };
       })
       .catch(function () {
         mount.innerHTML = '<p class="bk-hint">No card needed today. ' +
@@ -6366,6 +6379,8 @@
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               action: 'create',
+              // One order per request, even if this is sent twice (P6).
+              idempotencyKey: bookingKey(),
               cart: wireCart(),
               contact: state.contact,
               consent: consentPayload(),
@@ -7235,6 +7250,9 @@
         .then(function (r) {
           if (r.error) throw r.error;
           var fn = sp.kind === 'setup' ? sp.stripe.confirmSetup : sp.stripe.confirmPayment;
+          // Never redirects: create-payment offers only methods that finish
+          // on this page (PAYMENT_METHODS), because nothing here completes a
+          // booking on the way back (P4).
           return fn.call(sp.stripe, {
             elements: sp.elements,
             redirect: 'if_required',
@@ -7243,6 +7261,15 @@
         })
         .then(function (r) {
           if (r && r.error) throw r.error;
+          /*
+           * PAID MEANS SUCCEEDED (P5). No error is not the same thing: a bank
+           * debit comes back "processing", and can still fail days later,
+           * and was recorded here as paid in full.
+           */
+          var intent = r && (r.paymentIntent || r.setupIntent);
+          if (!intent || intent.status !== 'succeeded') {
+            throw new Error('That payment has not gone through yet, so your booking was not sent.');
+          }
           state.payState = 'paid';
           record();
         })
