@@ -83,8 +83,11 @@ describe("gift cards", () => {
       tiers: [{ value: 100, featured: true }, { value: 50, featured: true }],
       custom: { min: 500, max: 25 },
       checkout: {} as never,
+      refundDays: 30,
+      scheduleDays: 60,
+      expiryYears: 1,
     }).join("\n");
-    for (const msg of ["mode must be", "percentOff", "starts is after", "go up in value", "one featured", "custom.min", "checkout.enabled"]) {
+    for (const msg of ["mode must be", "percentOff", "starts is after", "go up in value", "one featured", "custom.min", "checkout.enabled", "checkout.methods", "expiryYears"]) {
       expect(bad).toContain(msg);
     }
   });

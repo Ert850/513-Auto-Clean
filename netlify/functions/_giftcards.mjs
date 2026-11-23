@@ -14,7 +14,7 @@
  * anywhere (for lookup by code).
  */
 import { createHmac, timingSafeEqual } from "node:crypto";
-import { cincinnatiDay } from "./_pricing.mjs";
+import { GIFT_CARDS, cincinnatiDay, expiresOn } from "./_pricing.mjs";
 
 /** Crockford base32: no I, L, O or U, so a code read aloud or retyped survives. */
 const ALPHABET = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
@@ -87,8 +87,18 @@ export function cardFromMeta(m = {}) {
     message: m.gift_message || "",
     sendOn: m.gift_send_on || "",
     log: m.gift_log || "",
+    // The last day it can be used, fixed when it was sold (gift_expires); a
+    // card issued before expiry dates were written gets its date from the day
+    // it was issued. "" until issued.
+    expires: m.gift_expires || (m.gift_issued ? expiresOn(m.gift_issued, GIFT_CARDS.expiryYears) : ""),
   };
 }
+
+/** Past its last day, as of Cincinnati day `today`. */
+export const isExpired = (card, today) => !!card.expires && today > card.expires;
+
+/** "December 1, 2031": the date a card is good through, as the page, the emails and the terms say it. */
+export const longDate = (iso) => new Date(iso + "T12:00:00Z").toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" });
 
 /** Stripe's metadata values are capped at 500 characters: keep the newest history. */
 export function appendLog(log, entry) {
@@ -127,6 +137,7 @@ export async function ensureIssued(stripe, session, secret, nowMs = Date.now()) 
     gift_balance_cents: meta.gift_balance_cents ?? String(card.valueCents),
     gift_status: meta.gift_status || "active",
     gift_issued: today,
+    gift_expires: meta.gift_expires || expiresOn(today, GIFT_CARDS.expiryYears),
     gift_deliver: !toEmail ? "none" : due ? "now" : "pending",
     gift_log: appendLog(meta.gift_log, `${today} issued ${dollars(card.valueCents)}`),
   };

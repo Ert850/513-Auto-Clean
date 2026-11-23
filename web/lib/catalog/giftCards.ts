@@ -21,13 +21,21 @@ import raw from "../../../config/gift-cards.json" with { type: "json" };
 export interface GiftCardConfig {
   /** "sale": the discount runs; "regular": cards sell at their value; "off": no page, no links. */
   mode: "sale" | "regular" | "off";
-  sale: { percentOff: number; starts: string; ends: string };
+  sale: {
+    percentOff: number;
+    starts: string;
+    ends: string;
+    /** Next year's dates, said on the page once this sale has ended (until they come). Wording only: next year they become starts and ends. */
+    next?: { starts: string; ends: string };
+  };
   /** Card values in whole dollars, in the order shown. */
   tiers: { value: number; featured?: boolean }[];
-  /** Any amount in whole dollars, set in the calculator. */
+  /** Any amount between these whole-dollar limits, to the cent, set in the calculator. */
   custom: { min: number; max: number };
-  /** False until the checkout function exists: the buy buttons render disabled. */
-  checkout: { enabled: boolean };
+  /** False until the checkout function exists: the buy buttons render disabled. methods: Stripe's payment method types (CHECKOUT_METHODS). */
+  checkout: { enabled: boolean; methods: string[] };
+  /** A card is good for this many years from the day it's bought: 5 at least (federal CARD Act, 12 CFR 1005.20). */
+  expiryYears: number;
   /** Days after buying in which an unused card can be refunded. */
   refundDays: number;
   /** How many days ahead a card can be scheduled to be emailed. */
@@ -104,6 +112,26 @@ export function coversLine(valueCents: number, rows: CoverRow[] = coverTable()):
   return `Covers ${article(best.name)} ${best.name} for ${who}, tax included`;
 }
 
+/**
+ * The payment methods a gift card may be paid with, each checked against its
+ * provider's rules for gift cards (November 23, 2026): card (with Apple Pay
+ * and Google Pay) and Link; Amazon Pay allows a store's own cards under
+ * $2,000; Affirm the same while gift cards stay under 25% of yearly sales.
+ * Not here: Afterpay and Cash App Pay ban gift cards, Klarna restricts them,
+ * and Stripe offers PayPal only to European businesses.
+ */
+export const CHECKOUT_METHODS = ["card", "link", "amazon_pay", "affirm"];
+
+/** The federal minimum for a gift card's life (12 CFR 1005.20(e)). */
+export const MIN_EXPIRY_YEARS = 5;
+
+/** The last day a card bought on `issued` (YYYY-MM-DD) can be used: the same date, `years` later (February 29 becomes March 1). */
+export function expiresOn(issued: string, years: number): string {
+  const [y, m, d] = issued.split("-").map(Number) as [number, number, number];
+  const t = new Date(Date.UTC(y + years, m - 1, d));
+  return t.toISOString().slice(0, 10);
+}
+
 /** Everything wrong with config/gift-cards.json; empty means fine. */
 export function giftCardProblems(cfg: GiftCardConfig): string[] {
   const out: string[] = [];
@@ -113,6 +141,11 @@ export function giftCardProblems(cfg: GiftCardConfig): string[] {
   if (!Number.isInteger(pct) || pct < 1 || pct > 50) out.push("sale.percentOff must be a whole number from 1 to 50");
   if (!day.test(cfg.sale?.starts ?? "") || !day.test(cfg.sale?.ends ?? "")) out.push("sale.starts and sale.ends must be YYYY-MM-DD (Cincinnati dates)");
   else if (cfg.sale.starts > cfg.sale.ends) out.push("sale.starts is after sale.ends");
+  else if (cfg.sale.next !== undefined) {
+    const n = cfg.sale.next;
+    if (!day.test(n?.starts ?? "") || !day.test(n?.ends ?? "")) out.push("sale.next.starts and sale.next.ends must be YYYY-MM-DD");
+    else if (n.starts <= cfg.sale.ends || n.starts > n.ends) out.push("sale.next must come after the sale and start before it ends");
+  }
   const values = (cfg.tiers ?? []).map((t) => t.value);
   if (values.length < 1 || values.length > 4) out.push("tiers: 1 to 4 cards");
   values.forEach((v, i) => {
@@ -123,6 +156,11 @@ export function giftCardProblems(cfg: GiftCardConfig): string[] {
   const { min, max } = cfg.custom ?? ({} as GiftCardConfig["custom"]);
   if (!Number.isInteger(min) || !Number.isInteger(max) || min < 5 || min >= max) out.push("custom.min and custom.max must be whole dollars, min below max");
   if (typeof cfg.checkout?.enabled !== "boolean") out.push("checkout.enabled must be true or false");
+  const methods = cfg.checkout?.methods;
+  if (!Array.isArray(methods) || !methods.includes("card") || methods.some((m) => !CHECKOUT_METHODS.includes(m)) || new Set(methods).size !== methods.length) {
+    out.push(`checkout.methods must include "card" and only these: ${CHECKOUT_METHODS.join(", ")}`);
+  }
+  if (!Number.isInteger(cfg.expiryYears) || cfg.expiryYears < MIN_EXPIRY_YEARS || cfg.expiryYears > 50) out.push(`expiryYears must be a whole number of years, at least ${MIN_EXPIRY_YEARS} (federal law)`);
   if (!Number.isInteger(cfg.refundDays) || cfg.refundDays < 0 || cfg.refundDays > 365) out.push("refundDays must be a whole number of days, 0 to 365");
   if (!Number.isInteger(cfg.scheduleDays) || cfg.scheduleDays < 1 || cfg.scheduleDays > 365) out.push("scheduleDays must be a whole number of days, 1 to 365");
   return out;
@@ -154,15 +192,32 @@ export type GiftOffer =
   | { ok: false; error: "off" | "bad_amount" };
 
 /**
- * What a card of `value` whole dollars costs now. Only the server's answer
- * counts: the browser sends the value, never a price.
+ * Has this year's sale ended, with next year's dates still to come? The page
+ * then says the sale is over and when the next one runs (Elijah, November 23).
+ */
+export function saleEndedNext(cfg: Pick<GiftCardConfig, "mode" | "sale">, nowMs: number): boolean {
+  if (cfg.mode !== "sale" || !cfg.sale.next) return false;
+  const day = cincinnatiDay(nowMs);
+  return day > cfg.sale.ends && day < cfg.sale.next.starts;
+}
+
+/** Whole cents for an amount in dollars with at most 2 decimals ($119.13), or null. */
+export function dollarsToCents(v: unknown): number | null {
+  if (typeof v !== "number" || !Number.isFinite(v)) return null;
+  const c = Math.round(v * 100);
+  return Math.abs(v * 100 - c) < 1e-6 ? c : null;
+}
+
+/**
+ * What a card of `value` dollars costs now: a tier, or any amount to the cent
+ * between the calculator's limits (Elijah, November 23: "$119.13"). Only the
+ * server's answer counts: the browser sends the value, never a price.
  */
 export function giftOffer(value: unknown, nowMs: number, cfg: GiftCardConfig = GIFT_CARDS): GiftOffer {
   if (cfg.mode === "off") return { ok: false, error: "off" };
-  const v = typeof value === "number" ? value : Number.NaN;
-  const tier = cfg.tiers.some((t) => t.value === v);
-  if (!Number.isInteger(v) || (!tier && (v < cfg.custom.min || v > cfg.custom.max))) return { ok: false, error: "bad_amount" };
+  const valueCents = dollarsToCents(value);
+  const tier = cfg.tiers.some((t) => t.value * 100 === valueCents);
+  if (valueCents === null || (!tier && (valueCents < cfg.custom.min * 100 || valueCents > cfg.custom.max * 100))) return { ok: false, error: "bad_amount" };
   const percentOff = saleOn(cfg, nowMs) ? cfg.sale.percentOff : 0;
-  const valueCents = v * 100;
   return { ok: true, valueCents, payCents: Math.round((valueCents * (100 - percentOff)) / 100), percentOff };
 }

@@ -10,7 +10,7 @@ type Meta = Record<string, string>;
 type PI = { id: string; amount: number; metadata: Meta };
 type Session = { id: string; url: string; metadata: Meta; payment_status: string; amount_total: number; payment_intent: string; customer_details?: { email?: string } };
 
-const db = { sessions: new Map<string, Session>(), pis: new Map<string, PI>(), calls: [] as { what: string; params: unknown; opts: unknown }[], failNegation: false };
+const db = { sessions: new Map<string, Session>(), pis: new Map<string, PI>(), calls: [] as { what: string; params: unknown; opts: unknown }[], failNegation: false, refuseMethod: "" };
 
 vi.mock("stripe", () => ({
   default: class FakeStripe {
@@ -18,6 +18,10 @@ vi.mock("stripe", () => ({
       sessions: {
         create: async (params: { metadata: Meta; payment_intent_data: { metadata: Meta }; line_items: { price_data: { unit_amount: number } }[] }, opts: unknown) => {
           db.calls.push({ what: "sessions.create", params, opts });
+          const types = (params as { payment_method_types?: string[] }).payment_method_types || [];
+          if (db.refuseMethod && types.includes(db.refuseMethod)) {
+            throw Object.assign(new Error(`The payment method type provided: ${db.refuseMethod} is invalid. Please ensure the provided type is activated in your dashboard.`), { type: "StripeInvalidRequestError", param: "payment_method_types" });
+          }
           const n = db.sessions.size + 1;
           const id = `cs_test_${"a".repeat(20)}${n}`;
           const pi = { id: `pi_${n}`, amount: params.line_items[0]!.price_data.unit_amount, metadata: { ...params.payment_intent_data.metadata } };
@@ -64,7 +68,7 @@ const card = await import("../../netlify/functions/gift-card.mjs");
 const admin = await import("../../netlify/functions/gift-admin.mjs");
 const { giftOffer, GIFT_CARDS } = (await import(`../../netlify/functions/${"_pricing"}.mjs`)) as {
   giftOffer: (v: unknown, now: number, cfg?: unknown) => { ok: boolean; valueCents?: number; payCents?: number; percentOff?: number; error?: string };
-  GIFT_CARDS: { mode: string; tiers: { value: number }[]; custom: { min: number; max: number }; sale: { percentOff: number; starts: string; ends: string }; checkout: { enabled: boolean } };
+  GIFT_CARDS: { mode: string; tiers: { value: number }[]; custom: { min: number; max: number }; sale: { percentOff: number; starts: string; ends: string }; checkout: { enabled: boolean; methods: string[] }; expiryYears: number };
 };
 
 const SECRET = "s".repeat(40);
@@ -76,7 +80,7 @@ const realFetch = globalThis.fetch;
 
 beforeEach(() => {
   resetRateLimits();
-  db.sessions.clear(); db.pis.clear(); db.calls.length = 0; db.failNegation = false;
+  db.sessions.clear(); db.pis.clear(); db.calls.length = 0; db.failNegation = false; db.refuseMethod = "";
   mail = []; mailOk = true;
   for (const [k, v] of Object.entries(ENV)) vi.stubEnv(k, v);
   vi.useFakeTimers({ now: IN_SALE, toFake: ["Date"] });
@@ -160,7 +164,7 @@ describe("gift-checkout", () => {
     const c = db.calls[0]! as { params: { line_items: { price_data: { unit_amount: number } }[]; payment_method_types: string[]; success_url: string; metadata: Meta }; opts: { idempotencyKey?: string } };
     const expected = giftOffer(50, IN_SALE);
     expect(c.params.line_items[0]!.price_data.unit_amount).toBe(expected.payCents);
-    expect(c.params.payment_method_types).toEqual(["card", "link"]);
+    expect(c.params.payment_method_types).toEqual(GIFT_CARDS.checkout.methods);
     expect(c.params.success_url).toBe("https://513autoclean.com/gift-certificate#s={CHECKOUT_SESSION_ID}&new=1");
     expect(c.params.metadata).toMatchObject({ kind: "giftcard", gift_value_cents: "5000", gift_to_email: "sam@example.com", gift_send_on: "" });
     expect(c.opts?.idempotencyKey).toMatch(/^gc_testkey123-gift-session-/);
@@ -541,5 +545,80 @@ describe("final pre-merge fixes", () => {
     const [a, b] = db.calls.filter((c) => c.what === "sessions.create") as { params: unknown; opts: { idempotencyKey: string } }[];
     expect(b!.params).toEqual(a!.params);
     expect(b!.opts.idempotencyKey).toBe(a!.opts.idempotencyKey);
+  });
+});
+
+describe("Elijah's answers (November 23)", () => {
+  const cfg = { ...GIFT_CARDS, mode: "sale", sale: { percentOff: 20, starts: "2026-11-27", ends: "2026-12-25" } };
+  const act = (body: Record<string, unknown>) => post(admin, { key: ENV.GIFT_ADMIN_KEY, ...body });
+
+  it("any amount to the cent in the custom range ($119.13), priced by the server", () => {
+    expect(giftOffer(119.13, IN_SALE, cfg)).toMatchObject({ ok: true, valueCents: 11913, payCents: 9530 });
+    expect(giftOffer(cfg.custom.max, IN_SALE, cfg)).toMatchObject({ ok: true });
+    expect(giftOffer(cfg.custom.min, IN_SALE, cfg)).toMatchObject({ ok: true });
+    for (const bad of [119.135, cfg.custom.min - 0.01, cfg.custom.max + 0.01, Number.NaN, Infinity]) expect(giftOffer(bad, IN_SALE, cfg), String(bad)).toMatchObject({ ok: false });
+  });
+
+  it("a card bought for $119.13 carries that value", async () => {
+    await buy({ value: 119.13 });
+    const c = db.calls[0]! as { params: { metadata: Meta } };
+    expect(c.params.metadata.gift_value_cents).toBe("11913");
+  });
+
+  it("pays with the setting's methods (Amazon Pay added), and falls back to card and Link if Stripe refuses one", async () => {
+    expect(GIFT_CARDS.checkout.methods).toEqual(["card", "link", "amazon_pay"]);
+    db.refuseMethod = "amazon_pay";
+    const errors = vi.spyOn(console, "error").mockImplementation(() => {});
+    const r = await buy();
+    errors.mockRestore();
+    expect(r.statusCode).toBe(200);
+    const creates = db.calls.filter((c) => c.what === "sessions.create") as { params: { payment_method_types: string[] }; opts: { idempotencyKey: string } }[];
+    expect(creates.map((c) => c.params.payment_method_types)).toEqual([["card", "link", "amazon_pay"], ["card", "link"]]);
+    // Its own key: Stripe answers a reused key with different parameters with an error.
+    expect(creates[1]!.opts.idempotencyKey).not.toBe(creates[0]!.opts.idempotencyKey);
+  });
+
+  it("a card is good for the setting's years from the day it's bought, and the admin page refuses it after", async () => {
+    const s = await paidSession();
+    await hook({ type: "checkout.session.completed", data: { object: { id: s.id } } });
+    const meta = db.pis.get(s.payment_intent)!.metadata;
+    expect(meta.gift_issued).toBe("2026-12-01");
+    expect(meta.gift_expires).toBe(`${2026 + GIFT_CARDS.expiryYears}-12-01`);
+    const code = G.codeFor(s.id, SECRET);
+    // The certificate page says it.
+    const page = JSON.parse((await card.handler({ httpMethod: "POST", headers: {}, body: JSON.stringify({ s: s.id }) })).body);
+    expect(page).toMatchObject({ expires: meta.gift_expires, expired: false });
+    // Its last day still works; the day after doesn't.
+    vi.setSystemTime(Date.parse(`${meta.gift_expires}T17:00:00Z`));
+    expect(JSON.parse((await act({ action: "redeem", code, amountCents: 100, requestId: "req_lastday1" })).body).card).toMatchObject({ balanceCents: 4900, expired: false });
+    vi.setSystemTime(Date.parse(`${meta.gift_expires}T17:00:00Z`) + 86_400_000);
+    const r = await act({ action: "redeem", code, amountCents: 100, requestId: "req_tooLate1" });
+    expect(r.statusCode).toBe(409);
+    expect(JSON.parse(r.body)).toMatchObject({ error: "expired", card: { expired: true, balanceCents: 4900 } });
+  });
+
+  it("February 29 lasts to March 1, never less than the years", async () => {
+    const { expiresOn } = (await import(`../../netlify/functions/${"_pricing"}.mjs`)) as { expiresOn: (d: string, y: number) => string };
+    expect(expiresOn("2028-02-29", 5)).toBe("2033-03-01");
+    expect(expiresOn("2026-11-23", 5)).toBe("2031-11-23");
+    expect(expiresOn("2032-02-29", 4)).toBe("2036-02-29");
+  });
+
+  it("the emails say how to use it (show it when you pay) and its date, never the booking form's notes box", async () => {
+    const s = await paidSession();
+    const bodies: string[] = [];
+    globalThis.fetch = (async (url: string, init?: { body?: string }) => {
+      if (String(url) === "https://api.resend.com/emails") { bodies.push(JSON.parse(String(init?.body)).html); return new Response("{}", { status: 200 }); }
+      throw new Error("unexpected fetch " + url);
+    }) as typeof fetch;
+    await hook({ type: "checkout.session.completed", data: { object: { id: s.id } } });
+    const forPeople = bodies.filter((h) => h.includes("To use it"));
+    expect(forPeople.length).toBeGreaterThanOrEqual(2);
+    for (const h of forPeople) {
+      expect(h).toContain("show the card when you pay");
+      expect(h).toContain(`Good through December 1, ${2026 + GIFT_CARDS.expiryYears}`);
+      expect(h).not.toContain("Anything else");
+      expect(h).not.toMatch(/never expires/i);
+    }
   });
 });

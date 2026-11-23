@@ -1,5 +1,6 @@
 import Stripe from "stripe";
-import { GIFT_KIND, cardFromMeta, codeFor, ensureIssued, giftSecret } from "./_giftcards.mjs";
+import { GIFT_KIND, cardFromMeta, codeFor, ensureIssued, giftSecret, isExpired } from "./_giftcards.mjs";
+import { GIFT_CARDS, cincinnatiDay, expiresOn } from "./_pricing.mjs";
 import { limited } from "./_ratelimit.mjs";
 
 /**
@@ -53,6 +54,9 @@ export async function handler(event) {
       console.error("gift-card issue", String(err?.message || "").slice(0, 200));
     }
     const card = cardFromMeta(meta);
+    const today = cincinnatiDay(Date.now());
+    // Not written onto the payment yet (ensureIssued failed above): it was bought today.
+    const expires = card.expires || expiresOn(today, GIFT_CARDS.expiryYears);
     return json(200, {
       code: codeFor(session.id, secret),
       valueCents: card.valueCents,
@@ -61,6 +65,8 @@ export async function handler(event) {
       toName: card.toName,
       fromName: card.fromName,
       message: card.message,
+      expires,
+      expired: isExpired({ expires }, today),
       // Only while it's still to be sent: the person it's for opens this page too.
       sendOn: meta.gift_deliver === "pending" ? card.sendOn : "",
     });

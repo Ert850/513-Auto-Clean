@@ -21,8 +21,14 @@ const json = (status, body) => ({
   body: JSON.stringify(body),
 });
 
-/** Methods that finish on Stripe's page and return paid (as create-payment.mjs; no Klarna: its rules exclude gift cards). */
-const PAYMENT_METHODS = ["card", "link"];
+/**
+ * How a buyer can pay: config/gift-cards.json checkout.methods, each one
+ * checked against its provider's gift card rules (CHECKOUT_METHODS). If Stripe
+ * refuses the list (a method not switched on in the dashboard yet), the
+ * session is made again with card and Link only: a missing setting must never
+ * stop a sale.
+ */
+const FALLBACK_METHODS = ["card", "link"];
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
@@ -102,7 +108,7 @@ export async function handler(event) {
   const name = `${dollars(offer.valueCents)} 513 Auto Clean gift card`;
   const params = {
     mode: "payment",
-    payment_method_types: PAYMENT_METHODS,
+    payment_method_types: GIFT_CARDS.checkout.methods,
     submit_type: "pay",
     line_items: [{
       quantity: 1,
@@ -112,8 +118,8 @@ export async function handler(event) {
         product_data: {
           name,
           description: offer.percentOff
-            ? `${offer.percentOff}% off: you pay ${dollars(offer.payCents)} for ${dollars(offer.valueCents)}. Never expires. No sales tax until it's used.`
-            : "Never expires. No sales tax until it's used.",
+            ? `${offer.percentOff}% off: you pay ${dollars(offer.payCents)} for ${dollars(offer.valueCents)}. Good for ${GIFT_CARDS.expiryYears} years. No sales tax until it's used.`
+            : `Good for ${GIFT_CARDS.expiryYears} years. No sales tax until it's used.`,
         },
       },
     }],
@@ -131,9 +137,24 @@ export async function handler(event) {
 
   try {
     const stripe = new Stripe(key);
-    // A double tap makes one session, a changed card a new one (P3).
-    const idem = requestKey(payload?.requestKey, "gift-session", params);
-    const session = await stripe.checkout.sessions.create(params, idem ? { idempotencyKey: idem } : undefined);
+    // A double tap makes one session, a changed card a new one (P3). The
+    // key hashes the parameters, so the fallback below gets a key of its own.
+    const create = (p) => {
+      const idem = requestKey(payload?.requestKey, "gift-session", p);
+      return stripe.checkout.sessions.create(p, idem ? { idempotencyKey: idem } : undefined);
+    };
+    let session;
+    try {
+      session = await create(params);
+    } catch (err) {
+      // "The payment method type provided: amazon_pay is invalid. Please ensure the provided type is activated in your dashboard."
+      const methodRefused = err?.type === "StripeInvalidRequestError" &&
+        (String(err?.param || "").startsWith("payment_method_types") || /payment method type/i.test(String(err?.message || "")));
+      const fewer = params.payment_method_types.filter((m) => FALLBACK_METHODS.includes(m));
+      if (!methodRefused || fewer.length === params.payment_method_types.length) throw err;
+      console.error("gift-checkout: Stripe refused a payment method, using card and Link. Switch it on in the Stripe dashboard:", String(err?.message || "").slice(0, 200));
+      session = await create({ ...params, payment_method_types: fewer });
+    }
     return json(200, { url: session.url });
   } catch (err) {
     console.error("gift-checkout", err?.type, err?.code, String(err?.message || "").slice(0, 200));

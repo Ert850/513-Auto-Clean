@@ -4,8 +4,10 @@ The code is on branch `eNov16`. It takes no money until these steps are done. Ea
 
 ## 1. Stripe (dashboard.stripe.com, the business's account)
 
-1. **Payment methods:** make sure Cards and Link are on (Settings, Payments, Payment methods). Apple Pay and Google Pay come with Cards.
-   - Klarna isn't offered: its rules don't allow gift cards.
+1. **Payment methods:** make sure Cards, Link and **Amazon Pay** are on (Settings, Payments, Payment methods), in test mode and in live mode. Apple Pay and Google Pay come with Cards.
+   - The checkout offers what `config/gift-cards.json` `checkout.methods` lists. If one isn't switched on, Stripe refuses it and the checkout falls back to card and Link (the function log says so), so a sale is never lost; Amazon Pay just won't show.
+   - Affirm can be added later (Elijah to decide): add `"affirm"` to `checkout.methods` and switch it on. About 6% a sale, $50 minimum, and gift cards must stay under 25% of yearly sales.
+   - Not offered, by the providers' own rules: Klarna (restricts gift cards), Afterpay and Cash App Pay (ban them). PayPal through Stripe is only for businesses in Europe.
 2. **Webhook:** Developers, Webhooks, Add endpoint.
    - Test site, in test mode: `https://deploy-preview-13--513-auto-clean.netlify.app/api/gift-webhook`. Deploy Preview 13 builds whatever its PR's branch holds, which is `eNov14` today. The checkout is on `eNov16`: first push `eNov16` and fast-forward `eNov14` to it, or open a new draft PR for `eNov16` and use its preview number instead.
    - Live, at the merge: `https://513autoclean.com/api/gift-webhook`

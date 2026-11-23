@@ -31,7 +31,7 @@ describe("gift card page", () => {
     expect(cardFace(5000, before)).toContain('<span class="gc-off" hidden>');
     expect(giftHead(before)).toContain('<span class="gc-sale-soon">Every card will be 20% off from November 27 to December 25. </span>');
     expect(giftTiers(before)).toContain(">Buy for $50</button>");
-    expect(giftCalc(before)).toContain(">Buy a $150 card</button>");
+    expect(giftCalc(before)).toContain(">Buy a $250 card</button>");
     expect(giftCalc(before)).toContain('data-gc-built-sale="0"');
     expect(giftTopLink(before)).toContain('<span class="tb-gift-sale" hidden>');
   });
@@ -59,6 +59,39 @@ describe("gift card page", () => {
     // Outside the generated regions, the hand-written page carries no money or percentage.
     const outside = page.replace(/<!-- GIFTCARDS:(\w+):START -->[\s\S]*?<!-- GIFTCARDS:\1:END -->/g, "");
     expect(outside.slice(outside.indexOf("<main>"), outside.indexOf("</main>"))).not.toMatch(/\$\d|\d+%/);
+  });
+
+  it("after the sale: says it has ended, that cards are full price, and when next year's runs, until that day (Elijah, November 23)", () => {
+    const withNext = { ...SALE, sale: { ...SALE.sale, next: { starts: "2027-11-27", ends: "2027-12-25" } } };
+    const ended = at("2026-12-27T17:00:00Z", withNext);
+    expect(ended.endedNext).toBe(true);
+    expect(giftHead(ended)).toContain('<span class="gc-sale-ended">Our holiday sale has ended, and you can still buy gift cards at full price. Our next sale runs from November 27 to December 25, 2027. </span>');
+    expect(giftTiers(ended)).toContain(">Buy for $50</button>");
+    // During the sale, and once next year's dates have come, the line is hidden.
+    expect(giftHead(at("2026-12-01T17:00:00Z", withNext))).toContain('<span class="gc-sale-ended" hidden>');
+    expect(at("2027-11-27T17:00:00Z", withNext).endedNext).toBe(false);
+    // Without next year's dates there's no such line at all.
+    expect(giftHead(after)).not.toContain("gc-sale-ended");
+  });
+
+  it("any amount to the cent in the calculator, no highlighted card, and the card's life said from the setting", () => {
+    expect(giftCalc(during)).toContain('step="0.01"');
+    expect(giftCalc(during)).toContain('inputmode="decimal"');
+    expect(cfg.tiers.some((t: { featured?: boolean }) => t.featured)).toBe(false);
+    expect(giftTiers(during)).not.toContain("Our pick");
+    expect(giftTerms(during)).toContain(`<li>Good for ${cfg.expiryYears} years, no fees</li>`);
+    expect(read("gift-certificate.html")).not.toContain("Anything else");
+    expect(read("terms.html")).toContain(`it can be used for ${cfg.expiryYears} years from the day it was bought`);
+  });
+
+  it("the setting refuses a card shorter-lived than federal law allows, a payment method that bans gift cards, and next year's dates before this year's end", async () => {
+    // @ts-expect-error plain ESM build output
+    const { giftCardProblems } = await import("../../../netlify/functions/_pricing.mjs");
+    expect(giftCardProblems(cfg)).toEqual([]);
+    expect(giftCardProblems({ ...cfg, expiryYears: 1 }).join()).toMatch(/expiryYears/);
+    expect(giftCardProblems({ ...cfg, checkout: { ...cfg.checkout, methods: ["card", "klarna"] } }).join()).toMatch(/checkout.methods/);
+    expect(giftCardProblems({ ...cfg, checkout: { ...cfg.checkout, methods: ["link"] } }).join()).toMatch(/checkout.methods/);
+    expect(giftCardProblems({ ...cfg, sale: { ...cfg.sale, next: { starts: "2026-12-01", ends: "2026-12-20" } } }).join()).toMatch(/sale.next/);
   });
 
   it("the buy buttons stay disabled until the checkout exists", () => {

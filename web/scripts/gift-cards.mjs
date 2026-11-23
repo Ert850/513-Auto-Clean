@@ -12,7 +12,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { cincinnatiDay, coverage, coverTable, coversLine, giftCardProblems, saleOn, salePriceCents, SIZE_WORDS, DEFAULT_RULES, VEHICLE_SIZES } from "../../netlify/functions/_pricing.mjs";
+import { cincinnatiDay, coverage, coverTable, coversLine, giftCardProblems, saleEndedNext, saleOn, salePriceCents, SIZE_WORDS, DEFAULT_RULES, VEHICLE_SIZES } from "../../netlify/functions/_pricing.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 
@@ -57,6 +57,7 @@ export function viewAt(cfg, nowMs = Date.now()) {
     saleSet: cfg.mode === "sale",
     saleNow,
     upcoming: cfg.mode === "sale" && !saleNow && cincinnatiDay(nowMs) < cfg.sale.starts,
+    endedNext: saleEndedNext(cfg, nowMs),
   };
 }
 const pays = (valueCents, v) => salePriceCents(valueCents, { mode: v.saleNow ? "sale" : "regular", sale: v.sale });
@@ -94,15 +95,22 @@ function buyButton(valueCents, v, { primary = false, custom = false } = {}) {
 }
 
 /** The sale in one sentence, marked so the page's script can show or hide it on the day. */
-function saleLines(v, during, before) {
+function saleLines(v, during, before, after = "") {
   if (!v.saleSet) return "";
-  return `<span class="gc-sale-only"${hide(v.saleNow)}>${during}</span><span class="gc-sale-soon"${hide(v.upcoming)}>${before}</span>`;
+  const ended = after && v.sale.next ? `<span class="gc-sale-ended"${hide(v.endedNext)}>${after}</span>` : "";
+  return `<span class="gc-sale-only"${hide(v.saleNow)}>${during}</span><span class="gc-sale-soon"${hide(v.upcoming)}>${before}</span>${ended}`;
+}
+
+/** "November 27 to December 25, 2027": next year's sale, said once this one has ended (Elijah, November 23). */
+function nextSaleWords(v) {
+  const n = v.sale.next;
+  return n ? `Our holiday sale has ended, and you can still buy gift cards at full price. Our next sale runs from ${longDay(n.starts)} to ${longDay(n.ends)}, ${n.ends.slice(0, 4)}. ` : "";
 }
 
 /** The page title block. */
 export function giftHead(v) {
   const pct = v.sale.percentOff, start = longDay(v.sale.starts), end = longDay(v.sale.ends);
-  const lead = saleLines(v, `Every card is ${pct}% off through ${end}. `, `Every card will be ${pct}% off from ${start} to ${end}. `) +
+  const lead = saleLines(v, `Every card is ${pct}% off through ${end}. `, `Every card will be ${pct}% off from ${start} to ${end}. `, nextSaleWords(v)) +
     `It&rsquo;s emailed right away or on the day you choose, with a certificate to print or forward.`;
   return `<div class="section-head">
       <span class="eyebrow"><span>${v.saleSet ? `<span class="gc-holiday"${hide(v.saleNow || v.upcoming)}>Holiday </span>` : ""}Gift cards</span></span>
@@ -143,8 +151,8 @@ export function giftCalc(v, rows = coverTable()) {
         <h2 id="gcCalcH">Pick any amount</h2>
         <div class="field">
           <label for="gcAmt">Card value, ${range}</label>
-          <div class="gc-amt"><span aria-hidden="true">$</span><input id="gcAmt" type="number" inputmode="numeric" min="${v.custom.min}" max="${v.custom.max}" step="1" value="${start / 100}" aria-describedby="gcAmtErr" /></div>
-          <p class="gc-err" id="gcAmtErr" role="alert" hidden>Choose ${range}, in whole dollars.</p>
+          <div class="gc-amt"><span aria-hidden="true">$</span><input id="gcAmt" type="number" inputmode="decimal" min="${v.custom.min}" max="${v.custom.max}" step="0.01" value="${start / 100}" aria-describedby="gcAmtErr" /></div>
+          <p class="gc-err" id="gcAmtErr" role="alert" hidden>Choose an amount from ${range}, to the cent.</p>
         </div>
         ${priceRow(start, v, "gc-price gc-calc-price")}
         <fieldset class="gc-sizes"><legend>What would it cover?</legend>${sizes}</fieldset>
@@ -160,7 +168,7 @@ export function giftTerms(v) {
   const checkout = v.checkout.enabled ? "" : `\n      <p class="gc-soon">Buying online opens soon.</p>`;
   const refund = v.refundDays > 0 ? `\n        <li>Unused cards can be refunded within ${v.refundDays} days (<a href="terms.html#gift-cards">terms</a>)</li>` : "";
   return `<ul class="gc-terms">
-        <li>Never expires, no fees</li>
+        <li>Good for ${v.expiryYears} years, no fees</li>
         <li>No tax when you buy it: sales tax is added to the detail when it&rsquo;s used</li>
         <li>Use it over more than one booking</li>
         <li>Not redeemable for cash</li>${refund}

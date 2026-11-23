@@ -4,7 +4,7 @@
  * No em-dashes, and every amount from the card itself.
  */
 import { SHELL, esc } from "./send-confirmation.mjs";
-import { dollars } from "./_giftcards.mjs";
+import { dollars, longDate } from "./_giftcards.mjs";
 
 const pause = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -37,11 +37,15 @@ export async function sendMail(apiKey, from, to, { subject, html }, tries = 3) {
   return "busy";
 }
 
-/** How a card is used today, until the booking form has its own gift card box. */
-const HOW_TO_USE =
-  `To use it, book online at <a href="https://513autoclean.com" style="color:#c41414;font-weight:700">513autoclean.com</a> ` +
-  `and type the code in "Anything else we should know?", or tell us when we confirm. ` +
-  `It never expires, works on any detail, add-on or travel, and whatever is left stays on the card. ` +
+/**
+ * How a card is used: book as usual, and show the card when paying, where
+ * Elijah takes it off the total after tax (Elijah, November 23: customers
+ * don't enter it anywhere, and nobody pays online).
+ */
+const howToUse = (card) =>
+  `To use it, book online at <a href="https://513autoclean.com" style="color:#c41414;font-weight:700">513autoclean.com</a> as usual, ` +
+  `and show the card when you pay: we take it off your total, after tax. ` +
+  `It works on any detail, add-on or travel, and whatever is left stays on the card${card.expires ? ` until ${longDate(card.expires)}` : ""}. ` +
   `There's no sales tax on the card; tax is added to the detail when it's used.`;
 
 const longDay = (iso) => new Date(iso + "T12:00:00Z").toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", timeZone: "UTC" });
@@ -57,7 +61,7 @@ export function cardBlock(card, code, link) {
 <tr><td style="background:#0b0e13;border-radius:14px;padding:20px 22px;border-bottom:5px solid #c41414;color:#fff">
 <div style="font-size:13px;font-weight:800;letter-spacing:.02em">513 Auto Clean</div>
 <div style="font-size:44px;font-weight:800;line-height:1.05;margin-top:10px">${dollars(card.valueCents)}</div>
-<div style="font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#a7b0bd">Gift card</div>${left}
+<div style="font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#a7b0bd">Gift card</div>${left}${card.expires ? `<div style="font-size:13px;color:#a7b0bd;margin-top:4px">Good through ${longDate(card.expires)}</div>` : ""}
 <div style="margin-top:16px;font:700 20px/1.2 Menlo,Consolas,monospace;letter-spacing:.06em">${esc(code)}</div>
 ${to}${msg}
 </td></tr></table>
@@ -86,7 +90,7 @@ export function buyerEmail({ card, code, link, payCents, toEmail, deliver }) {
     subject: `Your ${dollars(card.valueCents)} 513 Auto Clean gift card`,
     html: SHELL(
       "Your gift card is ready",
-      `${cardBlock(card, code, link)}<p style="margin:0 0 12px">${when}${paid}</p><p style="margin:0 0 12px;color:#5a6069">${HOW_TO_USE}</p>`,
+      `${cardBlock(card, code, link)}<p style="margin:0 0 12px">${when}${paid}</p><p style="margin:0 0 12px;color:#5a6069">${howToUse(card)}</p>`,
       `${dollars(card.valueCents)} gift card, code ${code}`,
     ),
   };
@@ -101,7 +105,7 @@ export function recipientEmail({ card, code, link }) {
     subject,
     html: SHELL(
       "You've got a gift card",
-      `<p style="margin:0 0 14px">${lead} for a mobile detail: we come to you.</p>${cardBlock(card, code, link)}<p style="margin:0 0 12px;color:#5a6069">${HOW_TO_USE}</p>`,
+      `<p style="margin:0 0 14px">${lead} for a mobile detail: we come to you.</p>${cardBlock(card, code, link)}<p style="margin:0 0 12px;color:#5a6069">${howToUse(card)}</p>`,
       `${v} gift card${card.fromName ? ` from ${card.fromName}` : ""}`,
     ),
   };

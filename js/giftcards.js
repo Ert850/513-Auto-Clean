@@ -17,7 +17,7 @@
   'use strict';
   var P = window.ACPricing;
   var calc = document.querySelector('.gc-calc');
-  if (!calc || !P || !P.coverage || !P.GIFT_CARDS) return;
+  if (!calc || !P || !P.coverage || !P.GIFT_CARDS || !P.dollarsToCents) return;
 
   var cfg = P.GIFT_CARDS;
   var sale = P.saleOn(cfg, Date.now());
@@ -76,6 +76,8 @@
   document.querySelectorAll('.gc-off, .gc-sale-only').forEach(function (e) { e.hidden = !sale; });
   document.querySelectorAll('.gc-sale-soon').forEach(function (e) { e.hidden = !soon; });
   document.querySelectorAll('.gc-holiday').forEach(function (e) { e.hidden = !sale && !soon; });
+  var ended = P.saleEndedNext ? P.saleEndedNext(cfg, Date.now()) : false;
+  document.querySelectorAll('.gc-sale-ended').forEach(function (e) { e.hidden = !ended; });
   if (sale !== built) {
     document.querySelectorAll('.gc-tier[data-gc-value]').forEach(function (t) {
       var cents = Number(t.getAttribute('data-gc-value')) * 100;
@@ -88,20 +90,20 @@
 
   /* ---------------- the calculator ---------------- */
 
-  function amount() {
-    var v = Number(input.value);
-    return Number.isInteger(v) && v >= min && v <= max ? v : null;
+  // Any amount to the cent ($119.13, Elijah November 23), as cents; null outside the limits.
+  function amountCents() {
+    var c = input.value.trim() === '' ? null : P.dollarsToCents(Number(input.value));
+    return c !== null && c >= min * 100 && c <= max * 100 ? c : null;
   }
   function update() {
-    var v = amount();
-    err.hidden = v !== null;
-    input.setAttribute('aria-invalid', v === null ? 'true' : 'false');
+    var cents = amountCents();
+    err.hidden = cents !== null;
+    input.setAttribute('aria-invalid', cents === null ? 'true' : 'false');
     // The last good answer stays in place but faded, so the box keeps its
     // height and nothing reads as the price of an amount we can't sell.
-    calc.classList.toggle('gc-bad', v === null);
-    if (customBuy) customBuy.setAttribute('aria-disabled', v === null ? 'true' : 'false');
-    if (v === null) return;
-    var cents = v * 100;
+    calc.classList.toggle('gc-bad', cents === null);
+    if (customBuy) customBuy.setAttribute('aria-disabled', cents === null ? 'true' : 'false');
+    if (cents === null) return;
     price.innerHTML = priceHtml(cents);
     out.innerHTML = listHtml(cents);
     if (customBuy) customBuy.textContent = buyLabel(cents, true);
@@ -168,13 +170,13 @@
   document.addEventListener('click', function (e) {
     var b = e.target.closest && e.target.closest('[data-gc-buy]');
     if (b && !b.disabled && b.getAttribute('aria-disabled') !== 'true') {
-      var v = b.getAttribute('data-gc-buy') === 'custom' ? amount() : Number(b.getAttribute('data-gc-buy'));
-      if (!v || saleTurned()) return;
-      picked = v;
+      var cents = b.getAttribute('data-gc-buy') === 'custom' ? amountCents() : Number(b.getAttribute('data-gc-buy')) * 100;
+      if (!cents || saleTurned()) return;
+      // Sent as dollars to the cent; the checkout prices it again itself.
+      picked = cents / 100;
       requestKey = key();
-      var cents = v * 100;
       $('gcBuyH').textContent = dollars(cents) + ' gift card';
-      $('gcBuySum').textContent = 'You pay ' + dollars(pay(cents)) + (pay(cents) < cents ? ' (' + pct + '% off). ' : '. ') + 'Never expires, no fees.';
+      $('gcBuySum').textContent = 'You pay ' + dollars(pay(cents)) + (pay(cents) < cents ? ' (' + pct + '% off). ' : '. ') + 'Good for ' + cfg.expiryYears + ' years, no fees.';
       var d = $('gcSendOn');
       d.min = today(0); d.max = today(cfg.scheduleDays);
       if (!d.value) d.value = today(1);

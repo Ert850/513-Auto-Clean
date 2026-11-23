@@ -1,9 +1,10 @@
 import { GIFT_CARDS, cincinnatiDay } from "./_pricing.mjs";
 
 /**
- * Rebuilds the site on the morning the gift card sale starts and the morning
- * after it ends, so the page's own HTML (what search engines and a slow phone
- * see first) matches the prices the checkout charges. The page's script
+ * Rebuilds the site on the morning the gift card sale starts, the morning
+ * after it ends, and the day next year's dates (sale.next) come, so the
+ * page's own HTML (what search engines and a slow phone see first) matches
+ * the prices the checkout charges. The page's script
  * already corrects itself in the browser; this makes the source right too
  * (validation pass 1).
  *
@@ -16,7 +17,8 @@ export function rebuildDue(cfg, nowMs) {
   if (cfg.mode !== "sale") return false;
   const today = cincinnatiDay(nowMs);
   const dayAfterEnd = cincinnatiDay(Date.parse(cfg.sale.ends + "T12:00:00Z") + 86_400_000);
-  return today === cfg.sale.starts || today === dayAfterEnd;
+  // And on the day next year's dates arrive: the "next sale runs..." line comes off.
+  return today === cfg.sale.starts || today === dayAfterEnd || today === cfg.sale.next?.starts;
 }
 
 export async function handler() {

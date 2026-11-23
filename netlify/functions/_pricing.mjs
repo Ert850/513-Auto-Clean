@@ -2684,25 +2684,28 @@ var gift_cards_default = {
   _read_me: [
     "The gift card page (gift-cards.html) and its links. The build writes every amount, date and 'Covers ...' line from this file and the catalog: never type one into a page.",
     'mode "sale": the holiday discount runs (sale.percentOff off every card, through sale.ends). mode "regular": cards sell at their value, no sale wording. mode "off": no page and no links anywhere; the site is exactly as it was before gift cards.',
-    "sale.starts and sale.ends are Cincinnati dates (YYYY-MM-DD). The page says 'through' the end date; the checkout (when built) refuses the discount outside them.",
-    "tiers: up to 4 card values in whole dollars, smallest first. featured: true on one of them makes it the highlighted card. Any other amount is bought from the calculator, between custom.min and custom.max.",
+    "sale.starts and sale.ends are Cincinnati dates (YYYY-MM-DD). The page says 'through' the end date; the checkout refuses the discount outside them. sale.next (optional): next year's dates. Once this sale has ended, the page says it's over, that cards are full price, and when the next sale runs, until that day comes. Wording only: next year, copy them into starts and ends.",
+    "tiers: up to 4 card values in whole dollars, smallest first. featured: true on one of them makes it the highlighted card (none, Elijah November 23: 'a little salesy'). Any other amount, to the cent, is bought from the calculator, between custom.min and custom.max.",
     "checkout.enabled: true sends the buy buttons to Stripe (netlify/functions/gift-checkout.mjs). It needs STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET and GIFT_CODE_SECRET in Netlify; without them the checkout refuses and takes nothing. false shows the buttons disabled. A production build fails while mode is not off and checkout is off. Once a card has been sold, leave it true: it keeps the gift card terms and the privacy policy's Stripe entry on the site while cards are out.",
     "refundDays: an unused card can be refunded (what was paid) within this many days of buying it. The terms say it from here.",
     "scheduleDays: how far ahead a buyer can pick the day the card is emailed to the person it's for.",
+    "expiryYears: a card is good for this many years from the day it's bought, and the date is printed on it. Federal law (the CARD Act) sets 5 years as the shortest; the build refuses less. A card keeps the date it was sold with.",
+    "checkout.methods: how a buyer can pay on Stripe's page. Allowed: card (includes Apple Pay and Google Pay), link, amazon_pay, affirm; each must also be switched on in the Stripe dashboard. If Stripe refuses one, the checkout falls back to card and link so a sale is never lost. Not allowed, by the providers' own rules for gift cards: Afterpay, Cash App Pay, Klarna; PayPal through Stripe is Europe only.",
     "A mistake in this file fails the build."
   ],
   mode: "sale",
-  sale: { percentOff: 20, starts: "2026-11-27", ends: "2026-12-25" },
+  sale: { percentOff: 20, starts: "2026-11-23", ends: "2026-12-25", next: { starts: "2027-11-27", ends: "2027-12-25" } },
   tiers: [
     { value: 50 },
     { value: 100 },
-    { value: 150, featured: true },
+    { value: 150 },
     { value: 250 }
   ],
   custom: { min: 25, max: 500 },
   refundDays: 30,
   scheduleDays: 60,
-  checkout: { enabled: true }
+  expiryYears: 5,
+  checkout: { enabled: true, methods: ["card", "link", "amazon_pay"] }
 };
 
 // lib/catalog/giftCards.ts
@@ -2743,6 +2746,13 @@ function coversLine(valueCents, rows = coverTable()) {
   const who = sizes.length === VEHICLE_SIZES.length ? "any vehicle" : `a ${sizes.join(", ")}`;
   return `Covers ${article(best.name)} ${best.name} for ${who}, tax included`;
 }
+var CHECKOUT_METHODS = ["card", "link", "amazon_pay", "affirm"];
+var MIN_EXPIRY_YEARS = 5;
+function expiresOn(issued, years) {
+  const [y, m, d] = issued.split("-").map(Number);
+  const t = new Date(Date.UTC(y + years, m - 1, d));
+  return t.toISOString().slice(0, 10);
+}
 function giftCardProblems(cfg) {
   const out = [];
   const day = /^\d{4}-\d{2}-\d{2}$/;
@@ -2751,6 +2761,11 @@ function giftCardProblems(cfg) {
   if (!Number.isInteger(pct) || pct < 1 || pct > 50) out.push("sale.percentOff must be a whole number from 1 to 50");
   if (!day.test(cfg.sale?.starts ?? "") || !day.test(cfg.sale?.ends ?? "")) out.push("sale.starts and sale.ends must be YYYY-MM-DD (Cincinnati dates)");
   else if (cfg.sale.starts > cfg.sale.ends) out.push("sale.starts is after sale.ends");
+  else if (cfg.sale.next !== void 0) {
+    const n = cfg.sale.next;
+    if (!day.test(n?.starts ?? "") || !day.test(n?.ends ?? "")) out.push("sale.next.starts and sale.next.ends must be YYYY-MM-DD");
+    else if (n.starts <= cfg.sale.ends || n.starts > n.ends) out.push("sale.next must come after the sale and start before it ends");
+  }
   const values = (cfg.tiers ?? []).map((t) => t.value);
   if (values.length < 1 || values.length > 4) out.push("tiers: 1 to 4 cards");
   values.forEach((v, i) => {
@@ -2761,6 +2776,11 @@ function giftCardProblems(cfg) {
   const { min, max } = cfg.custom ?? {};
   if (!Number.isInteger(min) || !Number.isInteger(max) || min < 5 || min >= max) out.push("custom.min and custom.max must be whole dollars, min below max");
   if (typeof cfg.checkout?.enabled !== "boolean") out.push("checkout.enabled must be true or false");
+  const methods = cfg.checkout?.methods;
+  if (!Array.isArray(methods) || !methods.includes("card") || methods.some((m) => !CHECKOUT_METHODS.includes(m)) || new Set(methods).size !== methods.length) {
+    out.push(`checkout.methods must include "card" and only these: ${CHECKOUT_METHODS.join(", ")}`);
+  }
+  if (!Number.isInteger(cfg.expiryYears) || cfg.expiryYears < MIN_EXPIRY_YEARS || cfg.expiryYears > 50) out.push(`expiryYears must be a whole number of years, at least ${MIN_EXPIRY_YEARS} (federal law)`);
   if (!Number.isInteger(cfg.refundDays) || cfg.refundDays < 0 || cfg.refundDays > 365) out.push("refundDays must be a whole number of days, 0 to 365");
   if (!Number.isInteger(cfg.scheduleDays) || cfg.scheduleDays < 1 || cfg.scheduleDays > 365) out.push("scheduleDays must be a whole number of days, 1 to 365");
   return out;
@@ -2775,13 +2795,22 @@ function saleOn(cfg, nowMs) {
   const day = cincinnatiDay(nowMs);
   return day >= cfg.sale.starts && day <= cfg.sale.ends;
 }
+function saleEndedNext(cfg, nowMs) {
+  if (cfg.mode !== "sale" || !cfg.sale.next) return false;
+  const day = cincinnatiDay(nowMs);
+  return day > cfg.sale.ends && day < cfg.sale.next.starts;
+}
+function dollarsToCents(v) {
+  if (typeof v !== "number" || !Number.isFinite(v)) return null;
+  const c2 = Math.round(v * 100);
+  return Math.abs(v * 100 - c2) < 1e-6 ? c2 : null;
+}
 function giftOffer(value, nowMs, cfg = GIFT_CARDS) {
   if (cfg.mode === "off") return { ok: false, error: "off" };
-  const v = typeof value === "number" ? value : Number.NaN;
-  const tier = cfg.tiers.some((t) => t.value === v);
-  if (!Number.isInteger(v) || !tier && (v < cfg.custom.min || v > cfg.custom.max)) return { ok: false, error: "bad_amount" };
+  const valueCents = dollarsToCents(value);
+  const tier = cfg.tiers.some((t) => t.value * 100 === valueCents);
+  if (valueCents === null || !tier && (valueCents < cfg.custom.min * 100 || valueCents > cfg.custom.max * 100)) return { ok: false, error: "bad_amount" };
   const percentOff = saleOn(cfg, nowMs) ? cfg.sale.percentOff : 0;
-  const valueCents = v * 100;
   return { ok: true, valueCents, payCents: Math.round(valueCents * (100 - percentOff) / 100), percentOff };
 }
 
@@ -2975,7 +3004,7 @@ var CAPABILITIES = [
     id: "giftCardSales",
     what: "Gift cards sold online, paid on Stripe's own page",
     // Follows config/gift-cards.json checkout.enabled, NOT mode: the terms'
-    // gift card rules ("never expires", refunds) and the privacy policy's
+    // gift card rules (how long a card lasts, refunds) and the privacy policy's
     // Stripe entry must stay while any card sold online is out, even after
     // the page is switched off (validation pass 1). Leave checkout.enabled
     // true once a card has been sold.
@@ -2997,7 +3026,7 @@ var PROCESSORS = [
   { name: "Google Calendar", does: "holds our availability and our schedule. When you book, the job goes onto our booking calendar with your name, phone, email, address and notes, so we know where to be. That calendar is private: anyone else sees only that the time is taken. Your browser reads only our open times.", capability: "liveCalendar" },
   { name: "Stripe", does: "takes card payments and keeps your card on file. Card details go straight to Stripe over an encrypted connection; we never see or store the card number.", capability: "cardOnFile" },
   { name: "PayPal", does: "takes PayPal and Venmo payments.", capability: "digitalWallets" },
-  { name: "Stripe (gift cards)", does: "takes payment for gift cards on its own secure page, and keeps the record of each card: its value, what is left on it, and the names, email address and message given for it. Card details go straight to Stripe; we never see or store the card number. The gift card emails are sent by Resend.", capability: "giftCardSales" },
+  { name: "Stripe (gift cards)", does: "takes payment for gift cards on its own secure page, and keeps the record of each card: its value, what is left on it, and the names, email address and message given for it. Card details go straight to Stripe; we never see or store the card number." + (GIFT_CARDS.checkout.methods.includes("amazon_pay") ? " If you pay with Amazon Pay, Amazon handles that payment under its own privacy notice." : "") + (GIFT_CARDS.checkout.methods.includes("affirm") ? " If you pay over time with Affirm, Affirm handles that payment under its own privacy notice." : "") + " The gift card emails are sent by Resend.", capability: "giftCardSales" },
   // Named generically on purpose (Emmett, November 14): the provider may change
   // (GoHighLevel's LeadConnector today), and the policy should not need a rewrite.
   { name: "Our text messaging provider", does: "delivers the text messages we send you. It receives your mobile number and each message, only to deliver it, and may not use them for anything else." },
@@ -3686,6 +3715,7 @@ export {
   BOOK_INTENTS,
   BOOK_LINK_PARAMS,
   CAPABILITIES,
+  CHECKOUT_METHODS,
   COATING_COVERAGE,
   COATING_EXPLAINER,
   CORRECTION_RULES,
@@ -3717,8 +3747,10 @@ export {
   coverTable,
   coverage,
   coversLine,
+  dollarsToCents,
   driveTooFar,
   estimateOneWayMinutes,
+  expiresOn,
   findAddon,
   findPackage,
   giftCardProblems,
@@ -3741,6 +3773,7 @@ export {
   parsePhone,
   phoneTrace,
   priceFromWire,
+  saleEndedNext,
   saleOn,
   salePriceCents,
   slotStillFree,

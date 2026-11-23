@@ -15,10 +15,10 @@ import {
   vehicleSize,
   upgradeLegacy,
 } from "./catalog/seed.js";
-import { cincinnatiDay, coverage, coverTable, GIFT_CARDS as GIFT_ALL, saleOn } from "./catalog/giftCards.js";
+import { cincinnatiDay, coverage, coverTable, dollarsToCents, GIFT_CARDS as GIFT_ALL, saleEndedNext, saleOn } from "./catalog/giftCards.js";
 
 /** Only what the page needs: not the file's notes (pre-merge pass). */
-const GIFT_CARDS = { mode: GIFT_ALL.mode, sale: GIFT_ALL.sale, scheduleDays: GIFT_ALL.scheduleDays, refundDays: GIFT_ALL.refundDays };
+const GIFT_CARDS = { mode: GIFT_ALL.mode, sale: GIFT_ALL.sale, scheduleDays: GIFT_ALL.scheduleDays, refundDays: GIFT_ALL.refundDays, expiryYears: GIFT_ALL.expiryYears };
 import {
   ADDONS,
   addonBlockedReason,
@@ -214,6 +214,8 @@ const api = {
   coverTable,
   GIFT_CARDS,
   saleOn,
+  saleEndedNext,
+  dollarsToCents,
   cincinnatiDay,
 };
 
