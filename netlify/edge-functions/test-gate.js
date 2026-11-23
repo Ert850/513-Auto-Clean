@@ -10,7 +10,9 @@
  * noindex, so nothing on it can be found, read or listed by anyone without
  * the password, a toll-free reviewer included.
  */
-export const config = { path: "/*" };
+// Stripe's gift card webhook can't send a password; it carries Stripe's
+// signature instead, which gift-webhook.mjs checks before doing anything.
+export const config = { path: "/*", excludedPath: ["/api/gift-webhook", "/.netlify/functions/gift-webhook"] };
 
 /** Same result for the same strings, and no early exit that leaks how much matched. */
 export function sameText(a, b) {

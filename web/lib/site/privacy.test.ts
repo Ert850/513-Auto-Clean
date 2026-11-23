@@ -39,7 +39,11 @@ describe("privacy.html is generated and current", () => {
       // "Google" appears for Fonts and Gmail, so match the specific product.
       const needle = p.name.replace(/\s*\(.*\)$/, "");
       if (["Google Places", "Google Maps", "Google Calendar", "Stripe", "PayPal", "Twilio", "Resend", "Neon", "Cloudflare Turnstile"].includes(needle)) {
-        expect(text, `${p.name} is not live`).not.toContain(needle);
+        // A live processor of the same company (Stripe for gift cards while
+        // card on file is off) may name it; the dormant one's own row may not.
+        const shared = liveProcessors().some((l) => l.name.startsWith(needle));
+        if (shared) expect(text, `${p.name} is not live`).not.toContain(`${p.name}, ${p.does.slice(0, 30)}`);
+        else expect(text, `${p.name} is not live`).not.toContain(needle);
       }
     }
   });
@@ -47,7 +51,12 @@ describe("privacy.html is generated and current", () => {
   it("does not describe payments, cookies from payment forms, or a database before they exist", () => {
     if (!isLive("cardOnFile")) {
       expect(text).not.toMatch(/card on file/i);
-      expect(text).not.toMatch(/card details/i);
+      // Gift cards are paid by card on Stripe's page, and the policy says so.
+      if (!isLive("giftCardSales")) expect(text).not.toMatch(/card details/i);
+    }
+    if (isLive("giftCardSales")) {
+      expect(text).toContain("Stripe (gift cards)");
+      expect(text).toContain("If you buy a gift card");
     }
     if (!isLive("bookingLink")) expect(text).not.toMatch(/our database/i);
     if (!isLive("automatedTexts")) expect(text).not.toMatch(/Twilio/);

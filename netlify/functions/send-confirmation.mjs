@@ -51,7 +51,7 @@ const $ = (cents) =>
   (Math.abs(cents) / 100).toFixed(2).replace(/\.00$/, "").replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 
 /** Everything that reaches the HTML goes through this. It is all user input. */
-function esc(s) {
+export function esc(s) {
   return String(s ?? "").replace(/[&<>"']/g, (c) => (
     { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]
   ));
@@ -112,7 +112,7 @@ const PHONE = (() => {
 // From the site Netlify publishes (URL is set by Netlify), else the domain.
 const LOGO = `${(process.env.URL || "https://513autoclean.com").replace(/\/$/, "")}/images/email-logo.png`;
 
-const SHELL = (title, inner, preview = "") => `<!doctype html>
+export const SHELL = (title, inner, preview = "") => `<!doctype html>
 <html><body style="margin:0;padding:24px;background:#f4f5f2;font:16px/1.6 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#14171d">
 ${preview ? `<div style="display:none;max-height:0;overflow:hidden;opacity:0;font-size:1px;line-height:1px;color:transparent">${esc(preview)}${"&#847;&zwnj;&nbsp;".repeat(60)}</div>` : ""}
 <div style="max-width:560px;margin:0 auto;background:#fff;border-radius:12px;padding:28px">
@@ -601,7 +601,7 @@ async function writeCalendar({ contact, cart, priced, extras, payInFull, key, ki
   return events.length > 1 ? { ...first, days: events.length } : first;
 }
 
-async function send(apiKey, from, to, { subject, html }, replyTo) {
+export async function send(apiKey, from, to, { subject, html }, replyTo) {
   let res;
   try {
     res = await fetch("https://api.resend.com/emails", {

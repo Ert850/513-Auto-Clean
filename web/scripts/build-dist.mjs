@@ -24,7 +24,7 @@ import { llmsTxt } from "./llms-txt.mjs";
 import { SEED_CATALOG, businessPhone, hoursText } from "../../netlify/functions/_pricing.mjs";
 import { routeDist } from "./book-links.mjs";
 import { distPages, isPreviewBuild, unreviewedPairs } from "./locations.mjs";
-import { giftPages, loadGiftCards } from "./gift-cards.mjs";
+import { GIFT_TOOL_PAGES, giftPages, loadGiftCards } from "./gift-cards.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const dist = path.join(root, "dist");
@@ -55,8 +55,10 @@ const FILES = [
   // CONTEXT, and every other build gets published pages alone
   // (docs/SEO-COMPLIANCE.md R1).
   ...distPages(),
-  // The gift card page, unless config/gift-cards.json has gift cards off.
+  // The gift card page, unless config/gift-cards.json has gift cards off, and
+  // the card's own page and Elijah's lookup page, which stay either way.
   ...giftPages(),
+  ...GIFT_TOOL_PAGES,
 ];
 const DIRS = ["js", "data"];
 

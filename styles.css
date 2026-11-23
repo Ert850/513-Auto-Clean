@@ -1961,3 +1961,56 @@ main > .bookpage:first-child { padding-block: clamp(16px, 2.2vw, 30px); }
 .gc-steps span { font-size: .92rem; color: var(--text-soft); }
 .gc-ask { margin: 1.2rem 0 0; font-size: .95rem; }
 .gc-ask a { color: var(--red-deep); font-weight: 700; }
+/* Buying: who it's for, then Stripe (js/giftcards.js). */
+.gc-dialog { width: min(30rem, calc(100vw - 2rem)); max-height: calc(100dvh - 2rem); border: 0; border-radius: var(--r-lg); padding: 0; box-shadow: var(--shadow-lg); color: var(--text); background: var(--paper-2); }
+.gc-dialog::backdrop { background: rgba(11,14,19,.55); }
+.gc-buyform { padding: 1.4rem 1.3rem 1.2rem; }
+.gc-buyform h2 { font-size: 1.35rem; margin: 0 0 .25rem; }
+.gc-buy-sum { color: var(--text-soft); margin: 0 0 1rem; }
+.gc-buyform .field { margin-bottom: .85rem; }
+.gc-buyform .field label i { font-style: normal; font-weight: 500; color: var(--text-soft); }
+.gc-when { border: 0; padding: 0; margin: -.2rem 0 .9rem; display: grid; gap: .45rem; }
+.gc-when legend { font-weight: 600; font-size: .88rem; margin-bottom: .45rem; padding: 0; }
+.gc-when label { display: flex; align-items: center; gap: .5rem; font-size: .95rem; cursor: pointer; }
+.gc-when input[type="radio"] { width: auto; margin: 0; accent-color: var(--ink); }
+.gc-when input[type="date"] { font: inherit; padding: .6rem .7rem; border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--paper); }
+.gc-buy-note { font-size: .85rem; color: var(--text-soft); margin: .2rem 0 .8rem; }
+.gc-buy-err { color: var(--red-deep); font-weight: 600; margin: 0 0 .8rem; }
+.gc-buy-actions { display: grid; gap: .5rem; }
+/* One card (gift-certificate.html, js/giftcert.js). */
+.gc-thanks { background: var(--paper-2); border: 1px solid var(--line); border-left: 3px solid var(--ink); border-radius: var(--r-sm); padding: .8rem 1rem; margin: 0 0 1.4rem; }
+.gc-cert { max-width: 34rem; }
+.gc-face-big { min-height: 13rem; padding: 1.3rem 1.4rem 1.2rem; border-radius: var(--r-lg); }
+.gc-face-big .gc-face-value { font-size: 3.6rem; }
+.gc-face-code { font: 700 1.25rem/1.2 Menlo, Consolas, monospace; letter-spacing: .06em; margin-top: 1rem; }
+.gc-face-to { font-size: .92rem; color: var(--text-inv-soft); margin-top: .7rem; }
+.gc-face-msg { font-style: italic; margin-top: .35rem; }
+.gc-cert-msg { color: var(--text-soft); }
+.gc-cert-state { font-weight: 700; margin: .9rem 0 0; }
+.gc-cert-note { color: var(--text-soft); margin: .6rem 0 0; }
+.gc-cert-actions { display: flex; flex-wrap: wrap; gap: .6rem; margin: 1.3rem 0 0; }
+.gc-cert-how { margin-top: 1.8rem; max-width: 40rem; }
+.gc-cert-how h2 { font-size: 1.25rem; margin: 0 0 .6rem; }
+.gc-cert-how ul { margin: 0; padding-left: 1.1rem; color: var(--text-soft); }
+.gc-cert-how li { margin-bottom: .45rem; }
+.gc-cert-how a { color: var(--red-deep); font-weight: 700; }
+@media print {
+  .topbar, .header, .footer, .mobile-bar, .mobile-menu, .skip-link, .gc-thanks, .gc-cert-actions, #bookFunnel { display: none !important; }
+  .gc-certpage { padding: 0 !important; }
+  .gc-face { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}
+/* Elijah's lookup page (gift-admin.html). */
+.gca { max-width: 30rem; margin: 0 auto; padding: 1.4rem 1rem 3rem; }
+.gca h1 { font-size: 1.6rem; margin: 0 0 1rem; }
+.gca h2 { font-size: 1.15rem; margin: 1.4rem 0 .6rem; }
+.gca-tick { display: flex !important; align-items: center; gap: .45rem; font-weight: 500 !important; margin-top: .5rem; }
+.gca-tick input { width: auto !important; padding: 0 !important; border: 0 !important; background: none !important; }
+.gca-msg { min-height: 1.4em; font-weight: 600; margin: .8rem 0 0; }
+.gca-card { background: var(--paper-2); border: 1px solid var(--line); border-radius: var(--r-lg); padding: 1rem 1.1rem 1.2rem; margin-top: 1rem; }
+.gca-card > h2:first-child { margin-top: 0; font-size: 1.3rem; }
+.gca-facts { display: grid; grid-template-columns: auto 1fr; gap: .35rem .9rem; margin: 0; }
+.gca-facts dt { color: var(--text-soft); }
+.gca-facts dd { margin: 0; font-weight: 600; }
+.gca-more { display: grid; gap: .5rem; }
+.gca-danger { color: var(--red-deep); }
+.gca-log { margin: 0; padding-left: 1.1rem; color: var(--text-soft); font-size: .92rem; }

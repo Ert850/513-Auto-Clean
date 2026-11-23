@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Gift Card Lookup | 513 Auto Clean</title>
+<meta name="robots" content="noindex, nofollow" />
+<meta name="referrer" content="no-referrer" />
+<meta name="theme-color" content="#0b0e13" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230b0e13'/%3E%3Ctext x='32' y='42' font-family='Arial' font-weight='800' font-size='24' fill='%23ff3b3b' text-anchor='middle'%3E513%3C/text%3E%3C/svg%3E" />
+<link rel="stylesheet" href="styles.css?v=cabadfc937" />
+</head>
+<body>
+<!-- Elijah's gift card tool: look a card up by its code, take an amount off
+     when a detail is paid with it, cancel it, or resend it. Works only with
+     GIFT_ADMIN_KEY (netlify/functions/gift-admin.mjs). noindex, never linked,
+     no analytics and no booking form on it. -->
+<main class="gca">
+  <h1>Gift card lookup</h1>
+  <form class="gca-find" id="gcaFind" autocomplete="off">
+    <div class="field">
+      <label for="gcaKey">Your key</label>
+      <input id="gcaKey" type="password" autocomplete="current-password" required />
+      <label class="gca-tick"><input type="checkbox" id="gcaRemember" /> Remember on this phone</label>
+    </div>
+    <div class="field">
+      <label for="gcaCode">Card code</label>
+      <input id="gcaCode" placeholder="513-XXXX-XXXX-XXXX" autocapitalize="characters" spellcheck="false" required />
+    </div>
+    <button class="btn btn-primary btn-block" type="submit">Look up</button>
+  </form>
+  <p class="gca-msg" id="gcaMsg" role="status"></p>
+
+  <section class="gca-card" id="gcaCard" hidden>
+    <h2 id="gcaTitle"></h2>
+    <dl class="gca-facts" id="gcaFacts"></dl>
+    <form class="gca-redeem" id="gcaRedeem" autocomplete="off">
+      <h2>Take an amount off</h2>
+      <div class="field">
+        <label for="gcaAmt">Amount, after tax</label>
+        <input id="gcaAmt" type="number" inputmode="decimal" min="0.01" step="0.01" required />
+      </div>
+      <div class="field">
+        <label for="gcaNote">Note (optional)</label>
+        <input id="gcaNote" maxlength="60" placeholder="Name and date of the detail" />
+      </div>
+      <button class="btn btn-primary btn-block" type="submit" id="gcaRedeemBtn">Take it off the card</button>
+    </form>
+    <div class="gca-more">
+      <h2>Other actions</h2>
+      <button type="button" class="btn btn-ghost btn-block" data-gca="resend-buyer">Resend to the buyer</button>
+      <button type="button" class="btn btn-ghost btn-block" data-gca="resend-recipient">Resend to the person it's for</button>
+      <button type="button" class="btn btn-ghost btn-block gca-danger" data-gca="void">Cancel the card</button>
+    </div>
+    <h2>History</h2>
+    <ul class="gca-log" id="gcaLog"></ul>
+  </section>
+</main>
+<script src="js/giftadmin.js?v=ec8733bd5c" defer></script>
+</body>
+</html>
