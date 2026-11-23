@@ -89,5 +89,23 @@ Emmett: "Build it", plus three validation passes on the new features and pre-mer
   - the sale turned at midnight with the form open.
 
   All fixed, with tests.
-- **Checks:** 868 tests pass, and the build passes. Every function bundles with esbuild as Netlify will build it.
+- **Pre-merge pass 1** (two reviewers: site regression, and deploy readiness):
+  - the phone menu cut Contact Us off once the gift link was added: it scrolls and tightens now;
+  - a wrong webhook secret went unnoticed: the hourly run catches stranded cards and warns Elijah;
+  - the double-tap key;
+  - the eyebrow after the sale;
+  - the bundled settings.
+
+  The rest of the site matched eNov14: the same booking prices, folds and links.
+- **Pre-merge pass 2** (no-go, but close; 6 findings):
+  - the catch-up could stop scheduled sends: it now runs after them, in its own try;
+  - the retry key broke Back then Continue: the expiry is in 5-minute steps, and the request is new after Back;
+  - the catch-up had no time limit;
+  - emails are marked one by one;
+  - void cards are skipped and the blame is worded softly;
+  - earlier history is kept;
+  - the eyebrow spacing.
+
+  All fixed, with tests.
+- **Checks:** 872 tests pass, and the build passes. Every function bundles with esbuild as Netlify will build it.
 - **What to test by hand:** `GIFT-CARDS-SETUP.md` section 3, on the test site in Stripe test mode.

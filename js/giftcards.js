@@ -187,6 +187,8 @@
     }
     if (e.target.closest && e.target.closest('[data-gc-close]')) dlg.close();
   });
+  // Back from Stripe's page restores this one as it was: a fresh request then.
+  window.addEventListener('pageshow', function (e) { if (e.persisted) { requestKey = key(); busy = false; } });
   form.addEventListener('input', syncWhen);
   form.addEventListener('change', syncWhen);
 

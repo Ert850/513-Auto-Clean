@@ -121,7 +121,9 @@ export async function handler(event) {
     metadata,
     // No statement suffix: with a long account prefix Stripe would refuse it.
     payment_intent_data: { metadata, description: name },
-    expires_at: Math.floor(now / 1000) + SESSION_MINUTES * 60,
+    // In 5-minute steps, so the same request made again soon (a retry, or Back
+    // then Continue) is the same request to Stripe (final pre-merge pass).
+    expires_at: Math.floor(now / 300_000) * 300 + SESSION_MINUTES * 60,
     // After the #, so the session (which opens the card) never reaches a server log or analytics.
     success_url: `${base}/gift-certificate#s={CHECKOUT_SESSION_ID}&new=1`,
     cancel_url: `${base}/gift-cards`,
@@ -129,10 +131,8 @@ export async function handler(event) {
 
   try {
     const stripe = new Stripe(key);
-    // A double tap makes one session, a changed card a new one (P3). The key
-    // leaves out the expiry, which moves every second (pre-merge pass).
-    const { expires_at: _moves, ...same } = params;
-    const idem = requestKey(payload?.requestKey, "gift-session", same);
+    // A double tap makes one session, a changed card a new one (P3).
+    const idem = requestKey(payload?.requestKey, "gift-session", params);
     const session = await stripe.checkout.sessions.create(params, idem ? { idempotencyKey: idem } : undefined);
     return json(200, { url: session.url });
   } catch (err) {
