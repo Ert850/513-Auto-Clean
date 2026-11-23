@@ -3433,6 +3433,65 @@ function zipGeo(zip) {
   return BY_ZIP[(zip || "").trim().slice(0, 5)] ?? null;
 }
 
+// lib/catalog/giftCards.ts
+var SIZE_WORDS = {
+  small: "car",
+  medium: "SUV or truck",
+  large: "3-row SUV or van"
+};
+function maxTaxRateBp(table = SEED_TAX_TABLE) {
+  return Math.max(...table.rates.map((r) => r.rateBp));
+}
+function withTax(cents, rateBp) {
+  return cents + Math.round(cents * rateBp / 1e4);
+}
+function coverTable(rateBp = maxTaxRateBp()) {
+  return SEED_CATALOG.packages.filter((p) => !p.requiresPriorDetail && !p.comingSoon && p.priceCents > 0).map((p) => ({
+    id: p.id,
+    name: p.name,
+    cents: Object.fromEntries(VEHICLE_SIZES.map((s) => [s.id, withTax(p.priceCents + s.upchargeCents, rateBp)]))
+  }));
+}
+function salePriceCents(valueCents, cfg) {
+  if (cfg.mode !== "sale") return valueCents;
+  return Math.round(valueCents * (100 - cfg.sale.percentOff) / 100);
+}
+function coverage(valueCents, sizeId, rows = coverTable()) {
+  const priced = rows.map((r) => ({ name: r.name, cents: r.cents[sizeId] ?? Infinity }));
+  const covered2 = priced.filter((r) => r.cents <= valueCents).sort((a, b) => b.cents - a.cents);
+  const above = priced.filter((r) => r.cents > valueCents && Number.isFinite(r.cents)).sort((a, b) => a.cents - b.cents)[0];
+  return { covered: covered2, next: above ? { name: above.name, shortCents: above.cents - valueCents } : null };
+}
+var article = (name) => /^[AEIOU]/i.test(name) ? "an" : "a";
+function coversLine(valueCents, rows = coverTable()) {
+  const best = coverage(valueCents, VEHICLE_SIZES[0].id, rows).covered[0];
+  if (!best) return "Toward any detail or add-on";
+  const row = rows.find((r) => r.name === best.name);
+  const sizes = VEHICLE_SIZES.filter((s) => (row.cents[s.id] ?? Infinity) <= valueCents).map((s) => SIZE_WORDS[s.id]);
+  const who = sizes.length === VEHICLE_SIZES.length ? "any vehicle" : `a ${sizes.join(", ")}`;
+  return `Covers ${article(best.name)} ${best.name} for ${who}, tax included`;
+}
+function giftCardProblems(cfg) {
+  const out = [];
+  const day = /^\d{4}-\d{2}-\d{2}$/;
+  if (!["sale", "regular", "off"].includes(cfg.mode)) out.push(`mode must be sale, regular or off, not "${cfg.mode}"`);
+  const pct = cfg.sale?.percentOff;
+  if (!Number.isInteger(pct) || pct < 1 || pct > 50) out.push("sale.percentOff must be a whole number from 1 to 50");
+  if (!day.test(cfg.sale?.starts ?? "") || !day.test(cfg.sale?.ends ?? "")) out.push("sale.starts and sale.ends must be YYYY-MM-DD (Cincinnati dates)");
+  else if (cfg.sale.starts > cfg.sale.ends) out.push("sale.starts is after sale.ends");
+  const values = (cfg.tiers ?? []).map((t) => t.value);
+  if (values.length < 1 || values.length > 4) out.push("tiers: 1 to 4 cards");
+  values.forEach((v, i) => {
+    if (!Number.isInteger(v) || v < 5 || v > 2e3) out.push(`tiers[${i}].value must be whole dollars, 5 to 2000`);
+    if (i && v <= values[i - 1]) out.push("tiers must go up in value");
+  });
+  if ((cfg.tiers ?? []).filter((t) => t.featured).length > 1) out.push("at most one featured tier");
+  const { min, max } = cfg.custom ?? {};
+  if (!Number.isInteger(min) || !Number.isInteger(max) || min < 5 || min >= max) out.push("custom.min and custom.max must be whole dollars, min below max");
+  if (typeof cfg.checkout?.enabled !== "boolean") out.push("checkout.enabled must be true or false");
+  return out;
+}
+
 // lib/server-entry.ts
 function priceFromWire(wire, opts = {}) {
   const rejected = [];
@@ -3580,6 +3639,8 @@ export {
   REPO_PHONE,
   SCHEDULING,
   SEED_CATALOG,
+  SIZE_WORDS,
+  VEHICLE_SIZES,
   addonIcon,
   addonsFor,
   arrivalQuery,
@@ -3590,10 +3651,14 @@ export {
   checkRange,
   componentsOf,
   copyFor,
+  coverTable,
+  coverage,
+  coversLine,
   driveTooFar,
   estimateOneWayMinutes,
   findAddon,
   findPackage,
+  giftCardProblems,
   hoursText,
   isLive,
   legalFingerprint,
@@ -3601,6 +3666,7 @@ export {
   loadWindow,
   localMinutesOfDay,
   longDate,
+  maxTaxRateBp,
   mergeBusy,
   mileageFeeCents,
   multiDayEvents,
@@ -3611,6 +3677,7 @@ export {
   parsePhone,
   phoneTrace,
   priceFromWire,
+  salePriceCents,
   slotStillFree,
   swapPhone,
   tierPriceFor,

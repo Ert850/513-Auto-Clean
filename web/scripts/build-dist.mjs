@@ -24,6 +24,7 @@ import { llmsTxt } from "./llms-txt.mjs";
 import { SEED_CATALOG, businessPhone, hoursText } from "../../netlify/functions/_pricing.mjs";
 import { routeDist } from "./book-links.mjs";
 import { distPages, isPreviewBuild, unreviewedPairs } from "./locations.mjs";
+import { giftPages, loadGiftCards } from "./gift-cards.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const dist = path.join(root, "dist");
@@ -54,6 +55,8 @@ const FILES = [
   // CONTEXT, and every other build gets published pages alone
   // (docs/SEO-COMPLIANCE.md R1).
   ...distPages(),
+  // The gift card page, unless config/gift-cards.json has gift cards off.
+  ...giftPages(),
 ];
 const DIRS = ["js", "data"];
 
@@ -63,6 +66,16 @@ function copy(rel) {
   fs.mkdirSync(path.dirname(to), { recursive: true });
   fs.copyFileSync(from, to);
   return fs.statSync(to).size;
+}
+
+// A gift card page whose buy buttons do nothing must never reach the live
+// site: previews may show it while the checkout is being built.
+{
+  const gc = loadGiftCards();
+  if (gc.mode !== "off" && !gc.checkout.enabled && !isPreviewBuild()) {
+    console.error('build-dist: config/gift-cards.json has gift cards on but checkout.enabled is false. Switch the checkout on, or set mode "off".');
+    process.exit(1);
+  }
 }
 
 fs.rmSync(dist, { recursive: true, force: true });

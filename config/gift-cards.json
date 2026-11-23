@@ -1,0 +1,20 @@
+{
+  "_read_me": [
+    "The gift card page (gift-cards.html) and its links. The build writes every amount, date and 'Covers ...' line from this file and the catalog: never type one into a page.",
+    "mode \"sale\": the holiday discount runs (sale.percentOff off every card, through sale.ends). mode \"regular\": cards sell at their value, no sale wording. mode \"off\": no page and no links anywhere; the site is exactly as it was before gift cards.",
+    "sale.starts and sale.ends are Cincinnati dates (YYYY-MM-DD). The page says 'through' the end date; the checkout (when built) refuses the discount outside them.",
+    "tiers: up to 4 card values in whole dollars, smallest first. featured: true on one of them makes it the highlighted card. Any other amount is bought from the calculator, between custom.min and custom.max.",
+    "checkout.enabled: false until the Stripe checkout function exists; the buy buttons show but do nothing. A production build fails while mode is not off and checkout is off.",
+    "A mistake in this file fails the build."
+  ],
+  "mode": "sale",
+  "sale": { "percentOff": 20, "starts": "2026-11-27", "ends": "2026-12-25" },
+  "tiers": [
+    { "value": 50 },
+    { "value": 100 },
+    { "value": 150, "featured": true },
+    { "value": 250 }
+  ],
+  "custom": { "min": 25, "max": 500 },
+  "checkout": { "enabled": false }
+}
