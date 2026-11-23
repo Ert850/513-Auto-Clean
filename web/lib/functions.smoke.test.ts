@@ -11,6 +11,10 @@
  */
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { resetRateLimits } from "../../netlify/functions/_ratelimit.mjs";
+// Through a template, as for _detailers.mjs: the bundle has no type file.
+const { CAPABILITIES } = (await import(`../../netlify/functions/${"_pricing"}.mjs`)) as {
+  CAPABILITIES: { id: string; live: boolean }[];
+};
 
 const FUNCS = [
   "travel", "create-payment", "paypal-order", "personal-busy", "reviews", "send-confirmation", "booking-followup",
@@ -44,6 +48,22 @@ afterAll(() => {
 
 beforeEach(() => resetRateLimits());
 
+/**
+ * The payment functions refuse while their switches are off (payments.test.ts,
+ * P7), so the tests that reach past that check switch them on for the call.
+ */
+const PAYMENT_FUNCS = new Set(["create-payment", "paypal-order"]);
+async function withPayments<T>(on: boolean, fn: () => Promise<T>): Promise<T> {
+  const caps = CAPABILITIES.filter((c) => ["cardOnFile", "payInFull", "digitalWallets"].includes(c.id));
+  const was = caps.map((c) => c.live);
+  if (on) for (const c of caps) c.live = true;
+  try {
+    return await fn();
+  } finally {
+    caps.forEach((c, i) => (c.live = was[i]!));
+  }
+}
+
 const load = async (name: string) => (await import(`../../netlify/functions/${name}.mjs`)) as { handler: (e: unknown) => Promise<{ statusCode: number; body: string }> };
 
 const bodies: Record<string, unknown> = {
@@ -75,7 +95,7 @@ describe("every function survives hostile input with its key present", () => {
       ];
       for (const ev of events) {
         resetRateLimits();
-        const r = await handler(ev);
+        const r = await withPayments(PAYMENT_FUNCS.has(name), () => handler(ev));
         expect(r && typeof r.statusCode === "number", `${name} returned ${JSON.stringify(r)}`).toBe(true);
         expect(r.statusCode).toBeGreaterThanOrEqual(200);
         expect(r.statusCode).toBeLessThan(600);
@@ -87,7 +107,7 @@ describe("every function survives hostile input with its key present", () => {
 
   it("create-payment: a valid cart reaches Stripe and fails safely with a fake key", async () => {
     const { handler } = await load("create-payment");
-    const r = await handler({
+    const r = await withPayments(true, () => handler({
       httpMethod: "POST",
       headers: {},
       body: JSON.stringify({
@@ -100,7 +120,7 @@ describe("every function survives hostile input with its key present", () => {
         consent: { mandateAccepted: true, termsVersion: "2026-09-11" },
         mode: "card_only",
       }),
-    });
+    }));
     // The function got past validation and pricing, and the Stripe failure
     // came back as a message a customer may read, not the raw error.
     expect([502, 400]).toContain(r.statusCode);
@@ -109,7 +129,7 @@ describe("every function survives hostile input with its key present", () => {
 
   it("create-payment: refuses a saved card without the mandate", async () => {
     const { handler } = await load("create-payment");
-    const r = await handler({
+    const r = await withPayments(true, () => handler({
       httpMethod: "POST",
       headers: {},
       body: JSON.stringify({
@@ -120,7 +140,7 @@ describe("every function survives hostile input with its key present", () => {
         contact: { name: "A", phone: "5135551212" },
         mode: "card_only",
       }),
-    });
+    }));
     expect(r.statusCode).toBe(400);
     expect(JSON.parse(r.body).error).toBe("mandate_required");
   });
@@ -303,11 +323,11 @@ describe("every function survives hostile input with its key present", () => {
 
   it("paypal-order: refuses an order id that is not an order id", async () => {
     const { handler } = await load("paypal-order");
-    const r = await handler({
+    const r = await withPayments(true, () => handler({
       httpMethod: "POST",
       headers: {},
       body: JSON.stringify({ action: "capture", orderId: "../../v1/identity/oauth2/userinfo" }),
-    });
+    }));
     // 502 if the fake auth fails first, 400 if it gets to the id check;
     // either way the path never reaches the URL.
     expect([400, 502]).toContain(r.statusCode);
@@ -365,7 +385,9 @@ describe("every function survives hostile input with its key present", () => {
   it("paying in full stays off until the server checks the payment itself", async () => {
     // send-confirmation takes "pay_now" on the browser's word whenever this is
     // on. Before switching it on, make the server confirm the PaymentIntent or
-    // PayPal capture (a webhook or a lookup by id), then change this test.
+    // PayPal capture (a webhook or a lookup by id), and write the email's
+    // total from that payment rather than repricing at confirm time (P9:
+    // docs/SESSION-CHANGES-payments.md), then change this test.
     const { isLive } = await import("./site/capabilities.js");
     expect(isLive("payInFull"), "payInFull needs a server-side payment check first").toBe(false);
   });
