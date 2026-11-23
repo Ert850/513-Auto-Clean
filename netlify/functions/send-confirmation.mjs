@@ -651,7 +651,16 @@ export async function handler(event) {
   const bot = await verifyTurnstile(payload?.turnstileToken, event);
   if (bot) return json(400, { error: bot });
 
-  const mode = payload?.mode === "pay_now" ? "pay_now" : "card_only";
+  /*
+   * "pay_now" is the browser's word that the customer paid, and nothing here
+   * can check it: there is no webhook and no payment id. Taken as given, a
+   * hand-edited request booked a detail that the calendar and Elijah's email
+   * called "PAID IN FULL online", at the pay-now discount (review, November
+   * 23). So it counts only while paying in full is switched on, and
+   * functions.smoke.test.ts keeps that switch off until this function verifies
+   * the payment with Stripe or PayPal itself.
+   */
+  const mode = payload?.mode === "pay_now" && isLive("payInFull") ? "pay_now" : "card_only";
   const checked = validateWire(payload, { nowMs: Date.now(), mode });
   if (!checked.ok) return json(400, { error: checked.error });
   const { cart, contact, kind, payInFull, consent } = checked.booking;

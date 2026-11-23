@@ -286,6 +286,7 @@ Read this before changing anything. Every rule below came from a real bug or an 
 - **A time is re-checked against whoever it was given to when the job changes** (`slotStillFits`, `canDo`). Kris does interior only: an exterior added after picking his time drops the time.
 
 - **A booking is only "confirmed" to the customer when its calendar event was written, and every failure is told to Elijah** (final review, November 13). A silent `{ok:false}` from the calendar left times sellable with "booked in" emails sent. Any new write path reports its failure in the owner email.
+- **The server never takes the browser's word that someone paid** (review, November 23). `send-confirmation` wrote any request saying `mode: "pay_now"` into the calendar as "PAID IN FULL online", at the pay-now discount, with no payment checked. It now counts only while `payInFull` is live, and `functions.smoke.test.ts` keeps that switch off until the server confirms the payment with Stripe or PayPal itself (a signed webhook or a lookup by id). The same goes for gift cards: a card is issued and a balance changes only from a verified payment or redemption.
 - **Every booking write is idempotent by its booking key** (`findBookingEvent` before `createBookingEvent`), and every booking gets a fresh key (`open()` clears `_key`). A retry must never make a second event or a second set of emails.
 
 ## Print (November 11)
