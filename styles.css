@@ -1882,3 +1882,62 @@ main > .bookpage:first-child { padding-block: clamp(16px, 2.2vw, 30px); }
 .svp-sizes { font-size: .86rem; color: var(--text-soft); margin: .8rem 0 0; line-height: 1.5; }
 .svp-where { margin: 1.2rem 0 0; }
 .svp-where a { color: var(--red-deep); font-weight: 700; }
+
+/* ============ GIFT CARDS (gift-cards.html, config/gift-cards.json) ============
+   Price display after Baymard's discount findings (November 23): the price you
+   pay big and in ink, the card's value beside it smaller and struck through,
+   the saving once, and what every card shares said once under the cards. Ink,
+   not red or green, for the saving: red is the brand and errors only. */
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+.topbar .tb-gift { display: none; color: #fff; font-weight: 600; }
+@media (min-width: 375px) { .topbar .tb-gift { display: inline; white-space: nowrap; } }
+.topbar .tb-gift-sale { display: none; }
+@media (min-width: 420px) { .topbar .tb-gift-sale { display: inline; } }
+.gc-layout { display: grid; gap: 1.15rem; }
+.gc-tiers { display: grid; gap: 1.15rem; }
+@media (min-width: 640px) { .gc-tiers { grid-template-columns: repeat(2, 1fr); } }
+@media (min-width: 1000px) { .gc-layout { grid-template-columns: minmax(0, 1fr) 22rem; align-items: start; } }
+.gc-price { display: flex; flex-wrap: wrap; align-items: baseline; gap: .2rem .6rem; margin: .45rem 0 .55rem; }
+.gc-price strong { font-family: var(--font-display); font-size: 2.1rem; font-weight: 800; line-height: 1; color: var(--text); }
+.gc-price s { font-size: 1.05rem; font-weight: 600; color: var(--text-soft); text-decoration-thickness: 1.5px; }
+.gc-save { font-size: .8rem; font-weight: 700; color: var(--text); background: var(--paper); border: 1px solid var(--line); border-radius: 999px; padding: .15rem .55rem; }
+.gc-covers { font-size: .95rem; color: var(--text-soft); margin: 0 0 1.1rem; }
+.gc-calc { background: var(--paper-2); border: 1px solid var(--line); border-radius: var(--r-lg); padding: 1.4rem 1.3rem 1.2rem; box-shadow: var(--shadow-sm); }
+.gc-calc h2 { font-size: 1.35rem; margin: 0 0 .9rem; }
+.gc-calc .field { margin-bottom: .3rem; }
+.gc-amt { position: relative; }
+.gc-amt span { position: absolute; left: .9rem; top: 50%; transform: translateY(-50%); font-weight: 700; color: var(--text-soft); pointer-events: none; }
+.gc-calc .gc-amt input { padding-left: 1.9rem; font-weight: 700; font-size: 1.05rem; }
+.gc-err { color: var(--red-deep); font-size: .85rem; margin: .4rem 0 0; }
+.gc-calc-price { margin: .7rem 0 .9rem; }
+.gc-sizes { border: 0; padding: 0; margin: 0 0 .6rem; display: flex; flex-wrap: wrap; gap: .4rem; }
+.gc-sizes legend { font-weight: 600; font-size: .88rem; margin-bottom: .5rem; padding: 0; }
+.gc-size { cursor: pointer; }
+.gc-size input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.gc-size span { display: inline-block; border: 1px solid var(--line); border-radius: 999px; padding: .4rem .8rem; font-size: .86rem; font-weight: 600; background: var(--paper-2); }
+.gc-size input:checked + span { background: var(--ink); color: #fff; border-color: var(--ink); }
+.gc-size input:focus-visible + span { outline: 2px solid var(--red); outline-offset: 2px; }
+.gc-list { list-style: none; margin: 0; padding: 0; }
+.gc-list li { display: flex; justify-content: space-between; gap: .8rem; padding: .5rem 0; border-top: 1px solid var(--line); font-size: .93rem; }
+.gc-list b { font-weight: 600; min-width: 0; }
+.gc-list em { font-style: normal; font-weight: 600; white-space: nowrap; }
+.gc-list .gc-none { color: var(--text-soft); }
+.gc-next { font-size: .88rem; color: var(--text-soft); margin: .1rem 0 0; padding-top: .5rem; border-top: 1px solid var(--line); }
+.gc-calc > .btn { margin: 1rem 0 .7rem; }
+.gc-bad :is(.gc-calc-price, .gc-out, [data-gc-buy]) { opacity: .35; }
+.gc-small { font-size: .78rem; color: var(--text-soft); margin: 0; line-height: 1.5; }
+.gc-main .gc-terms { margin-top: 1.3rem; }
+.gc button[disabled] { opacity: .5; cursor: not-allowed; }
+.gc-after { margin-top: .4rem; }
+.gc-terms { list-style: none; margin: 0; padding: 0; display: grid; gap: .45rem 1.4rem; font-size: .92rem; color: var(--text-soft); }
+.gc-terms li { display: flex; align-items: baseline; gap: .5rem; }
+.gc-terms li::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--text-soft); flex: none; transform: translateY(-2px); }
+.gc-soon { margin: .8rem 0 0; font-weight: 600; }
+.gc-steps { list-style: none; margin: 1.6rem 0 0; padding: 0; display: grid; gap: .8rem; counter-reset: gcstep; }
+@media (min-width: 760px) { .gc-steps { grid-template-columns: repeat(3, 1fr); } }
+.gc-steps li { background: var(--paper-2); border: 1px solid var(--line); border-radius: var(--r-md); padding: 1rem 1.1rem; counter-increment: gcstep; }
+.gc-steps b { display: block; margin-bottom: .25rem; }
+.gc-steps b::before { content: counter(gcstep) ". "; }
+.gc-steps span { font-size: .92rem; color: var(--text-soft); }
+.gc-ask { margin: 1.2rem 0 0; font-size: .95rem; }
+.gc-ask a { color: var(--red-deep); font-weight: 700; }
