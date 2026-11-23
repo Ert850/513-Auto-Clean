@@ -292,6 +292,12 @@ Read this before changing anything. Every rule below came from a real bug or an 
 ## Print (November 11)
 - **Printed QR codes can never change.** `/golf` (golf course booklet) and `/prestige` (Prestige Living) are in print from 2027 for about a year. Keep both addresses served forever, by the 302 in `netlify.toml` or a page of that name. Never a 301: a browser keeps a 301, so a later change never reaches someone who scanned once. `printed-qr.test.ts` guards this and the files' checksums. A new printed code is a new address, made with `marketing/qr/make_qr.py`; never edit a printed one.
 
+## Payments (review, November 23; `docs/SESSION-CHANGES-payments.md`)
+- **A payment function checks its capability switch, not only its key.** `create-payment` and `paypal-order` ran with the switches off because their keys existed. Any new function that takes money (gift cards included) answers 503 `off` unless its switch in `capabilities.ts` is on, with a test.
+- **One idempotency key per distinct request, never the booking's key as it is.** Stripe refuses a key reused with other parameters, so pay later then pay now could never load a form. Derive it with `requestKey()` (`_requestkey.mjs`): booking key, what, hash of the parameters.
+- **Only payment methods that finish on the page, and "paid" means `succeeded`.** Nothing handles a return from a redirect method (Cash App, Klarna, Affirm), and a bank debit comes back `processing`. A new method goes in `PAYMENT_METHODS` together with whatever it needs on its return.
+- **A handle to a mounted widget is tied to the element it was mounted in.** `root._stripe` outlived a full `render()`, so the card form sat on "Loading payment options...". A late async answer for an older mount is dropped (`payMountSeq`).
+
 ## Verifying UI changes
 - **The in-app browser pane, when hidden, does not run smooth scrolling or the browser's own jump-to-section on page load.** Don't trust scroll measurements from it. Drive headless Chrome over CDP with real mouse events instead (the nav click checker lives in the session scratchpad).
 - **Disable the browser cache, or add a query string, when testing a rebuilt `dist/`.** A cached `index.html` keeps loading the old scripts. Two test runs were wasted on stale pages.
