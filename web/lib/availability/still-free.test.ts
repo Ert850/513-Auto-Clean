@@ -178,8 +178,17 @@ describe("send-confirmation: a taken time is refused, nothing written or sent", 
     expect(g.mail).toHaveLength(0);
   });
 
-  it("standard hours (the browser could not read the calendar) or a paid booking: a request, nothing written onto the taken time", async () => {
-    for (const extra of [{ standardHours: true }, { mode: "pay_now" }]) {
+  it("a browser saying it paid, while paying in full is off, is refused like any booking (review, November 23)", async () => {
+    const g = stubGoogle([{ start: at(13 * 60), end: at(15 * 60) }]);
+    const r = await post({ mode: "pay_now" });
+    expect(r.statusCode).toBe(409);
+    expect(g.writes).toHaveLength(0);
+  });
+
+  // A booking really paid in full would also go through as a request here, but
+  // payInFull is off until the server checks the payment (functions.smoke.test.ts).
+  it("standard hours (the browser could not read the calendar): a request, nothing written onto the taken time", async () => {
+    for (const extra of [{ standardHours: true }]) {
       resetRateLimits();
       const g = stubGoogle([{ start: at(13 * 60), end: at(15 * 60) }]);
       const r = await post(extra);

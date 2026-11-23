@@ -313,6 +313,62 @@ describe("every function survives hostile input with its key present", () => {
     expect([400, 502]).toContain(r.statusCode);
     expect(r.body).not.toContain("userinfo");
   }, 30_000);
+
+  it("send-confirmation: a browser saying it paid books a detail still to collect", async () => {
+    // Review, November 23: "pay_now" from the browser was written into the
+    // calendar as PAID IN FULL online, at the pay-now discount, with nothing
+    // checked. It counts only while payInFull is on (see the next test).
+    const env = { GOOGLE_OAUTH_CLIENT_ID: "id", GOOGLE_OAUTH_CLIENT_SECRET: "secret", GOOGLE_OAUTH_REFRESH_TOKEN: "refresh" };
+    const before = Object.fromEntries(Object.keys(env).map((k) => [k, process.env[k]]));
+    Object.assign(process.env, env);
+    const written: string[] = [];
+    const realFetch = globalThis.fetch;
+    globalThis.fetch = (async (url: string, init?: { method?: string; body?: string }) => {
+      const u = String(url);
+      if (u.startsWith("https://oauth2.googleapis.com/token")) {
+        return new Response(JSON.stringify({ access_token: "t", expires_in: 3600 }), { status: 200 });
+      }
+      if (u.includes("googleapis.com/calendar/v3/calendars/")) {
+        if (init?.method === "POST") written.push(String(JSON.parse(String(init.body ?? "{}")).description ?? ""));
+        return new Response(JSON.stringify({ id: "e1" }), { status: 200 });
+      }
+      return new Response("{}", { status: 500 });
+    }) as typeof fetch;
+    try {
+      const { handler } = await load("send-confirmation");
+      const r = await handler({
+        httpMethod: "POST",
+        headers: {},
+        body: JSON.stringify({
+          cart: {
+            vehicles: [{ sizeId: "small", packageIds: ["basic-interior"] }],
+            address: { line1: "1 Main St", city: "Cincinnati", region: "OH", zip: "45220" },
+            slot: Date.now() + 5 * 86_400_000,
+          },
+          contact: { name: "Ada", phone: "5135551212" },
+          mode: "pay_now",
+        }),
+      });
+      expect(r.statusCode).toBe(200);
+      expect(written.length).toBeGreaterThan(0);
+      expect(written[0]).toContain("TO COLLECT on the day");
+      expect(written.join("\n")).not.toContain("PAID IN FULL");
+    } finally {
+      globalThis.fetch = realFetch;
+      for (const [k, v] of Object.entries(before)) {
+        if (v === undefined) delete process.env[k];
+        else process.env[k] = v;
+      }
+    }
+  }, 30_000);
+
+  it("paying in full stays off until the server checks the payment itself", async () => {
+    // send-confirmation takes "pay_now" on the browser's word whenever this is
+    // on. Before switching it on, make the server confirm the PaymentIntent or
+    // PayPal capture (a webhook or a lookup by id), then change this test.
+    const { isLive } = await import("./site/capabilities.js");
+    expect(isLive("payInFull"), "payInFull needs a server-side payment check first").toBe(false);
+  });
 });
 
 describe("cart-capture (a checkout left unfinished, round 15)", () => {
