@@ -218,7 +218,7 @@ export const CAPABILITIES: Capability[] = [
     id: "giftCardSales",
     what: "Gift cards sold online, paid on Stripe's own page",
     // Follows config/gift-cards.json checkout.enabled, NOT mode: the terms'
-    // gift card rules ("never expires", refunds) and the privacy policy's
+    // gift card rules (how long a card lasts, refunds) and the privacy policy's
     // Stripe entry must stay while any card sold online is out, even after
     // the page is switched off (validation pass 1). Leave checkout.enabled
     // true once a card has been sold.
@@ -259,7 +259,7 @@ export const PROCESSORS: Processor[] = [
   { name: "Google Calendar", does: "holds our availability and our schedule. When you book, the job goes onto our booking calendar with your name, phone, email, address and notes, so we know where to be. That calendar is private: anyone else sees only that the time is taken. Your browser reads only our open times.", capability: "liveCalendar" },
   { name: "Stripe", does: "takes card payments and keeps your card on file. Card details go straight to Stripe over an encrypted connection; we never see or store the card number.", capability: "cardOnFile" },
   { name: "PayPal", does: "takes PayPal and Venmo payments.", capability: "digitalWallets" },
-  { name: "Stripe (gift cards)", does: "takes payment for gift cards on its own secure page, and keeps the record of each card: its value, what is left on it, and the names, email address and message given for it. Card details go straight to Stripe; we never see or store the card number. The gift card emails are sent by Resend.", capability: "giftCardSales" },
+  { name: "Stripe (gift cards)", does: "takes payment for gift cards on its own secure page, and keeps the record of each card: its value, what is left on it, and the names, email address and message given for it. Card details go straight to Stripe; we never see or store the card number." + (GIFT_CARDS.checkout.methods.includes("amazon_pay") ? " If you pay with Amazon Pay, Amazon handles that payment under its own privacy notice." : "") + (GIFT_CARDS.checkout.methods.includes("affirm") ? " If you pay over time with Affirm, Affirm handles that payment under its own privacy notice." : "") + " The gift card emails are sent by Resend.", capability: "giftCardSales" },
   // Named generically on purpose (Emmett, November 14): the provider may change
   // (GoHighLevel's LeadConnector today), and the policy should not need a rewrite.
   { name: "Our text messaging provider", does: "delivers the text messages we send you. It receives your mobile number and each message, only to deliver it, and may not use them for anything else." },

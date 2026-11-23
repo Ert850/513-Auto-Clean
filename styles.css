@@ -2011,6 +2011,13 @@ main > .bookpage:first-child { padding-block: clamp(16px, 2.2vw, 30px); }
 .gc-face-msg { font-style: italic; margin-top: .35rem; }
 .gc-cert-msg { color: var(--text-soft); }
 .gc-cert-state { font-weight: 700; margin: .9rem 0 0; }
+.gc-face-exp { font-size: .85rem; color: var(--text-inv-soft); margin-top: .35rem; }
+/* The QR code Elijah scans at payment: on white, with the standard quiet zone drawn in. */
+.gc-cert-qr { display: flex; align-items: center; gap: 1rem; margin: 1rem 0 0; padding: .7rem; background: #fff; border: 1px solid var(--line); border-radius: var(--r-lg); }
+.gc-cert-qr-img { flex: 0 0 8.5rem; width: 8.5rem; line-height: 0; }
+.gc-cert-qr-img svg { width: 100%; height: auto; display: block; }
+.gc-cert-qr-text { flex: 1; min-width: 0; display: grid; gap: .25rem; }
+.gc-cert-qr-text span { color: var(--text-soft); font-size: .92rem; }
 .gc-cert-note { color: var(--text-soft); margin: .6rem 0 0; }
 .gc-cert-actions { display: flex; flex-wrap: wrap; gap: .6rem; margin: 1.3rem 0 0; }
 .gc-cert-how { margin-top: 1.8rem; max-width: 40rem; }
@@ -2022,6 +2029,7 @@ main > .bookpage:first-child { padding-block: clamp(16px, 2.2vw, 30px); }
   .topbar, .header, .footer, .mobile-bar, .mobile-menu, .skip-link, .gc-thanks, .gc-cert-actions, #bookFunnel { display: none !important; }
   .gc-certpage { padding: 0 !important; }
   .gc-face { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .gc-cert-qr { break-inside: avoid; }
 }
 /* Elijah's lookup page (gift-admin.html). */
 .gca { max-width: 30rem; margin: 0 auto; padding: 1.4rem 1rem 3rem; }

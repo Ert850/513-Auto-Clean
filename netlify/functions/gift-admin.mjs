@@ -1,6 +1,6 @@
 import Stripe from "stripe";
 import { cincinnatiDay } from "./_pricing.mjs";
-import { GIFT_KIND, appendLog, cardFromMeta, codeFor, codeHash, dollars, giftSecret, sameSecret, siteUrl } from "./_giftcards.mjs";
+import { GIFT_KIND, appendLog, cardFromMeta, codeFor, codeHash, dollars, giftSecret, isExpired, sameSecret, siteUrl } from "./_giftcards.mjs";
 import { buyerEmail, recipientEmail, sendMail } from "./_giftmail.mjs";
 import { limited } from "./_ratelimit.mjs";
 
@@ -52,7 +52,7 @@ export async function findCard(stripe, code, secret) {
 
 const view = (pi) => {
   const c = cardFromMeta(pi.metadata);
-  return { ...c, last4: pi.metadata.gift_last4 || "", issued: pi.metadata.gift_issued || "", toEmail: pi.metadata.gift_to_email || "", deliver: pi.metadata.gift_deliver || "" };
+  return { ...c, expired: isExpired(c, cincinnatiDay(Date.now())), last4: pi.metadata.gift_last4 || "", issued: pi.metadata.gift_issued || "", toEmail: pi.metadata.gift_to_email || "", deliver: pi.metadata.gift_deliver || "" };
 };
 
 export async function handler(event) {
@@ -94,6 +94,7 @@ export async function handler(event) {
       const amount = p.amountCents;
       if (!Number.isInteger(amount) || amount <= 0) return json(400, { error: "bad_amount" });
       if (card.status !== "active") return json(409, { error: "not_active", card: view(pi) });
+      if (isExpired(card, day)) return json(409, { error: "expired", card: view(pi) });
       if (amount > card.balanceCents) return json(409, { error: "too_much", card: view(pi) });
       const balance = card.balanceCents - amount;
       const metadata = {

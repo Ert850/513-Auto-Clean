@@ -47,6 +47,29 @@
   function longDay(iso) {
     return new Date(iso + 'T12:00:00Z').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', timeZone: 'UTC' });
   }
+  function longDate(iso) {
+    return new Date(iso + 'T12:00:00Z').toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
+  }
+
+  /* The QR code Elijah scans when the card pays for a detail: his phone's
+     camera opens /gift-admin with this card's code filled in (after the #, so
+     it never reaches a server). Someone else scanning it lands on a page that
+     needs his key. Drawn only for a card that can still be used. */
+  function qrBlock(code) {
+    if (typeof window.qrcode !== 'function') return null;
+    var qr = window.qrcode(0, 'M');
+    qr.addData(location.origin + '/gift-admin#c=' + code);
+    qr.make();
+    var wrap = el('div', 'gc-cert-qr');
+    var pic = el('div', 'gc-cert-qr-img');
+    pic.innerHTML = qr.createSvgTag({ cellSize: 4, margin: 16, scalable: true, alt: 'QR code for this gift card' });
+    wrap.appendChild(pic);
+    var words = el('div', 'gc-cert-qr-text');
+    words.appendChild(el('b', '', 'Show this when you pay'));
+    words.appendChild(el('span', '', 'We scan it and take the card off your total, after tax.'));
+    wrap.appendChild(words);
+    return wrap;
+  }
 
   function draw(c) {
     box.textContent = '';
@@ -60,6 +83,7 @@
     face.appendChild(el('span', 'gc-face-value', dollars(c.valueCents)));
     face.appendChild(el('span', 'gc-face-label', 'Gift card'));
     face.appendChild(el('span', 'gc-face-code', c.code));
+    if (c.expires) face.appendChild(el('span', 'gc-face-exp', 'Good through ' + longDate(c.expires)));
     if (c.toName || c.fromName) {
       face.appendChild(el('span', 'gc-face-to', (c.toName ? 'For ' + c.toName : '') + (c.toName && c.fromName ? ', from ' : c.fromName ? 'From ' : '') + (c.fromName || '')));
     }
@@ -67,11 +91,15 @@
     box.appendChild(face);
 
     var state = null;
-    if (c.status === 'void') state = 'This card has been cancelled.';
+    if (c.expired) state = 'This card expired on ' + longDate(c.expires) + '.';
+    else if (c.status === 'void') state = 'This card has been cancelled.';
     else if (c.status === 'disputed') state = 'This card is on hold. Please contact us.';
     else if (c.status === 'used' || c.balanceCents === 0) state = 'This card has been used in full.';
     else if (c.balanceCents < c.valueCents) state = dollars(c.balanceCents) + ' left on this card.';
     if (state) box.appendChild(el('p', 'gc-cert-state', state));
+    var usable = !c.expired && c.status === 'active' && c.balanceCents > 0;
+    var qr = usable ? qrBlock(c.code) : null;
+    if (qr) box.appendChild(qr);
     if (c.sendOn) box.appendChild(el('p', 'gc-cert-note', 'We’ll email it to ' + (c.toName || 'them') + ' on ' + longDay(c.sendOn) + '.'));
     actions.hidden = false;
     how.hidden = false;

@@ -14,6 +14,7 @@
   try { localStorage.removeItem('ac-gift-admin-key'); } catch (e) { /* private mode */ }
 
   function dollars(c) { return '$' + (c % 100 ? (c / 100).toFixed(2) : String(c / 100)); }
+  function longDate(iso) { return new Date(iso + 'T12:00:00Z').toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' }); }
   function rid() {
     var a = new Uint8Array(12);
     crypto.getRandomValues(a);
@@ -25,6 +26,7 @@
     bad_code: 'That doesn’t look like a card code (513 and twelve letters or numbers) or a Stripe payment id (pi_...).',
     too_much: 'That’s more than is left on the card.',
     not_active: 'This card is used, cancelled or on hold.',
+    expired: 'This card is past its date and can’t be used.',
     no_address: 'There’s no email address for that.',
     email_failed: 'The email didn’t send. Try again in a minute.',
     slow_down: 'Too many tries. Wait a minute.',
@@ -55,7 +57,8 @@
     $('gcaTitle').textContent = dollars(c.valueCents) + ' card, ending ' + c.last4;
     var facts = [
       ['Left on it', dollars(c.balanceCents)],
-      ['Status', { active: 'Active', used: 'Used in full', void: 'Cancelled', disputed: 'On hold: payment disputed' }[c.status] || c.status],
+      ['Status', c.expired ? 'Expired' : { active: 'Active', used: 'Used in full', void: 'Cancelled', disputed: 'On hold: payment disputed' }[c.status] || c.status],
+      ['Good through', c.expires ? longDate(c.expires) : ''],
       ['For', [c.toName, c.toEmail].filter(Boolean).join(', ') || '(the buyer)'],
       ['From', c.fromName || ''],
       ['Bought', c.issued || ''],
@@ -73,7 +76,7 @@
     (c.log || '').split('; ').filter(Boolean).reverse().forEach(function (line) {
       var li = document.createElement('li'); li.textContent = line; ul.appendChild(li);
     });
-    $('gcaRedeem').hidden = c.status !== 'active';
+    $('gcaRedeem').hidden = c.status !== 'active' || !!c.expired;
     disarm();
   }
 
@@ -97,6 +100,22 @@
     current = null;
     call({ action: 'lookup' });
   });
+
+  /* A scanned card: the QR code on the certificate opens this page as
+     /gift-admin#c=<code>. The code goes into the box and out of the address
+     bar; with the key already in, it looks the card up at once. */
+  function fromScan() {
+    var c = new URLSearchParams(location.hash.slice(1)).get('c');
+    if (!c) return;
+    try { history.replaceState(null, '', location.pathname); } catch (e) { /* harmless */ }
+    codeIn.value = c;
+    codeIn.dispatchEvent(new Event('input'));
+    if (keyIn.value) { current = null; call({ action: 'lookup' }); return; }
+    msg.textContent = 'Card scanned. Enter your key and tap Look up.';
+    keyIn.focus();
+  }
+  fromScan();
+  window.addEventListener('hashchange', fromScan);
 
   $('gcaRedeem').addEventListener('submit', function (e) {
     e.preventDefault();

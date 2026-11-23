@@ -109,3 +109,27 @@ Emmett: "Build it", plus three validation passes on the new features and pre-mer
   All fixed, with tests.
 - **Checks:** 872 tests pass, and the build passes. Every function bundles with esbuild as Netlify will build it.
 - **What to test by hand:** `GIFT-CARDS-SETUP.md` section 3, on the test site in Stripe test mode.
+
+## Elijah's answers, November 23 (branch eNov16)
+
+What he decided, and what changed:
+
+- **The sale starts now**, not November 27 (`sale.starts` 2026-11-23). The top bar on every page says "Gift cards, 20% off".
+- **Any amount to the cent**, $25 to $500 ($119.13 works). The calculator takes cents; the checkout prices it again (`dollarsToCents`, `giftOffer`).
+- **No highlighted card** ("a little salesy"): `featured` removed from the setting. The calculator now opens on the largest card.
+- **Cards last 5 years, not 1.** He asked for one year; the federal CARD Act says money paid onto a gift card can't expire for at least 5 years (Ohio: 2). Emmett chose 5. Setting `expiryYears`; the build refuses less. The date is written on the card's payment when issued (`gift_expires`), printed on the card, in the emails, on the admin page and in the terms. The admin page refuses an expired card (`expired`).
+- **After December 25** the page says: "Our holiday sale has ended, and you can still buy gift cards at full price. Our next sale runs from November 27 to December 25, 2027." From `sale.next`, shown until that day comes. Next year, copy those dates into `starts` and `ends`. The rebuild hook also runs on `sale.next.starts`.
+- **Customers don't enter the code anywhere.** The certificate page and emails now say: book as usual, show the card when you pay, and we take it off your total after tax. (They said to type it in "Anything else we should know?" before.)
+- **Scanning:** the certificate shows a QR code. Elijah's phone camera opens `/gift-admin` with that code filled in; with his key, the card comes up. Library: `js/qrcode.js` (qrcode-generator 1.4.4, MIT, vendored unchanged).
+- **Amazon Pay added** to the checkout (`checkout.methods`). Needs switching on in Stripe. If Stripe refuses it, the checkout falls back to card and Link. The privacy policy names Amazon Pay while it's offered.
+- **Not changed, and why:**
+  - Indiana's 7% tax waits for the accountant: labor is generally untaxed there, but a job that includes products can be taxed as a bundle.
+  - Apple and Google Wallet wait for their accounts.
+  - Affirm waits for Elijah.
+- **Legal:** terms section 4 now says how long a card lasts. The date stays 2026-11-23 (not live yet); `npm run lock:legal` was re-run.
+- **What to test:**
+  1. On `/gift-cards`: type 119.13, then 119.135 (refused), then 24.99 (refused).
+  2. Buy a card in test mode: Amazon Pay shows if it's on, and the card says "Good through" five years on.
+  3. On a phone, scan the certificate's QR code: the admin page opens with the code filled in.
+  4. Check the terms, section 4.
+- **Checks:** 881 tests pass, and the build passes. The QR code decodes to the admin address (checked in Chrome's BarcodeDetector). The admin page fills the code from a scan.
