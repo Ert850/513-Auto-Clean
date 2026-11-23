@@ -1962,7 +1962,7 @@ main > .bookpage:first-child { padding-block: clamp(16px, 2.2vw, 30px); }
 .gc-ask { margin: 1.2rem 0 0; font-size: .95rem; }
 .gc-ask a { color: var(--red-deep); font-weight: 700; }
 /* Buying: who it's for, then Stripe (js/giftcards.js). */
-.gc-dialog { width: min(30rem, calc(100vw - 2rem)); max-height: calc(100dvh - 2rem); border: 0; border-radius: var(--r-lg); padding: 0; box-shadow: var(--shadow-lg); color: var(--text); background: var(--paper-2); }
+.gc-dialog { margin: auto; overflow: auto; overscroll-behavior: contain; width: min(30rem, calc(100vw - 2rem)); max-height: calc(100dvh - 2rem); border: 0; border-radius: var(--r-lg); padding: 0; box-shadow: var(--shadow-lg); color: var(--text); background: var(--paper-2); }
 .gc-dialog::backdrop { background: rgba(11,14,19,.55); }
 .gc-buyform { padding: 1.4rem 1.3rem 1.2rem; }
 .gc-buyform h2 { font-size: 1.35rem; margin: 0 0 .25rem; }
