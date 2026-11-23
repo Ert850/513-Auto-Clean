@@ -435,3 +435,60 @@ describe("validation pass 2 fixes", () => {
     expect(buyerHtml).toContain("emailed it to Sam");
   });
 });
+
+describe("validation pass 3 fixes", () => {
+  const completed = (id: string) => ({ type: "checkout.session.completed", data: { object: { id } } });
+
+  it("a lost card is found by its Stripe payment id", async () => {
+    const s = await paidSession();
+    await hook(completed(s.id));
+    // Stripe's ids are pi_ and 8 or more characters; the stand-in's are short, so copy it under a real-looking id.
+    const { findCard } = admin as unknown as { findCard: (st: unknown, c: string, sec: string) => Promise<{ pi?: PI; error?: string }> };
+    db.pis.set("pi_abcdefgh123", { ...db.pis.get(s.payment_intent)!, id: "pi_abcdefgh123" });
+    const hit = await findCard(new (await import("stripe")).default("x"), "pi_abcdefgh123", SECRET);
+    expect(hit.pi?.metadata.gift_status).toBe("active");
+    expect((await findCard(new (await import("stripe")).default("x"), "pi_nothere0000", SECRET)).error).toBe("not_found");
+  });
+
+  it("a card refunded before it was ever issued stays cancelled and sends no code", async () => {
+    const s = await paidSession();
+    await hook({ id: "evt_r", type: "charge.refunded", data: { object: { payment_intent: s.payment_intent, amount: 4000, amount_refunded: 4000 } } });
+    mail = [];
+    await hook(completed(s.id));
+    expect(db.pis.get(s.payment_intent)!.metadata).toMatchObject({ gift_status: "void", gift_balance_cents: "0" });
+    expect(mail).toHaveLength(0);
+  });
+
+  it("the buyer's email says where the card went, with the address", async () => {
+    const bodies: { to: string; html: string }[] = [];
+    globalThis.fetch = (async (_u: string, init?: { body?: string }) => {
+      const b = JSON.parse(String(init?.body)); bodies.push({ to: b.to[0], html: b.html });
+      return new Response("{}", { status: b.to[0] === "sam@example.com" ? 422 : 200 });
+    }) as typeof fetch;
+    const s = await paidSession();
+    await hook(completed(s.id));
+    const order = bodies.map((b) => b.to);
+    expect(order.indexOf("sam@example.com")).toBeLessThan(order.indexOf("buyer@example.com"));
+    const buyerHtml = bodies.find((b) => b.to === "buyer@example.com")!.html;
+    expect(buyerHtml).toContain("(sam@example.com)");
+    expect(buyerHtml).not.toContain("emailed it to");
+  });
+
+  it("a rate-limited email waits and tries again, and Resend being busy doesn't count against the card", async () => {
+    const { sendMail } = await import("../../netlify/functions/_giftmail.mjs");
+    let n = 0;
+    globalThis.fetch = (async () => new Response("{}", { status: ++n === 1 ? 429 : 200 })) as typeof fetch;
+    expect(await sendMail("k", "f", "to@example.com", { subject: "s", html: "h" })).toBe("ok");
+    globalThis.fetch = (async () => new Response("{}", { status: 503 })) as typeof fetch;
+    expect(await sendMail("k", "f", "to@example.com", { subject: "s", html: "h" })).toBe("busy");
+    globalThis.fetch = (async () => new Response("{}", { status: 422 })) as typeof fetch;
+    expect(await sendMail("k", "f", "to@example.com", { subject: "s", html: "h" })).toBe("refused");
+
+    const s = await paidSession({ sendOn: "2026-12-24" });
+    globalThis.fetch = (async () => new Response("{}", { status: 200 })) as typeof fetch;
+    await hook(completed(s.id));
+    const out = await deliver.deliverDue(new (await import("stripe")).default("x") as never, SECRET, Date.parse("2026-12-24T15:00:00Z"), async () => "busy");
+    expect(out).toMatchObject({ busy: 1, failed: 0 });
+    expect(db.pis.get(s.payment_intent)!.metadata.gift_deliver_tries).toBeUndefined();
+  }, 15_000);
+});

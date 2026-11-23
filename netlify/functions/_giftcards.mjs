@@ -118,12 +118,14 @@ export async function ensureIssued(stripe, session, secret, nowMs = Date.now()) 
   const toEmail = meta.gift_to_email || "";
   // A card paid on (or after) its send day goes now, not at tomorrow's run.
   const due = !meta.gift_send_on || meta.gift_send_on <= today;
+  // A refund or dispute that arrived before the card was ever issued has set
+  // these already: keep them, so a cancelled card can't come back (pass 3).
   const issued = {
     gift_code_hash: codeHash(code, secret),
     gift_last4: code.slice(-4),
     gift_session: session.id,
-    gift_balance_cents: String(card.valueCents),
-    gift_status: "active",
+    gift_balance_cents: meta.gift_balance_cents ?? String(card.valueCents),
+    gift_status: meta.gift_status || "active",
     gift_issued: today,
     gift_deliver: !toEmail ? "none" : due ? "now" : "pending",
     gift_log: `${today} issued ${dollars(card.valueCents)}`,

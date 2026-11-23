@@ -6,6 +6,37 @@
 import { SHELL, esc } from "./send-confirmation.mjs";
 import { dollars } from "./_giftcards.mjs";
 
+const pause = (ms) => new Promise((r) => setTimeout(r, ms));
+
+/**
+ * Sends one gift card email through Resend. "ok", "busy" (rate limited, the
+ * service down or no connection: try again later, it doesn't count against
+ * the card) or "refused" (the address or message was rejected). A 429 is
+ * waited out twice before giving up as "busy": Resend allows only a few sends
+ * a second, and a Christmas-morning batch would otherwise burn every card's
+ * tries in one run (validation pass 3).
+ */
+export async function sendMail(apiKey, from, to, { subject, html }, tries = 3) {
+  for (let i = 0; i < tries; i++) {
+    let res;
+    try {
+      res = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ from, to: [to], subject, html }),
+      });
+    } catch (e) {
+      console.error("resend network", String(e).slice(0, 200));
+      return "busy";
+    }
+    if (res.ok) return "ok";
+    if (res.status === 429 && i < tries - 1) { await pause(1100 * (i + 1)); continue; }
+    console.error("resend", res.status, (await res.text()).slice(0, 300));
+    return res.status === 429 || res.status >= 500 ? "busy" : "refused";
+  }
+  return "busy";
+}
+
 /** How a card is used today, until the booking form has its own gift card box. */
 const HOW_TO_USE =
   `To use it, book online at <a href="https://513autoclean.com" style="color:#c41414;font-weight:700">513autoclean.com</a> ` +
@@ -17,25 +48,39 @@ const longDay = (iso) => new Date(iso + "T12:00:00Z").toLocaleDateString("en-US"
 
 /** The card as a block that survives every mail app: a table, inline styles, no images needed. */
 export function cardBlock(card, code, link) {
+  // What is left, once some of it has been used (a resend in January).
+  const left = card.balanceCents != null && card.balanceCents < card.valueCents
+    ? `<div style="font-size:13px;color:#a7b0bd;margin-top:4px">${dollars(card.balanceCents)} left on it</div>` : "";
   const to = card.toName ? `<div style="font-size:13px;color:#a7b0bd;margin-top:14px">For ${esc(card.toName)}${card.fromName ? `, from ${esc(card.fromName)}` : ""}</div>` : "";
   const msg = card.message ? `<div style="font-size:15px;color:#eef1f4;margin-top:8px;font-style:italic">&ldquo;${esc(card.message)}&rdquo;</div>` : "";
   return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="border-collapse:separate;margin:4px 0 18px">
 <tr><td style="background:#0b0e13;border-radius:14px;padding:20px 22px;border-bottom:5px solid #c41414;color:#fff">
 <div style="font-size:13px;font-weight:800;letter-spacing:.02em">513 Auto Clean</div>
 <div style="font-size:44px;font-weight:800;line-height:1.05;margin-top:10px">${dollars(card.valueCents)}</div>
-<div style="font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#a7b0bd">Gift card</div>
+<div style="font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#a7b0bd">Gift card</div>${left}
 <div style="margin-top:16px;font:700 20px/1.2 Menlo,Consolas,monospace;letter-spacing:.06em">${esc(code)}</div>
 ${to}${msg}
 </td></tr></table>
 <p style="margin:0 0 14px"><a href="${esc(link)}" style="display:inline-block;background:#c41414;color:#fff;font-weight:700;text-decoration:none;padding:12px 20px;border-radius:999px">View, print or share the card</a></p>`;
 }
 
-export function buyerEmail({ card, code, link, payCents, toEmail }) {
-  const when = card.sendOn
-    ? `We'll email it to ${esc(card.toName || toEmail)} on ${longDay(card.sendOn)}. You can also forward this email or print the card.`
-    : toEmail
-      ? `We've also emailed it to ${esc(card.toName || toEmail)}.`
-      : `Forward this email, or print the card to give it in person.`;
+/**
+ * Where the card is going, from its delivery state (gift_deliver), never from
+ * the send date alone: the webhook, a resend and the hourly run all say the
+ * same thing (validation passes 2 and 3). The address is printed, so a buyer
+ * can spot a typo.
+ */
+export function whenLine(card, deliver, toEmail) {
+  const who = toEmail ? `${card.toName ? esc(card.toName) + " " : ""}(${esc(toEmail)})` : "";
+  if (!toEmail || deliver === "none") return "Forward this email, or print the card to give it in person.";
+  if (deliver === "pending" && card.sendOn) return `We'll email it to ${who} on ${longDay(card.sendOn)}. You can also forward this email or print the card.`;
+  if (deliver === "sent") return `We've emailed it to ${who}.`;
+  if (deliver === "failed" || deliver === "cancelled") return `We couldn't email it to ${who}. Please forward this email, or print the card.`;
+  return `We're emailing it to ${who}. If it doesn't arrive, forward this email.`;
+}
+
+export function buyerEmail({ card, code, link, payCents, toEmail, deliver }) {
+  const when = whenLine(card, deliver, toEmail);
   const paid = payCents < card.valueCents ? ` You paid ${dollars(payCents)} (${card.percentOff}% off).` : ` You paid ${dollars(payCents)}.`;
   return {
     subject: `Your ${dollars(card.valueCents)} 513 Auto Clean gift card`,

@@ -1,8 +1,7 @@
 import Stripe from "stripe";
 import { cincinnatiDay } from "./_pricing.mjs";
 import { GIFT_KIND, appendLog, cardFromMeta, codeFor, dollars, ensureIssued, giftSecret, siteUrl } from "./_giftcards.mjs";
-import { buyerEmail, ownerEmail, recipientEmail } from "./_giftmail.mjs";
-import { send } from "./send-confirmation.mjs";
+import { buyerEmail, ownerEmail, recipientEmail, sendMail } from "./_giftmail.mjs";
 
 /**
  * Stripe's webhook for gift cards.
@@ -27,7 +26,7 @@ const reply = (status, text) => ({ statusCode: status, headers: { "Content-Type"
 function mailer() {
   const apiKey = process.env.RESEND_API_KEY;
   const from = process.env.RESEND_FROM || "513 Auto Clean <onboarding@resend.dev>";
-  return apiKey ? (to, msg) => send(apiKey, from, to, msg) : null;
+  return apiKey ? async (to, msg) => (await sendMail(apiKey, from, to, msg)) === "ok" : null;
 }
 const owner = () => process.env.OWNER_EMAIL || "elijahthackerllc@gmail.com";
 
@@ -55,17 +54,22 @@ export async function issue(stripe, sessionId, secret, nowMs = Date.now()) {
     problems.push(`the ${flag.replace("gift_mail_", "")} email didn't send${mail ? "" : " (no RESEND_API_KEY)"}`);
     return false;
   };
-  await sendOnce("gift_mail_buyer", buyer, buyerEmail({ card, code, link, payCents, toEmail }));
-  if (meta.gift_deliver === "now") {
+  // A card refunded or disputed before it was ever issued: no code goes out (validation pass 3).
+  if (meta.gift_status === "void" || meta.gift_status === "disputed") return "not sent: " + meta.gift_status;
+  // The person it's for first, so the buyer's email says what really happened (pass 3).
+  let deliver = meta.gift_deliver;
+  if (deliver === "now") {
     if (await sendOnce("gift_mail_to", toEmail, recipientEmail({ card, code, link }))) {
-      marks.gift_deliver = "sent";
+      deliver = marks.gift_deliver = "sent";
     } else {
       // Handed to the hourly run (gift-deliver.mjs): three tries, then Elijah
       // is told. Not Stripe's retries: a refused address would fail for days
       // and could get the endpoint switched off (validation pass 2).
       Object.assign(marks, { gift_deliver: "pending", gift_send_on: cincinnatiDay(nowMs) });
+      deliver = "now";
     }
   }
+  await sendOnce("gift_mail_buyer", buyer, buyerEmail({ card, code, link, payCents, toEmail, deliver }));
   const ownerOk = await sendOnce("gift_mail_owner", owner(), ownerEmail({
     card, code, payCents, buyer, toEmail, problem: problems.join("; ") || (buyer ? "" : "Stripe gave no buyer email: send the card yourself."),
   }));
