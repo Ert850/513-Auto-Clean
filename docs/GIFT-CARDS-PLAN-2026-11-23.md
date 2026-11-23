@@ -176,6 +176,8 @@ Wallet passes would come weeks later, after Apple Developer ($99 a year) and Goo
 
 ### The main decision: Gift Up or our own Stripe build
 
+**Decided, November 23: our own Stripe build** (Emmett and Elijah), and layout A with crossed-out prices. The page is built on eNov14 (`SESSION-CHANGES-giftcards.md`), and the payment code fixes are on eNov16 (`SESSION-CHANGES-payments.md`).
+
 **Emmett leans toward our own Stripe build.** Both take payment through the business's own Stripe account; the difference is who issues and tracks the cards.
 
 | | **Gift Up** (a gift card service on our Stripe) | **Our own Stripe build** |
