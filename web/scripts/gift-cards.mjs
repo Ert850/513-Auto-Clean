@@ -17,6 +17,14 @@ import { coverage, coverTable, coversLine, giftCardProblems, salePriceCents, SIZ
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 
 export const GIFT_PAGE = "gift-cards.html";
+/**
+ * The card's own page (where Stripe sends the buyer back, and every card email
+ * links) and Elijah's lookup page. Both noindex and unlinked, and both stay
+ * even with gift cards "off": cards already sold must still open and redeem.
+ */
+export const CERT_PAGE = "gift-certificate.html";
+export const ADMIN_PAGE = "gift-admin.html";
+export const GIFT_TOOL_PAGES = [CERT_PAGE, ADMIN_PAGE];
 
 export function loadGiftCards(file = path.join(root, "config/gift-cards.json")) {
   const cfg = JSON.parse(fs.readFileSync(file, "utf8"));
@@ -65,9 +73,9 @@ function buyButton(valueCents, cfg, { primary = false, custom = false } = {}) {
 
 /** The page title block. */
 export function giftHead(cfg) {
-  const lead = onSale(cfg)
-    ? `Every card is ${cfg.sale.percentOff}% off through ${longDay(cfg.sale.ends)}. It&rsquo;s emailed right away or on the day you choose, with a certificate to print or forward.`
-    : `It&rsquo;s emailed right away or on the day you choose, with a certificate to print or forward.`;
+  // The sale sentence is marked so js/giftcards.js can take it away outside the sale's dates.
+  const lead = (onSale(cfg) ? `<span class="gc-sale-only">Every card is ${cfg.sale.percentOff}% off through ${longDay(cfg.sale.ends)}. </span>` : "") +
+    `It&rsquo;s emailed right away or on the day you choose, with a certificate to print or forward.`;
   return `<div class="section-head">
       <span class="eyebrow">${onSale(cfg) ? "Holiday gift cards" : "Gift cards"}</span>
       <h1>Give a car that feels new again.</h1>
@@ -79,7 +87,7 @@ export function giftHead(cfg) {
 export function giftTiers(cfg, rows = coverTable()) {
   return cfg.tiers.map((t) => {
     const value = t.value * 100;
-    return `<article class="svc-card gc-tier${t.featured ? " featured" : ""}">${t.featured ? '\n          <span class="svc-tag">Our pick</span>' : ""}
+    return `<article class="svc-card gc-tier${t.featured ? " featured" : ""}" data-gc-value="${t.value}">${t.featured ? '\n          <span class="svc-tag">Our pick</span>' : ""}
           ${cardFace(value, cfg)}
           <h2 class="sr-only">${dollars(value)} gift card</h2>
           ${priceRow(value, cfg)}
@@ -102,8 +110,8 @@ export function coverList(valueCents, sizeId, rows = coverTable()) {
 export function giftCalc(cfg, rows = coverTable()) {
   const start = (cfg.tiers.find((t) => t.featured) ?? cfg.tiers[cfg.tiers.length - 1]).value * 100;
   const sizes = VEHICLE_SIZES.map((s, i) => `<label class="gc-size"><input type="radio" name="gcSize" value="${s.id}"${i ? "" : " checked"} /><span>${SIZE_WORDS[s.id].replace(/^./, (c) => c.toUpperCase())}</span></label>`).join("");
-  const saleNote = onSale(cfg) ? `, ${cfg.sale.percentOff}% off through ${longDay(cfg.sale.ends)}` : "";
-  return `<aside class="gc-calc" aria-labelledby="gcCalcH" data-gc-mode="${cfg.mode}" data-gc-pct="${cfg.sale.percentOff}" data-gc-min="${cfg.custom.min}" data-gc-max="${cfg.custom.max}">
+  const saleNote = onSale(cfg) ? `<span class="gc-sale-only">, ${cfg.sale.percentOff}% off through ${longDay(cfg.sale.ends)}</span>` : "";
+  return `<aside class="gc-calc" aria-labelledby="gcCalcH" data-gc-min="${cfg.custom.min}" data-gc-max="${cfg.custom.max}">
         <h2 id="gcCalcH">Pick any amount</h2>
         <div class="field">
           <label for="gcAmt">Card value, ${dollars(cfg.custom.min * 100)} to ${dollars(cfg.custom.max * 100)}</label>

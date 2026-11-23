@@ -22,7 +22,7 @@
 <link rel="manifest" href="manifest.webmanifest" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link rel="stylesheet" href="styles.css?v=9add9919df" />
+<link rel="stylesheet" href="styles.css?v=cabadfc937" />
 <!-- CHROME:HEAD:START -->
 <!-- Public configuration and third party loaders live in js/, not inline,
      so the Content-Security-Policy can forbid inline scripts outright.
@@ -130,14 +130,14 @@
     <div class="section-head">
       <span class="eyebrow">Holiday gift cards</span>
       <h1>Give a car that feels new again.</h1>
-      <p>Every card is 20% off through December 25. It&rsquo;s emailed right away or on the day you choose, with a certificate to print or forward.</p>
+      <p><span class="gc-sale-only">Every card is 20% off through December 25. </span>It&rsquo;s emailed right away or on the day you choose, with a certificate to print or forward.</p>
     </div>
     <!-- GIFTCARDS:HEAD:END -->
     <div class="gc-layout">
       <div class="gc-main">
       <div class="gc-tiers">
         <!-- GIFTCARDS:TIERS:START -->
-        <article class="svc-card gc-tier">
+        <article class="svc-card gc-tier" data-gc-value="50">
           <div class="gc-face" aria-hidden="true"><span class="gc-off">20% off</span>
             <span class="gc-face-brand"><img class="gc-face-mark" src="images/logo-mark.png" alt="" width="20" height="26" />513 Auto Clean</span>
             <span class="gc-face-value">$50</span>
@@ -146,9 +146,9 @@
           <h2 class="sr-only">$50 gift card</h2>
           <p class="gc-price"><span class="gc-pay">You pay</span> <strong>$40</strong> <s><span class="sr-only">instead of </span>$50</s> <span class="gc-save">Save $10</span></p>
           <p class="gc-covers">Toward any detail or add-on</p>
-          <div class="svc-foot"><button type="button" class="btn btn-ghost btn-block" data-gc-buy="50" disabled>Buy for $40</button></div>
+          <div class="svc-foot"><button type="button" class="btn btn-ghost btn-block" data-gc-buy="50">Buy for $40</button></div>
         </article>
-        <article class="svc-card gc-tier">
+        <article class="svc-card gc-tier" data-gc-value="100">
           <div class="gc-face" aria-hidden="true"><span class="gc-off">20% off</span>
             <span class="gc-face-brand"><img class="gc-face-mark" src="images/logo-mark.png" alt="" width="20" height="26" />513 Auto Clean</span>
             <span class="gc-face-value">$100</span>
@@ -157,9 +157,9 @@
           <h2 class="sr-only">$100 gift card</h2>
           <p class="gc-price"><span class="gc-pay">You pay</span> <strong>$80</strong> <s><span class="sr-only">instead of </span>$100</s> <span class="gc-save">Save $20</span></p>
           <p class="gc-covers">Covers an Express Exterior for a car, SUV or truck, tax included</p>
-          <div class="svc-foot"><button type="button" class="btn btn-ghost btn-block" data-gc-buy="100" disabled>Buy for $80</button></div>
+          <div class="svc-foot"><button type="button" class="btn btn-ghost btn-block" data-gc-buy="100">Buy for $80</button></div>
         </article>
-        <article class="svc-card gc-tier featured">
+        <article class="svc-card gc-tier featured" data-gc-value="150">
           <span class="svc-tag">Our pick</span>
           <div class="gc-face" aria-hidden="true"><span class="gc-off">20% off</span>
             <span class="gc-face-brand"><img class="gc-face-mark" src="images/logo-mark.png" alt="" width="20" height="26" />513 Auto Clean</span>
@@ -169,9 +169,9 @@
           <h2 class="sr-only">$150 gift card</h2>
           <p class="gc-price"><span class="gc-pay">You pay</span> <strong>$120</strong> <s><span class="sr-only">instead of </span>$150</s> <span class="gc-save">Save $30</span></p>
           <p class="gc-covers">Covers a Basic Exterior for a car, SUV or truck, tax included</p>
-          <div class="svc-foot"><button type="button" class="btn btn-primary btn-block" data-gc-buy="150" disabled>Buy for $120</button></div>
+          <div class="svc-foot"><button type="button" class="btn btn-primary btn-block" data-gc-buy="150">Buy for $120</button></div>
         </article>
-        <article class="svc-card gc-tier">
+        <article class="svc-card gc-tier" data-gc-value="250">
           <div class="gc-face" aria-hidden="true"><span class="gc-off">20% off</span>
             <span class="gc-face-brand"><img class="gc-face-mark" src="images/logo-mark.png" alt="" width="20" height="26" />513 Auto Clean</span>
             <span class="gc-face-value">$250</span>
@@ -180,7 +180,7 @@
           <h2 class="sr-only">$250 gift card</h2>
           <p class="gc-price"><span class="gc-pay">You pay</span> <strong>$200</strong> <s><span class="sr-only">instead of </span>$250</s> <span class="gc-save">Save $50</span></p>
           <p class="gc-covers">Covers a Basic Interior for any vehicle, tax included</p>
-          <div class="svc-foot"><button type="button" class="btn btn-ghost btn-block" data-gc-buy="250" disabled>Buy for $200</button></div>
+          <div class="svc-foot"><button type="button" class="btn btn-ghost btn-block" data-gc-buy="250">Buy for $200</button></div>
         </article>
         <!-- GIFTCARDS:TIERS:END -->
       </div>
@@ -191,11 +191,10 @@
         <li>Use it over more than one booking</li>
         <li>Not redeemable for cash</li>
       </ul>
-      <p class="gc-soon">Buying online opens soon.</p>
       <!-- GIFTCARDS:TERMS:END -->
       </div>
       <!-- GIFTCARDS:CALC:START -->
-      <aside class="gc-calc" aria-labelledby="gcCalcH" data-gc-mode="sale" data-gc-pct="20" data-gc-min="25" data-gc-max="500">
+      <aside class="gc-calc" aria-labelledby="gcCalcH" data-gc-min="25" data-gc-max="500">
         <h2 id="gcCalcH">Pick any amount</h2>
         <div class="field">
           <label for="gcAmt">Card value, $25 to $500</label>
@@ -205,8 +204,8 @@
         <p class="gc-price gc-calc-price"><span class="gc-pay">You pay</span> <strong>$120</strong> <s><span class="sr-only">instead of </span>$150</s> <span class="gc-save">Save $30</span></p>
         <fieldset class="gc-sizes"><legend>What would it cover?</legend><label class="gc-size"><input type="radio" name="gcSize" value="small" checked /><span>Car</span></label><label class="gc-size"><input type="radio" name="gcSize" value="medium" /><span>SUV or truck</span></label><label class="gc-size"><input type="radio" name="gcSize" value="large" /><span>3-row SUV or van</span></label></fieldset>
         <div class="gc-out" aria-live="polite"><ul class="gc-list"><li><b>Basic Exterior</b><em>$134.75</em></li><li><b>Express Exterior</b><em>$80.85</em></li></ul><p class="gc-next">$6.31 more covers a Basic Interior</p></div>
-        <button type="button" class="btn btn-primary btn-block" data-gc-buy="custom" disabled>Buy a $150 card for $120</button>
-        <p class="gc-small">Prices include sales tax at the highest local rate. Travel beyond the first 10 minutes&rsquo; drive is extra, 20% off through December 25.</p>
+        <button type="button" class="btn btn-primary btn-block" data-gc-buy="custom">Buy a $150 card for $120</button>
+        <p class="gc-small">Prices include sales tax at the highest local rate. Travel beyond the first 10 minutes&rsquo; drive is extra<span class="gc-sale-only">, 20% off through December 25</span>.</p>
       </aside>
       <!-- GIFTCARDS:CALC:END -->
     </div>
@@ -218,6 +217,43 @@
       </ol>
       <p class="gc-ask">Questions about a gift card? <a href="contact.html">Contact us</a>.</p>
     </div>
+    <!-- Buying: who it's for, then Stripe's own payment page (js/giftcards.js,
+         netlify/functions/gift-checkout.mjs). The amounts are filled in by the
+         script from the card picked; nothing here is a price. -->
+    <dialog class="gc-dialog" id="gcBuy" aria-labelledby="gcBuyH">
+      <form class="gc-buyform" id="gcBuyForm" novalidate>
+        <h2 id="gcBuyH">Your gift card</h2>
+        <p class="gc-buy-sum" id="gcBuySum"></p>
+        <div class="field">
+          <label for="gcToName">Who is it for? <i>(optional)</i></label>
+          <input id="gcToName" maxlength="60" autocomplete="off" placeholder="Their name" />
+        </div>
+        <div class="field">
+          <label for="gcToEmail">Their email <i>(optional)</i></label>
+          <input id="gcToEmail" type="email" maxlength="254" autocomplete="off" placeholder="Leave empty to give it yourself" />
+        </div>
+        <fieldset class="gc-when" id="gcWhen" hidden>
+          <legend>When should we email it to them?</legend>
+          <label><input type="radio" name="gcWhen" value="now" checked /> Right after you pay</label>
+          <label><input type="radio" name="gcWhen" value="date" /> On a date</label>
+          <input id="gcSendOn" type="date" aria-label="Date to email it" hidden />
+        </fieldset>
+        <div class="field">
+          <label for="gcFromName">From <i>(optional)</i></label>
+          <input id="gcFromName" maxlength="60" autocomplete="name" placeholder="Your name" />
+        </div>
+        <div class="field">
+          <label for="gcMessage">Message <i>(optional)</i></label>
+          <textarea id="gcMessage" maxlength="300" rows="3" placeholder="Happy holidays!"></textarea>
+        </div>
+        <p class="gc-buy-note">You pay on Stripe&rsquo;s secure page. We email the card to you as well, with a certificate to print.</p>
+        <p class="gc-buy-err" id="gcBuyErr" role="alert" hidden></p>
+        <div class="gc-buy-actions">
+          <button type="submit" class="btn btn-primary btn-block" id="gcBuyGo">Continue to payment</button>
+          <button type="button" class="btn btn-ghost btn-block" data-gc-close>Cancel</button>
+        </div>
+      </form>
+    </dialog>
   </div>
 </section>
 </main>
@@ -293,10 +329,10 @@
 <link rel="stylesheet" href="book.css?v=ddd553527c" />
 <!-- Deferred, so they run in this order: the pricing bundle before the
      booking form and before any page script that prices (travel.js). -->
-<script src="js/pricing.bundle.js?v=cda12786a8" defer></script>
+<script src="js/pricing.bundle.js?v=3f4ab069f0" defer></script>
 <script src="js/funnel.js?v=fc849a0733" defer></script>
 <script src="script.js?v=1c1cc95164" defer></script>
 <!-- CHROME:SCRIPTS:END -->
-<script src="js/giftcards.js?v=7e7c8f186b" defer></script>
+<script src="js/giftcards.js?v=9e18ac1434" defer></script>
 </body>
 </html>

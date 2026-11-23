@@ -277,5 +277,5 @@ export {
 };
 export { BOOK_LINK_PARAMS, BOOK_INTENTS, arrivalQuery, parseArrival } from "./booking/bookLinks.js";
 export { zipGeo } from "./travel/zipGeo.js";
-export { coverTable, coverage, coversLine, giftCardProblems, maxTaxRateBp, salePriceCents, SIZE_WORDS } from "./catalog/giftCards.js";
+export { cincinnatiDay, coverTable, coverage, coversLine, giftCardProblems, giftOffer, GIFT_CARDS, maxTaxRateBp, saleOn, salePriceCents, SIZE_WORDS } from "./catalog/giftCards.js";
 export { VEHICLE_SIZES } from "./catalog/seed.js";

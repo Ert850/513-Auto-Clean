@@ -15,6 +15,8 @@
 import { SEED_CATALOG, VEHICLE_SIZES } from "./seed.js";
 import { SEED_TAX_TABLE } from "../pricing/tax.js";
 import type { TaxTable } from "../pricing/tax.js";
+import { localParts } from "../time/zone.js";
+import raw from "../../../config/gift-cards.json" with { type: "json" };
 
 export interface GiftCardConfig {
   /** "sale": the discount runs; "regular": cards sell at their value; "off": no page, no links. */
@@ -26,6 +28,8 @@ export interface GiftCardConfig {
   custom: { min: number; max: number };
   /** False until the checkout function exists: the buy buttons render disabled. */
   checkout: { enabled: boolean };
+  /** Days after buying in which an unused card can be refunded. */
+  refundDays: number;
 }
 
 /** What a buyer calls each size (VEHICLE_SIZES ids). */
@@ -117,5 +121,45 @@ export function giftCardProblems(cfg: GiftCardConfig): string[] {
   const { min, max } = cfg.custom ?? ({} as GiftCardConfig["custom"]);
   if (!Number.isInteger(min) || !Number.isInteger(max) || min < 5 || min >= max) out.push("custom.min and custom.max must be whole dollars, min below max");
   if (typeof cfg.checkout?.enabled !== "boolean") out.push("checkout.enabled must be true or false");
+  if (!Number.isInteger(cfg.refundDays) || cfg.refundDays < 0 || cfg.refundDays > 365) out.push("refundDays must be a whole number of days, 0 to 365");
   return out;
+}
+
+/** config/gift-cards.json, as the checkout and the page's script read it. */
+export const GIFT_CARDS = raw as unknown as GiftCardConfig;
+
+/** Today in Cincinnati, YYYY-MM-DD: the functions run on UTC. */
+export function cincinnatiDay(nowMs: number): string {
+  const { y, mo, d } = localParts(nowMs, "America/New_York");
+  return `${y}-${String(mo).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+}
+
+/**
+ * Is the discount on right now? Mode "sale" and today between the sale's
+ * dates, both included. The checkout charges by this, and the page's script
+ * switches the page to full prices by the same test, so what the page shows
+ * is what Stripe charges.
+ */
+export function saleOn(cfg: Pick<GiftCardConfig, "mode" | "sale">, nowMs: number): boolean {
+  if (cfg.mode !== "sale") return false;
+  const day = cincinnatiDay(nowMs);
+  return day >= cfg.sale.starts && day <= cfg.sale.ends;
+}
+
+export type GiftOffer =
+  | { ok: true; valueCents: number; payCents: number; percentOff: number }
+  | { ok: false; error: "off" | "bad_amount" };
+
+/**
+ * What a card of `value` whole dollars costs now. Only the server's answer
+ * counts: the browser sends the value, never a price.
+ */
+export function giftOffer(value: unknown, nowMs: number, cfg: GiftCardConfig = GIFT_CARDS): GiftOffer {
+  if (cfg.mode === "off") return { ok: false, error: "off" };
+  const v = typeof value === "number" ? value : Number.NaN;
+  const tier = cfg.tiers.some((t) => t.value === v);
+  if (!Number.isInteger(v) || (!tier && (v < cfg.custom.min || v > cfg.custom.max))) return { ok: false, error: "bad_amount" };
+  const percentOff = saleOn(cfg, nowMs) ? cfg.sale.percentOff : 0;
+  const valueCents = v * 100;
+  return { ok: true, valueCents, payCents: Math.round((valueCents * (100 - percentOff)) / 100), percentOff };
 }

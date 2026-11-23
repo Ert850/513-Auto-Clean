@@ -2052,7 +2052,8 @@ var LEGAL = {
    * terms describe taking a card again, and the privacy policy names two
    * more processors.
    */
-  termsEffective: "2026-11-14",
+  termsEffective: "2026-11-23",
+  // 2026-11-23: section 4 has the gift card rules while gift cards are sold online (giftCardSales).
   // 2026-11-14: section 11 describes the text program for the toll-free number verification.
   // 2026-11-09: Google Analytics and Microsoft Clarity behind a consent
   // banner, and the arrival source kept for the visit.
@@ -2071,7 +2072,8 @@ var LEGAL = {
   // not exist, and the record of what was agreed names the terms' date.
   // 2026-11-11 (later): A/B tests (config/experiments.json) remember which
   // version a visitor saw and send it with a booking. Same day, nothing live.
-  privacyEffective: "2026-11-14"
+  privacyEffective: "2026-11-23"
+  // 2026-11-23: Stripe for gift cards, and what a gift card purchase collects (giftCardSales).
   // 2026-11-14: opt-in data "will not be shared with any third parties or affiliates" (no carve-out), and a text messaging provider in the list.
 };
 function longDate(iso) {
@@ -2677,6 +2679,109 @@ function cancellationLadder(r) {
   ];
 }
 
+// ../config/gift-cards.json
+var gift_cards_default = {
+  _read_me: [
+    "The gift card page (gift-cards.html) and its links. The build writes every amount, date and 'Covers ...' line from this file and the catalog: never type one into a page.",
+    'mode "sale": the holiday discount runs (sale.percentOff off every card, through sale.ends). mode "regular": cards sell at their value, no sale wording. mode "off": no page and no links anywhere; the site is exactly as it was before gift cards.',
+    "sale.starts and sale.ends are Cincinnati dates (YYYY-MM-DD). The page says 'through' the end date; the checkout (when built) refuses the discount outside them.",
+    "tiers: up to 4 card values in whole dollars, smallest first. featured: true on one of them makes it the highlighted card. Any other amount is bought from the calculator, between custom.min and custom.max.",
+    "checkout.enabled: true sends the buy buttons to Stripe (netlify/functions/gift-checkout.mjs). It needs STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET and GIFT_CODE_SECRET in Netlify; without them the checkout refuses and takes nothing. false shows the buttons disabled. A production build fails while mode is not off and checkout is off.",
+    "refundDays: an unused card can be refunded (what was paid) within this many days of buying it. The terms say it from here.",
+    "A mistake in this file fails the build."
+  ],
+  mode: "sale",
+  sale: { percentOff: 20, starts: "2026-11-27", ends: "2026-12-25" },
+  tiers: [
+    { value: 50 },
+    { value: 100 },
+    { value: 150, featured: true },
+    { value: 250 }
+  ],
+  custom: { min: 25, max: 500 },
+  refundDays: 30,
+  checkout: { enabled: true }
+};
+
+// lib/catalog/giftCards.ts
+var SIZE_WORDS = {
+  small: "car",
+  medium: "SUV or truck",
+  large: "3-row SUV or van"
+};
+function maxTaxRateBp(table = SEED_TAX_TABLE) {
+  return Math.max(...table.rates.map((r) => r.rateBp));
+}
+function withTax(cents, rateBp) {
+  return cents + Math.round(cents * rateBp / 1e4);
+}
+function coverTable(rateBp = maxTaxRateBp()) {
+  return SEED_CATALOG.packages.filter((p) => !p.requiresPriorDetail && !p.comingSoon && p.priceCents > 0).map((p) => ({
+    id: p.id,
+    name: p.name,
+    cents: Object.fromEntries(VEHICLE_SIZES.map((s) => [s.id, withTax(p.priceCents + s.upchargeCents, rateBp)]))
+  }));
+}
+function salePriceCents(valueCents, cfg) {
+  if (cfg.mode !== "sale") return valueCents;
+  return Math.round(valueCents * (100 - cfg.sale.percentOff) / 100);
+}
+function coverage(valueCents, sizeId, rows = coverTable()) {
+  const priced = rows.map((r) => ({ name: r.name, cents: r.cents[sizeId] ?? Infinity }));
+  const covered2 = priced.filter((r) => r.cents <= valueCents).sort((a, b) => b.cents - a.cents);
+  const above = priced.filter((r) => r.cents > valueCents && Number.isFinite(r.cents)).sort((a, b) => a.cents - b.cents)[0];
+  return { covered: covered2, next: above ? { name: above.name, shortCents: above.cents - valueCents } : null };
+}
+var article = (name) => /^[AEIOU]/i.test(name) ? "an" : "a";
+function coversLine(valueCents, rows = coverTable()) {
+  const best = coverage(valueCents, VEHICLE_SIZES[0].id, rows).covered[0];
+  if (!best) return "Toward any detail or add-on";
+  const row = rows.find((r) => r.name === best.name);
+  const sizes = VEHICLE_SIZES.filter((s) => (row.cents[s.id] ?? Infinity) <= valueCents).map((s) => SIZE_WORDS[s.id]);
+  const who = sizes.length === VEHICLE_SIZES.length ? "any vehicle" : `a ${sizes.join(", ")}`;
+  return `Covers ${article(best.name)} ${best.name} for ${who}, tax included`;
+}
+function giftCardProblems(cfg) {
+  const out = [];
+  const day = /^\d{4}-\d{2}-\d{2}$/;
+  if (!["sale", "regular", "off"].includes(cfg.mode)) out.push(`mode must be sale, regular or off, not "${cfg.mode}"`);
+  const pct = cfg.sale?.percentOff;
+  if (!Number.isInteger(pct) || pct < 1 || pct > 50) out.push("sale.percentOff must be a whole number from 1 to 50");
+  if (!day.test(cfg.sale?.starts ?? "") || !day.test(cfg.sale?.ends ?? "")) out.push("sale.starts and sale.ends must be YYYY-MM-DD (Cincinnati dates)");
+  else if (cfg.sale.starts > cfg.sale.ends) out.push("sale.starts is after sale.ends");
+  const values = (cfg.tiers ?? []).map((t) => t.value);
+  if (values.length < 1 || values.length > 4) out.push("tiers: 1 to 4 cards");
+  values.forEach((v, i) => {
+    if (!Number.isInteger(v) || v < 5 || v > 2e3) out.push(`tiers[${i}].value must be whole dollars, 5 to 2000`);
+    if (i && v <= values[i - 1]) out.push("tiers must go up in value");
+  });
+  if ((cfg.tiers ?? []).filter((t) => t.featured).length > 1) out.push("at most one featured tier");
+  const { min, max } = cfg.custom ?? {};
+  if (!Number.isInteger(min) || !Number.isInteger(max) || min < 5 || min >= max) out.push("custom.min and custom.max must be whole dollars, min below max");
+  if (typeof cfg.checkout?.enabled !== "boolean") out.push("checkout.enabled must be true or false");
+  if (!Number.isInteger(cfg.refundDays) || cfg.refundDays < 0 || cfg.refundDays > 365) out.push("refundDays must be a whole number of days, 0 to 365");
+  return out;
+}
+var GIFT_CARDS = gift_cards_default;
+function cincinnatiDay(nowMs) {
+  const { y, mo, d } = localParts(nowMs, "America/New_York");
+  return `${y}-${String(mo).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+}
+function saleOn(cfg, nowMs) {
+  if (cfg.mode !== "sale") return false;
+  const day = cincinnatiDay(nowMs);
+  return day >= cfg.sale.starts && day <= cfg.sale.ends;
+}
+function giftOffer(value, nowMs, cfg = GIFT_CARDS) {
+  if (cfg.mode === "off") return { ok: false, error: "off" };
+  const v = typeof value === "number" ? value : Number.NaN;
+  const tier = cfg.tiers.some((t) => t.value === v);
+  if (!Number.isInteger(v) || !tier && (v < cfg.custom.min || v > cfg.custom.max)) return { ok: false, error: "bad_amount" };
+  const percentOff = saleOn(cfg, nowMs) ? cfg.sale.percentOff : 0;
+  const valueCents = v * 100;
+  return { ok: true, valueCents, payCents: Math.round(valueCents * (100 - percentOff) / 100), percentOff };
+}
+
 // lib/site/capabilities.ts
 var DRAFT_KEEP_DAYS = 14;
 var CAPABILITIES = [
@@ -2862,6 +2967,16 @@ var CAPABILITIES = [
     // nothing while it is off.
     live: true,
     blockedBy: "nothing: it uses the booking email service"
+  },
+  {
+    id: "giftCardSales",
+    what: "Selling gift cards online, paid on Stripe's own page",
+    // Follows config/gift-cards.json: on while gift cards are on and the
+    // Stripe checkout is switched on (November 23). The terms then carry the
+    // gift card rules, and the privacy policy names Stripe and what a gift
+    // purchase collects. Cards already sold keep working when this goes off.
+    live: GIFT_CARDS.mode !== "off" && GIFT_CARDS.checkout.enabled,
+    blockedBy: "config/gift-cards.json: mode off, or checkout.enabled false"
   }
 ];
 var PROCESSORS = [
@@ -2878,6 +2993,7 @@ var PROCESSORS = [
   { name: "Google Calendar", does: "holds our availability and our schedule. When you book, the job goes onto our booking calendar with your name, phone, email, address and notes, so we know where to be. That calendar is private: anyone else sees only that the time is taken. Your browser reads only our open times.", capability: "liveCalendar" },
   { name: "Stripe", does: "takes card payments and keeps your card on file. Card details go straight to Stripe over an encrypted connection; we never see or store the card number.", capability: "cardOnFile" },
   { name: "PayPal", does: "takes PayPal and Venmo payments.", capability: "digitalWallets" },
+  { name: "Stripe (gift cards)", does: "takes payment for gift cards on its own secure page, and keeps the record of each card: its value, what is left on it, and the names, email address and message given for it. Card details go straight to Stripe; we never see or store the card number. The gift card emails are sent by Resend.", capability: "giftCardSales" },
   // Named generically on purpose (Emmett, November 14): the provider may change
   // (GoHighLevel's LeadConnector today), and the policy should not need a rewrite.
   { name: "Our text messaging provider", does: "delivers the text messages we send you. It receives your mobile number and each message, only to deliver it, and may not use them for anything else." },
@@ -3433,65 +3549,6 @@ function zipGeo(zip) {
   return BY_ZIP[(zip || "").trim().slice(0, 5)] ?? null;
 }
 
-// lib/catalog/giftCards.ts
-var SIZE_WORDS = {
-  small: "car",
-  medium: "SUV or truck",
-  large: "3-row SUV or van"
-};
-function maxTaxRateBp(table = SEED_TAX_TABLE) {
-  return Math.max(...table.rates.map((r) => r.rateBp));
-}
-function withTax(cents, rateBp) {
-  return cents + Math.round(cents * rateBp / 1e4);
-}
-function coverTable(rateBp = maxTaxRateBp()) {
-  return SEED_CATALOG.packages.filter((p) => !p.requiresPriorDetail && !p.comingSoon && p.priceCents > 0).map((p) => ({
-    id: p.id,
-    name: p.name,
-    cents: Object.fromEntries(VEHICLE_SIZES.map((s) => [s.id, withTax(p.priceCents + s.upchargeCents, rateBp)]))
-  }));
-}
-function salePriceCents(valueCents, cfg) {
-  if (cfg.mode !== "sale") return valueCents;
-  return Math.round(valueCents * (100 - cfg.sale.percentOff) / 100);
-}
-function coverage(valueCents, sizeId, rows = coverTable()) {
-  const priced = rows.map((r) => ({ name: r.name, cents: r.cents[sizeId] ?? Infinity }));
-  const covered2 = priced.filter((r) => r.cents <= valueCents).sort((a, b) => b.cents - a.cents);
-  const above = priced.filter((r) => r.cents > valueCents && Number.isFinite(r.cents)).sort((a, b) => a.cents - b.cents)[0];
-  return { covered: covered2, next: above ? { name: above.name, shortCents: above.cents - valueCents } : null };
-}
-var article = (name) => /^[AEIOU]/i.test(name) ? "an" : "a";
-function coversLine(valueCents, rows = coverTable()) {
-  const best = coverage(valueCents, VEHICLE_SIZES[0].id, rows).covered[0];
-  if (!best) return "Toward any detail or add-on";
-  const row = rows.find((r) => r.name === best.name);
-  const sizes = VEHICLE_SIZES.filter((s) => (row.cents[s.id] ?? Infinity) <= valueCents).map((s) => SIZE_WORDS[s.id]);
-  const who = sizes.length === VEHICLE_SIZES.length ? "any vehicle" : `a ${sizes.join(", ")}`;
-  return `Covers ${article(best.name)} ${best.name} for ${who}, tax included`;
-}
-function giftCardProblems(cfg) {
-  const out = [];
-  const day = /^\d{4}-\d{2}-\d{2}$/;
-  if (!["sale", "regular", "off"].includes(cfg.mode)) out.push(`mode must be sale, regular or off, not "${cfg.mode}"`);
-  const pct = cfg.sale?.percentOff;
-  if (!Number.isInteger(pct) || pct < 1 || pct > 50) out.push("sale.percentOff must be a whole number from 1 to 50");
-  if (!day.test(cfg.sale?.starts ?? "") || !day.test(cfg.sale?.ends ?? "")) out.push("sale.starts and sale.ends must be YYYY-MM-DD (Cincinnati dates)");
-  else if (cfg.sale.starts > cfg.sale.ends) out.push("sale.starts is after sale.ends");
-  const values = (cfg.tiers ?? []).map((t) => t.value);
-  if (values.length < 1 || values.length > 4) out.push("tiers: 1 to 4 cards");
-  values.forEach((v, i) => {
-    if (!Number.isInteger(v) || v < 5 || v > 2e3) out.push(`tiers[${i}].value must be whole dollars, 5 to 2000`);
-    if (i && v <= values[i - 1]) out.push("tiers must go up in value");
-  });
-  if ((cfg.tiers ?? []).filter((t) => t.featured).length > 1) out.push("at most one featured tier");
-  const { min, max } = cfg.custom ?? {};
-  if (!Number.isInteger(min) || !Number.isInteger(max) || min < 5 || min >= max) out.push("custom.min and custom.max must be whole dollars, min below max");
-  if (typeof cfg.checkout?.enabled !== "boolean") out.push("checkout.enabled must be true or false");
-  return out;
-}
-
 // lib/server-entry.ts
 function priceFromWire(wire, opts = {}) {
   const rejected = [];
@@ -3631,6 +3688,7 @@ export {
   CORRECTION_TIERS,
   DEFAULT_RULES,
   DRAFT_KEEP_DAYS,
+  GIFT_CARDS,
   HOURS,
   LEGAL,
   LONG_JOB_STARTS,
@@ -3649,6 +3707,7 @@ export {
   canDo,
   cancellationLadder,
   checkRange,
+  cincinnatiDay,
   componentsOf,
   copyFor,
   coverTable,
@@ -3659,6 +3718,7 @@ export {
   findAddon,
   findPackage,
   giftCardProblems,
+  giftOffer,
   hoursText,
   isLive,
   legalFingerprint,
@@ -3677,6 +3737,7 @@ export {
   parsePhone,
   phoneTrace,
   priceFromWire,
+  saleOn,
   salePriceCents,
   slotStillFree,
   swapPhone,

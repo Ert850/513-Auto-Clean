@@ -15,7 +15,7 @@ import {
   vehicleSize,
   upgradeLegacy,
 } from "./catalog/seed.js";
-import { coverage, coverTable } from "./catalog/giftCards.js";
+import { coverage, coverTable, GIFT_CARDS, saleOn } from "./catalog/giftCards.js";
 import {
   ADDONS,
   addonBlockedReason,
@@ -209,6 +209,8 @@ const api = {
   formatCents,
   coverage,
   coverTable,
+  GIFT_CARDS,
+  saleOn,
 };
 
 declare global {
