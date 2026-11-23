@@ -45,13 +45,17 @@
     return on ? on.value : 'small';
   }
 
-  // Same markup as gift-cards.mjs priceRow and coverList.
+  // Same markup and words as gift-cards.mjs priceRow, buyLabel and coverList.
   function priceHtml(cents) {
     var p = pay(cents);
-    var lead = '<span class="gc-pay">You pay</span> <strong>' + dollars(p) + '</strong>';
-    if (p === cents) return lead;
-    return lead + ' <s><span class="sr-only">instead of </span>' + dollars(cents) +
+    if (p === cents) return '<strong>' + dollars(p) + '</strong>';
+    return '<span class="gc-pay">You pay</span> <strong>' + dollars(p) + '</strong> <s><span class="sr-only">instead of </span>' + dollars(cents) +
       '</s> <span class="gc-save">Save ' + dollars(cents - p) + '</span>';
+  }
+  function buyLabel(cents, custom) {
+    var p = pay(cents);
+    if (custom) return p < cents ? 'Buy a ' + dollars(cents) + ' card for ' + dollars(p) : 'Buy a ' + dollars(cents) + ' card';
+    return 'Buy for ' + dollars(p);
   }
   function listHtml(cents) {
     var c = P.coverage(cents, size(), rows);
@@ -62,16 +66,22 @@
     return '<ul class="gc-list">' + items + '</ul>' + more;
   }
 
-  /* ---------------- outside the sale's dates: full prices ---------------- */
+  /* ---------------- the sale, as of today ----------------
+     The build wrote the page for the day it was built (data-gc-built-sale).
+     If the sale has started or ended since, put today's prices on it: the
+     ones the checkout will charge. */
 
-  if (cfg.mode === 'sale' && !sale) {
-    document.querySelectorAll('.gc-off, .gc-sale-only').forEach(function (e) { e.hidden = true; });
+  var built = calc.getAttribute('data-gc-built-sale') === '1';
+  var soon = cfg.mode === 'sale' && !sale && P.cincinnatiDay(Date.now()) < cfg.sale.starts;
+  document.querySelectorAll('.gc-off, .gc-sale-only').forEach(function (e) { e.hidden = !sale; });
+  document.querySelectorAll('.gc-sale-soon').forEach(function (e) { e.hidden = !soon; });
+  if (sale !== built) {
     document.querySelectorAll('.gc-tier[data-gc-value]').forEach(function (t) {
       var cents = Number(t.getAttribute('data-gc-value')) * 100;
       var row = t.querySelector('.gc-price');
       if (row) row.innerHTML = priceHtml(cents);
       var b = t.querySelector('[data-gc-buy]');
-      if (b) b.textContent = 'Buy for ' + dollars(cents);
+      if (b) b.textContent = buyLabel(cents, false);
     });
   }
 
@@ -93,11 +103,24 @@
     var cents = v * 100;
     price.innerHTML = priceHtml(cents);
     out.innerHTML = listHtml(cents);
-    if (customBuy) customBuy.textContent = 'Buy a ' + dollars(cents) + ' card for ' + dollars(pay(cents));
+    if (customBuy) customBuy.textContent = buyLabel(cents, true);
+    announce(cents);
+  }
+  // One short sentence for screen readers once typing pauses, not the whole list per keystroke.
+  var say = document.getElementById('gcSay');
+  var sayTimer = null;
+  function announce(cents) {
+    if (!say) return;
+    clearTimeout(sayTimer);
+    sayTimer = setTimeout(function () {
+      var c = P.coverage(cents, size(), rows);
+      say.textContent = dollars(cents) + ' card, you pay ' + dollars(pay(cents)) + '. ' +
+        (c.covered.length ? 'Covers ' + c.covered.map(function (r) { return r.name; }).join(', ') + '.' : 'Not a full detail yet.');
+    }, 700);
   }
   input.addEventListener('input', update);
   calc.addEventListener('change', function (e) { if (e.target.name === 'gcSize') update(); });
-  if (cfg.mode === 'sale' && !sale) update();
+  if (sale !== built) update();
 
   /* ---------------- buying ---------------- */
 
@@ -143,8 +166,10 @@
       $('gcBuyH').textContent = dollars(cents) + ' gift card';
       $('gcBuySum').textContent = 'You pay ' + dollars(pay(cents)) + (pay(cents) < cents ? ' (' + pct + '% off). ' : '. ') + 'Never expires, no fees.';
       var d = $('gcSendOn');
-      d.min = today(0); d.max = today(60);
+      d.min = today(0); d.max = today(cfg.scheduleDays);
       if (!d.value) d.value = today(1);
+      var refund = $('gcRefund');
+      if (refund) refund.textContent = cfg.refundDays > 0 ? ' Unused cards can be refunded within ' + cfg.refundDays + ' days.' : '';
       showErr('');
       syncWhen();
       dlg.showModal();
@@ -162,7 +187,7 @@
     var onDate = email && form.querySelector('input[name="gcWhen"]:checked').value === 'date';
     if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) { showErr('Check their email address, or leave it empty to give the card yourself.'); return; }
     var sendOn = onDate ? $('gcSendOn').value : '';
-    if (onDate && (!sendOn || sendOn < today(0) || sendOn > today(60))) { showErr('Pick a day between today and two months from now.'); return; }
+    if (onDate && (!sendOn || sendOn < today(0) || sendOn > today(cfg.scheduleDays))) { showErr('Pick a day between today and ' + cfg.scheduleDays + ' days from now.'); return; }
     busy = true;
     $('gcBuyGo').textContent = 'Opening the payment page…';
     showErr('');
@@ -180,10 +205,11 @@
     })
       .then(function (r) { return r.json().catch(function () { return {}; }); })
       .then(function (j) {
-        if (j.url) { location.href = j.url; return; }
+        // Closed while it was opening: they changed their mind, so stay here.
+        if (j.url) { if (dlg.open) location.href = j.url; return; }
         var words = {
           bad_email: 'Check their email address, or leave it empty to give the card yourself.',
-          bad_date: 'Pick a day between today and two months from now.',
+          bad_date: 'Pick a day between today and ' + cfg.scheduleDays + ' days from now.',
           date_needs_email: 'To send it on a date, add their email.',
           bad_details: 'A name or the message is too long.',
           bad_amount: 'Pick an amount from the cards, or one in the calculator.',

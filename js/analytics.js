@@ -25,8 +25,11 @@
  */
 (function () {
   var c = window.AC_CONFIG || {};
-  var GA = c.ga4MeasurementId || '';
-  var CL = c.clarityProjectId || '';
+  // A private page (<meta name="ac-private">, the gift certificate: its address
+  // opens a gift card) loads no analytics at all, as if no ids were set.
+  var priv = !!(document.querySelector && document.querySelector('meta[name="ac-private"]'));
+  var GA = priv ? '' : c.ga4MeasurementId || '';
+  var CL = priv ? '' : c.clarityProjectId || '';
   var CHOICE_KEY = 'ac-analytics';
   var SOURCE_KEY = 'ac-source';
   var loaded = false;

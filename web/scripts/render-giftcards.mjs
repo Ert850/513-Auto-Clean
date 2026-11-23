@@ -7,7 +7,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { GIFT_PAGE, giftCalc, giftHead, giftTerms, giftTiers, loadGiftCards } from "./gift-cards.mjs";
+import { GIFT_PAGE, giftCalc, giftHead, giftTerms, giftTiers, loadGiftCards, viewAt } from "./gift-cards.mjs";
 import { SITE } from "./site-urls.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
@@ -23,11 +23,13 @@ function region(html, file, name, body) {
 const cfg = loadGiftCards();
 
 if (cfg.mode !== "off") {
+  // As of this build: before the sale, during it or after it (viewAt).
+  const v = viewAt(cfg);
   let page = read(GIFT_PAGE);
-  page = region(page, GIFT_PAGE, "HEAD", `\n    ${giftHead(cfg)}\n    `);
-  page = region(page, GIFT_PAGE, "TIERS", `\n        ${giftTiers(cfg)}\n        `);
-  page = region(page, GIFT_PAGE, "CALC", `\n      ${giftCalc(cfg)}\n      `);
-  page = region(page, GIFT_PAGE, "TERMS", `\n      ${giftTerms(cfg)}\n      `);
+  page = region(page, GIFT_PAGE, "HEAD", `\n    ${giftHead(v)}\n    `);
+  page = region(page, GIFT_PAGE, "TIERS", `\n        ${giftTiers(v)}\n        `);
+  page = region(page, GIFT_PAGE, "CALC", `\n      ${giftCalc(v)}\n      `);
+  page = region(page, GIFT_PAGE, "TERMS", `\n      ${giftTerms(v)}\n      `);
   fs.writeFileSync(path.join(root, GIFT_PAGE), page);
 }
 

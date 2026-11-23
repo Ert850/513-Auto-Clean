@@ -15,7 +15,7 @@ import {
   vehicleSize,
   upgradeLegacy,
 } from "./catalog/seed.js";
-import { coverage, coverTable, GIFT_CARDS, saleOn } from "./catalog/giftCards.js";
+import { cincinnatiDay, coverage, coverTable, GIFT_CARDS, saleOn } from "./catalog/giftCards.js";
 import {
   ADDONS,
   addonBlockedReason,
@@ -211,6 +211,7 @@ const api = {
   coverTable,
   GIFT_CARDS,
   saleOn,
+  cincinnatiDay,
 };
 
 declare global {

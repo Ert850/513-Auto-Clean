@@ -13,7 +13,13 @@ import { limited } from "./_ratelimit.mjs";
  * time). Every change is written to the card's payment in Stripe with the
  * day, the amount and the note, so the history can't quietly drift from the
  * money. Each change carries the page's own request id as its idempotency
- * key: a double tap on "Redeem" takes the amount once.
+ * key, and the id is kept on the card (gift_last_req): a double tap, or a
+ * retry after a lost answer, takes the amount once.
+ *
+ * Before any change the card is read again by id, not from the search result:
+ * search can trail a change by a minute. Stripe has no compare-and-set, so two
+ * devices changing the SAME card in the same second could still race; this is
+ * a one-person tool and the page says so (validation pass 1).
  */
 
 const json = (status, body) => ({
@@ -59,7 +65,7 @@ export async function handler(event) {
   try {
     const hit = await findCard(stripe, p.code, secret);
     if (hit.error) return json(hit.error === "bad_code" ? 400 : 404, { error: hit.error });
-    const pi = hit.pi;
+    const pi = await stripe.paymentIntents.retrieve(hit.pi.id);
     const card = cardFromMeta(pi.metadata);
     const day = cincinnatiDay(Date.now());
     const note = typeof p.note === "string" ? p.note.replace(/[;\u0000-\u001f]+/g, " ").trim().slice(0, 60) : "";
@@ -67,7 +73,10 @@ export async function handler(event) {
     if (p.action === "lookup") return json(200, { card: view(pi) });
 
     if (!REQUEST_ID.test(p.requestId || "")) return json(400, { error: "bad_request_id" });
+    // Already done (the answer to the first try was lost): say so, change nothing.
+    if (pi.metadata.gift_last_req === p.requestId) return json(200, { card: view(pi), repeated: true });
     const idem = { idempotencyKey: `gift-admin-${pi.id}-${p.requestId}` };
+    const req = { gift_last_req: p.requestId };
 
     if (p.action === "redeem") {
       const amount = p.amountCents;
@@ -79,13 +88,14 @@ export async function handler(event) {
         gift_balance_cents: String(balance),
         gift_status: balance === 0 ? "used" : "active",
         gift_log: appendLog(card.log, `${day} used ${dollars(amount)}${note ? ` (${note})` : ""}, left ${dollars(balance)}`),
+        ...req,
       };
       const updated = await stripe.paymentIntents.update(pi.id, { metadata }, idem);
       return json(200, { card: view(updated) });
     }
 
     if (p.action === "void") {
-      const metadata = { gift_status: "void", gift_balance_cents: "0", gift_log: appendLog(card.log, `${day} voided${note ? ` (${note})` : ""}`) };
+      const metadata = { gift_status: "void", gift_balance_cents: "0", gift_log: appendLog(card.log, `${day} voided${note ? ` (${note})` : ""}`), ...req };
       const updated = await stripe.paymentIntents.update(pi.id, { metadata }, idem);
       return json(200, { card: view(updated) });
     }
@@ -104,7 +114,10 @@ export async function handler(event) {
         : buyerEmail({ card, code, link, payCents: Number(pi.metadata.gift_pay_cents) || pi.amount, toEmail: pi.metadata.gift_to_email || "" });
       const from = process.env.RESEND_FROM || "513 Auto Clean <onboarding@resend.dev>";
       if (!(await send(apiKey, from, to, msg))) return json(502, { error: "email_failed" });
-      const updated = await stripe.paymentIntents.update(pi.id, { metadata: { gift_log: appendLog(card.log, `${day} resent to the ${toRecipient ? "recipient" : "buyer"}`) } }, idem);
+      const metadata = { gift_log: appendLog(card.log, `${day} resent to the ${toRecipient ? "recipient" : "buyer"}`), ...req };
+      // Sent to them now: the scheduled run must not send it again.
+      if (toRecipient) Object.assign(metadata, { gift_deliver: "sent", gift_mail_to: "1" });
+      const updated = await stripe.paymentIntents.update(pi.id, { metadata }, idem);
       return json(200, { card: view(updated) });
     }
 

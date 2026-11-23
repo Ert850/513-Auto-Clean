@@ -14,6 +14,7 @@
  * anywhere (for lookup by code).
  */
 import { createHmac, timingSafeEqual } from "node:crypto";
+import { cincinnatiDay } from "./_pricing.mjs";
 
 /** Crockford base32: no I, L, O or U, so a code read aloud or retyped survives. */
 const ALPHABET = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
@@ -60,7 +61,11 @@ export function sameSecret(given, expected) {
 
 /** The site's own address for links in emails and Stripe's return: this deploy's, so a preview links to itself. */
 export function siteUrl(env = process.env) {
-  const u = env.CONTEXT === "production" ? env.URL : env.DEPLOY_PRIME_URL || env.URL;
+  // Only a Deploy Preview's own address (deploy-preview-N--site): CONTEXT may
+  // not reach a function at run time, and on the live site DEPLOY_PRIME_URL is
+  // main--site.netlify.app, not the domain (validation pass 1).
+  const prime = env.DEPLOY_PRIME_URL || "";
+  const u = /\/\/deploy-preview-\d+--/.test(prime) ? prime : env.URL;
   return (u || "https://513autoclean.com").replace(/\/$/, "");
 }
 
@@ -93,3 +98,39 @@ export function appendLog(log, entry) {
 
 /** "$50" or "$29.60". */
 export const dollars = (c) => "$" + (c % 100 ? (c / 100).toFixed(2) : String(c / 100));
+
+/**
+ * Writes the card onto its payment once the money is in, and returns the
+ * metadata as it now stands. Called by the webhook AND by the certificate
+ * page: a buyer who can see a code must always be able to have it found on
+ * /gift-admin, even if the webhook is misconfigured or late (validation pass
+ * 1). Idempotent without an idempotency key: the code hash decides, and a key
+ * would replay a transient Stripe error for 24 hours.
+ */
+export async function ensureIssued(stripe, session, secret, nowMs = Date.now()) {
+  const pi = session.payment_intent;
+  if (!pi || typeof pi !== "object") throw new Error("no payment on session " + session.id);
+  const meta = { ...pi.metadata };
+  if (meta.gift_code_hash) return { pi, meta };
+  const code = codeFor(session.id, secret);
+  const card = cardFromMeta(meta);
+  const today = cincinnatiDay(nowMs);
+  const toEmail = meta.gift_to_email || "";
+  // A card paid on (or after) its send day goes now, not at tomorrow's run.
+  const due = !meta.gift_send_on || meta.gift_send_on <= today;
+  const issued = {
+    gift_code_hash: codeHash(code, secret),
+    gift_last4: code.slice(-4),
+    gift_session: session.id,
+    gift_balance_cents: String(card.valueCents),
+    gift_status: "active",
+    gift_issued: today,
+    gift_deliver: !toEmail ? "none" : due ? "now" : "pending",
+    gift_log: `${today} issued ${dollars(card.valueCents)}`,
+  };
+  await stripe.paymentIntents.update(pi.id, { metadata: issued });
+  return { pi, meta: { ...meta, ...issued } };
+}
+
+/** Strips characters that can disguise text (direction overrides, zero-width marks). */
+export const plain = (s) => String(s).replace(/[\u200b-\u200f\u202a-\u202e\u2066-\u2069\ufeff]/g, "");

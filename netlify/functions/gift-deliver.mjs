@@ -1,21 +1,30 @@
 import Stripe from "stripe";
 import { cincinnatiDay } from "./_pricing.mjs";
-import { GIFT_KIND, cardFromMeta, codeFor, giftSecret, siteUrl } from "./_giftcards.mjs";
+import { GIFT_KIND, appendLog, cardFromMeta, codeFor, giftSecret, siteUrl } from "./_giftcards.mjs";
 import { recipientEmail } from "./_giftmail.mjs";
 import { send } from "./send-confirmation.mjs";
 
 /**
- * Sends the cards that were scheduled for a later day (gift_deliver "pending"),
- * once that day has come in Cincinnati. Runs every morning (netlify.toml
- * [functions."gift-deliver"]); scheduled functions run only on the published
- * site, never on a preview.
+ * Sends the cards that were scheduled for a later day (gift_deliver "pending")
+ * once that day has come in Cincinnati. Runs every hour from 8 AM to 6 PM
+ * (netlify.toml [functions."gift-deliver"]), so a busy morning (Christmas)
+ * that doesn't finish in one run finishes in the next, and stops itself well
+ * inside a function's time limit. Scheduled functions run only on the
+ * published site, never on a preview.
  *
- * Found through Stripe's search, which can lag a minute behind a change:
- * harmless here, as a card is only ever due on a later day than it was bought.
+ * A card whose email fails is tried again each hour; after MAX_TRIES it is
+ * marked "failed" and Elijah is told once, rather than every hour forever.
  */
-export async function deliverDue(stripe, secret, nowMs = Date.now(), mail) {
+export const MAX_TRIES = 3;
+const BATCH = 5;
+const BUDGET_MS = 20_000;
+
+export async function deliverDue(stripe, secret, nowMs = Date.now(), mail, startMs = Date.now()) {
   const today = cincinnatiDay(nowMs);
-  const out = { sent: 0, failed: 0, waiting: 0 };
+  const out = { sent: 0, failed: 0, gaveUp: [], waiting: 0, stopped: false };
+  // One search, then each card re-read by id before it is sent: search can
+  // trail a change by a minute, and an earlier run (or a resend) may have sent it.
+  const found = [];
   let page;
   do {
     page = await stripe.paymentIntents.search({
@@ -23,25 +32,40 @@ export async function deliverDue(stripe, secret, nowMs = Date.now(), mail) {
       limit: 100,
       ...(page?.next_page ? { page: page.next_page } : {}),
     });
-    for (const pi of page.data) {
-      const m = pi.metadata || {};
-      if (m.kind !== GIFT_KIND || m.gift_deliver !== "pending") continue;
-      if (!m.gift_send_on || m.gift_send_on > today) { out.waiting++; continue; }
-      // A refunded or disputed card isn't sent.
-      if (m.gift_status === "void" || m.gift_status === "disputed") {
-        await stripe.paymentIntents.update(pi.id, { metadata: { gift_deliver: "cancelled" } });
-        continue;
-      }
-      const code = codeFor(m.gift_session, secret);
-      const link = `${siteUrl()}/gift-certificate#s=${encodeURIComponent(m.gift_session)}`;
-      if (await mail(m.gift_to_email, recipientEmail({ card: cardFromMeta(m), code, link }))) {
-        await stripe.paymentIntents.update(pi.id, { metadata: { gift_deliver: "sent", gift_mail_to: "1" } });
-        out.sent++;
-      } else {
-        out.failed++;
-      }
-    }
+    found.push(...page.data.map((p) => p.id));
   } while (page.has_more && page.next_page);
+
+  const one = async (id) => {
+    const pi = await stripe.paymentIntents.retrieve(id);
+    const m = pi?.metadata || {};
+    if (m.kind !== GIFT_KIND || m.gift_deliver !== "pending") return;
+    if (!m.gift_send_on || m.gift_send_on > today) { out.waiting++; return; }
+    if (m.gift_status === "void" || m.gift_status === "disputed") {
+      await stripe.paymentIntents.update(pi.id, { metadata: { gift_deliver: "cancelled" } });
+      return;
+    }
+    const code = codeFor(m.gift_session, secret);
+    const link = `${siteUrl()}/gift-certificate#s=${encodeURIComponent(m.gift_session)}`;
+    if (await mail(m.gift_to_email, recipientEmail({ card: cardFromMeta(m), code, link }))) {
+      await stripe.paymentIntents.update(pi.id, { metadata: { gift_deliver: "sent", gift_mail_to: "1", gift_log: appendLog(m.gift_log, `${today} emailed to them`) } });
+      out.sent++;
+      return;
+    }
+    const tries = (Number(m.gift_deliver_tries) || 0) + 1;
+    const gaveUp = tries >= MAX_TRIES;
+    await stripe.paymentIntents.update(pi.id, {
+      metadata: gaveUp
+        ? { gift_deliver: "failed", gift_deliver_tries: String(tries), gift_log: appendLog(m.gift_log, `${today} email to them failed ${tries} times`) }
+        : { gift_deliver_tries: String(tries) },
+    });
+    out.failed++;
+    if (gaveUp) out.gaveUp.push(`${m.gift_last4 || "?"} (${m.gift_to_email})`);
+  };
+
+  for (let i = 0; i < found.length; i += BATCH) {
+    if (Date.now() - startMs > BUDGET_MS) { out.stopped = true; break; }
+    await Promise.all(found.slice(i, i + BATCH).map(one));
+  }
   return out;
 }
 
@@ -55,11 +79,14 @@ export async function handler() {
   const mail = (to, msg) => send(apiKey, from, to, msg);
   try {
     const out = await deliverDue(new Stripe(key), secret, Date.now(), mail);
-    if (out.failed) {
-      await mail(owner, { subject: `CHECK: ${out.failed} scheduled gift card email(s) didn't send`, html: "<p>They'll be tried again tomorrow morning. Look them up at /gift-admin to send them yourself today.</p>" });
+    if (out.gaveUp.length) {
+      await mail(owner, {
+        subject: `CHECK: ${out.gaveUp.length} gift card email(s) couldn't be delivered`,
+        html: `<p>These scheduled cards couldn't be emailed to the person they're for, after ${MAX_TRIES} tries. The address may be wrong. Look them up at /gift-admin and resend to the buyer, who can pass the card on:</p><p>${out.gaveUp.map((g) => g.replace(/[<>&]/g, "")).join("<br>")}</p>`,
+      });
     }
-    console.log("gift-deliver", JSON.stringify(out));
-    return { statusCode: 200, body: JSON.stringify(out) };
+    console.log("gift-deliver", JSON.stringify({ ...out, gaveUp: out.gaveUp.length }));
+    return { statusCode: 200, body: "ok" };
   } catch (err) {
     console.error("gift-deliver", String(err?.message || err).slice(0, 300));
     return { statusCode: 500, body: "failed" };

@@ -2686,8 +2686,9 @@ var gift_cards_default = {
     'mode "sale": the holiday discount runs (sale.percentOff off every card, through sale.ends). mode "regular": cards sell at their value, no sale wording. mode "off": no page and no links anywhere; the site is exactly as it was before gift cards.',
     "sale.starts and sale.ends are Cincinnati dates (YYYY-MM-DD). The page says 'through' the end date; the checkout (when built) refuses the discount outside them.",
     "tiers: up to 4 card values in whole dollars, smallest first. featured: true on one of them makes it the highlighted card. Any other amount is bought from the calculator, between custom.min and custom.max.",
-    "checkout.enabled: true sends the buy buttons to Stripe (netlify/functions/gift-checkout.mjs). It needs STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET and GIFT_CODE_SECRET in Netlify; without them the checkout refuses and takes nothing. false shows the buttons disabled. A production build fails while mode is not off and checkout is off.",
+    "checkout.enabled: true sends the buy buttons to Stripe (netlify/functions/gift-checkout.mjs). It needs STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET and GIFT_CODE_SECRET in Netlify; without them the checkout refuses and takes nothing. false shows the buttons disabled. A production build fails while mode is not off and checkout is off. Once a card has been sold, leave it true: it keeps the gift card terms and the privacy policy's Stripe entry on the site while cards are out.",
     "refundDays: an unused card can be refunded (what was paid) within this many days of buying it. The terms say it from here.",
+    "scheduleDays: how far ahead a buyer can pick the day the card is emailed to the person it's for.",
     "A mistake in this file fails the build."
   ],
   mode: "sale",
@@ -2700,6 +2701,7 @@ var gift_cards_default = {
   ],
   custom: { min: 25, max: 500 },
   refundDays: 30,
+  scheduleDays: 60,
   checkout: { enabled: true }
 };
 
@@ -2760,6 +2762,7 @@ function giftCardProblems(cfg) {
   if (!Number.isInteger(min) || !Number.isInteger(max) || min < 5 || min >= max) out.push("custom.min and custom.max must be whole dollars, min below max");
   if (typeof cfg.checkout?.enabled !== "boolean") out.push("checkout.enabled must be true or false");
   if (!Number.isInteger(cfg.refundDays) || cfg.refundDays < 0 || cfg.refundDays > 365) out.push("refundDays must be a whole number of days, 0 to 365");
+  if (!Number.isInteger(cfg.scheduleDays) || cfg.scheduleDays < 1 || cfg.scheduleDays > 365) out.push("scheduleDays must be a whole number of days, 1 to 365");
   return out;
 }
 var GIFT_CARDS = gift_cards_default;
@@ -2970,13 +2973,14 @@ var CAPABILITIES = [
   },
   {
     id: "giftCardSales",
-    what: "Selling gift cards online, paid on Stripe's own page",
-    // Follows config/gift-cards.json: on while gift cards are on and the
-    // Stripe checkout is switched on (November 23). The terms then carry the
-    // gift card rules, and the privacy policy names Stripe and what a gift
-    // purchase collects. Cards already sold keep working when this goes off.
-    live: GIFT_CARDS.mode !== "off" && GIFT_CARDS.checkout.enabled,
-    blockedBy: "config/gift-cards.json: mode off, or checkout.enabled false"
+    what: "Gift cards sold online, paid on Stripe's own page",
+    // Follows config/gift-cards.json checkout.enabled, NOT mode: the terms'
+    // gift card rules ("never expires", refunds) and the privacy policy's
+    // Stripe entry must stay while any card sold online is out, even after
+    // the page is switched off (validation pass 1). Leave checkout.enabled
+    // true once a card has been sold.
+    live: GIFT_CARDS.checkout.enabled,
+    blockedBy: "config/gift-cards.json checkout.enabled false"
   }
 ];
 var PROCESSORS = [

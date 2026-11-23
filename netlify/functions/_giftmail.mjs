@@ -48,13 +48,16 @@ export function buyerEmail({ card, code, link, payCents, toEmail }) {
 }
 
 export function recipientEmail({ card, code, link }) {
-  const who = card.fromName || "Someone";
+  // Never "Someone sent you...": with no name it reads like phishing (validation pass 1).
+  const v = dollars(card.valueCents);
+  const subject = card.fromName ? `${card.fromName} sent you a ${v} gift card from 513 Auto Clean` : `You've received a ${v} gift card from 513 Auto Clean`;
+  const lead = card.fromName ? `${esc(card.fromName)} sent you a 513 Auto Clean gift card` : "You've received a 513 Auto Clean gift card";
   return {
-    subject: `${who} sent you a ${dollars(card.valueCents)} 513 Auto Clean gift card`,
+    subject,
     html: SHELL(
       "You've got a gift card",
-      `<p style="margin:0 0 14px">${esc(who)} sent you a 513 Auto Clean gift card for a mobile detail: we come to you.</p>${cardBlock(card, code, link)}<p style="margin:0 0 12px;color:#5a6069">${HOW_TO_USE}</p>`,
-      `${dollars(card.valueCents)} gift card from ${who}`,
+      `<p style="margin:0 0 14px">${lead} for a mobile detail: we come to you.</p>${cardBlock(card, code, link)}<p style="margin:0 0 12px;color:#5a6069">${HOW_TO_USE}</p>`,
+      `${v} gift card${card.fromName ? ` from ${card.fromName}` : ""}`,
     ),
   };
 }

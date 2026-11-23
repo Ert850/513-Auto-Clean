@@ -8,6 +8,15 @@
   var yearEl = document.getElementById('year');
   if (yearEl) yearEl.textContent = new Date().getFullYear();
 
+  /* ---------- Gift cards: "20% off" in the top bar during the sale's dates only ----------
+     The same test the checkout charges by (saleOn, config/gift-cards.json):
+     the page was built for its own day, and the date may have moved on. */
+  var AP = window.ACPricing;
+  if (AP && AP.saleOn && AP.GIFT_CARDS) {
+    var giftSale = AP.saleOn(AP.GIFT_CARDS, Date.now());
+    document.querySelectorAll('.tb-gift-sale').forEach(function (e) { e.hidden = !giftSale; });
+  }
+
   /* ---------- Header shadow on scroll + mobile bar ---------- */
   var header = document.getElementById('header');
   var mobileBar = document.getElementById('mobileBar');
