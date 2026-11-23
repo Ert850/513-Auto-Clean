@@ -31,7 +31,7 @@ function mailer() {
 const owner = () => process.env.OWNER_EMAIL || "elijahthackerllc@gmail.com";
 
 /** Issue the card for a paid session, then send whatever hasn't been sent. */
-export async function issue(stripe, sessionId, secret, nowMs = Date.now()) {
+export async function issue(stripe, sessionId, secret, nowMs = Date.now(), note = "") {
   const session = await stripe.checkout.sessions.retrieve(sessionId, { expand: ["payment_intent"] });
   if (session?.metadata?.kind !== GIFT_KIND) return "not a gift card";
   if (session.payment_status !== "paid") return "not paid yet";
@@ -71,7 +71,7 @@ export async function issue(stripe, sessionId, secret, nowMs = Date.now()) {
   }
   await sendOnce("gift_mail_buyer", buyer, buyerEmail({ card, code, link, payCents, toEmail, deliver }));
   const ownerOk = await sendOnce("gift_mail_owner", owner(), ownerEmail({
-    card, code, payCents, buyer, toEmail, problem: problems.join("; ") || (buyer ? "" : "Stripe gave no buyer email: send the card yourself."),
+    card, code, payCents, buyer, toEmail, problem: [note, ...problems].filter(Boolean).join(" ") || (buyer ? "" : "Stripe gave no buyer email: send the card yourself."),
   }));
   if (Object.keys(marks).length) await stripe.paymentIntents.update(pi.id, { metadata: marks });
   // Only Elijah's email is worth Stripe's retries: it carries any other failure.

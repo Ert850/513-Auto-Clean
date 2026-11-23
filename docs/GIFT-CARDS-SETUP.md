@@ -7,7 +7,7 @@ The code is on branch `eNov16`. It takes no money until these steps are done. Ea
 1. **Payment methods:** make sure Cards and Link are on (Settings, Payments, Payment methods). Apple Pay and Google Pay come with Cards.
    - Klarna isn't offered: its rules don't allow gift cards.
 2. **Webhook:** Developers, Webhooks, Add endpoint.
-   - Test site, in test mode: `https://deploy-preview-13--513-auto-clean.netlify.app/api/gift-webhook`
+   - Test site, in test mode: `https://deploy-preview-13--513-auto-clean.netlify.app/api/gift-webhook`. Deploy Preview 13 builds whatever its PR's branch holds, which is `eNov14` today. The checkout is on `eNov16`: first push `eNov16` and fast-forward `eNov14` to it, or open a new draft PR for `eNov16` and use its preview number instead.
    - Live, at the merge: `https://513autoclean.com/api/gift-webhook`
    - Events:
      - `checkout.session.completed`
@@ -36,6 +36,10 @@ openssl rand -base64 36
 ```
 
 Without `STRIPE_WEBHOOK_SECRET` or `GIFT_CODE_SECRET`, the checkout refuses to open, so nobody pays for a card that can't be issued.
+
+**Two checks that matter:**
+- **A wrong `STRIPE_WEBHOOK_SECRET`** (say the test one in Production) isn't caught at checkout. The card is still recorded when the buyer lands on the certificate page. Within the hour, the hourly run sends the missing emails and tells Elijah to check the webhook. After going live, open the webhook in Stripe and check that its deliveries show 200.
+- **`TEST_SITE_PASSWORD` must be set for Deploy Previews only.** The password gate ships with this merge. With a Production value, every page of 513autoclean.com would ask for the password.
 
 ## 3. Test on the test site, in Stripe test mode
 

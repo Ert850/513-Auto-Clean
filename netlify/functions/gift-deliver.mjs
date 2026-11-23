@@ -2,6 +2,7 @@ import Stripe from "stripe";
 import { cincinnatiDay } from "./_pricing.mjs";
 import { GIFT_KIND, appendLog, cardFromMeta, codeFor, giftSecret, siteUrl } from "./_giftcards.mjs";
 import { recipientEmail, sendMail } from "./_giftmail.mjs";
+import { issue } from "./gift-webhook.mjs";
 
 /**
  * Sends the cards that were scheduled for a later day (gift_deliver "pending")
@@ -82,6 +83,31 @@ export async function deliverDue(stripe, secret, nowMs = Date.now(), mail, start
   return out;
 }
 
+/**
+ * Cards the webhook never handled: recorded by the certificate page, but with
+ * no email to the buyer or to Elijah after a quarter of an hour. That means
+ * Stripe's webhook isn't reaching the site (a wrong STRIPE_WEBHOOK_SECRET, a
+ * test endpoint, a missing event): send what it would have, and tell Elijah
+ * once to check it (pre-merge pass).
+ */
+export async function catchUp(stripe, secret, nowMs = Date.now()) {
+  const since = Math.floor(nowMs / 1000) - 7 * 86_400;
+  const page = await stripe.paymentIntents.search({
+    query: `metadata['kind']:'giftcard' AND -metadata['gift_mail_owner']:'1' AND created>${since}`,
+    limit: 50,
+  });
+  // Checked here too: search can trail a change by a minute.
+  const stranded = page.data.filter((p) => p.metadata?.gift_code_hash && p.metadata?.gift_session && p.metadata.gift_mail_owner !== "1" && (p.created || 0) * 1000 < nowMs - STRANDED_MS);
+  for (const pi of stranded) {
+    try {
+      await issue(stripe, pi.metadata.gift_session, secret, nowMs, "Stripe's webhook never reached the site for this card, so the hourly run sent these emails. Check the webhook's signing secret (STRIPE_WEBHOOK_SECRET) and its events in Stripe.");
+    } catch (err) {
+      console.error("gift-deliver catch-up", String(err?.message || err).slice(0, 200));
+    }
+  }
+  return stranded.length;
+}
+
 export async function handler() {
   const key = process.env.STRIPE_SECRET_KEY;
   const secret = giftSecret();
@@ -91,7 +117,9 @@ export async function handler() {
   const owner = process.env.OWNER_EMAIL || "elijahthackerllc@gmail.com";
   const mail = (to, msg) => sendMail(apiKey, from, to, msg);
   try {
-    const out = await deliverDue(new Stripe(key), secret, Date.now(), mail);
+    const stripe = new Stripe(key);
+    const caught = await catchUp(stripe, secret);
+    const out = { ...(await deliverDue(stripe, secret, Date.now(), mail)), caught };
     if (out.gaveUp.length) {
       await sendMail(apiKey, from, owner, {
         subject: `CHECK: ${out.gaveUp.length} gift card email(s) couldn't be delivered`,

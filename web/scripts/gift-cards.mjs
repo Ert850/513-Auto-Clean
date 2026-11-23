@@ -105,7 +105,7 @@ export function giftHead(v) {
   const lead = saleLines(v, `Every card is ${pct}% off through ${end}. `, `Every card will be ${pct}% off from ${start} to ${end}. `) +
     `It&rsquo;s emailed right away or on the day you choose, with a certificate to print or forward.`;
   return `<div class="section-head">
-      <span class="eyebrow">${v.saleSet ? "Holiday gift cards" : "Gift cards"}</span>
+      <span class="eyebrow">${v.saleSet ? `<span class="gc-holiday"${hide(v.saleNow || v.upcoming)}>Holiday </span>` : ""}Gift cards</span>
       <h1>Give a car that feels new again.</h1>
       <p>${lead}</p>
     </div>`;

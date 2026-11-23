@@ -45,3 +45,49 @@ Emmett and Elijah picked Stripe, and layout A with a clearer price display (cros
   - **The booking form's "Have a gift card?" box** (plan step 7). It needs the checkout's card records.
 - **What to test by hand:** open `/gift-cards` on the test site. Change the amount and the vehicle in the calculator; try 20 and 600. Check the top-bar link on any page, on a phone too.
 - **At the merge:** either the checkout is built and `checkout.enabled` is true, or set `mode` to "off". A production build fails otherwise, by design.
+
+## November 23 to 24, overnight: the Stripe checkout (branch `eNov16`)
+
+Emmett: "Build it", plus three validation passes on the new features and pre-merge passes. Setup: `GIFT-CARDS-SETUP.md`. The post-run report with the open questions: `GIFT-CARDS-RUN-REPORT-2026-11-24.md`.
+
+- **Tiles reworked** (Emmett: the discount wasn't popping, the tile was hard to read). Each tile is the card itself, value big, with a red "20% OFF" badge. Under it: "You pay $40", the $50 struck through in brand red, and "Save $10". On eNov14 and eNov16.
+- **Merged eNov14 into eNov16**, then built the checkout there. eNov16 = eNov14 + the payment fixes + the checkout.
+- **Built:**
+  - `gift-checkout`, `gift-webhook`, `gift-deliver` (hourly), `gift-card`, `gift-admin`, `gift-rebuild`;
+  - the purchase form, `/gift-certificate` and `/gift-admin`;
+  - terms section 4 "Gift cards" and the privacy entry, dated 2026-11-23 and locked;
+  - CLAUDE.md "Gift card payments" rules.
+- **Validation pass 1** (two reviewers, backend and pages, 32 findings). Root causes, with the classes fixed:
+  - **Trust in one path:** cards were issued only by the webhook. The certificate page now records the card too.
+  - **Replayed idempotency keys:** the issue write and admin changes used fixed keys. They're dropped, and `gift_last_req` guards repeats.
+  - **Page built for a sale it didn't know the date of:** the page is now built for the build date (`viewAt`) and corrected in the browser both ways; `gift-rebuild` rebuilds on the sale's first day and the day after it ends.
+  - **Tokens in addresses:** the session id rides after the `#`, the lookup is a POST, and the certificate page loads no analytics.
+  - **Every failure retried forever:** delivery gives up after 3 tries with one alert, refused addresses go to the hourly run, and only Elijah's email failing makes Stripe retry.
+  - **Numbers typed in code:** `scheduleDays` and `refundDays` are settings.
+  - **Legal text tied to selling, not to cards existing:** it now follows `checkout.enabled`.
+  - Plus the layout fixes: the top-bar wrap at 560 to 690, the badge overlap at 1000 to 1080, the phone menu link, the dialog centring, close button, hint and refund line.
+- **Validation pass 2** (11 findings):
+  - a refused redeem showed as done;
+  - a "warning_closed" dispute cancelled the card;
+  - a refused recipient email retried for days;
+  - tests went red on the sale's start day;
+  - the pay button sat below 790 px;
+  - admin changes replayed failures;
+  - an email promised a later date for a card already sent;
+  - a disputed scheduled card was cancelled for good;
+  - a new card link in the same tab was ignored.
+
+  All fixed, with tests.
+- **Validation pass 3** (8 findings):
+  - Resend's rate limit on Christmas morning: paced sends, and "busy" doesn't count as a try;
+  - a lost card couldn't be found: lookup by Stripe payment id;
+  - admin changes went to whatever code was in the box;
+  - errors appeared off screen;
+  - resend wording;
+  - a typo'd recipient went unnoticed: the address is printed, and the recipient is tried first;
+  - a refunded-before-issued card came back;
+  - the sale turned at midnight with the form open.
+
+  All fixed, with tests.
+- **Checks:** 868 tests pass, and the build passes. Every function bundles with esbuild as Netlify will build it.
+- **What to test by hand:** `GIFT-CARDS-SETUP.md` section 3, on the test site in Stripe test mode.

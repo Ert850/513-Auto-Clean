@@ -264,6 +264,15 @@ section { padding-block: clamp(40px, 5vw, 72px); position: relative; }
 }
 @media (hover: hover) { .mobile-menu a.mm-link:hover { color: var(--red-bright); padding-left: .4rem; } }
 .mobile-menu .mm-cta { margin-top: auto; display: grid; gap: .7rem; padding-top: 1.5rem; }
+/* With the Gift cards link the menu ran 66 px taller and cut Contact Us off on
+   a 375x667 phone, with the page's scroll locked (pre-merge pass): it scrolls
+   itself, and on shorter screens the links are tighter so the buttons fit. */
+.mobile-menu { overflow-y: auto; overscroll-behavior: contain; }
+@media (max-height: 740px) {
+  .mobile-menu { padding-top: 1.25rem; padding-bottom: 1.25rem; }
+  .mobile-menu a.mm-link { padding: .42rem 0; font-size: 1.3rem; }
+  .mobile-menu .mm-cta { padding-top: 1rem; }
+}
 .scrim {
   position: fixed; inset: 0; background: rgba(8,10,14,.55); z-index: 150; opacity: 0; visibility: hidden;
   transition: opacity .35s, visibility .35s; backdrop-filter: blur(2px);
