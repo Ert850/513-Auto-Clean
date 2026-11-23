@@ -22,7 +22,7 @@
   var WORDS = {
     wrong_key: 'That key isn’t right.',
     not_found: 'No card with that code. A card bought in the last minute can take a minute to show up.',
-    bad_code: 'That doesn’t look like a card code: 513 and twelve letters or numbers.',
+    bad_code: 'That doesn’t look like a card code (513 and twelve letters or numbers) or a Stripe payment id (pi_...).',
     too_much: 'That’s more than is left on the card.',
     not_active: 'This card is used, cancelled or on hold.',
     no_address: 'There’s no email address for that.',
@@ -34,7 +34,8 @@
   function call(body) {
     msg.textContent = 'Working…';
     body.key = keyIn.value;
-    body.code = codeIn.value;
+    // A change always goes to the card on screen, never to whatever is in the box now (validation pass 3).
+    body.code = body.action === 'lookup' || !current ? codeIn.value : current.lookedUp;
     return fetch('/api/gift-admin', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
       .then(function (r) { return r.json().catch(function () { return {}; }); })
       .then(function (j) {
@@ -48,6 +49,7 @@
   }
 
   function show(c) {
+    c.lookedUp = current && current.last4 === c.last4 ? current.lookedUp : codeIn.value;
     current = c;
     $('gcaCard').hidden = false;
     $('gcaTitle').textContent = dollars(c.valueCents) + ' card, ending ' + c.last4;
@@ -82,8 +84,17 @@
   }
   document.querySelectorAll('[data-gca]').forEach(function (b) { b.setAttribute('data-label', b.textContent); });
 
+  // Editing the code hides the card on screen: nothing can be taken off the wrong one.
+  codeIn.addEventListener('input', function () {
+    if (!current) return;
+    current = null;
+    $('gcaCard').hidden = true;
+    disarm();
+  });
+
   $('gcaFind').addEventListener('submit', function (e) {
     e.preventDefault();
+    current = null;
     call({ action: 'lookup' });
   });
 

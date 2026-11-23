@@ -147,6 +147,15 @@
     var e = $('gcBuyErr');
     e.textContent = text || '';
     e.hidden = !text;
+    if (text && e.scrollIntoView) e.scrollIntoView({ block: 'nearest' });
+  }
+  // The sale is decided by the clock, and midnight can pass while the page is
+  // open: if it has turned since the page loaded, show today's prices first
+  // (validation pass 3).
+  function saleTurned() {
+    if (P.saleOn(cfg, Date.now()) === sale) return false;
+    location.reload();
+    return true;
   }
   function syncWhen() {
     var hasEmail = $('gcToEmail').value.trim() !== '';
@@ -159,7 +168,7 @@
     var b = e.target.closest && e.target.closest('[data-gc-buy]');
     if (b && !b.disabled && b.getAttribute('aria-disabled') !== 'true') {
       var v = b.getAttribute('data-gc-buy') === 'custom' ? amount() : Number(b.getAttribute('data-gc-buy'));
-      if (!v) return;
+      if (!v || saleTurned()) return;
       picked = v;
       requestKey = key();
       var cents = v * 100;
@@ -182,7 +191,7 @@
 
   form.addEventListener('submit', function (e) {
     e.preventDefault();
-    if (busy || !picked) return;
+    if (busy || !picked || saleTurned()) return;
     var email = $('gcToEmail').value.trim();
     var onDate = email && form.querySelector('input[name="gcWhen"]:checked').value === 'date';
     if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) { showErr('Check their email address, or leave it empty to give the card yourself.'); return; }

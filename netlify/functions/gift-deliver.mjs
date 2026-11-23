@@ -1,8 +1,7 @@
 import Stripe from "stripe";
 import { cincinnatiDay } from "./_pricing.mjs";
 import { GIFT_KIND, appendLog, cardFromMeta, codeFor, giftSecret, siteUrl } from "./_giftcards.mjs";
-import { recipientEmail } from "./_giftmail.mjs";
-import { send } from "./send-confirmation.mjs";
+import { recipientEmail, sendMail } from "./_giftmail.mjs";
 
 /**
  * Sends the cards that were scheduled for a later day (gift_deliver "pending")
@@ -16,13 +15,14 @@ import { send } from "./send-confirmation.mjs";
  * marked "failed" and Elijah is told once, rather than every hour forever.
  */
 export const MAX_TRIES = 3;
-const BATCH = 5;
+/** One at a time, a little apart: Resend allows only a few sends a second (validation pass 3). */
+const GAP_MS = 600;
 const BUDGET_MS = 20_000;
 const STRANDED_MS = 15 * 60_000;
 
-export async function deliverDue(stripe, secret, nowMs = Date.now(), mail, startMs = Date.now()) {
+export async function deliverDue(stripe, secret, nowMs = Date.now(), mail, startMs = Date.now(), gapMs = GAP_MS) {
   const today = cincinnatiDay(nowMs);
-  const out = { sent: 0, failed: 0, gaveUp: [], waiting: 0, stopped: false };
+  const out = { sent: 0, failed: 0, busy: 0, gaveUp: [], waiting: 0, stopped: false };
   // One search, then each card re-read by id before it is sent: search can
   // trail a change by a minute, and an earlier run (or a resend) may have sent it.
   // Also "now" cards left unsent: recorded by the certificate page while the
@@ -55,7 +55,10 @@ export async function deliverDue(stripe, secret, nowMs = Date.now(), mail, start
     }
     const code = codeFor(m.gift_session, secret);
     const link = `${siteUrl()}/gift-certificate#s=${encodeURIComponent(m.gift_session)}`;
-    if (await mail(m.gift_to_email, recipientEmail({ card: cardFromMeta(m), code, link }))) {
+    const result = await mail(m.gift_to_email, recipientEmail({ card: cardFromMeta(m), code, link }));
+    // Busy (rate limited, Resend down): the next hour tries again, and it doesn't count.
+    if (result === "busy") { out.busy++; return; }
+    if (result === "ok" || result === true) {
       await stripe.paymentIntents.update(pi.id, { metadata: { gift_deliver: "sent", gift_mail_to: "1", gift_log: appendLog(m.gift_log, `${today} emailed to them`) } });
       out.sent++;
       return;
@@ -71,9 +74,10 @@ export async function deliverDue(stripe, secret, nowMs = Date.now(), mail, start
     if (gaveUp) out.gaveUp.push(`${m.gift_last4 || "?"} (${m.gift_to_email})`);
   };
 
-  for (let i = 0; i < found.length; i += BATCH) {
+  for (let i = 0; i < found.length; i++) {
     if (Date.now() - startMs > BUDGET_MS) { out.stopped = true; break; }
-    await Promise.all(found.slice(i, i + BATCH).map(one));
+    await one(found[i]);
+    if (i < found.length - 1) await new Promise((r) => setTimeout(r, gapMs));
   }
   return out;
 }
@@ -85,11 +89,11 @@ export async function handler() {
   if (!key || !secret || !apiKey) return { statusCode: 200, body: "not configured" };
   const from = process.env.RESEND_FROM || "513 Auto Clean <onboarding@resend.dev>";
   const owner = process.env.OWNER_EMAIL || "elijahthackerllc@gmail.com";
-  const mail = (to, msg) => send(apiKey, from, to, msg);
+  const mail = (to, msg) => sendMail(apiKey, from, to, msg);
   try {
     const out = await deliverDue(new Stripe(key), secret, Date.now(), mail);
     if (out.gaveUp.length) {
-      await mail(owner, {
+      await sendMail(apiKey, from, owner, {
         subject: `CHECK: ${out.gaveUp.length} gift card email(s) couldn't be delivered`,
         html: `<p>These scheduled cards couldn't be emailed to the person they're for, after ${MAX_TRIES} tries. The address may be wrong. Look them up at /gift-admin and resend to the buyer, who can pass the card on:</p><p>${out.gaveUp.map((g) => g.replace(/[<>&]/g, "")).join("<br>")}</p>`,
       });

@@ -25,7 +25,8 @@
     </div>
     <div class="field">
       <label for="gcaCode">Card code</label>
-      <input id="gcaCode" placeholder="513-XXXX-XXXX-XXXX" autocapitalize="characters" spellcheck="false" required />
+      <input id="gcaCode" placeholder="513-XXXX-XXXX-XXXX" autocapitalize="characters" spellcheck="false" required aria-describedby="gcaCodeHint" />
+      <p class="gca-note" id="gcaCodeHint">Lost card? Find the payment in Stripe by the buyer&rsquo;s email and paste its id (pi_...) here.</p>
     </div>
     <button class="btn btn-primary btn-block" type="submit">Look up</button>
   </form>
@@ -56,6 +57,6 @@
     <ul class="gca-log" id="gcaLog"></ul>
   </section>
 </main>
-<script src="js/giftadmin.js?v=abb51d4349" defer></script>
+<script src="js/giftadmin.js?v=21343013f3" defer></script>
 </body>
 </html>

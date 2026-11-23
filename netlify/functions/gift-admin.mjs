@@ -1,8 +1,7 @@
 import Stripe from "stripe";
 import { cincinnatiDay } from "./_pricing.mjs";
 import { GIFT_KIND, appendLog, cardFromMeta, codeFor, codeHash, dollars, giftSecret, sameSecret, siteUrl } from "./_giftcards.mjs";
-import { buyerEmail, recipientEmail } from "./_giftmail.mjs";
-import { send } from "./send-confirmation.mjs";
+import { buyerEmail, recipientEmail, sendMail } from "./_giftmail.mjs";
 import { limited } from "./_ratelimit.mjs";
 
 /**
@@ -30,8 +29,20 @@ const json = (status, body) => ({
 
 const REQUEST_ID = /^[A-Za-z0-9_-]{8,64}$/;
 
-/** The card's payment, found by its code; null when there is none (yet). */
+/**
+ * The card's payment, found by its code, or by the Stripe payment id (pi_...):
+ * a buyer who lost the card has no code, but Elijah can find the payment in
+ * Stripe by their email and paste its id here (validation pass 3).
+ */
 export async function findCard(stripe, code, secret) {
+  if (typeof code === "string" && /^pi_[A-Za-z0-9]{8,64}$/.test(code.trim())) {
+    try {
+      const pi = await stripe.paymentIntents.retrieve(code.trim());
+      return pi?.metadata?.kind === GIFT_KIND && pi.metadata.gift_code_hash ? { pi } : { error: "not_found" };
+    } catch {
+      return { error: "not_found" };
+    }
+  }
   const hash = codeHash(code, secret);
   if (!hash) return { error: "bad_code" };
   const found = await stripe.paymentIntents.search({ query: `metadata['gift_code_hash']:'${hash}'`, limit: 2 });
@@ -110,11 +121,14 @@ export async function handler(event) {
       const toRecipient = p.to === "recipient";
       const to = toRecipient ? pi.metadata.gift_to_email : session.customer_details?.email;
       if (!to) return json(400, { error: "no_address" });
+      // Where it's going is said from its delivery state, as in the webhook (pass 3).
+      const deliver = toRecipient ? "sent" : pi.metadata.gift_deliver || "none";
+      const shown = { ...card, sendOn: deliver === "pending" ? card.sendOn : "" };
       const msg = toRecipient
-        ? recipientEmail({ card, code, link })
-        : buyerEmail({ card, code, link, payCents: Number(pi.metadata.gift_pay_cents) || pi.amount, toEmail: pi.metadata.gift_to_email || "" });
+        ? recipientEmail({ card: shown, code, link })
+        : buyerEmail({ card: shown, code, link, payCents: Number(pi.metadata.gift_pay_cents) || pi.amount, toEmail: pi.metadata.gift_to_email || "", deliver });
       const from = process.env.RESEND_FROM || "513 Auto Clean <onboarding@resend.dev>";
-      if (!(await send(apiKey, from, to, msg))) return json(502, { error: "email_failed" });
+      if ((await sendMail(apiKey, from, to, msg)) !== "ok") return json(502, { error: "email_failed" });
       const metadata = { gift_log: appendLog(card.log, `${day} resent to the ${toRecipient ? "recipient" : "buyer"}`), ...req };
       // Sent to them now: the scheduled run must not send it again.
       if (toRecipient) Object.assign(metadata, { gift_deliver: "sent", gift_mail_to: "1" });
