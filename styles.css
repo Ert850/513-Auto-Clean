@@ -1897,10 +1897,30 @@ main > .bookpage:first-child { padding-block: clamp(16px, 2.2vw, 30px); }
 .gc-tiers { display: grid; gap: 1.15rem; }
 @media (min-width: 640px) { .gc-tiers { grid-template-columns: repeat(2, 1fr); } }
 @media (min-width: 1000px) { .gc-layout { grid-template-columns: minmax(0, 1fr) 22rem; align-items: start; } }
-.gc-price { display: flex; flex-wrap: wrap; align-items: baseline; gap: .2rem .6rem; margin: .45rem 0 .55rem; }
-.gc-price strong { font-family: var(--font-display); font-size: 2.1rem; font-weight: 800; line-height: 1; color: var(--text); }
-.gc-price s { font-size: 1.05rem; font-weight: 600; color: var(--text-soft); text-decoration-thickness: 1.5px; }
-.gc-save { font-size: .8rem; font-weight: 700; color: var(--text); background: var(--paper); border: 1px solid var(--line); border-radius: 999px; padding: .15rem .55rem; }
+.gc-face {
+  position: relative; display: grid; align-content: space-between; min-height: 7.4rem; padding: .9rem 1rem .85rem;
+  border-radius: var(--r-md); color: #fff; overflow: hidden;
+  background: radial-gradient(120% 140% at 100% 0%, #2a3240 0%, var(--ink) 58%);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.06);
+}
+.gc-face::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 4px; background: var(--red); }
+.gc-face-brand { display: inline-flex; align-items: center; gap: .45rem; font-family: var(--font-display); font-weight: 800; font-size: .86rem; letter-spacing: -.01em; }
+/* The bottle's trigger is black: on the dark card it sits on a light tile (CLAUDE.md, logo rules). */
+.gc-face-mark { box-sizing: border-box; width: 20px; height: 26px; padding: 2px 3px; object-fit: cover; object-position: center 47%; background: #f5f6f3; border-radius: 5px; }
+.gc-face-value { font-family: var(--font-display); font-weight: 800; font-size: 2.6rem; line-height: 1; letter-spacing: -.03em; margin-top: .55rem; }
+.gc-face-label { font-size: .72rem; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--text-inv-soft); margin-top: .2rem; }
+.gc-off {
+  position: absolute; top: .85rem; right: .85rem; background: var(--red); color: #fff;
+  font-weight: 800; font-size: .82rem; letter-spacing: .04em; text-transform: uppercase;
+  padding: .32rem .62rem; border-radius: 999px; box-shadow: 0 4px 14px rgba(196,20,20,.45);
+}
+.gc-tier .gc-face + h2 + .gc-price { margin-top: .95rem; }
+.gc-price { display: flex; flex-wrap: wrap; align-items: baseline; gap: .15rem .55rem; margin: .45rem 0 .55rem; }
+.gc-pay { font-size: .88rem; font-weight: 600; color: var(--text-soft); }
+.gc-price strong { font-family: var(--font-display); font-size: 2rem; font-weight: 800; line-height: 1; color: var(--text); }
+/* The value, struck through in the brand red so the discount reads at a glance. */
+.gc-price s { font-size: 1.15rem; font-weight: 700; color: var(--text-soft); text-decoration: line-through; text-decoration-color: var(--red); text-decoration-thickness: 2.5px; }
+.gc-save { font-size: .9rem; font-weight: 800; color: var(--text); }
 .gc-covers { font-size: .95rem; color: var(--text-soft); margin: 0 0 1.1rem; }
 .gc-calc { background: var(--paper-2); border: 1px solid var(--line); border-radius: var(--r-lg); padding: 1.4rem 1.3rem 1.2rem; box-shadow: var(--shadow-sm); }
 .gc-calc h2 { font-size: 1.35rem; margin: 0 0 .9rem; }

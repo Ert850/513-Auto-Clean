@@ -34,11 +34,26 @@ const dollars = (cents) => "$" + (cents % 100 ? (cents / 100).toFixed(2) : Strin
 const longDay = (iso) => new Date(iso + "T12:00:00Z").toLocaleDateString("en-US", { month: "long", day: "numeric", timeZone: "UTC" });
 const onSale = (cfg) => cfg.mode === "sale";
 
-/** "$40 $50 Save $10", or just "$50" when there is no sale. */
+/** "You pay $40 $50 Save $10" (the value struck through), or "You pay $50" when there is no sale. */
 export function priceRow(valueCents, cfg, cls = "gc-price") {
   const pay = salePriceCents(valueCents, cfg);
-  if (pay === valueCents) return `<p class="${cls}"><strong>${dollars(pay)}</strong></p>`;
-  return `<p class="${cls}"><strong>${dollars(pay)}</strong> <s><span class="sr-only">instead of </span>${dollars(valueCents)}</s> <span class="gc-save">Save ${dollars(valueCents - pay)}</span></p>`;
+  const lead = `<span class="gc-pay">You pay</span> <strong>${dollars(pay)}</strong>`;
+  if (pay === valueCents) return `<p class="${cls}">${lead}</p>`;
+  return `<p class="${cls}">${lead} <s><span class="sr-only">instead of </span>${dollars(valueCents)}</s> <span class="gc-save">Save ${dollars(valueCents - pay)}</span></p>`;
+}
+
+/**
+ * The card itself, as the recipient will see it: what they get, big. The
+ * sale's percentage rides on its corner. Decorative: the h2 and the price
+ * row carry the words for screen readers.
+ */
+export function cardFace(valueCents, cfg) {
+  const off = onSale(cfg) ? `<span class="gc-off">${cfg.sale.percentOff}% off</span>` : "";
+  return `<div class="gc-face" aria-hidden="true">${off}
+            <span class="gc-face-brand"><img class="gc-face-mark" src="images/logo-mark.png" alt="" width="20" height="26" />513 Auto Clean</span>
+            <span class="gc-face-value">${dollars(valueCents)}</span>
+            <span class="gc-face-label">Gift card</span>
+          </div>`;
 }
 
 function buyButton(valueCents, cfg, { primary = false, custom = false } = {}) {
@@ -65,7 +80,8 @@ export function giftTiers(cfg, rows = coverTable()) {
   return cfg.tiers.map((t) => {
     const value = t.value * 100;
     return `<article class="svc-card gc-tier${t.featured ? " featured" : ""}">${t.featured ? '\n          <span class="svc-tag">Our pick</span>' : ""}
-          <h2>${dollars(value)} gift card</h2>
+          ${cardFace(value, cfg)}
+          <h2 class="sr-only">${dollars(value)} gift card</h2>
           ${priceRow(value, cfg)}
           <p class="gc-covers">${coversLine(value, rows)}</p>
           <div class="svc-foot">${buyButton(value, cfg, { primary: !!t.featured })}</div>
