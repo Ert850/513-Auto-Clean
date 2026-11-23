@@ -50,9 +50,12 @@ describe("gift card page", () => {
       expect(page).toContain(`<!-- GIFTCARDS:${name}:START -->`);
     }
     if (cfg.mode === "off") return;
-    // As of today: the page is built for the day it's built.
-    expect(page).toContain(giftTiers(viewAt(cfg)));
-    expect(page).toContain(giftCalc(viewAt(cfg)));
+    // Built for the day it was built: before, during or after the sale. Any one
+    // of the three, exactly (validation pass 2: not red on the sale's first day).
+    const days = [Date.parse(cfg.sale.starts + "T12:00:00Z") - 86_400_000, Date.parse(cfg.sale.starts + "T17:00:00Z"), Date.parse(cfg.sale.ends + "T12:00:00Z") + 2 * 86_400_000];
+    const built = days.map((d) => viewAt(cfg, d)).find((v) => page.includes(giftTiers(v)));
+    expect(built, "the page matches none of the sale's states: npm run build").toBeTruthy();
+    expect(page).toContain(giftCalc(built));
     // Outside the generated regions, the hand-written page carries no money or percentage.
     const outside = page.replace(/<!-- GIFTCARDS:(\w+):START -->[\s\S]*?<!-- GIFTCARDS:\1:END -->/g, "");
     expect(outside.slice(outside.indexOf("<main>"), outside.indexOf("</main>"))).not.toMatch(/\$\d|\d+%/);

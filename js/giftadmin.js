@@ -39,6 +39,8 @@
       .then(function (r) { return r.json().catch(function () { return {}; }); })
       .then(function (j) {
         if (j.card) show(j.card);
+        // After a failure the next tap is a new request, not a replay of the failed one.
+        if (j.error) disarm();
         msg.textContent = j.error ? (WORDS[j.error] || 'That didn’t work (' + j.error + ').') : j.repeated ? 'Already done: nothing was changed twice.' : '';
         return j;
       })
@@ -96,7 +98,8 @@
       return;
     }
     call({ action: 'redeem', amountCents: cents, note: $('gcaNote').value, requestId: armed.rid })
-      .then(function (j) { if (j.card) { $('gcaAmt').value = ''; $('gcaNote').value = ''; msg.textContent = dollars(cents) + ' taken off. ' + dollars(j.card.balanceCents) + ' left.'; } });
+      // A refusal (409) still sends the card back: only no error means it was taken off (validation pass 2).
+      .then(function (j) { if (j.card && !j.error) { $('gcaAmt').value = ''; $('gcaNote').value = ''; msg.textContent = dollars(cents) + ' taken off. ' + dollars(j.card.balanceCents) + ' left.'; } });
   });
 
   document.addEventListener('click', function (e) {
@@ -111,6 +114,6 @@
     }
     var body = what === 'void' ? { action: 'void' } : { action: 'resend', to: what === 'resend-recipient' ? 'recipient' : 'buyer' };
     body.requestId = armed.rid;
-    call(body).then(function (j) { if (j.card) msg.textContent = what === 'void' ? 'Card cancelled.' : 'Sent.'; });
+    call(body).then(function (j) { if (j.card && !j.error) msg.textContent = what === 'void' ? 'Card cancelled.' : 'Sent.'; });
   });
 })();

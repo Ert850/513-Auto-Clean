@@ -1890,7 +1890,7 @@ main > .bookpage:first-child { padding-block: clamp(16px, 2.2vw, 30px); }
    not red or green, for the saving: red is the brand and errors only. */
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 .topbar .tb-gift { display: none; color: #fff; font-weight: 600; }
-@media (min-width: 355px) { .topbar .tb-gift { display: inline; white-space: nowrap; } }
+@media (min-width: 360px) { .topbar .tb-gift { display: inline; white-space: nowrap; } }
 /* Beside the gift link the tag line wrapped the phone number from 560 to 690 px: it gives way first. */
 @media (max-width: 719.98px) { .topbar .tb-left:has(.tb-gift) .tb-hide { display: none; } }
 .topbar .tb-gift-sale { display: none; }
@@ -1983,7 +1983,13 @@ main > .bookpage:first-child { padding-block: clamp(16px, 2.2vw, 30px); }
 .gc-when input[type="date"] { font: inherit; padding: .6rem .7rem; border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--paper); }
 .gc-buy-note { font-size: .85rem; color: var(--text-soft); margin: .2rem 0 .8rem; }
 .gc-buy-err { color: var(--red-deep); font-weight: 600; margin: 0 0 .8rem; }
-.gc-buy-actions { display: grid; gap: .5rem; }
+.gc-buy-actions { display: grid; gap: .5rem; position: sticky; bottom: 0; margin: 0 -1.3rem -1.2rem; padding: .8rem 1.3rem 1.2rem; background: var(--paper-2); border-top: 1px solid var(--line); }
+/* The form scrolls on a laptop window too: its scrollbar stays visible (CLAUDE.md, scrollable boxes),
+   and Continue stays pinned at the bottom (validation pass 2: it sat below 790 px). */
+.gc-dialog::-webkit-scrollbar { width: 10px; }
+.gc-dialog::-webkit-scrollbar-thumb { background: #c9ccd2; border-radius: 10px; border: 2px solid var(--paper-2); }
+@supports (-moz-appearance: none) { .gc-dialog { scrollbar-width: thin; scrollbar-color: #c9ccd2 transparent; } }
+.gc-buyform .field { margin-bottom: .7rem; }
 /* One card (gift-certificate.html, js/giftcert.js). */
 .gc-thanks { background: var(--paper-2); border: 1px solid var(--line); border-left: 3px solid var(--ink); border-radius: var(--r-sm); padding: .8rem 1rem; margin: 0 0 1.4rem; }
 .gc-cert { max-width: 34rem; }

@@ -202,6 +202,7 @@ describe("gift-webhook", () => {
 
   it("a scheduled card waits for its day, and a failed email is retried without repeating the others", async () => {
     const s = await paidSession({ sendOn: "2026-12-24" });
+    // Elijah's email failing too: Stripe retries.
     mailOk = false;
     expect((await hook(completed(s.id))).statusCode).toBe(500);
     mailOk = true;
@@ -260,8 +261,7 @@ describe("gift-admin", () => {
     expect(JSON.parse((await act({ action: "lookup", code: code.toLowerCase() })).body).card).toMatchObject({ balanceCents: 5000, status: "active" });
     const r1 = JSON.parse((await act({ action: "redeem", code, amountCents: 3000, note: "Jane, Dec 30", requestId: "req_aaaaaaaa" })).body);
     expect(r1.card).toMatchObject({ balanceCents: 2000, status: "active" });
-    const upd = db.calls.filter((c) => c.what === "pi.update").at(-1)! as { opts: { idempotencyKey: string } };
-    expect(upd.opts.idempotencyKey).toContain("req_aaaaaaaa");
+    expect(db.pis.get(s.payment_intent)!.metadata.gift_last_req).toBe("req_aaaaaaaa");
     expect((await act({ action: "redeem", code, amountCents: 2500, requestId: "req_bbbbbbbb" })).statusCode).toBe(409);
     const r2 = JSON.parse((await act({ action: "redeem", code, amountCents: 2000, requestId: "req_cccccccc" })).body);
     expect(r2.card).toMatchObject({ balanceCents: 0, status: "used" });
@@ -370,5 +370,68 @@ describe("validation pass 1 fixes", () => {
     expect(rebuildDue(cfg, Date.parse("2026-12-26T05:15:00Z"))).toBe(true);
     expect(rebuildDue(cfg, Date.parse("2026-12-25T05:15:00Z"))).toBe(false);
     expect(rebuildDue({ ...cfg, mode: "regular" }, Date.parse("2026-11-27T05:15:00Z"))).toBe(false);
+  });
+});
+
+describe("validation pass 2 fixes", () => {
+  const completed = (id: string) => ({ type: "checkout.session.completed", data: { object: { id } } });
+
+  it("a dispute closed as a warning keeps the card; only a lost one cancels it", async () => {
+    const s = await paidSession();
+    await hook(completed(s.id));
+    const ev = (type: string, id: string, extra = {}) => ({ id, type, data: { object: { payment_intent: s.payment_intent, ...extra } } });
+    await hook(ev("charge.dispute.created", "evt_a"));
+    await hook(ev("charge.dispute.closed", "evt_b", { status: "warning_closed" }));
+    expect(db.pis.get(s.payment_intent)!.metadata).toMatchObject({ gift_status: "active", gift_balance_cents: "5000" });
+  });
+
+  it("a recipient address the mail service refuses goes to the hourly run, not to days of Stripe retries", async () => {
+    const s = await paidSession();
+    const realOk = () => true;
+    globalThis.fetch = (async (url: string, init?: { body?: string }) => {
+      const b = JSON.parse(String(init?.body));
+      mail.push({ to: b.to[0], subject: b.subject });
+      return new Response("{}", { status: b.to[0] === "sam@example.com" ? 422 : realOk() ? 200 : 500 });
+    }) as typeof fetch;
+    expect((await hook(completed(s.id))).statusCode).toBe(200);
+    expect(db.pis.get(s.payment_intent)!.metadata).toMatchObject({ gift_deliver: "pending", gift_send_on: "2026-12-01", gift_mail_owner: "1" });
+  });
+
+  it("a send-now card that the webhook never emailed is picked up by the hourly run", async () => {
+    const s = await paidSession();
+    // Only the certificate page ran (ensureIssued): recorded, never emailed.
+    await card.handler({ httpMethod: "POST", headers: {}, body: JSON.stringify({ s: s.id }) });
+    const pi = db.pis.get(s.payment_intent)! as PI & { created?: number };
+    expect(pi.metadata.gift_deliver).toBe("now");
+    pi.created = Math.floor(IN_SALE / 1000) - 3600;
+    const sent: string[] = [];
+    const out = await deliver.deliverDue(new (await import("stripe")).default("x") as never, SECRET, IN_SALE, async (to: string) => { sent.push(to); return true; });
+    expect(out.sent).toBe(1);
+    expect(sent).toEqual(["sam@example.com"]);
+    expect(pi.metadata.gift_deliver).toBe("sent");
+  });
+
+  it("a disputed scheduled card waits rather than being cancelled", async () => {
+    const s = await paidSession({ sendOn: "2026-12-24" });
+    await hook(completed(s.id));
+    await hook({ id: "evt_d", type: "charge.dispute.created", data: { object: { payment_intent: s.payment_intent } } });
+    const out = await deliver.deliverDue(new (await import("stripe")).default("x") as never, SECRET, Date.parse("2026-12-24T15:00:00Z"), async () => true);
+    expect(out).toMatchObject({ sent: 0, waiting: 1 });
+    expect(db.pis.get(s.payment_intent)!.metadata.gift_deliver).toBe("pending");
+  });
+
+  it("a card paid on its send day: the buyer's email doesn't promise it for later", async () => {
+    const subjects: string[] = [];
+    const bodies: string[] = [];
+    globalThis.fetch = (async (_u: string, init?: { body?: string }) => {
+      const b = JSON.parse(String(init?.body)); subjects.push(b.subject); bodies.push(b.html); mail.push({ to: b.to[0], subject: b.subject });
+      return new Response("{}", { status: 200 });
+    }) as typeof fetch;
+    const s = await paidSession({ sendOn: "2026-12-02" });
+    vi.setSystemTime(Date.parse("2026-12-02T20:00:00Z"));
+    await hook(completed(s.id));
+    const buyerHtml = bodies[subjects.findIndex((x) => x.startsWith("Your "))]!;
+    expect(buyerHtml).not.toContain("on Wednesday");
+    expect(buyerHtml).toContain("emailed it to Sam");
   });
 });

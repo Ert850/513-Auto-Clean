@@ -18,29 +18,38 @@ import { send } from "./send-confirmation.mjs";
 export const MAX_TRIES = 3;
 const BATCH = 5;
 const BUDGET_MS = 20_000;
+const STRANDED_MS = 15 * 60_000;
 
 export async function deliverDue(stripe, secret, nowMs = Date.now(), mail, startMs = Date.now()) {
   const today = cincinnatiDay(nowMs);
   const out = { sent: 0, failed: 0, gaveUp: [], waiting: 0, stopped: false };
   // One search, then each card re-read by id before it is sent: search can
   // trail a change by a minute, and an earlier run (or a resend) may have sent it.
+  // Also "now" cards left unsent: recorded by the certificate page while the
+  // webhook never came, so nobody emailed them (validation pass 2). Given the
+  // webhook a quarter of an hour first.
   const found = [];
-  let page;
-  do {
-    page = await stripe.paymentIntents.search({
-      query: `metadata['gift_deliver']:'pending'`,
-      limit: 100,
-      ...(page?.next_page ? { page: page.next_page } : {}),
-    });
-    found.push(...page.data.map((p) => p.id));
-  } while (page.has_more && page.next_page);
+  for (const state of ["pending", "now"]) {
+    let page;
+    do {
+      page = await stripe.paymentIntents.search({
+        query: `metadata['gift_deliver']:'${state}'`,
+        limit: 100,
+        ...(page?.next_page ? { page: page.next_page } : {}),
+      });
+      found.push(...page.data.filter((p) => state === "pending" || (p.created || 0) * 1000 < nowMs - STRANDED_MS).map((p) => p.id));
+    } while (page.has_more && page.next_page);
+  }
 
   const one = async (id) => {
     const pi = await stripe.paymentIntents.retrieve(id);
     const m = pi?.metadata || {};
-    if (m.kind !== GIFT_KIND || m.gift_deliver !== "pending") return;
-    if (!m.gift_send_on || m.gift_send_on > today) { out.waiting++; return; }
-    if (m.gift_status === "void" || m.gift_status === "disputed") {
+    if (m.kind !== GIFT_KIND || !["pending", "now"].includes(m.gift_deliver) || m.gift_mail_to === "1") return;
+    if (m.gift_deliver === "pending" && (!m.gift_send_on || m.gift_send_on > today)) { out.waiting++; return; }
+    // A cancelled card isn't sent. A disputed one waits: if the dispute is
+    // won, it goes out then (validation pass 2).
+    if (m.gift_status === "disputed") { out.waiting++; return; }
+    if (m.gift_status === "void") {
       await stripe.paymentIntents.update(pi.id, { metadata: { gift_deliver: "cancelled" } });
       return;
     }
