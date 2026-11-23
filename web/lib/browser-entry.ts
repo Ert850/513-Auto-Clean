@@ -15,6 +15,7 @@ import {
   vehicleSize,
   upgradeLegacy,
 } from "./catalog/seed.js";
+import { coverage, coverTable } from "./catalog/giftCards.js";
 import {
   ADDONS,
   addonBlockedReason,
@@ -206,6 +207,8 @@ const api = {
   isLive,
   componentsOf,
   formatCents,
+  coverage,
+  coverTable,
 };
 
 declare global {

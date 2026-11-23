@@ -54,4 +54,11 @@
   <!-- Service pages, from config/services/ (published only), by web/scripts/render-services.mjs -->
   <!-- SERVICEPAGES:START -->
   <!-- SERVICEPAGES:END -->
+  <!-- GIFTCARDS:SITEMAP:START -->
+  <url>
+    <loc>https://513autoclean.com/gift-cards</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <!-- GIFTCARDS:SITEMAP:END -->
 </urlset>
