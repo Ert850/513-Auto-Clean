@@ -69,6 +69,22 @@ if (/\{\{[A-Z0-9_]+\}\}/.test(out)) {
   throw new Error("render-config: a placeholder survived substitution");
 }
 
+// js/config.js is public, and netlify.toml tells the secret scanner to skip
+// this variable (SECRETS_SCAN_OMIT_KEYS), so nothing else would stop a secret
+// key pasted into the publishable slot from being served to every visitor
+// (review, November 23, P10). The value itself is never printed.
+{
+  const pk = String(process.env.STRIPE_PUBLISHABLE_KEY ?? "").trim();
+  if (pk && !pk.startsWith("pk_")) {
+    console.error(
+      "render-config: STRIPE_PUBLISHABLE_KEY does not start with pk_" +
+        (/^(sk|rk)_/.test(pk) ? " and looks like a SECRET key. Roll it in Stripe, then" : ".") +
+        " Set it to the publishable key (pk_live_ or pk_test_) in Netlify.",
+    );
+    process.exit(1);
+  }
+}
+
 // The A/B tests (config/experiments.json), checked here so a mistake fails the
 // build. JSON is valid JavaScript, and the ids and version names are limited
 // to letters, digits and dashes, so nothing in it can end the statement.
