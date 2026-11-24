@@ -90,6 +90,7 @@ describe("gift card page", () => {
     expect(giftCardProblems(cfg)).toEqual([]);
     expect(giftCardProblems({ ...cfg, expiryYears: 1 }).join()).toMatch(/expiryYears/);
     expect(giftCardProblems({ ...cfg, checkout: { ...cfg.checkout, methods: ["card", "klarna"] } }).join()).toMatch(/checkout.methods/);
+    expect(giftCardProblems({ ...cfg, checkout: { ...cfg.checkout, methods: ["card", "affirm"] } }).join()).toMatch(/checkout.methods/);
     expect(giftCardProblems({ ...cfg, checkout: { ...cfg.checkout, methods: ["link"] } }).join()).toMatch(/checkout.methods/);
     expect(giftCardProblems({ ...cfg, sale: { ...cfg.sale, next: { starts: "2026-12-01", ends: "2026-12-20" } } }).join()).toMatch(/sale.next/);
   });

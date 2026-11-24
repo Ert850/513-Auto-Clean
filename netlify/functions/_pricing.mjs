@@ -2690,7 +2690,7 @@ var gift_cards_default = {
     "refundDays: an unused card can be refunded (what was paid) within this many days of buying it. The terms say it from here.",
     "scheduleDays: how far ahead a buyer can pick the day the card is emailed to the person it's for.",
     "expiryYears: a card is good for this many years from the day it's bought, and the date is printed on it. Federal law (the CARD Act) sets 5 years as the shortest; the build refuses less. A card keeps the date it was sold with.",
-    "checkout.methods: how a buyer can pay on Stripe's page. Allowed: card (includes Apple Pay and Google Pay), link, amazon_pay, affirm; each must also be switched on in the Stripe dashboard. If Stripe refuses one, the checkout falls back to card and link so a sale is never lost. Not allowed, by the providers' own rules for gift cards: Afterpay, Cash App Pay, Klarna; PayPal through Stripe is Europe only.",
+    "checkout.methods: how a buyer can pay on Stripe's page. Allowed: card (includes Apple Pay and Google Pay), link, amazon_pay; each must also be switched on in the Stripe dashboard. If Stripe refuses one, the checkout falls back to card and link so a sale is never lost. Not allowed, by the providers' own rules for gift cards: Afterpay, Cash App Pay, Klarna; PayPal through Stripe is Europe only. Affirm is allowed by its rules but Elijah chose to skip it (November 24).",
     "A mistake in this file fails the build."
   ],
   mode: "sale",
@@ -2746,7 +2746,7 @@ function coversLine(valueCents, rows = coverTable()) {
   const who = sizes.length === VEHICLE_SIZES.length ? "any vehicle" : `a ${sizes.join(", ")}`;
   return `Covers ${article(best.name)} ${best.name} for ${who}, tax included`;
 }
-var CHECKOUT_METHODS = ["card", "link", "amazon_pay", "affirm"];
+var CHECKOUT_METHODS = ["card", "link", "amazon_pay"];
 var MIN_EXPIRY_YEARS = 5;
 function expiresOn(issued, years) {
   const [y, m, d] = issued.split("-").map(Number);
@@ -3026,7 +3026,7 @@ var PROCESSORS = [
   { name: "Google Calendar", does: "holds our availability and our schedule. When you book, the job goes onto our booking calendar with your name, phone, email, address and notes, so we know where to be. That calendar is private: anyone else sees only that the time is taken. Your browser reads only our open times.", capability: "liveCalendar" },
   { name: "Stripe", does: "takes card payments and keeps your card on file. Card details go straight to Stripe over an encrypted connection; we never see or store the card number.", capability: "cardOnFile" },
   { name: "PayPal", does: "takes PayPal and Venmo payments.", capability: "digitalWallets" },
-  { name: "Stripe (gift cards)", does: "takes payment for gift cards on its own secure page, and keeps the record of each card: its value, what is left on it, and the names, email address and message given for it. Card details go straight to Stripe; we never see or store the card number." + (GIFT_CARDS.checkout.methods.includes("amazon_pay") ? " If you pay with Amazon Pay, Amazon handles that payment under its own privacy notice." : "") + (GIFT_CARDS.checkout.methods.includes("affirm") ? " If you pay over time with Affirm, Affirm handles that payment under its own privacy notice." : "") + " The gift card emails are sent by Resend.", capability: "giftCardSales" },
+  { name: "Stripe (gift cards)", does: "takes payment for gift cards on its own secure page, and keeps the record of each card: its value, what is left on it, and the names, email address and message given for it. Card details go straight to Stripe; we never see or store the card number." + (GIFT_CARDS.checkout.methods.includes("amazon_pay") ? " If you pay with Amazon Pay, Amazon handles that payment under its own privacy notice." : "") + " The gift card emails are sent by Resend.", capability: "giftCardSales" },
   // Named generically on purpose (Emmett, November 14): the provider may change
   // (GoHighLevel's LeadConnector today), and the policy should not need a rewrite.
   { name: "Our text messaging provider", does: "delivers the text messages we send you. It receives your mobile number and each message, only to deliver it, and may not use them for anything else." },
