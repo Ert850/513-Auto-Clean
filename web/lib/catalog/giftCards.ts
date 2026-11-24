@@ -116,11 +116,12 @@ export function coversLine(valueCents: number, rows: CoverRow[] = coverTable()):
  * The payment methods a gift card may be paid with, each checked against its
  * provider's rules for gift cards (November 23, 2026): card (with Apple Pay
  * and Google Pay) and Link; Amazon Pay allows a store's own cards under
- * $2,000; Affirm the same while gift cards stay under 25% of yearly sales.
+ * $2,000.
  * Not here: Afterpay and Cash App Pay ban gift cards, Klarna restricts them,
- * and Stripe offers PayPal only to European businesses.
+ * and Stripe offers PayPal only to European businesses. Affirm allows them
+ * but costs about 6% a sale: Elijah chose to skip it and Klarna (November 24).
  */
-export const CHECKOUT_METHODS = ["card", "link", "amazon_pay", "affirm"];
+export const CHECKOUT_METHODS = ["card", "link", "amazon_pay"];
 
 /** The federal minimum for a gift card's life (12 CFR 1005.20(e)). */
 export const MIN_EXPIRY_YEARS = 5;

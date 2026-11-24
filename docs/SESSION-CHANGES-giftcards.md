@@ -125,7 +125,7 @@ What he decided, and what changed:
 - **Not changed, and why:**
   - Indiana's 7% tax waits for the accountant: labor is generally untaxed there, but a job that includes products can be taxed as a bundle.
   - Apple and Google Wallet wait for their accounts.
-  - Affirm waits for Elijah.
+  - Affirm: Elijah chose to skip it and Klarna (November 24). Taken out of `CHECKOUT_METHODS` and the privacy wording, so the build refuses it in `checkout.methods`.
 - **Legal:** terms section 4 now says how long a card lasts. The date stays 2026-11-23 (not live yet); `npm run lock:legal` was re-run.
 - **What to test:**
   1. On `/gift-cards`: type 119.13, then 119.135 (refused), then 24.99 (refused).

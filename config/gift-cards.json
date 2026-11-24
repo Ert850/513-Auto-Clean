@@ -8,7 +8,7 @@
     "refundDays: an unused card can be refunded (what was paid) within this many days of buying it. The terms say it from here.",
     "scheduleDays: how far ahead a buyer can pick the day the card is emailed to the person it's for.",
     "expiryYears: a card is good for this many years from the day it's bought, and the date is printed on it. Federal law (the CARD Act) sets 5 years as the shortest; the build refuses less. A card keeps the date it was sold with.",
-    "checkout.methods: how a buyer can pay on Stripe's page. Allowed: card (includes Apple Pay and Google Pay), link, amazon_pay, affirm; each must also be switched on in the Stripe dashboard. If Stripe refuses one, the checkout falls back to card and link so a sale is never lost. Not allowed, by the providers' own rules for gift cards: Afterpay, Cash App Pay, Klarna; PayPal through Stripe is Europe only.",
+    "checkout.methods: how a buyer can pay on Stripe's page. Allowed: card (includes Apple Pay and Google Pay), link, amazon_pay; each must also be switched on in the Stripe dashboard. If Stripe refuses one, the checkout falls back to card and link so a sale is never lost. Not allowed, by the providers' own rules for gift cards: Afterpay, Cash App Pay, Klarna; PayPal through Stripe is Europe only. Affirm is allowed by its rules but Elijah chose to skip it (November 24).",
     "A mistake in this file fails the build."
   ],
   "mode": "sale",
