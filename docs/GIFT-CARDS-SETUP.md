@@ -9,7 +9,7 @@ The code is on branch `eNov16`. It takes no money until these steps are done. Ea
    - Affirm is not offered: Elijah chose to skip it (November 24). Its rules allow our cards, but it costs about 6% a sale.
    - Not offered, by the providers' own rules: Klarna (restricts gift cards), Afterpay and Cash App Pay (ban them). PayPal through Stripe is only for businesses in Europe.
 2. **Webhook:** Developers, Webhooks, Add endpoint.
-   - Test site, in test mode: `https://deploy-preview-13--513-auto-clean.netlify.app/api/gift-webhook`. Deploy Preview 13 builds whatever its PR's branch holds, which is `eNov14` today. The checkout is on `eNov16`: first push `eNov16` and fast-forward `eNov14` to it, or open a new draft PR for `eNov16` and use its preview number instead.
+   - Test site, in test mode: `https://deploy-preview-13--513-auto-clean.netlify.app/api/gift-webhook`. Deploy Preview 13 builds whatever its PR's branch holds, which is `eNov14`; since November 24 `eNov14` holds the checkout too (fast-forwarded to `eNov16`).
    - Live, at the merge: `https://513autoclean.com/api/gift-webhook`
    - Events:
      - `checkout.session.completed`
@@ -45,7 +45,7 @@ Without `STRIPE_WEBHOOK_SECRET` or `GIFT_CODE_SECRET`, the checkout refuses to o
 
 ## 3. Test on the test site, in Stripe test mode
 
-1. Open `/gift-cards` on the test site. The prices show 20% off only between the sale's dates (November 27 to December 25, Cincinnati time); before that they show full price.
+1. Open `/gift-cards` on the test site. The prices show 20% off only between the sale's dates in `config/gift-cards.json` (`sale.starts` to `sale.ends`, Cincinnati time); after that they show full price and the next sale's dates.
 2. Buy the $50 card with the test card `4242 4242 4242 4242`, any future date and any CVC. Put your own second email as "Their email".
 3. Expect:
    - the certificate page with the code;
