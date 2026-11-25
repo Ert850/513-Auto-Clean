@@ -2052,7 +2052,8 @@ var LEGAL = {
    * terms describe taking a card again, and the privacy policy names two
    * more processors.
    */
-  termsEffective: "2026-11-23",
+  termsEffective: "2026-11-25",
+  // 2026-11-25: gift cards last 5 years from purchase (the date is printed on the card), not "never expire".
   // 2026-11-23: section 4 has the gift card rules while gift cards are sold online (giftCardSales).
   // 2026-11-14: section 11 describes the text program for the toll-free number verification.
   // 2026-11-09: Google Analytics and Microsoft Clarity behind a consent
@@ -2072,7 +2073,8 @@ var LEGAL = {
   // not exist, and the record of what was agreed names the terms' date.
   // 2026-11-11 (later): A/B tests (config/experiments.json) remember which
   // version a visitor saw and send it with a booking. Same day, nothing live.
-  privacyEffective: "2026-11-23"
+  privacyEffective: "2026-11-25"
+  // 2026-11-25: Amazon Pay named while it is offered for gift cards.
   // 2026-11-23: Stripe for gift cards, and what a gift card purchase collects (giftCardSales).
   // 2026-11-14: opt-in data "will not be shared with any third parties or affiliates" (no carve-out), and a text messaging provider in the list.
 };
