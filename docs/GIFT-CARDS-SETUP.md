@@ -58,6 +58,6 @@ Without `STRIPE_WEBHOOK_SECRET` or `GIFT_CODE_SECRET`, the checkout refuses to o
 ## 4. At the merge
 
 - `config/gift-cards.json` has `checkout.enabled: true` on `eNov16`. A production build fails if gift cards are on while the checkout is off.
-- The terms (section 4, Gift cards) and the privacy policy (Stripe for gift cards) are dated November 23, 2026 and appear only while gift cards are sold.
+- The terms (section 4, Gift cards) and the privacy policy (Stripe for gift cards) are dated November 25, 2026 and appear only while gift cards are sold.
 - After the sale: with `GIFT_REBUILD_HOOK` set, the site rebuilds itself on December 26 at full prices. Set `mode` to `"regular"` (keep selling at face value) or `"off"` whenever you like after that.
 - **Keep `checkout.enabled` true once a card has been sold.** It keeps the gift card terms and the privacy entry for Stripe on the site while cards are out, even with `mode` "off". Cards already sold keep working either way: the certificate and `/gift-admin` stay.
