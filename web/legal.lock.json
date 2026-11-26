@@ -1,11 +1,11 @@
 {
   "_comment": "Fingerprints of the legal pages. If terms.html or privacy.html change and the matching date in lib/site/legal.ts does not, legal.test.ts fails. Bump the date, then run `npm run lock:legal`.",
   "terms": {
-    "version": "2026-11-14",
-    "fingerprint": "ab5143c9b79f7cc1"
+    "version": "2026-11-25",
+    "fingerprint": "61a5937372ddd8a1"
   },
   "privacy": {
-    "version": "2026-11-14",
-    "fingerprint": "81ba5b64d7b1fe70"
+    "version": "2026-11-25",
+    "fingerprint": "19bc1ee2bd33e800"
   }
 }

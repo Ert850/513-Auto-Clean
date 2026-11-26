@@ -5,11 +5,18 @@
     "video.poster: the still shown before the video plays, such as \"images/book-montage-poster.jpg\". Empty: the hero photo.",
     "The video plays muted, looping, inline, on its own; only its first frames load until it plays.",
     "bookLinks: \"page\" sends every Book link on the other pages to /book, where the consent boxes are, and the form opens from there (Imperion, November 14, for the toll-free verification). \"inline\": Book links open the form in place on every page, as before. Switching back is this one word.",
+    "bookLinkParams: the address words a Book link uses to carry what it started with into /book: package (a package id), interest (a coming-soon package id), intent (interior or exterior, the catalog's own categories) and browse (the full list). Change a word here and every link, the booking form and the build follow; the values themselves always come from the catalog.",
     "A mistake in this file fails the build."
   ],
   "video": {
     "src": "",
     "poster": ""
   },
-  "bookLinks": "page"
+  "bookLinks": "page",
+  "bookLinkParams": {
+    "package": "package",
+    "interest": "interest",
+    "intent": "intent",
+    "browse": "browse"
+  }
 }

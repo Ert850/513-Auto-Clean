@@ -22,15 +22,17 @@
 <link rel="manifest" href="manifest.webmanifest" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link rel="stylesheet" href="styles.css?v=15d13ea925" />
+<link rel="stylesheet" href="styles.css?v=337c463661" />
 <!-- CHROME:HEAD:START -->
 <!-- Public configuration and third party loaders live in js/, not inline,
      so the Content-Security-Policy can forbid inline scripts outright.
      js/config.js holds publishable keys only. Secret keys never go in a page.
-     analytics.js loads nothing until the visitor accepts the banner. -->
-<script src="js/config.js?v=a90f154329"></script>
-<script src="js/vendors.js?v=b1b3811463"></script>
-<script src="js/analytics.js?v=025f45f5ea" defer></script>
+     analytics.js loads nothing until the visitor accepts the banner. It is
+     not deferred, so an A/B test's words are in place before the first paint
+     (docs/AB-TESTING.md); its own work waits until the page is parsed. -->
+<script src="js/config.js?v=c9d96b2995"></script>
+<script src="js/vendors.js?v=22f2d19191"></script>
+<script src="js/analytics.js?v=83e41fc031"></script>
 <!-- CHROME:HEAD:END -->
 </head>
 <body>
@@ -46,6 +48,7 @@
         (513) 279-2915
       </a>
       <span class="tb-hide">Mobile detailing • We come to you</span>
+      <a class="tb-gift" href="gift-cards.html">Gift cards<span class="tb-gift-sale">, 20% off</span></a>
     </div>
     <div class="tb-socials">
       <a href="https://www.instagram.com/513autoclean/" target="_blank" rel="noopener" aria-label="Instagram"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/></svg></a>
@@ -103,12 +106,12 @@
     <button class="mm-close" id="mmClose" aria-label="Close menu">&times;</button>
   </div>
   <a class="mm-link" href="index.html#gallery">Results</a>
-  <a class="mm-link" href="services.html">Services &amp; Pricing</a>
+  <a class="mm-link" href="services.html">Services</a>
   <a class="mm-link" href="about.html">Meet the Team</a>
   <a class="mm-link" href="about.html#reviews">Reviews</a>
-  <a class="mm-link" href="service-area.html">Range &amp; Travel Costs</a>
+  <a class="mm-link" href="service-area.html">Range &amp; Travel</a>
   <a class="mm-link" href="faq.html">FAQ</a>
-  <a class="mm-link" href="#inquiry">Contact Us</a>
+  <a class="mm-link" href="gift-cards.html">Gift cards</a>
   <div class="mm-cta">
     <a class="btn btn-primary btn-block" href="book.html">Book Now</a>
     <a class="btn btn-ghost on-dark btn-block" href="#inquiry">Contact Us</a>
@@ -129,13 +132,13 @@
         <div class="section-head inq-head">
 <!-- CONTACT:HEAD:START -->
           <span class="eyebrow">Contact Us</span>
-          <h2>Request a quote</h2>
-          <p>Tell us about your vehicle and what you need, and we will send you a quote. A real person answers, usually same day.</p>
+          <h1>Got a question first?</h1>
+          <p>Not ready to book, or not sure which package fits? Ask us anything about your vehicle&rsquo;s condition, what&rsquo;s realistic to fix, pricing, or timing. A real person answers, usually same day.</p>
 <!-- CONTACT:HEAD:END -->
         </div>
         <div class="inq-side-head">
-          <h3>Prefer to talk?</h3>
-          <p class="inq-side-sub">Tap to call, or copy the number.</p>
+          <h2>Prefer to talk?</h2>
+          <p class="inq-side-sub">Call, or copy the number.</p>
         </div>
         <div class="phone-chip">
           <a class="phone-num" href="tel:+15132792915">(513)&nbsp;279-2915</a>
@@ -157,13 +160,28 @@
 
       <div class="form-card reveal" data-d="1" id="inquiryCard">
 <!-- CONTACT:CARD:START -->
-        <h3>Request a quote</h3>
+        <h2>Ask us a question</h2>
         <p class="fc-sub">Tell us what you&rsquo;re dealing with and we&rsquo;ll point you the right way.</p>
-        <form id="inquiryForm" class="js-w3form inq-quote" action="https://api.web3forms.com/submit" method="POST" novalidate data-success="Thanks, your quote request is in. I'll get back to you shortly, usually the same day.">
+        <form id="inquiryForm" class="js-w3form inq-compact" action="https://api.web3forms.com/submit" method="POST" novalidate>
           <input type="hidden" name="access_key" value="8a502fe3-2a53-4904-98e9-b18dabb1f579" />
-          <input type="hidden" name="subject" value="QUOTE REQUEST from 513autoclean.com" />
+          <input type="hidden" name="subject" value="QUESTION from 513autoclean.com" />
           <input type="hidden" name="from_name" value="513 Auto Clean Website" />
           <input type="checkbox" name="botcheck" style="display:none" tabindex="-1" autocomplete="off" />
+
+          <!-- Wide screens: the two free-text boxes side by side, then two rows of
+               three. Same fields and order of importance, about half the height. -->
+          <div class="field-row pair-wide">
+            <div class="field">
+              <label for="q-message">What&rsquo;s your question? <span class="req">*</span></label>
+              <textarea id="q-message" name="message" rows="4" required
+                placeholder="e.g. My back seats have old coffee stains and my dog sheds badly. Is a Full Interior enough, or do I need add-ons?"></textarea>
+            </div>
+            <div class="field">
+              <label for="q-condition">Your vehicle&rsquo;s condition</label>
+              <textarea id="q-condition" name="condition" rows="2"
+                placeholder="Pet hair, spills, smoke, kids, work truck, sat outside all winter&hellip;"></textarea>
+            </div>
+          </div>
 
           <div class="field-row three">
             <div class="field">
@@ -199,21 +217,6 @@
             </fieldset>
           </div>
 
-          <!-- Wide screens: the two free-text boxes side by side, then two rows of
-               three. Same fields and order of importance, about half the height. -->
-          <div class="field-row pair-wide">
-            <div class="field">
-              <label for="q-message">What&rsquo;s your question? <span class="req">*</span></label>
-              <textarea id="q-message" name="message" rows="4" required
-                placeholder="e.g. My back seats have old coffee stains and my dog sheds badly. Is a Full Interior enough, or do I need add-ons?"></textarea>
-            </div>
-            <div class="field">
-              <label for="q-condition">Your vehicle&rsquo;s condition</label>
-              <textarea id="q-condition" name="condition" rows="2"
-                placeholder="Pet hair, spills, smoke, kids, work truck, sat outside all winter&hellip;"></textarea>
-            </div>
-          </div>
-
           <div class="inq-ticks">
             <label class="inq-tick"><input type="checkbox" name="SMS consent" value="yes" data-yesno /> <span>I consent to receive SMS notifications, alerts &amp; occasional marketing communication from 513 Auto Clean. Message frequency varies. Message &amp; data rates may apply. Text HELP to (513) 279-2915 for assistance. You can reply STOP to unsubscribe at any time.</span></label>
             <label class="inq-tick"><input type="checkbox" name="Marketing" value="yes" data-yesno /> <span>I want to receive news, feature updates, discounts &amp; offers from 513 Auto Clean.</span></label>
@@ -222,10 +225,10 @@
 
           <div class="form-foot">
             <button type="submit" class="btn btn-primary btn-lg btn-block">
-              Request Quote
+              Send My Question
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4z"/></svg>
             </button>
-            <p class="fineprint">No spam, ever. We only use your info to send your quote.</p>
+            <p class="fineprint">No spam, ever. We only use your info to answer your question. See our <a href="privacy.html">Privacy Policy</a>.</p>
           </div>
           <div class="form-msg" role="status" aria-live="polite"></div>
         </form>
@@ -252,7 +255,7 @@
         </div>
       </div>
       <div>
-        <h4>Explore</h4>
+        <h2>Explore</h2>
         <div class="f-links">
           <a href="index.html#gallery">Results</a>
           <a href="services.html">Services</a>
@@ -264,7 +267,7 @@
         </div>
       </div>
       <div>
-        <h4>Service Areas</h4>
+        <h2>Service Areas</h2>
         <div class="f-links">
           <a href="service-area.html#area-oh">Cincinnati, OH</a>
           <a href="service-area.html#area-ky">Northern Kentucky</a>
@@ -274,7 +277,7 @@
         </div>
       </div>
       <div>
-        <h4>Get in Touch</h4>
+        <h2>Get in Touch</h2>
         <ul class="f-contact">
           <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.9.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/></svg> <a href="tel:+15132792915">(513) 279-2915</a></li>
           <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 7l-10 6L2 7"/></svg> <a href="mailto:513autoclean@gmail.com">513autoclean@gmail.com</a></li>
@@ -304,12 +307,12 @@
      promises. Balanced masking alone hides inputs, not the Review screen. -->
 <div id="bookFunnel" hidden data-clarity-mask="true"></div>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&family=Hanken+Grotesk:wght@400;500;600;700&display=swap" />
-<link rel="stylesheet" href="book.css?v=49dc494bec" />
+<link rel="stylesheet" href="book.css?v=ddd553527c" />
 <!-- Deferred, so they run in this order: the pricing bundle before the
      booking form and before any page script that prices (travel.js). -->
-<script src="js/pricing.bundle.js?v=30cd433937" defer></script>
-<script src="js/funnel.js?v=adf7535138" defer></script>
-<script src="script.js?v=f30093639c" defer></script>
+<script src="js/pricing.bundle.js?v=23b069f9b4" defer></script>
+<script src="js/funnel.js?v=fc849a0733" defer></script>
+<script src="script.js?v=0f81ec6fa1" defer></script>
 <!-- CHROME:SCRIPTS:END -->
 </body>
 </html>

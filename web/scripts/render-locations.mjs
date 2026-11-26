@@ -1,0 +1,235 @@
+/**
+ * City pages from config/locations/*.json (SEO pass; see locations.mjs and
+ * docs/SEO-COMPLIANCE.md). Runs FIRST in the build, before the shared chrome
+ * is written, so each page gets its header, footer and scripts like any other.
+ *
+ * Addresses are flat (/<slug>, served from <slug>.html at the site root): the
+ * shared files use relative paths, so a page in a sub-folder would need every
+ * one of them rewritten. Imperion's own example (/mobile-detailing-west-chester/)
+ * is flat too.
+ *
+ * What fails the build, so a weak or copied page can never ship:
+ *   a missing or over-long field (title 60, meta 155 characters, the local
+ *   paragraph's word range); a gallery pair or review that does not exist; too
+ *   few things that belong to this city alone; two pages whose own text
+ *   overlaps more than MAX_OVERLAP (word 5-grams, Jaccard).
+ */
+import { pairPics, carouselHero } from "./split-hero.mjs";
+import fs from "node:fs";
+import path from "node:path";
+import { root, loadLocations, loadServices, pageFile, overlap, contained, typedNumbers, configWords, mainText, placeNames, normalWords, reviewFromArea } from "./locations.mjs";
+import { findPackage, findAddon, zipGeo } from "../../netlify/functions/_pricing.mjs";
+import { STATES, stateOf, stateGuides } from "./page-links.mjs";
+
+const SITE = "https://513autoclean.com";
+// docs/SEO-COMPLIANCE.md section 2: Jaccard on word 5-grams of each page's own
+// text, place names and ZIPs blanked. Google has no official number; 0.30 is
+// about 46% of the text shared. Warn from 0.20; also fail when over half of
+// one page appears in another.
+const MAX_OVERLAP = 0.30;
+const WARN_OVERLAP = 0.20;
+const MAX_CONTAINED = 0.50;
+const LIMITS = { title: 60, meta: 155, paraMin: 120, paraMax: 180, neighborhoodsMin: 3, neighborhoodsMax: 12, nearbyMax: 4 };
+// Who may write a published page's local paragraph (R3): a person who knows
+// the jobs there, never a model rewording one page per town.
+const WRITERS = ["Elijah", "Emmett"];
+
+const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+const read = (f) => fs.readFileSync(path.join(root, f), "utf8");
+const gallery = JSON.parse(read("data/gallery.json")).pairs ?? [];
+const reviews = JSON.parse(read("data/reviews.json"));
+const AREAS = JSON.parse(read("config/areas.json")).areas;
+
+const locs = loadLocations();
+
+// Prices in the words come from the catalog, never typed (CLAUDE.md): write
+// {price:full-interior} for a package or {addon:steam} for an add-on's
+// standard price, and the build fills in today's figure.
+const money = (c) => `$${(c / 100).toFixed(c % 100 ? 2 : 0)}`;
+function priced(text, where) {
+  return String(text).replace(/\{(price|addon):([a-z0-9-]+)\}/g, (m, kind, id) => {
+    const cents = kind === "price" ? findPackage(id)?.priceCents : findAddon(id)?.tiers?.[0]?.priceCents;
+    if (typeof cents !== "number") throw new Error(`render-locations: ${where}: no ${kind} "${id}" in the catalog`);
+    return money(cents);
+  });
+}
+// R6: a business number in the words comes from a setting, never typed.
+// Every string a customer could read, headings included (configWords skips ids and data).
+const typed = locs.flatMap((l) => configWords(l).flatMap((t) => typedNumbers(t).map((n) => `${l.file}: "${n}" is typed; say it from a setting ({price:...}, {addon:...}) or leave it out`)));
+for (const l of locs) for (const k of ["sub", "localParagraph", "meta"]) if (l[k]) l[k] = priced(l[k], `${l.file} ${k}`);
+for (const l of locs) {
+  l.highlights = (l.highlights ?? []).map((h) => priced(h, l.file));
+  l.faq = (l.faq ?? []).map((q) => ({ q: priced(q.q, l.file), a: priced(q.a, l.file) }));
+}
+const problems = [...typed];
+const need = (cond, loc, msg) => { if (!cond) problems.push(`${loc.file}: ${msg}`); };
+
+for (const loc of locs) {
+  need(/^[a-z0-9-]+$/.test(loc.slug ?? ""), loc, "slug must be lowercase letters, digits and dashes");
+  for (const k of ["name", "title", "meta", "eyebrow", "h1", "sub", "localParagraph"]) need(typeof loc[k] === "string" && loc[k].trim(), loc, `${k} is missing`);
+  need((loc.title ?? "").length <= LIMITS.title, loc, `title is ${loc.title?.length} characters (max ${LIMITS.title})`);
+  need((loc.meta ?? "").length <= LIMITS.meta, loc, `meta is ${loc.meta?.length} characters (max ${LIMITS.meta})`);
+  const words = (loc.localParagraph ?? "").split(/\s+/).filter(Boolean).length;
+  need(words >= LIMITS.paraMin && words <= LIMITS.paraMax, loc, `localParagraph is ${words} words (want ${LIMITS.paraMin} to ${LIMITS.paraMax})`);
+  need(Array.isArray(loc.zips) && loc.zips.length && loc.zips.every((z) => /^\d{5}$/.test(z)), loc, "zips must be 5-digit ZIP codes");
+  // R4: the ZIPs are a slice of one area in config/areas.json (the Accounting sheet's table), and a short list of neighborhoods.
+  need(AREAS[loc.area], loc, `area must be one of ${Object.keys(AREAS).join(", ")} (config/areas.json)`);
+  for (const z of loc.zips ?? []) need(!AREAS[loc.area] || AREAS[loc.area].includes(z), loc, `ZIP ${z} isn't in the ${loc.area} area (config/areas.json)`);
+  need(Array.isArray(loc.neighborhoods) && loc.neighborhoods.length >= LIMITS.neighborhoodsMin && loc.neighborhoods.length <= LIMITS.neighborhoodsMax, loc, `list ${LIMITS.neighborhoodsMin} to ${LIMITS.neighborhoodsMax} neighborhoods`);
+  // R7: nearby pages exist; at most a handful.
+  for (const n of loc.nearby ?? []) need(locs.some((l) => l.slug === n), loc, `nearby: no city page "${n}"`);
+  need((loc.nearby ?? []).length <= LIMITS.nearbyMax, loc, `at most ${LIMITS.nearbyMax} nearby pages`);
+  need(Array.isArray(loc.faq) && loc.faq.length >= 3, loc, "at least 3 FAQ answers written for this area");
+  // The hero carousel: gallery before/after pairs, never a lone "after" (Emmett, November 15).
+  need(Array.isArray(loc.hero?.pairs) && loc.hero.pairs.length, loc, "hero.pairs must list the gallery pairs the hero carousel shows");
+  for (const slug of loc.hero?.pairs ?? []) need(gallery.some((p) => p.slug === slug) && ["before", "after"].every((s) => ["webp", "jpg"].every((x) => fs.existsSync(path.join(root, `images/ba-${slug}-${s}-760.${x}`)))), loc, `hero.pairs: "${slug}" isn't a gallery before/after pair with both photos`);
+  need(loc.map && Array.isArray(loc.map.center) && loc.map.center.length === 2 && loc.map.radiusMiles > 0, loc, "map needs center [lat, lon] and radiusMiles");
+  for (const j of loc.localJobs ?? []) need(gallery.some((p) => p.slug === j.pair), loc, `localJobs: no gallery pair "${j.pair}"`);
+  for (const r of loc.reviews ?? []) need(reviews.reviews.some((x) => x.author === r.author && x.date === r.date), loc, `reviews: no review by ${r.author} on ${r.date}`);
+  // Things only this page has: its own paragraph and FAQ always; local jobs and reviews once Elijah's data is in.
+  if (loc.status !== "draft") {
+    // R1: evidence only this page has. A job counts when its ZIP is this
+    // page's and a person checked its photos (plates, faces, house numbers).
+    need((loc.localJobs ?? []).length >= 2, loc, "a published page needs at least 2 local jobs with photos");
+    for (const j of loc.localJobs ?? []) {
+      need((loc.zips ?? []).includes(j.zip), loc, `localJobs "${j.pair}": its job ZIP (zip) must be one of this page's ZIPs`);
+      need(j.reviewed === true, loc, `localJobs "${j.pair}": photos not marked reviewed (reviewed: true, after a person checks them)`);
+    }
+    need((loc.reviews ?? []).length >= 1, loc, "a published page needs at least 1 review from this area");
+    // The reviewer's own town, and one this page covers.
+    for (const r of loc.reviews ?? []) need(reviewFromArea(loc, r.area), loc, `reviews: ${r.author}'s town (area, "${r.area}") must be one this page names: its name, a neighborhood or an areaServed place, not just "Cincinnati"`);
+    // R3: a person wrote the local paragraph.
+    need(WRITERS.includes(loc.writtenBy), loc, `writtenBy must be ${WRITERS.join(" or ")}: the local paragraph is written by a person who knows the jobs there`);
+    // R7: a published page never links to a draft.
+    for (const n of loc.nearby ?? []) need(locs.find((l) => l.slug === n)?.status !== "draft", loc, `nearby: "${n}" is a draft`);
+  }
+}
+// One job is local to one page: the same photos can't be the evidence for two
+// cities (validation cycle 3).
+{
+  const owner = new Map();
+  for (const loc of locs) for (const j of loc.localJobs ?? []) {
+    if (owner.has(j.pair) && owner.get(j.pair) !== loc.slug) problems.push(`localJobs "${j.pair}" is a local job on both ${owner.get(j.pair)} and ${loc.slug}`);
+    else owner.set(j.pair, loc.slug);
+  }
+}
+if (problems.length) throw new Error("render-locations:\n  " + problems.join("\n  "));
+
+const tpl = read("web/templates/location.html");
+const pair = (slug) => gallery.find((p) => p.slug === slug);
+const live = (loc) => loc.status !== "draft";
+
+for (const loc of locs) {
+  const url = `${SITE}/${loc.slug}`;
+  const ctaAttrs = loc.book?.package ? ` data-book-package="${esc(loc.book.package)}"` : loc.book?.intent ? ` data-book-intent="${esc(loc.book.intent)}"` : "";
+  const li = (t) => `        <li>${esc(t)}</li>`;
+  // A draft's links to other drafts are left out; a published page can't have any (checked above).
+  const nearby = (loc.nearby ?? []).map((s) => locs.find((l) => l.slug === s)).filter((l) => l && live(l));
+  const jobs = (loc.localJobs ?? []).length ? `
+<section class="loc-jobs">
+  <div class="wrap">
+    <h2>${esc(loc.jobsH2 ?? "Recent jobs nearby")}</h2>
+    <div class="loc-jobs-grid">
+${loc.localJobs.map((j) => { const p = pair(j.pair); return `      <figure class="loc-job"><span class="loc-job-pics svp-split">${pairPics(p)}</span><figcaption><b>${esc(j.vehicle ?? p.caption)}</b>${j.note ? ` ${esc(j.note)}` : ""}${j.comment ? `<q>${esc(j.comment)}</q>` : ""}</figcaption></figure>`; }).join("\n")}
+    </div>
+  </div>
+</section>
+` : "";
+  const revs = (loc.reviews ?? []).length ? `
+<section class="loc-reviews">
+  <div class="wrap">
+    <h2>${esc(loc.reviewsH2 ?? "What customers say")}</h2>
+${loc.reviews.map((r) => { const x = reviews.reviews.find((y) => y.author === r.author && y.date === r.date); return `    <blockquote class="loc-review"><p>${esc(x.text)}</p><cite><a href="${esc(reviews.source)}" rel="noopener">${esc(x.author.split(" ")[0])}${r.area ? `, ${esc(r.area)}` : ""}</a> on Google</cite></blockquote>`; }).join("\n")}
+  </div>
+</section>
+` : "";
+  const jsonld = {
+    "@context": "https://schema.org",
+    "@graph": [
+      { "@type": "BreadcrumbList", itemListElement: [
+        { "@type": "ListItem", position: 1, name: "Home", item: `${SITE}/` },
+        { "@type": "ListItem", position: 2, name: "Service area", item: `${SITE}/service-area.html` },
+        { "@type": "ListItem", position: 3, name: loc.name, item: url },
+      ] },
+      { "@type": "Service", "@id": `${url}#service`, name: loc.h1, serviceType: "Mobile car detailing", url,
+        // AutoWash (an AutomotiveBusiness) is the closest schema.org type (docs/SEO-COMPLIANCE.md section 4).
+        provider: { "@type": "AutoWash", "@id": `${SITE}/#business`, name: "513 Auto Clean", url: `${SITE}/` },
+        areaServed: [...(loc.areaServed ?? [loc.name]).map((n) => ({ "@type": "Place", name: n })), ...loc.zips.map((z) => ({ "@type": "Place", address: { "@type": "PostalAddress", postalCode: z, addressCountry: "US" } }))] },
+    ],
+  };
+  const fill = {
+    FILE: loc.file, TITLE: esc(loc.title), META: esc(loc.meta), CANONICAL: url,
+    ROBOTS: live(loc) ? "" : '<meta name="robots" content="noindex" />\n',
+    JSONLD: JSON.stringify(jsonld, null, 2),
+    NAME: esc(loc.name), EYEBROW: esc(loc.eyebrow),
+    H1: esc(loc.h1), SUB: esc(loc.sub), CTA_ATTRS: ctaAttrs,
+    RATING: `${Number(reviews.rating).toFixed(1)} on Google (${reviews.count} reviews)`,
+    TRUST: (loc.trust ?? ["UC student-owned", "Pay when it's done"]).map((t) => `          <li>${esc(t)}</li>`).join("\n"),
+    HERO: carouselHero(loc.hero.pairs.map(pair)),
+    WHAT_H2: esc(loc.whatH2 ?? "What we do there"),
+    // Each published service page (SEO-COMPLIANCE.md R7); none while they're drafts.
+    SERVICE_LINKS: loadServices().filter(live).map((s) => `      <a class="loc-what-more" href="${pageFile(s)}">${esc(s.name)} <span aria-hidden="true">&rarr;</span></a>\n`).join(""),
+    MAP: esc(JSON.stringify({ center: loc.map.center, radiusMiles: loc.map.radiusMiles,
+      zips: loc.zips.map((z) => { const g = zipGeo(z) ?? (loc.map.zips ?? {})[z]; return g ? { zip: z, lat: g.lat, lon: g.lon } : null; }).filter(Boolean) })),
+    LOCAL_H2: esc(loc.localH2 ?? "Where we set up"),
+    LOCAL_P: loc.localParagraph.split(/\n\n+/).map((p) => `      <p>${esc(p)}</p>`).join("\n"),
+    HIGHLIGHTS: (loc.highlights ?? []).map(li).join("\n"),
+    AREAS_H2: esc(loc.areasH2 ?? "Where we go"),
+    NEIGHBORHOODS: loc.neighborhoods.map((t) => `          <li>${esc(t)}</li>`).join("\n"),
+    ZIPS: loc.zips.map((t) => `          <li>${esc(t)}</li>`).join("\n"),
+    NEARBY: nearby.length ? `      <p class="loc-areas-l">Also nearby</p>\n      <ul class="loc-chips">\n${nearby.map((l) => `        <li><a href="${pageFile(l)}">${esc(l.name)}</a></li>`).join("\n")}\n      </ul>` : "",
+    JOBS: jobs, REVIEWS: revs,
+    FAQ_H2: esc(loc.faqH2 ?? "Common questions"),
+    FAQ: loc.faq.map((q) => `    <details class="loc-q"><summary>${esc(q.q)}</summary><p>${esc(q.a)}</p></details>`).join("\n"),
+  };
+  let html = tpl.replace(/\{\{(\w+)\}\}/g, (m, k) => { if (!(k in fill)) throw new Error(`render-locations: no value for {{${k}}}`); return fill[k]; });
+  // Keep the shared chrome the page already has, so a rebuild changes nothing.
+  const out = path.join(root, pageFile(loc));
+  if (fs.existsSync(out)) {
+    const old = fs.readFileSync(out, "utf8");
+    for (const part of ["HEAD", "HEADER", "FOOTER", "SCRIPTS"]) {
+      const s = `<!-- CHROME:${part}:START -->\n`, e = `\n<!-- CHROME:${part}:END -->`;
+      const have = old.slice(old.indexOf(s) + s.length, old.indexOf(e));
+      const i = html.indexOf(s) + s.length, j = html.indexOf(e);
+      html = html.slice(0, i) + have + html.slice(j);
+    }
+  }
+  fs.writeFileSync(out, html);
+}
+
+// R2 on what a visitor reads: each page's visible <main> text, with both
+// pages' place names and every ZIP blanked, against every other city page and
+// against the hand-written pages a city page could copy from (Range & Travel,
+// the home page).
+const shown = (f) => mainText(read(f));
+const versus = [...locs.map((l) => ({ name: l.slug, text: shown(pageFile(l)), places: placeNames(l) })),
+  ...["service-area.html", "index.html"].map((f) => ({ name: f, text: shown(f), places: [], fixed: true }))];
+for (let i = 0; i < versus.length; i++) for (let k = i + 1; k < versus.length; k++) {
+  const A = versus[i], B = versus[k];
+  if (A.fixed && B.fixed) continue;
+  const places = [...A.places, ...B.places];
+  const a = normalWords(A.text, places), b = normalWords(B.text, places);
+  const o = overlap(a, b), c = Math.max(contained(a, b), contained(b, a));
+  if (o > MAX_OVERLAP) problems.push(`${A.name} and ${B.name} share ${o.toFixed(2)} of their text (max ${MAX_OVERLAP})`);
+  else if (o > WARN_OVERLAP) console.warn(`render-locations: warning, ${A.name} and ${B.name} share ${o.toFixed(2)} of their text`);
+  if (c > MAX_CONTAINED) problems.push(`${A.name} and ${B.name}: over half of one page's text is in the other`);
+}
+for (const loc of locs) { try { stateOf(loc); } catch (e) { problems.push(`${loc.file}: ${e.message}`); } }
+if (problems.length) throw new Error("render-locations:\n  " + problems.join("\n  "));
+
+// The sitemap and the state cards list only published (non-draft) pages.
+const published = locs.filter(live);
+const region = (file, name, body) => {
+  let s = read(file);
+  const a = `<!-- ${name}:START -->`, b = `<!-- ${name}:END -->`;
+  const i = s.indexOf(a), j = s.indexOf(b);
+  if (i < 0 || j < 0) throw new Error(`render-locations: ${name} markers not found in ${file}`);
+  s = s.slice(0, i + a.length) + body + s.slice(j);
+  fs.writeFileSync(path.join(root, file), s);
+};
+region("sitemap.xml", "LOCATIONS", published.map((l) => `\n  <url>\n    <loc>${SITE}/${l.slug}</loc>\n    <changefreq>monthly</changefreq>\n    <priority>0.7</priority>\n  </url>`).join("") + "\n  ");
+// Range & Travel: each state's card lists its city guides (page-links.mjs).
+// Not a list after the tool: that had no place in its grid and landed below
+// "Get an exact quote" (docs/CITY-SERVICE-LINKS.md).
+for (const st of STATES) region("service-area.html", `CITYGUIDES:${st}`, stateGuides(locs, st));
+console.log(`locations: ${locs.length} city pages (${published.length} published, ${locs.length - published.length} draft)`);

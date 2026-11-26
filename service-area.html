@@ -22,15 +22,17 @@
 <link rel="manifest" href="manifest.webmanifest" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link rel="stylesheet" href="styles.css?v=15d13ea925" />
+<link rel="stylesheet" href="styles.css?v=337c463661" />
 <!-- CHROME:HEAD:START -->
 <!-- Public configuration and third party loaders live in js/, not inline,
      so the Content-Security-Policy can forbid inline scripts outright.
      js/config.js holds publishable keys only. Secret keys never go in a page.
-     analytics.js loads nothing until the visitor accepts the banner. -->
-<script src="js/config.js?v=a90f154329"></script>
-<script src="js/vendors.js?v=b1b3811463"></script>
-<script src="js/analytics.js?v=025f45f5ea" defer></script>
+     analytics.js loads nothing until the visitor accepts the banner. It is
+     not deferred, so an A/B test's words are in place before the first paint
+     (docs/AB-TESTING.md); its own work waits until the page is parsed. -->
+<script src="js/config.js?v=c9d96b2995"></script>
+<script src="js/vendors.js?v=22f2d19191"></script>
+<script src="js/analytics.js?v=83e41fc031"></script>
 <!-- CHROME:HEAD:END -->
 </head>
 <body>
@@ -46,6 +48,7 @@
         (513) 279-2915
       </a>
       <span class="tb-hide">Mobile detailing • We come to you</span>
+      <a class="tb-gift" href="gift-cards.html">Gift cards<span class="tb-gift-sale">, 20% off</span></a>
     </div>
     <div class="tb-socials">
       <a href="https://www.instagram.com/513autoclean/" target="_blank" rel="noopener" aria-label="Instagram"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/></svg></a>
@@ -103,12 +106,12 @@
     <button class="mm-close" id="mmClose" aria-label="Close menu">&times;</button>
   </div>
   <a class="mm-link" href="index.html#gallery">Results</a>
-  <a class="mm-link" href="services.html">Services &amp; Pricing</a>
+  <a class="mm-link" href="services.html">Services</a>
   <a class="mm-link" href="about.html">Meet the Team</a>
   <a class="mm-link" href="about.html#reviews">Reviews</a>
-  <a class="mm-link" href="service-area.html">Range &amp; Travel Costs</a>
+  <a class="mm-link" href="service-area.html">Range &amp; Travel</a>
   <a class="mm-link" href="faq.html">FAQ</a>
-  <a class="mm-link" href="contact.html">Contact Us</a>
+  <a class="mm-link" href="gift-cards.html">Gift cards</a>
   <div class="mm-cta">
     <a class="btn btn-primary btn-block" href="book.html">Book Now</a>
     <a class="btn btn-ghost on-dark btn-block" href="contact.html">Contact Us</a>
@@ -128,7 +131,7 @@
   <div class="wrap">
     <div class="section-head center reveal">
       <span class="eyebrow">Service Area and Travel</span>
-      <h2>Price Estimate for Driving to You</h2>
+      <h1>Price Estimate for Driving to You</h1>
       <p>Driving to you costs real money in fuel, maintenance, and hours. Instead of increasing every price and having our closest customers pay for our longest drives, we keep the prices lower for everyone and charge the actual drive. The first 10 minutes are free.</p>
     </div>
 
@@ -166,34 +169,34 @@
            detailing in <town>". The ids are the footer's area links. -->
       <div class="at-states">
         <div class="area-col area-oh" id="area-oh">
-          <div class="area-top"><h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2C8 2 5 5 5 9c0 5 7 13 7 13s7-8 7-13c0-4-3-7-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg> Ohio</h3><span class="codes">Area codes 513 &amp; 937</span></div>
-          <p class="area-sum">Hamilton, Butler, Warren and Clermont counties</p>
+          <div class="area-top"><h2><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2C8 2 5 5 5 9c0 5 7 13 7 13s7-8 7-13c0-4-3-7-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg> Ohio</h2><span class="codes">Area codes 513 &amp; 937</span></div>
+          <p class="area-sum">Hamilton, Butler, Warren and Clermont counties</p><!-- CITYGUIDES:OH:START --><!-- CITYGUIDES:OH:END -->
           <details class="area-more"><summary>All 51 towns</summary>
-          <h4 class="area-grp">Hamilton County</h4>
+          <h3 class="area-grp">Hamilton County</h3>
           <p>Cincinnati, Clifton, Corryville, Northside, Norwood, Hyde Park, Oakley, Mount Lookout, Pleasant Ridge, Kenwood, Deer Park, Madeira, Mariemont, Indian Hill, Newtown, Anderson, Cherry Grove, Blue Ash, Montgomery, Symmes, Loveland, Sharonville, Springdale, Forest Park, Wyoming, Reading, Evendale, College Hill, Mount Healthy, Colerain, Groesbeck, Monfort Heights, Westwood, Bridgetown, Dent, Delhi, Price Hill, Sayler Park, Harrison</p>
-          <h4 class="area-grp">Butler County</h4>
+          <h3 class="area-grp">Butler County</h3>
           <p>West Chester, Liberty Township, Fairfield, Hamilton, Middletown, Oxford</p>
-          <h4 class="area-grp">Warren County</h4>
+          <h3 class="area-grp">Warren County</h3>
           <p>Mason, Lebanon, Springboro, Franklin</p>
-          <h4 class="area-grp">Clermont County</h4>
+          <h3 class="area-grp">Clermont County</h3>
           <p>Milford, Batavia</p>
           </details>
         </div>
         <div class="area-col" id="area-ky">
-          <div class="area-top"><h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2C8 2 5 5 5 9c0 5 7 13 7 13s7-8 7-13c0-4-3-7-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg> Northern Kentucky</h3><span class="codes">Area code 859</span></div>
-          <p class="area-sum">Kenton, Campbell and Boone counties</p>
+          <div class="area-top"><h2><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2C8 2 5 5 5 9c0 5 7 13 7 13s7-8 7-13c0-4-3-7-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg> Northern Kentucky</h2><span class="codes">Area code 859</span></div>
+          <p class="area-sum">Kenton, Campbell and Boone counties</p><!-- CITYGUIDES:KY:START --><!-- CITYGUIDES:KY:END -->
           <details class="area-more"><summary>All 17 towns</summary>
-          <h4 class="area-grp">Kenton County</h4>
+          <h3 class="area-grp">Kenton County</h3>
           <p>Covington, Fort Mitchell, Edgewood, Crestview Hills, Erlanger, Independence</p>
-          <h4 class="area-grp">Campbell County</h4>
+          <h3 class="area-grp">Campbell County</h3>
           <p>Newport, Bellevue, Fort Thomas, Cold Spring, Highland Heights, Alexandria</p>
-          <h4 class="area-grp">Boone County</h4>
+          <h3 class="area-grp">Boone County</h3>
           <p>Florence, Union, Burlington, Hebron, Walton</p>
           </details>
         </div>
         <div class="area-col" id="area-in">
-          <div class="area-top"><h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2C8 2 5 5 5 9c0 5 7 13 7 13s7-8 7-13c0-4-3-7-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg> Southeast Indiana</h3><span class="codes">Area codes 812 &amp; 765</span></div>
-          <p class="area-sum">Lawrenceburg, Aurora, Greendale, West Harrison, Brookville, Batesville</p>
+          <div class="area-top"><h2><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2C8 2 5 5 5 9c0 5 7 13 7 13s7-8 7-13c0-4-3-7-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg> Southeast Indiana</h2><span class="codes">Area codes 812 &amp; 765</span></div>
+          <p class="area-sum">Lawrenceburg, Aurora, Greendale, West Harrison, Brookville, Batesville</p><!-- CITYGUIDES:IN:START --><!-- CITYGUIDES:IN:END -->
         </div>
       </div>
       <div class="at-extra">
@@ -228,7 +231,7 @@
         </div>
       </div>
       <div>
-        <h4>Explore</h4>
+        <h2>Explore</h2>
         <div class="f-links">
           <a href="index.html#gallery">Results</a>
           <a href="services.html">Services</a>
@@ -240,7 +243,7 @@
         </div>
       </div>
       <div>
-        <h4>Service Areas</h4>
+        <h2>Service Areas</h2>
         <div class="f-links">
           <a href="#area-oh">Cincinnati, OH</a>
           <a href="#area-ky">Northern Kentucky</a>
@@ -250,7 +253,7 @@
         </div>
       </div>
       <div>
-        <h4>Get in Touch</h4>
+        <h2>Get in Touch</h2>
         <ul class="f-contact">
           <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.9.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/></svg> <a href="tel:+15132792915">(513) 279-2915</a></li>
           <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 7l-10 6L2 7"/></svg> <a href="mailto:513autoclean@gmail.com">513autoclean@gmail.com</a></li>
@@ -280,13 +283,13 @@
      promises. Balanced masking alone hides inputs, not the Review screen. -->
 <div id="bookFunnel" hidden data-clarity-mask="true"></div>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&family=Hanken+Grotesk:wght@400;500;600;700&display=swap" />
-<link rel="stylesheet" href="book.css?v=49dc494bec" />
+<link rel="stylesheet" href="book.css?v=ddd553527c" />
 <!-- Deferred, so they run in this order: the pricing bundle before the
      booking form and before any page script that prices (travel.js). -->
-<script src="js/pricing.bundle.js?v=30cd433937" defer></script>
-<script src="js/funnel.js?v=adf7535138" defer></script>
-<script src="script.js?v=f30093639c" defer></script>
+<script src="js/pricing.bundle.js?v=23b069f9b4" defer></script>
+<script src="js/funnel.js?v=fc849a0733" defer></script>
+<script src="script.js?v=0f81ec6fa1" defer></script>
 <!-- CHROME:SCRIPTS:END -->
-<script src="js/travel.js?v=2a695170ae" defer></script>
+<script src="js/travel.js?v=c14b21671e" defer></script>
 </body>
 </html>

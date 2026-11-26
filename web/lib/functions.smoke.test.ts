@@ -11,9 +11,17 @@
  */
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { resetRateLimits } from "../../netlify/functions/_ratelimit.mjs";
+// Through a template, as for _detailers.mjs: the bundle has no type file.
+const { CAPABILITIES } = (await import(`../../netlify/functions/${"_pricing"}.mjs`)) as {
+  CAPABILITIES: { id: string; live: boolean }[];
+};
 
 const FUNCS = [
   "travel", "create-payment", "paypal-order", "personal-busy", "reviews", "send-confirmation", "booking-followup",
+  // Without GIFT_CODE_SECRET it answers 503 before reaching Stripe; giftcards-backend.test.ts runs it against a stand-in.
+  "gift-send",
+  // Off without ALL_JOBS_CALENDAR_ID; master-calendar.test.ts runs it against a stand-in.
+  "jobs-mirror",
 ] as const;
 
 const ENV: Record<string, string> = {
@@ -43,6 +51,22 @@ afterAll(() => {
 });
 
 beforeEach(() => resetRateLimits());
+
+/**
+ * The payment functions refuse while their switches are off (payments.test.ts,
+ * P7), so the tests that reach past that check switch them on for the call.
+ */
+const PAYMENT_FUNCS = new Set(["create-payment", "paypal-order"]);
+async function withPayments<T>(on: boolean, fn: () => Promise<T>): Promise<T> {
+  const caps = CAPABILITIES.filter((c) => ["cardOnFile", "payInFull", "digitalWallets"].includes(c.id));
+  const was = caps.map((c) => c.live);
+  if (on) for (const c of caps) c.live = true;
+  try {
+    return await fn();
+  } finally {
+    caps.forEach((c, i) => (c.live = was[i]!));
+  }
+}
 
 const load = async (name: string) => (await import(`../../netlify/functions/${name}.mjs`)) as { handler: (e: unknown) => Promise<{ statusCode: number; body: string }> };
 
@@ -75,7 +99,7 @@ describe("every function survives hostile input with its key present", () => {
       ];
       for (const ev of events) {
         resetRateLimits();
-        const r = await handler(ev);
+        const r = await withPayments(PAYMENT_FUNCS.has(name), () => handler(ev));
         expect(r && typeof r.statusCode === "number", `${name} returned ${JSON.stringify(r)}`).toBe(true);
         expect(r.statusCode).toBeGreaterThanOrEqual(200);
         expect(r.statusCode).toBeLessThan(600);
@@ -87,7 +111,7 @@ describe("every function survives hostile input with its key present", () => {
 
   it("create-payment: a valid cart reaches Stripe and fails safely with a fake key", async () => {
     const { handler } = await load("create-payment");
-    const r = await handler({
+    const r = await withPayments(true, () => handler({
       httpMethod: "POST",
       headers: {},
       body: JSON.stringify({
@@ -100,7 +124,7 @@ describe("every function survives hostile input with its key present", () => {
         consent: { mandateAccepted: true, termsVersion: "2026-09-11" },
         mode: "card_only",
       }),
-    });
+    }));
     // The function got past validation and pricing, and the Stripe failure
     // came back as a message a customer may read, not the raw error.
     expect([502, 400]).toContain(r.statusCode);
@@ -109,7 +133,7 @@ describe("every function survives hostile input with its key present", () => {
 
   it("create-payment: refuses a saved card without the mandate", async () => {
     const { handler } = await load("create-payment");
-    const r = await handler({
+    const r = await withPayments(true, () => handler({
       httpMethod: "POST",
       headers: {},
       body: JSON.stringify({
@@ -120,7 +144,7 @@ describe("every function survives hostile input with its key present", () => {
         contact: { name: "A", phone: "5135551212" },
         mode: "card_only",
       }),
-    });
+    }));
     expect(r.statusCode).toBe(400);
     expect(JSON.parse(r.body).error).toBe("mandate_required");
   });
@@ -303,16 +327,74 @@ describe("every function survives hostile input with its key present", () => {
 
   it("paypal-order: refuses an order id that is not an order id", async () => {
     const { handler } = await load("paypal-order");
-    const r = await handler({
+    const r = await withPayments(true, () => handler({
       httpMethod: "POST",
       headers: {},
       body: JSON.stringify({ action: "capture", orderId: "../../v1/identity/oauth2/userinfo" }),
-    });
+    }));
     // 502 if the fake auth fails first, 400 if it gets to the id check;
     // either way the path never reaches the URL.
     expect([400, 502]).toContain(r.statusCode);
     expect(r.body).not.toContain("userinfo");
   }, 30_000);
+
+  it("send-confirmation: a browser saying it paid books a detail still to collect", async () => {
+    // Review, November 23: "pay_now" from the browser was written into the
+    // calendar as PAID IN FULL online, at the pay-now discount, with nothing
+    // checked. It counts only while payInFull is on (see the next test).
+    const env = { GOOGLE_OAUTH_CLIENT_ID: "id", GOOGLE_OAUTH_CLIENT_SECRET: "secret", GOOGLE_OAUTH_REFRESH_TOKEN: "refresh" };
+    const before = Object.fromEntries(Object.keys(env).map((k) => [k, process.env[k]]));
+    Object.assign(process.env, env);
+    const written: string[] = [];
+    const realFetch = globalThis.fetch;
+    globalThis.fetch = (async (url: string, init?: { method?: string; body?: string }) => {
+      const u = String(url);
+      if (u.startsWith("https://oauth2.googleapis.com/token")) {
+        return new Response(JSON.stringify({ access_token: "t", expires_in: 3600 }), { status: 200 });
+      }
+      if (u.includes("googleapis.com/calendar/v3/calendars/")) {
+        if (init?.method === "POST") written.push(String(JSON.parse(String(init.body ?? "{}")).description ?? ""));
+        return new Response(JSON.stringify({ id: "e1" }), { status: 200 });
+      }
+      return new Response("{}", { status: 500 });
+    }) as typeof fetch;
+    try {
+      const { handler } = await load("send-confirmation");
+      const r = await handler({
+        httpMethod: "POST",
+        headers: {},
+        body: JSON.stringify({
+          cart: {
+            vehicles: [{ sizeId: "small", packageIds: ["basic-interior"] }],
+            address: { line1: "1 Main St", city: "Cincinnati", region: "OH", zip: "45220" },
+            slot: Date.now() + 5 * 86_400_000,
+          },
+          contact: { name: "Ada", phone: "5135551212" },
+          mode: "pay_now",
+        }),
+      });
+      expect(r.statusCode).toBe(200);
+      expect(written.length).toBeGreaterThan(0);
+      expect(written[0]).toContain("TO COLLECT on the day");
+      expect(written.join("\n")).not.toContain("PAID IN FULL");
+    } finally {
+      globalThis.fetch = realFetch;
+      for (const [k, v] of Object.entries(before)) {
+        if (v === undefined) delete process.env[k];
+        else process.env[k] = v;
+      }
+    }
+  }, 30_000);
+
+  it("paying in full stays off until the server checks the payment itself", async () => {
+    // send-confirmation takes "pay_now" on the browser's word whenever this is
+    // on. Before switching it on, make the server confirm the PaymentIntent or
+    // PayPal capture (a webhook or a lookup by id), and write the email's
+    // total from that payment rather than repricing at confirm time (P9:
+    // docs/SESSION-CHANGES-payments.md), then change this test.
+    const { isLive } = await import("./site/capabilities.js");
+    expect(isLive("payInFull"), "payInFull needs a server-side payment check first").toBe(false);
+  });
 });
 
 describe("cart-capture (a checkout left unfinished, round 15)", () => {

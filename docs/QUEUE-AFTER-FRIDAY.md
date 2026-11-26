@@ -1,14 +1,57 @@
 # Queued for after the Friday, November 13 deliverables
 
-Work that's agreed but deliberately not started before Friday. Newest first.
+Work that's agreed but deliberately not started before Friday. Newest first. Anything that waits for toll-free approval is in `AFTER-TOLL-FREE-APPROVAL.md`.
 
-## Swap the phone number back (due November 18 to 21)
+## From the long-session audit (November 16): asked earlier, never recorded
+
+- **Booking links sent from the CRM (Emmett, November 10):** "through CRM send a prebuilt booking link", which opens the booking already filled in and, once booked, sends the emails and texts and writes the calendar.
+  - Today the form's "Copy my booking link" already makes a pre-filled link (`ACPricing.quoteUrl`).
+  - What's missing is the GoHighLevel side: sending it from a contact, and its automations.
+  - Belongs with the GHL work (`GHL-SETUP.md`, `ONE-CALENDAR-SPEC.md`), once Imperion connects it.
+- **A 513-brand headline, as an A/B test (Emmett, November 14):** "Maybe tie to the 513 brand better? Elijah says professional is fine, maybe test later."
+  - The hero says "Professional mobile detailing in Greater Cincinnati."
+  - **Mockups made November 16** (`docs/mockups/eNov16-hero-513-mockups.png`), all against today's headline (A):
+    - B: "Professional mobile detailing across the 513.";
+    - C: "Mobile detailing for the 513.";
+    - D: "We detail cars all over the 513.".
+  - **Built November 16 (Emmett: "Let's A/B test Cincinnati and Greater Cincinnati. Across the 513 is also ok... demo A/B tests to validate that the system backend will work"):** test `hero-headline` in `config/experiments.json`, `running`, with greater-cincinnati (control) 34, cincinnati 33 and the-513 33. It starts when eNov14 is live; run it 4 weeks, then set `ended` with the winner (`docs/AB-TESTING.md`).
+- **`check-live.mjs` always says STALE** (noted November 13).
+  - **Root cause:** Netlify re-stamps `config.js` and `funnel.js` at deploy (the phone swap and the config build), so their `?v=` stamps never match the repo's.
+  - **Fix:** teach it which files are re-stamped, or compare a stamp that isn't. Until then, the after-approval checks use `curl` on the pages.
+- **How a job is marked done from a phone** (November 13): "DONE" in the event title, or a green event. Never asked; it's in the handoff to Elijah.
+- **The travel-tax question for Elijah's accountant** (November 13): it had no owner. It's now on Elijah's list in `STATUS-2026-11-15.md`.
+
+## Swap the phone number back (when Imperion says toll-free verification is approved; step 1 of `AFTER-TOLL-FREE-APPROVAL.md`)
 
 - **What's live:** since November 14, the site shows the temporary A2P verification number, (866) 371-5948. `BUSINESS_PHONE` is set in Netlify (all scopes and contexts) and production was redeployed (deploy 6af707e0).
   - Checked live: 12 pages, the scripts, `tel:`/`sms:` links and the structured data all carry it, with no trace of (513) 279-2915.
 - **To swap back** when Imperion says verification is done: delete `BUSINESS_PHONE` in Netlify (or set it to the permanent new number), then Deploys → Trigger deploy → Deploy site.
   - Check that no page carries 371-5948 afterwards.
   - Emails pick it up from the same deploy.
+
+## SEO pages: before/after carousels, plus Elijah's November 15 answers (queued November 15)
+
+- **Before/after carousels on the city and service pages (Emmett, November 15):** "the SEO specific pages need before after style carousel anims as you cannot properly show the value of a service without the before and after." The Delhi & Price Hill page shows one still pair, which undersells the work.
+  - **Build:** reuse the home page's Results carousel (`js/gallery.js`, the 8 s shared wipe), fed by the page's own pairs: the service's tagged pairs on a service page, and the area's `localJobs` on a city page. Don't build a second carousel.
+  - Every carousel rule in CLAUDE.md applies (no `.reveal` inside the track, play button state, eager-load the next card, and so on).
+  - **Done November 15:** Emmett picked option A, the carousel as the hero (`docs/mockups/eNov15-carousel-*`), and it's built. City pages list their cards in `hero.pairs`; switch them to the area's `localJobs` pairs once Elijah's list arrives. Service pages show `hero.pair` and then the service's tagged pairs.
+  - **Needs more tagged pairs:** stain work has one today.
+- **Promo codes on the landing pages (Elijah):** GOLF10 and PRESTIGE10 aren't on the prints, and can be shown on `lp-golf.html` and `lp-prestige.html`.
+  - In `config/promo-codes.json` they're `active: false`. The plan was an A/B test of showing them (`config/experiments.json`).
+  - **Parked until after the freeze (Emmett, November 15):** ask then whether to switch them on for everyone on those pages or run the A/B test, and whether they get an end date. Nothing changes before then: they stay `active: false`.
+  - No rush from the prints: the codes aren't printed, so the Prestige prints going out late November don't depend on this.
+- **Local jobs for the city pages (Elijah):** he said the full list of jobs, people and areas is in his OneDrive. Emmett added the shortcut on November 15, but that shared folder is only a copy of the website code, with no list. Ask Elijah which file it is (maybe his Accounting sheet).
+  - Then fill `localJobs` and `reviews` in `config/locations/*.json`, showing only a first name and the area.
+  - The list holds customer data. Read it locally and never commit it.
+- **Photo naming for "03 Website" (Elijah):** `descriptor_YYYY-MM-DD_HHMM_before.jpg` and `..._after.jpg`. His "descriptor_exact:time" with the colon swapped out, because OneDrive and Windows refuse colons. Pairs match on descriptor plus time.
+- **Inbox logo (BIMI): closed.** Elijah: not a registered trademark, not worth it.
+
+## After toll-free approval: remove Emmett's email from the public git history (Emmett, November 15)
+
+- **The problem:** an earlier commit of `docs/TEST-SITE-SETUP.md` (fixed in d723e73) contains Emmett's personal email address. The repo is public, so it can still be read in that commit's history.
+- **Why not now:** removing it means rewriting history, so every commit hash changes, a force-push is needed, and open PRs and other branches break. `main` is frozen for verification, and force-pushing is against the owner rules without his explicit yes.
+- **When:** after toll-free verification is approved and eNov14 is merged, with Emmett's yes for each step.
+- **How:** superseded by `docs/AFTER-TOLL-FREE-APPROVAL.md` step 4 (squash-merge PR #13, delete `eNov14`, ask GitHub Support to purge). `main` is never force-pushed.
 
 ## Monday: the 513 Auto Clean logo in the booking emails (Elijah, November 14)
 
@@ -17,7 +60,7 @@ Elijah's inbox shows a generic building icon beside "513 Auto Clean". Two separa
 2. **The logo as the sender picture in the inbox list** (the icon in Elijah's screenshot). That's BIMI, set in DNS for 513autoclean.com, not in our code:
    - DMARC must be at enforcement (`p=quarantine` or `p=reject`) for the sending domain, with SPF and DKIM for Resend aligned. Check the current DMARC record first: tightening it wrongly can send real emails to spam.
    - The logo must be an SVG Tiny PS file at a public https address, plus a BIMI TXT record.
-   - Gmail and Apple Mail show it only with a mark certificate: a VMC (needs a registered trademark) or a CMC (no trademark; about a year of logo use). Both cost money every year, from roughly several hundred dollars upward. **Ask Elijah if it's worth it.**
+   - Gmail and Apple Mail show it only with a mark certificate: a VMC (needs a registered trademark) or a CMC (no trademark; about a year of logo use). Both cost money every year, from roughly several hundred dollars upward. **Asked: not worth it (Elijah, November 15). Closed.**
    - Without a certificate, some providers (Yahoo, Fastmail) may show it; Gmail and Apple won't.
    - It's DNS, not the website, so it doesn't break the verification freeze, but don't change DMARC during the toll-free review without Imperion knowing.
 - Note: the email in Elijah's screenshot (sent November 13, 8:19 PM) is the **old** layout. Bookings since PR #9 get the new one (arrival time, duration, window, travel always priced).
@@ -148,31 +191,31 @@ He checked every page. Results, Meet the Team, Reviews and Range & Travel are fi
 Full reports are in that session; the screenshots are in the session scratchpad (`review/shots/`). Fixed before launch: see `SESSION-CHANGES-pipeline.md`, "Final pre-release review".
 - **Booking and calendar:**
   - **The job length never reaches the drive measure,** on either side. The browser sends `service=` while `travel.mjs` reads `serviceMin`, and `_routes.mjs` reads `cart.serviceDurationMin`, which the cart never has. Both measure the drive home at the start time, so they agree today. Fix both together: the drive home is measured at the finish, and the screen and the receipt use the same value.
-  - **A server-side free/busy check** before writing an event, for two people taking the same time.
-  - **Turnstile:** render it for every booking before setting `TURNSTILE_SECRET_KEY`, or every booking fails.
+  - **A server-side free/busy check:** DONE November 14 (calendar fix 1).
+  - **Turnstile:** DONE November 15. It's drawn for every booking, tokens are spent once and renewed, and Confirm waits for one. Before setting `TURNSTILE_SECRET_KEY`, test once on a Deploy Preview with Cloudflare's always-pass test keys.
   - **Multi-day:** send the browser's day plan to the server, and the emails list every day.
-  - **Typed numbers to move into settings:** 24 h short notice, the 30 min drive fallback, `[0, 6]` correction days, "within the hour", promo labels, and the 365/400 booking horizon.
-  - **Browser-local dates in request days and `verifySlot`:** a visitor outside Eastern time sees them shifted.
+  - **Typed numbers to move into settings:** DONE November 14 to 15.
+  - **Browser-local dates:** DONE November 14 (calendar fix 2).
 - **UI (each needs a mockup first):**
   - **Checkout header:** Back and × cover text at 820 px with long package names, and at 320. With two vehicles it shows vehicle 2's size.
   - **The travel fee box is styled like an error** (pink and red; the color rule says red means brand or error).
   - **Help me decide:** the bar shows the travel fee as if it were a price; "4 hours covers our longest single-vehicle detail" is false (Showroom Ready is 7 to 8 h); and the Time step's first screen is all text.
   - **"Add a vehicle"** opens a bare restart: no "Vehicle 2" label, no Back.
-  - **A 6am pick is steered to 6pm** (`steerFor` assumes suggestions are fee-free).
-  - **Tax appears unlabelled** in the bar once the ZIP is in.
-  - **Hover styles stick after a tap on phones:** wrap them in `@media (hover: hover)`.
+  - **A 6am pick is steered to 6pm:** DONE November 15.
+  - **Tax appears unlabelled:** DONE November 15 ("tax included").
+  - **Hover styles stick after a tap on phones:** DONE November 15, site-wide (`hover.test.ts`).
   - **The time picker on short screens:** nothing visible at 320×568, and a cramped calendar view at 1440×790.
   - **Layout shift at 820 px:** the home page (reviews ticker) and Range & Travel.
   - **Landing pages on phones:** no Book button on the first screen.
 - **Smaller:**
-  - "Tap" on desktop;
-  - the close dialog says "Cancel my booking" before any booking exists;
-  - the multi-vehicle saving wording, and two different saving figures;
-  - "10:00 AM" vs "10am";
-  - recommended-time labels;
-  - the calendar opens on past days;
-  - "No extra cost" wraps on `/booking.html`;
-  - the phone menu's names, and Contact Us twice;
+  - "Tap" on desktop: DONE November 15 (the privacy policy's "tap Book Now" stays until the next legal update);
+  - the close dialog: DONE November 15 ("Discard this quote");
+  - the multi-vehicle saving wording and the two saving figures: DONE November 15. Emmett's words; the bar's struck price and "You saved" come from one no-discount price for every kind of discount, and "You saved" says it includes tax (and fees);
+  - "10:00 AM" vs "10am": DONE November 15;
+  - recommended-time labels: DONE November 15 ("This weekend");
+  - the calendar opens on past days: DONE November 15;
+  - "No extra cost" wraps: DONE November 15 ("No extra");
+  - the phone menu's names, and Contact Us twice: DONE November 15;
   - Contact placeholders cut, and the heading repeated;
   - the Exterior tab fold;
   - exterior times after dark (a business question).
@@ -275,6 +318,15 @@ Built and logged in `SESSION-CHANGES-pipeline.md` (Round 22). The design that wa
 
 ## Photo pipeline: the website gallery pulls from Google Drive (Elijah, team brief section 5, November 11)
 
+**Elijah's shared photo folder (November 14).** The link is with Emmett; it stays out of this public repo. Photos were still uploading on November 14. The layout:
+- **01 Inbox:** where raw job photos are dropped.
+- **02 Selects:** the best before and after pairs, edited and ready to use.
+- **03 Website:** photos approved for the website. The site's gallery and service photos come only from here.
+- **04 GBP and Social:** already posted, so nothing is posted twice.
+- **05 Photos by Job Type:** filled automatically from the NAS, one folder per job, sorted by service (Full Interior, Full Interior + Steam, Basic Interior, Stain, Spill and Odor, and so on). That's what tags a photo to a service and a job date.
+
+**Never publish** a license plate, a customer's face, a house number or personal items in the car (Elijah). Check every photo before it goes on the site.
+
 **Goal:** the results gallery is built from the shared Drive folder "513 Auto Clean Photos / 03 Website", so new photos reach the site without code changes. The current site photos get replaced.
 
 **Plan:**
@@ -290,7 +342,7 @@ Built and logged in `SESSION-CHANGES-pipeline.md` (Round 22). The design that wa
 - the naming rule for pairs;
 - daily rebuild or the build-hook script.
 
-**Needs from Emmett:** a Google account for the folder (UC mail isn't one).
+**Folder access:** done. Elijah shared the photo folder on November 14 (the link is in memory, not this public repo).
 
 ## Interior packages: three tiers, Full Interior + Steam as its own package (Elijah, messages November 11)
 

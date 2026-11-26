@@ -1,0 +1,213 @@
+/**
+ * The gift card page's settings and generated HTML (config/gift-cards.json,
+ * docs/GIFT-CARDS-PLAN-2026-11-23.md). render-giftcards.mjs writes the HTML
+ * into gift-cards.html; chrome.mjs, stamp-assets.mjs and build-dist.mjs list
+ * the page through giftPages(), so mode "off" removes it everywhere at once.
+ *
+ * Every amount and date comes from the setting or the catalog. The price
+ * display follows Baymard's discount findings (November 23): the price you pay
+ * big and bold, the card's value beside it, smaller and struck through, the
+ * saving once, and nothing that every card shares repeated on each card.
+ */
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { cincinnatiDay, coverage, coverTable, giftCardProblems, saleEndedNext, saleOn, salePriceCents, SIZE_WORDS, DEFAULT_RULES, VEHICLE_SIZES } from "../../netlify/functions/_pricing.mjs";
+
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
+
+export const GIFT_PAGE = "gift-cards.html";
+/**
+ * The card's own page (where Stripe sends the buyer back, and every card email
+ * links) and Elijah's lookup page. Both noindex and unlinked, and both stay
+ * even with gift cards "off": cards already sold must still open and redeem.
+ */
+export const CERT_PAGE = "gift-certificate.html";
+export const ADMIN_PAGE = "gift-admin.html";
+export const GIFT_TOOL_PAGES = [CERT_PAGE, ADMIN_PAGE];
+
+export function loadGiftCards(file = path.join(root, "config/gift-cards.json")) {
+  const cfg = JSON.parse(fs.readFileSync(file, "utf8"));
+  const problems = giftCardProblems(cfg);
+  if (problems.length) throw new Error("config/gift-cards.json:\n  " + problems.join("\n  "));
+  return cfg;
+}
+
+/** The page, unless gift cards are off. */
+export function giftPages(cfg = loadGiftCards()) {
+  return cfg.mode === "off" ? [] : [GIFT_PAGE];
+}
+
+const dollars = (cents) => "$" + (cents % 100 ? (cents / 100).toFixed(2) : String(cents / 100));
+const longDay = (iso) => new Date(iso + "T12:00:00Z").toLocaleDateString("en-US", { month: "long", day: "numeric", timeZone: "UTC" });
+const hide = (on) => (on ? "" : " hidden");
+
+/**
+ * The setting as the page should show it on `nowMs` (the build's moment):
+ * saleNow by saleOn(), the same test the checkout charges by, and upcoming
+ * before the sale starts. The static page is right on the day it's built;
+ * js/giftcards.js and script.js correct it in the browser if the date has
+ * moved on since (validation pass 1: a page built before the sale must not
+ * show sale prices, nor one built during it after it ends).
+ */
+export function viewAt(cfg, nowMs = Date.now()) {
+  const saleNow = saleOn(cfg, nowMs);
+  return {
+    ...cfg,
+    saleSet: cfg.mode === "sale",
+    saleNow,
+    upcoming: cfg.mode === "sale" && !saleNow && cincinnatiDay(nowMs) < cfg.sale.starts,
+    endedNext: saleEndedNext(cfg, nowMs),
+  };
+}
+const pays = (valueCents, v) => salePriceCents(valueCents, { mode: v.saleNow ? "sale" : "regular", sale: v.sale });
+
+/**
+ * The card itself, as the recipient will see it: what they get, as big as
+ * the tile allows, with "Gift card" in the corner. Decorative: the h2 and the
+ * button carry the words for screen readers.
+ */
+export function cardFace(valueCents) {
+  return `<div class="gc-face" aria-hidden="true">
+            <span class="gc-face-brand"><img class="gc-face-mark" src="images/logo-mark.png" alt="" width="20" height="26" />513 Auto Clean</span>
+            <span class="gc-face-value">${dollars(valueCents)}</span>
+            <span class="gc-face-label">Gift card</span>
+          </div>`;
+}
+
+/** What a buy button says to a screen reader: "Buy a $250 gift card for $200" on a tile, "Buy a $250 card for $200" in the calculator, where it's also the button's text. */
+export function buyLabel(valueCents, payCents, custom) {
+  if (custom) return payCents < valueCents ? `Buy a ${dollars(valueCents)} card for ${dollars(payCents)}` : `Buy a ${dollars(valueCents)} card`;
+  return payCents < valueCents ? `Buy a ${dollars(valueCents)} gift card for ${dollars(payCents)}` : `Buy a ${dollars(valueCents)} gift card`;
+}
+
+/**
+ * A tile's button words (approved mock, docs/GIFT-TILE-OPTIONS-2.png): "Buy
+ * for $250 $200", the value struck through during a sale and the price you
+ * pay the biggest thing in it; "Buy for $250" without one. Same markup as
+ * js/giftcards.js buyLine.
+ */
+export function buyLine(valueCents, payCents) {
+  const was = payCents < valueCents ? `<s class="gc-buy-was">${dollars(valueCents)}</s> ` : "";
+  return `<span class="gc-buy-line" aria-hidden="true"><span class="gc-buy-for">Buy for</span> ${was}<span class="gc-buy-now">${dollars(payCents)}</span></span>`;
+}
+
+/** A tile's hidden heading: "$250 gift card, you pay $200". Same words as js/giftcards.js tierName. */
+export function tierName(valueCents, payCents) {
+  return payCents < valueCents ? `${dollars(valueCents)} gift card, you pay ${dollars(payCents)}` : `${dollars(valueCents)} gift card`;
+}
+
+function buyButton(valueCents, v, { primary = false, custom = false } = {}) {
+  const off = v.checkout.enabled ? "" : " disabled";
+  const pay = pays(valueCents, v);
+  const words = custom ? `>${buyLabel(valueCents, pay, true)}` : ` aria-label="${buyLabel(valueCents, pay, false)}">${buyLine(valueCents, pay)}`;
+  return `<button type="button" class="btn ${primary ? "btn-primary" : "btn-ghost"} btn-block" data-gc-buy="${custom ? "custom" : valueCents / 100}"${off}${words}</button>`;
+}
+
+/** The sale in one sentence, marked so the page's script can show or hide it on the day. */
+function saleLines(v, during, before, after = "") {
+  if (!v.saleSet) return "";
+  const ended = after && v.sale.next ? `<span class="gc-sale-ended"${hide(v.endedNext)}>${after}</span>` : "";
+  return `<span class="gc-sale-only"${hide(v.saleNow)}>${during}</span><span class="gc-sale-soon"${hide(v.upcoming)}>${before}</span>${ended}`;
+}
+
+/** "November 27 to December 25, 2027": next year's sale, said once this one has ended (Elijah, November 23). */
+function nextSaleWords(v) {
+  const n = v.sale.next;
+  return n ? `Our holiday sale has ended, and you can still buy gift cards at full price. Our next sale runs from ${longDay(n.starts)} to ${longDay(n.ends)}, ${n.ends.slice(0, 4)}. ` : "";
+}
+
+/** The page title block. */
+export function giftHead(v) {
+  const pct = v.sale.percentOff, start = longDay(v.sale.starts), end = longDay(v.sale.ends);
+  const lead = saleLines(v, `Every card is ${pct}% off through ${end}. `, `Every card will be ${pct}% off from ${start} to ${end}. `, nextSaleWords(v)) +
+    `It&rsquo;s emailed right away or on the day you choose, with a certificate to print or forward.`;
+  return `<div class="section-head">
+      <span class="eyebrow"><span>${v.saleSet ? `<span class="gc-holiday"${hide(v.saleNow || v.upcoming)}>Holiday </span>` : ""}Gift cards</span></span>
+      <h1>Give a car that feels new again.</h1>
+      <p>${lead}</p>
+    </div>`;
+}
+
+/** The tier cards: the card's value on its face, the price in the button. */
+export function giftTiers(v) {
+  return v.tiers.map((t) => {
+    const value = t.value * 100;
+    return `<article class="svc-card gc-tier${t.featured ? " featured" : ""}" data-gc-value="${t.value}">${t.featured ? '\n          <span class="svc-tag">Our pick</span>' : ""}
+          ${cardFace(value)}
+          <h2 class="sr-only">${tierName(value, pays(value, v))}</h2>
+          <div class="svc-foot">${buyButton(value, v, { primary: !!t.featured })}</div>
+        </article>`;
+  }).join("\n        ");
+}
+
+/** The covered list for one amount and size: the calculator's first state, which js/giftcards.js then keeps up to date. */
+export function coverList(valueCents, sizeId, rows = coverTable(), limits = null) {
+  const { covered, next } = coverage(valueCents, sizeId, rows);
+  const art = (n) => (/^[AEIOU]/i.test(n) ? "an" : "a");
+  const items = covered.map((c) => `<li>${pickRow(c.cents, `<b>${c.name}</b><em>${dollars(c.cents)}</em>`, `${art(c.name)} ${c.name}`, valueCents, limits)}</li>`).join("");
+  const none = covered.length ? "" : '<li class="gc-none">Not a full detail yet: it goes toward one, or an add-on</li>';
+  const more = next ? `<p class="gc-next">${pickRow(valueCents + next.shortCents, `${dollars(next.shortCents)} more covers ${art(next.name)} ${next.name}`, `${art(next.name)} ${next.name}`, valueCents, limits)}</p>` : "";
+  return `<ul class="gc-list">${items}${none}</ul>${more}`;
+}
+
+/**
+ * A row of the covered list as a button that makes the card that amount, so
+ * a price point can be picked from what it buys (Emmett, November 26). Plain
+ * text when the amount is outside what can be bought. Same markup as
+ * js/giftcards.js pickRow.
+ */
+function pickRow(cents, inner, what, valueCents, limits) {
+  if (!limits || cents < limits.min * 100 || cents > limits.max * 100) return `<span class="gc-row">${inner}</span>`;
+  const on = cents === valueCents ? ' aria-current="true"' : "";
+  return `<button type="button" class="gc-row gc-pick" data-gc-set="${(cents / 100).toFixed(2)}"${on} aria-label="Make it a ${dollars(cents)} card, ${what}">${inner}</button>`;
+}
+
+/** The calculator's price: "You pay $200 Save $50". The value is already in the box above it, so it isn't struck through here (Emmett, November 26). */
+export function calcPriceRow(valueCents, v) {
+  const pay = pays(valueCents, v);
+  const save = pay < valueCents ? ` <span class="gc-save">Save ${dollars(valueCents - pay)}</span>` : "";
+  return `<p class="gc-price gc-calc-price"><span class="gc-pay">You pay</span> <strong>${dollars(pay)}</strong>${save}</p>`;
+}
+
+/** The calculator, which is also where any other amount is bought. */
+export function giftCalc(v, rows = coverTable()) {
+  const start = (v.tiers.find((t) => t.featured) ?? v.tiers[v.tiers.length - 1]).value * 100;
+  const sizes = VEHICLE_SIZES.map((s, i) => `<label class="gc-size"><input type="radio" name="gcSize" value="${s.id}"${i ? "" : " checked"} /><span>${SIZE_WORDS[s.id].replace(/^./, (c) => c.toUpperCase())}</span></label>`).join("");
+  const range = `${dollars(v.custom.min * 100)} to ${dollars(v.custom.max * 100)}`;
+  return `<aside class="gc-calc" aria-labelledby="gcCalcH" data-gc-min="${v.custom.min}" data-gc-max="${v.custom.max}" data-gc-built-sale="${v.saleNow ? 1 : 0}">
+        <h2 id="gcCalcH">Pick any amount</h2>
+        <div class="field">
+          <label for="gcAmt">Card value, ${range}</label>
+          <div class="gc-amt"><span aria-hidden="true">$</span><input id="gcAmt" type="number" inputmode="decimal" min="${v.custom.min}" max="${v.custom.max}" step="0.01" value="${start / 100}" aria-describedby="gcAmtErr" /></div>
+          <p class="gc-err" id="gcAmtErr" role="alert" hidden>Choose an amount from ${range}, to the cent.</p>
+        </div>
+        ${calcPriceRow(start, v)}
+        <fieldset class="gc-sizes"><legend>What would it cover?</legend>${sizes}</fieldset>
+        <div class="gc-out">${coverList(start, VEHICLE_SIZES[0].id, rows, v.custom)}</div>
+        <p class="sr-only" id="gcSay" aria-live="polite"></p>
+        ${buyButton(start, v, { primary: true, custom: true })}
+        <p class="gc-small">Prices include sales tax at the highest local rate. A travel fee beyond the first ${DEFAULT_RULES.mileage.freeMinutes} minutes&rsquo; drive is added when you book, and the card can pay it too.${saleLines(v, ` Every card is ${v.sale.percentOff}% off through ${longDay(v.sale.ends)}.`, "")}</p>
+      </aside>`;
+}
+
+/** Said once for every card, under the cards. */
+export function giftTerms(v) {
+  const checkout = v.checkout.enabled ? "" : `\n      <p class="gc-soon">Buying online opens soon.</p>`;
+  const refund = v.refundDays > 0 ? `\n        <li><span>Unused cards can be refunded within ${v.refundDays} days (<a href="terms.html#gift-cards">terms</a>)</span></li>` : "";
+  return `<ul class="gc-terms">
+        <li>Good for ${v.expiryYears} years, no fees</li>
+        <li>No tax when you buy it: sales tax is added to the detail when it&rsquo;s used</li>
+        <li>Use it over more than one booking</li>
+        <li>Not redeemable for cash</li>${refund}
+      </ul>${checkout}`;
+}
+
+/** The link at the top of every page while gift cards are on. */
+export function giftTopLink(v) {
+  if (v.mode === "off") return "";
+  // The sale part is dropped on small phones, where the bar has room for "Gift cards" only,
+  // and shown or hidden by script.js on the day (saleOn).
+  const sale = v.saleSet ? `<span class="tb-gift-sale"${hide(v.saleNow)}>, ${v.sale.percentOff}% off</span>` : "";
+  return `\n      <a class="tb-gift" href="${GIFT_PAGE}">Gift cards${sale}</a>`;
+}

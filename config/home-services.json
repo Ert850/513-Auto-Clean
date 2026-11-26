@@ -1,0 +1,53 @@
+{
+  "_read_me": [
+    "The four service buttons under the home page hero (Elijah, November 13; built on eNov14, November 14).",
+    "title: the line above the buttons.",
+    "linkTo: \"book\" opens the booking form with that service (and config/booking-page.json bookLinks decides whether that is /book or in place); \"page\" links each button to its page instead (the service pages, once they exist).",
+    "Each button: label; image (one photo) or split (two photos, before then after, shown left and right); alt (what the photo shows, for screen readers and search); book (what the form starts with: intent \"interior\" or \"exterior\", or package or interest, a package id); page (where \"page\" mode links).",
+    "Photos come from Elijah's Drive folder \"03 Website\", resized into images/. Check every photo for plates, faces, house numbers and personal items first.",
+    "A mistake in this file fails the build."
+  ],
+  "title": "What does your car need?",
+  "linkTo": "book",
+  "buttons": [
+    {
+      "label": "Interior",
+      "image": "images/ba-crv-interior-after-760.webp",
+      "alt": "A clean, freshly detailed car interior",
+      "book": {
+        "intent": "interior"
+      },
+      "page": "services.html#services"
+    },
+    {
+      "label": "Exterior",
+      "image": "images/hero-exterior-960.webp",
+      "alt": "A glossy white SUV after an exterior detail",
+      "book": {
+        "intent": "exterior"
+      },
+      "page": "services.html#services"
+    },
+    {
+      "label": "Spills and Stains",
+      "split": [
+        "images/ba-sonic-interior-before-760.webp",
+        "images/ba-sonic-interior-after-760.webp"
+      ],
+      "alt": "A cluttered, dirty car interior before, and after the clean",
+      "book": {
+        "intent": "interior"
+      },
+      "page": "services.html#addons"
+    },
+    {
+      "label": "Paint Correction + Ceramic Coatings",
+      "image": "images/ba-headlight-after-760.webp",
+      "alt": "Clear, restored headlight after polishing",
+      "book": {
+        "interest": "showroom-exterior"
+      },
+      "page": "services.html#services"
+    }
+  ]
+}

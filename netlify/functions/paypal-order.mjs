@@ -1,8 +1,9 @@
-import { MAX_BOOKING_CENTS, driveTooFar, priceFromWire, validateWire } from "./_pricing.mjs";
+import { MAX_BOOKING_CENTS, driveTooFar, isLive, priceFromWire, validateWire } from "./_pricing.mjs";
 import { blockFeeFor, detailerFor, homeFor, timeFeeWaived } from "./_detailers.mjs";
 import { measuredOneWayMinutes } from "./_routes.mjs";
 import { limited } from "./_ratelimit.mjs";
 import { verifyTurnstile } from "./_turnstile.mjs";
+import { requestKey } from "./_requestkey.mjs";
 
 /**
  * PayPal and Venmo.
@@ -16,8 +17,8 @@ import { verifyTurnstile } from "./_turnstile.mjs";
  * catalog, never accepted from the request. PayPal is pay-in-full only, so
  * an inquiry (no confirmed time) cannot use it.
  *
- *   POST { action: "create", cart, contact, consent }  -> { id }
- *   POST { action: "capture", orderId }                 -> { status, captureId }
+ *   POST { action: "create", cart, contact, consent, idempotencyKey }  -> { id }
+ *   POST { action: "capture", orderId }                                 -> { status, captureId }
  */
 
 const json = (status, body) => ({
@@ -29,16 +30,28 @@ const json = (status, body) => ({
 /** PayPal order ids are short upper-case alphanumerics. Nothing else goes in a URL. */
 const ORDER_ID = /^[A-Z0-9]{8,32}$/;
 
+/*
+ * NAMED, NEVER ASSUMED (review, November 23, P6).
+ *
+ * Anything but PAYPAL_ENV=live used to mean the sandbox, so live keys with the
+ * variable forgotten talked to the sandbox, and the only sign was a PayPal
+ * button that never worked. Now it must say "live" or "sandbox", or nothing
+ * runs and the log says why.
+ */
+const API_BASE = {
+  live: "https://api-m.paypal.com",
+  sandbox: "https://api-m.sandbox.paypal.com",
+};
+
 function apiBase() {
-  return process.env.PAYPAL_ENV === "live"
-    ? "https://api-m.paypal.com"
-    : "https://api-m.sandbox.paypal.com";
+  return API_BASE[process.env.PAYPAL_ENV] ?? null;
 }
 
 async function token() {
   const id = process.env.PAYPAL_CLIENT_ID;
   const secret = process.env.PAYPAL_CLIENT_SECRET;
   if (!id || !secret) return null;
+  if (!apiBase()) throw new Error("PAYPAL_ENV must be live or sandbox, to match the client id");
 
   const res = await fetch(`${apiBase()}/v1/oauth2/token`, {
     method: "POST",
@@ -48,6 +61,10 @@ async function token() {
     },
     body: "grant_type=client_credentials",
   });
+  if (res.status === 401) {
+    // Live keys against the sandbox, or the other way round, land here.
+    throw new Error(`PayPal auth 401: check PAYPAL_ENV (${process.env.PAYPAL_ENV}) matches the client id and secret`);
+  }
   if (!res.ok) throw new Error(`PayPal auth ${res.status}`);
   return (await res.json()).access_token;
 }
@@ -64,6 +81,12 @@ export async function handler(event) {
   }
   if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
     return json(400, { error: "bad_body" });
+  }
+
+  // Off means off, whatever keys are set (P7): the same switches the booking
+  // form needs before it shows the PayPal button (rPay, canPayNow).
+  if (!isLive("cardOnFile") || !isLive("payInFull") || !isLive("digitalWallets")) {
+    return json(503, { error: "off", message: "PayPal is not switched on yet." });
   }
 
   let access;
@@ -104,20 +127,28 @@ export async function handler(event) {
       return json(400, { error: "amount_out_of_range" });
     }
 
+    const order = {
+      intent: "CAPTURE",
+      purchase_units: [
+        {
+          amount: { currency_code: "USD", value: (priced.totalCents / 100).toFixed(2) },
+          description: `513 Auto Clean detail for ${contact.name}`.slice(0, 127),
+          custom_id: `terms:${consent.termsVersion ?? ""};slot:${cart.slot ?? ""}`.slice(0, 127),
+          soft_descriptor: "513AUTOCLEAN",
+        },
+      ],
+    };
+    // PayPal's idempotency header (P6): a retried create returns the same
+    // order, and a changed cart gets a new one (_requestkey.mjs).
+    const requestId = requestKey(payload.idempotencyKey, "order", order);
     const res = await fetch(`${base}/v2/checkout/orders`, {
       method: "POST",
-      headers: { Authorization: `Bearer ${access}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        intent: "CAPTURE",
-        purchase_units: [
-          {
-            amount: { currency_code: "USD", value: (priced.totalCents / 100).toFixed(2) },
-            description: `513 Auto Clean detail for ${contact.name}`.slice(0, 127),
-            custom_id: `terms:${consent.termsVersion ?? ""};slot:${cart.slot ?? ""}`.slice(0, 127),
-            soft_descriptor: "513AUTOCLEAN",
-          },
-        ],
-      }),
+      headers: {
+        Authorization: `Bearer ${access}`,
+        "Content-Type": "application/json",
+        ...(requestId ? { "PayPal-Request-Id": requestId } : {}),
+      },
+      body: JSON.stringify(order),
     });
     const body = await res.json().catch(() => ({}));
     if (!res.ok) {
@@ -132,9 +163,17 @@ export async function handler(event) {
     if (typeof orderId !== "string" || !ORDER_ID.test(orderId)) {
       return json(400, { error: "missing_order" });
     }
+    // One capture per order, so the order id is the key (P6): a retry after a
+    // lost answer gets the first capture's result back, instead of
+    // ORDER_ALREADY_CAPTURED and "PayPal could not complete the payment" for
+    // money that was taken.
     const res = await fetch(`${base}/v2/checkout/orders/${orderId}/capture`, {
       method: "POST",
-      headers: { Authorization: `Bearer ${access}`, "Content-Type": "application/json" },
+      headers: {
+        Authorization: `Bearer ${access}`,
+        "Content-Type": "application/json",
+        "PayPal-Request-Id": `capture-${orderId}`,
+      },
     });
     const body = await res.json().catch(() => ({}));
     if (!res.ok) {

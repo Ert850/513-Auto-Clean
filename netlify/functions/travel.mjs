@@ -52,7 +52,9 @@ export async function handler(event) {
   const lat = Number(q.lat);
   const lng = Number(q.lng);
   const zip = /^\d{5}$/.test(String(q.zip ?? "")) ? String(q.zip) : null;
-  const serviceMin = Math.max(0, Math.min(60 * 24 * 5, Number(q.serviceMin) || 0));
+  // `service` is what the booking form sent until November 14; a page loaded
+  // before a deploy may still send it.
+  const serviceMin = Math.max(0, Math.min(60 * 24 * 5, Number(q.serviceMin ?? q.service) || 0));
 
   // Epoch ms of the appointment, so the drive is priced in that hour's
   // traffic rather than in an average of every hour.

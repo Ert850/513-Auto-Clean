@@ -15,6 +15,10 @@ import {
   vehicleSize,
   upgradeLegacy,
 } from "./catalog/seed.js";
+import { cincinnatiDay, coverage, coverTable, dollarsToCents, GIFT_CARDS as GIFT_ALL, saleEndedNext, saleOn } from "./catalog/giftCards.js";
+
+/** Only what the page needs: not the file's notes (pre-merge pass). */
+const GIFT_CARDS = { mode: GIFT_ALL.mode, sale: GIFT_ALL.sale, scheduleDays: GIFT_ALL.scheduleDays };
 import {
   ADDONS,
   addonBlockedReason,
@@ -47,7 +51,7 @@ import {
   computeSlots,
   localMinutesOfDay,
 } from "./availability/slots.js";
-import { addWeeks, buildWeek, daySuggestions, dayOpenShare, lastRowForSlots, stretchStarts, timelineRange, recommendBestDays, TIME_RECOMMENDATION_RULES, weekStartOf } from "./availability/week.js";
+import { addWeeks, buildWeek, daySuggestions, dayOpenShare, lastRowForSlots, stretchStarts, timelineRange, recommendBestDays, TIME_RECOMMENDATION_RULES, weekStartOf, weekFromToday } from "./availability/week.js";
 import { coldPause, parseGridpoint, WEATHER_RULES, weatherVerdict } from "./availability/weather.js";
 import { assignStarts, canDo, parseDetailers, waivesFeeAt } from "./availability/crew.js";
 import { componentsOf } from "./catalog/types.js";
@@ -62,7 +66,9 @@ import {
   slotNeedsPriority,
 } from "./pricing/surcharge.js";
 import { quote } from "./pricing/quote.js";
+import { discountKinds, barLabel, savingSummary } from "./pricing/savings.js";
 import { rushWindow } from "./pricing/rush.js";
+import { BOOK_LINK_PARAMS, BOOK_INTENTS, arrivalQuery, parseArrival } from "./booking/bookLinks.js";
 import {
   QUOTE_TTL_HOURS,
   decodeQuote,
@@ -77,6 +83,9 @@ import {
   multiDayStillFits,
   planDays,
 } from "./availability/multiDay.js";
+import { checkRange, slotStillFree } from "./availability/stillFree.js";
+import { localDayStart } from "./time/zone.js";
+import { SCHEDULING } from "./availability/scheduling.js";
 import { findPromo, normalisePromo, promoDiscountCents, promoMessage } from "./pricing/promos.js";
 import { addonIcon } from "./catalog/icons.js";
 import { popularityOf } from "./catalog/popularity.js";
@@ -141,8 +150,13 @@ const api = {
   fitsOneDay,
   multiDayStillFits,
   planDays,
+  checkRange,
+  slotStillFree,
+  localDayStart,
+  SCHEDULING,
   localMinutesOfDay,
   weekStartOf,
+  weekFromToday,
   addWeeks,
   buildWeek,
   dayOpenShare,
@@ -163,6 +177,9 @@ const api = {
   blockFeeAt,
   recommendAddons,
   quote,
+  discountKinds,
+  barLabel,
+  savingSummary,
   QUOTE_TTL_HOURS,
   decodeQuote,
   quoteUrl,
@@ -184,11 +201,22 @@ const api = {
   earliestBookableDate,
   slotNeedsPriority,
   rushWindow,
+  BOOK_LINK_PARAMS,
+  BOOK_INTENTS,
+  arrivalQuery,
+  parseArrival,
   LEGAL,
   IN_PERSON,
   isLive,
   componentsOf,
   formatCents,
+  coverage,
+  coverTable,
+  GIFT_CARDS,
+  saleOn,
+  saleEndedNext,
+  dollarsToCents,
+  cincinnatiDay,
 };
 
 declare global {

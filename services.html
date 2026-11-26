@@ -22,15 +22,17 @@
 <link rel="manifest" href="manifest.webmanifest" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link rel="stylesheet" href="styles.css?v=15d13ea925" />
+<link rel="stylesheet" href="styles.css?v=337c463661" />
 <!-- CHROME:HEAD:START -->
 <!-- Public configuration and third party loaders live in js/, not inline,
      so the Content-Security-Policy can forbid inline scripts outright.
      js/config.js holds publishable keys only. Secret keys never go in a page.
-     analytics.js loads nothing until the visitor accepts the banner. -->
-<script src="js/config.js?v=a90f154329"></script>
-<script src="js/vendors.js?v=b1b3811463"></script>
-<script src="js/analytics.js?v=025f45f5ea" defer></script>
+     analytics.js loads nothing until the visitor accepts the banner. It is
+     not deferred, so an A/B test's words are in place before the first paint
+     (docs/AB-TESTING.md); its own work waits until the page is parsed. -->
+<script src="js/config.js?v=c9d96b2995"></script>
+<script src="js/vendors.js?v=22f2d19191"></script>
+<script src="js/analytics.js?v=83e41fc031"></script>
 <!-- CHROME:HEAD:END -->
 </head>
 <body>
@@ -46,6 +48,7 @@
         (513) 279-2915
       </a>
       <span class="tb-hide">Mobile detailing • We come to you</span>
+      <a class="tb-gift" href="gift-cards.html">Gift cards<span class="tb-gift-sale">, 20% off</span></a>
     </div>
     <div class="tb-socials">
       <a href="https://www.instagram.com/513autoclean/" target="_blank" rel="noopener" aria-label="Instagram"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/></svg></a>
@@ -103,12 +106,12 @@
     <button class="mm-close" id="mmClose" aria-label="Close menu">&times;</button>
   </div>
   <a class="mm-link" href="index.html#gallery">Results</a>
-  <a class="mm-link" href="services.html">Services &amp; Pricing</a>
+  <a class="mm-link" href="services.html">Services</a>
   <a class="mm-link" href="about.html">Meet the Team</a>
   <a class="mm-link" href="about.html#reviews">Reviews</a>
-  <a class="mm-link" href="service-area.html">Range &amp; Travel Costs</a>
+  <a class="mm-link" href="service-area.html">Range &amp; Travel</a>
   <a class="mm-link" href="faq.html">FAQ</a>
-  <a class="mm-link" href="contact.html">Contact Us</a>
+  <a class="mm-link" href="gift-cards.html">Gift cards</a>
   <div class="mm-cta">
     <a class="btn btn-primary btn-block" href="book.html">Book Now</a>
     <a class="btn btn-ghost on-dark btn-block" href="contact.html">Contact Us</a>
@@ -130,7 +133,7 @@
     <div class="svc-intro">
     <div class="section-head reveal">
       <span class="eyebrow">Services &amp; Pricing</span>
-      <h2>Detailing packages for daily drivers, family vehicles &amp; work trucks.</h2>
+      <h1>Detailing packages for daily drivers, family vehicles &amp; work trucks.</h1>
       <p>Clear, honest pricing. Pick a package below. Every detail is done by hand at your home or office. Prices are starting points for most cars; larger or heavily soiled vehicles may vary.</p>
     </div>
 
@@ -146,6 +149,7 @@
           Exterior
         </button>
       </div>
+      <!-- SERVICEGUIDES:START --><!-- SERVICEGUIDES:END -->
       <a class="btn btn-ghost svc-addons-link reveal" href="#addons">See all add-ons <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M12 5v14M6 13l6 6 6-6"/></svg></a>
     </div>
     </div>
@@ -154,7 +158,7 @@
     <div class="svc-panel active" id="panel-interior">
       <div class="svc-grid">
         <article class="svc-card reveal">
-          <h3>Basic Interior</h3>
+          <h2>Basic Interior</h2>
           <div class="svc-meta">
             <span class="price">$145</span>
             <span class="dur"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v4l3 2"/></svg> 2 hrs</span>
@@ -173,7 +177,7 @@
         </article>
 
         <article class="svc-card reveal">
-          <h3>Full Interior</h3>
+          <h2>Full Interior</h2>
           <div class="svc-meta">
             <span class="price">$235</span>
             <span class="dur"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v4l3 2"/></svg> 4 hrs</span>
@@ -189,15 +193,15 @@
             <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 6L9 17l-5-5"/></svg> Wash and dress floor mats</li>
             <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 6L9 17l-5-5"/></svg> Condition leather</li>
             <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 6L9 17l-5-5"/></svg> Clean glass</li>
-            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 6L9 17l-5-5"/></svg> Clean door jams</li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 6L9 17l-5-5"/></svg> Clean door jambs</li>
             <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 6L9 17l-5-5"/></svg> Brush detail every crack and crevice</li>
-          </ul></details><details class="svc-how"><summary>How it works</summary><p>Everything in Basic, then the deep work: engrained particles pulled out of the carpet, upholstery shampooed and scrubbed, mats washed and dressed, leather conditioned, glass and door jams cleaned, and every crack and crevice brush detailed. Stain reduction is part of it. It does NOT guarantee a stain comes out completely, steam sanitize the whole vehicle, or remove the seats to get underneath them. Most engrained fibers and pet hair come out at this level, but the truly stubborn ones woven deep into the carpet backing need the individual fiber lifting in Showroom Ready Restoration. Deep set stains want the Stain Treatment extra and lingering smells want the Ozone Odor Reset.</p></details></div>
+          </ul></details><details class="svc-how"><summary>How it works</summary><p>Everything in Basic, then the deep work: engrained particles pulled out of the carpet, upholstery shampooed and scrubbed, mats washed and dressed, leather conditioned, glass and door jambs cleaned, and every crack and crevice brush detailed. Stain reduction is part of it. It does NOT guarantee a stain comes out completely, steam sanitize the whole vehicle, or remove the seats to get underneath them. Most engrained fibers and pet hair come out at this level, but the truly stubborn ones woven deep into the carpet backing need the individual fiber lifting in Showroom Ready Restoration. Deep set stains want the Stain Treatment extra and lingering smells want the Ozone Odor Reset.</p></details></div>
           <div class="svc-foot"><a class="btn btn-ghost btn-block" href="book.html" data-book-package="full-interior">Book Full Interior</a></div>
         </article>
 
         <article class="svc-card featured reveal">
           <span class="svc-tag">Most Popular</span>
-          <h3>Full Interior + Steam</h3>
+          <h2>Full Interior + Steam</h2>
           <div class="svc-meta">
             <span class="price">$315</span>
             <span class="dur"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v4l3 2"/></svg> 5 hrs</span>
@@ -217,7 +221,7 @@
     <div class="svc-panel" id="panel-exterior">
       <div class="svc-grid">
         <article class="svc-card reveal">
-          <h3>Express Exterior</h3>
+          <h2>Express Exterior</h2>
           <div class="svc-meta">
             <span class="price">$75</span>
             <span class="dur"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v4l3 2"/></svg> 1 hr 15 min</span>
@@ -237,7 +241,7 @@
 
         <article class="svc-card featured reveal">
           <span class="svc-tag">Most Popular</span>
-          <h3>Basic Exterior</h3>
+          <h2>Basic Exterior</h2>
           <div class="svc-meta">
             <span class="price">$125</span>
             <span class="dur"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v4l3 2"/></svg> 2 hrs</span>
@@ -258,7 +262,7 @@
         </article>
 
         <article class="svc-card reveal">
-          <h3>Full Exterior</h3>
+          <h2>Full Exterior</h2>
           <div class="svc-meta">
             <span class="price">$245</span>
             <span class="dur"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v4l3 2"/></svg> 4 hrs</span>
@@ -281,7 +285,7 @@
         <article class="svc-card wide reveal">
           <span class="svc-tag soon">Coming soon</span>
           <div class="swide-main">
-          <h3>Paint Correction and Protection</h3>
+          <h2>Paint Correction and Protection</h2>
           <div class="svc-meta">
             <span class="price">$245+</span>
             <span class="dur"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v4l3 2"/></svg> 4 hrs</span>
@@ -295,13 +299,13 @@
           <div class="svc-foot"><a class="btn btn-ghost btn-block" href="book.html" data-book-interest="showroom-exterior">Register interest</a></div>
           </div>
           <div class="svc-corr">
-            <h4>Paint correction and ceramic coating</h4>
+            <h3>Paint correction and ceramic coating</h3>
             <details class="svc-explain">
               <summary>How it works: What is a ceramic coating?</summary>
               <div class="how-body">
               <p>A liquid polymer that chemically bonds to your clear coat and cures into a hard, glass-like layer. It is not a wax sitting on top that washes away in a few months, it becomes part of the surface and stays there for years.</p>
               <p class="ex-h">What it does</p>
-              <ul class="ex-yes"><li>Makes the paint strongly hydrophobic, so water beads up and rolls off instead of sheeting and drying into spots</li><li>Keeps dirt, brake dust and road film from keying into the surface, so the car stays cleaner between washes and washes far faster</li><li>Blocks UV, which is what oxidises and fades paint over time</li><li>Resists the things that actually etch paint: bird droppings, bug guts, tree sap, road salt</li><li>Adds real depth and gloss, and holds it rather than dulling after a month</li></ul>
+              <ul class="ex-yes"><li>Makes the paint strongly hydrophobic, so water beads up and rolls off instead of sheeting and drying into spots</li><li>Keeps dirt, brake dust and road film from keying into the surface, so the car stays cleaner between washes and washes far faster</li><li>Blocks UV, which is what oxidizes and fades paint over time</li><li>Resists the things that actually etch paint: bird droppings, bug guts, tree sap, road salt</li><li>Adds real depth and gloss, and holds it rather than dulling after a month</li></ul>
               <p class="ex-h">What it does not do</p>
               <ul class="ex-no"><li>Stop rock chips. Nothing you can apply to paint does; a coating is microns thick and a stone at highway speed is not going to notice it</li><li>Prevent dents, door dings or scratches deep enough to reach the clear coat</li><li>Remove defects that are already there. Whatever the paint looks like when it goes on is what gets sealed in, which is why correction comes first</li><li>Mean you never wash the car again. It means washing is quicker and the results last</li></ul>
               <p class="ex-h">How long it takes</p>
@@ -348,7 +352,7 @@
     <!-- Add-ons -->
     <div class="addons">
     <!-- CATALOG:ADDONS:START -->
-      <h4 class="addon-grp">Interior</h4>
+      <h3 class="addon-grp">Interior</h3>
       <div class="addon-grid">
         <div class="addon reveal">
           <span class="addon-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="6.8" cy="9.5" r="1.9"/><circle cx="11.4" cy="6.8" r="1.9"/><circle cx="16.6" cy="9" r="1.9"/><path d="M7.2 16.6c0-2.5 2.2-4.3 4.7-4.3s4.7 1.8 4.7 4.3c0 2-1.6 3.4-3.4 3.4-.9 0-1.1-.4-1.3-.4s-.4.4-1.3.4c-1.8 0-3.4-1.4-3.4-3.4z"/></svg></span>
@@ -360,7 +364,7 @@
         </div>
         <div class="addon reveal">
           <span class="addon-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="6.6" cy="15.2" r="3"/><circle cx="17.4" cy="15.2" r="3"/><circle cx="12" cy="6.6" r="3"/><path d="M9.4 13.1 10.6 10.7"/><path d="M14.6 13.1 13.4 10.7"/><path d="M9.6 15.2h4.8"/></svg></span>
-          <div class="addon-body"><b>Ozone Odor Reset</b><span>Ozone (O3) destroys the compounds causing the smell, not just the smell.</span><i class="addon-price">$50</i><details class="addon-how"><summary>How it works</summary><p>A generator converts the oxygen in the air (O2) into ozone (O3). That extra atom is unstable, so it breaks away and oxidises odor molecules, bacteria and smoke residue on contact. Because it works as a gas it reaches the vents, headliner and seat foam that wiping cannot. It then reverts to ordinary oxygen and leaves nothing behind. The vehicle is sealed while it runs and aired out afterwards. Expect a 60 to 90% reduction in organic odors. It has to be paired with a stain treatment, or with a Full Interior or above, because ozone cannot remove what is still soaked into the fabric.</p></details></div>
+          <div class="addon-body"><b>Ozone Odor Reset</b><span>An ozone treatment for smells that linger, run after the source is cleaned.</span><i class="addon-price">$50</i><details class="addon-how"><summary>How it works</summary><p>A generator converts the oxygen in the air (O2) into ozone (O3). That extra atom is unstable, so it breaks away and oxidizes odor molecules, bacteria and smoke residue on contact. Because it works as a gas it reaches the vents, headliner and seat foam that wiping cannot. It then reverts to ordinary oxygen and leaves nothing behind. The vehicle is sealed while it runs and aired out afterwards. How much it helps depends on the smell and how long it has set in. It has to be paired with a stain treatment, or with a Full Interior or above, because ozone cannot remove what is still soaked into the fabric.</p></details></div>
         </div>
         <div class="addon reveal">
           <span class="addon-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 3.5h3.5a2 2 0 0 1 2 2v7.5H8.5a2 2 0 0 1-2-2v-5.5a2 2 0 0 1 2-2z"/><path d="M6.5 13h9.5a3 3 0 0 1 3 3v1.5H9.5a3 3 0 0 1-3-3z"/><path d="M8.5 17.5v3"/><path d="M17.5 17.5v3"/></svg></span>
@@ -375,7 +379,7 @@
           <div class="addon-body"><b>Showroom Ready Restoration</b><span>Everything in Full, taken as far as an interior goes.</span><i class="addon-price">$445+ with Full Interior*</i><i class="addon-ast">*A starting price. The final price depends on the vehicle's condition, and we agree it with you before any work starts.</i><details class="addon-how"><summary>How it works</summary><p>The whole cabin steamed and sanitized, engrained fibers lifted out individually rather than vacuumed at, floor mats given a water resistant treatment, and a ceramic coating on the trim and on the interior metal and paint so it stays this way. It does NOT repair damage: tears, burns, cracked trim and worn out material stay as they are. It makes everything that is there as good as it can get.</p></details></div>
         </div>
       </div>
-      <h4 class="addon-grp">Exterior</h4>
+      <h3 class="addon-grp">Exterior</h3>
       <div class="addon-grid">
         <div class="addon reveal">
           <span class="addon-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="9" width="12" height="6.5" rx="2.5"/><path d="M2.5 9h2.5"/><path d="M1.5 12.2h3.5"/><path d="M2.5 15.5h2.5"/></svg></span>
@@ -445,7 +449,7 @@
         </div>
       </div>
       <div>
-        <h4>Explore</h4>
+        <h2>Explore</h2>
         <div class="f-links">
           <a href="index.html#gallery">Results</a>
           <a href="services.html">Services</a>
@@ -457,7 +461,7 @@
         </div>
       </div>
       <div>
-        <h4>Service Areas</h4>
+        <h2>Service Areas</h2>
         <div class="f-links">
           <a href="service-area.html#area-oh">Cincinnati, OH</a>
           <a href="service-area.html#area-ky">Northern Kentucky</a>
@@ -467,7 +471,7 @@
         </div>
       </div>
       <div>
-        <h4>Get in Touch</h4>
+        <h2>Get in Touch</h2>
         <ul class="f-contact">
           <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.9.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/></svg> <a href="tel:+15132792915">(513) 279-2915</a></li>
           <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 7l-10 6L2 7"/></svg> <a href="mailto:513autoclean@gmail.com">513autoclean@gmail.com</a></li>
@@ -497,12 +501,12 @@
      promises. Balanced masking alone hides inputs, not the Review screen. -->
 <div id="bookFunnel" hidden data-clarity-mask="true"></div>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&family=Hanken+Grotesk:wght@400;500;600;700&display=swap" />
-<link rel="stylesheet" href="book.css?v=49dc494bec" />
+<link rel="stylesheet" href="book.css?v=ddd553527c" />
 <!-- Deferred, so they run in this order: the pricing bundle before the
      booking form and before any page script that prices (travel.js). -->
-<script src="js/pricing.bundle.js?v=30cd433937" defer></script>
-<script src="js/funnel.js?v=adf7535138" defer></script>
-<script src="script.js?v=f30093639c" defer></script>
+<script src="js/pricing.bundle.js?v=23b069f9b4" defer></script>
+<script src="js/funnel.js?v=fc849a0733" defer></script>
+<script src="script.js?v=0f81ec6fa1" defer></script>
 <!-- CHROME:SCRIPTS:END -->
 </body>
 </html>

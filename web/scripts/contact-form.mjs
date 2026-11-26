@@ -1,11 +1,13 @@
 /**
  * The Contact page's form, from config/contact-form.json (A2P plan T2).
  *
- * "Request a quote" with two optional tick boxes is needed only until the new
- * number's texting approval (A2P), so both wordings live in the config file
- * and one word, "mode", picks which is built. "question" is the form exactly
- * as it was on November 12 (contact-form.test.ts compares it with a saved
- * copy), so switching back is that one word and a deploy.
+ * Two wordings live in the config file and one word, "mode", picks which is
+ * built: "quote" ("Request a quote", for the texting approval, November 12)
+ * or "question" (the form as it was on November 12; a2p.test.ts compares it
+ * with a saved copy). The two tick boxes and the terms line ("consent") are
+ * standard on both, and on the /book page (Emmett, November 26): they were
+ * tied to quote mode, so switching back to "question" took them off the
+ * site.
  *
  * Written between CONTACT:HEAD and CONTACT:CARD markers in contact.html by
  * render-site.mjs.
@@ -19,7 +21,8 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..")
 
 const MODES = ["question", "quote"];
 const NEEDS = ["heading", "intro", "cardTitle", "cardSub", "subject", "button", "fineprint"];
-const QUOTE_NEEDS = ["success", "smsBox", "marketingBox", "termsLine"];
+const QUOTE_NEEDS = ["success"];
+const CONSENT_NEEDS = ["smsBox", "marketingBox", "termsLine"];
 
 /** config/contact-form.json, checked: a mistake fails the build. */
 export function loadContactForm(file = path.join(root, "config/contact-form.json")) {
@@ -33,6 +36,11 @@ export function loadContactForm(file = path.join(root, "config/contact-form.json
       if (typeof w?.[k] !== "string" || !w[k].trim()) {
         throw new Error(`config/contact-form.json: modes.${m}.${k} is missing`);
       }
+    }
+  }
+  for (const k of CONSENT_NEEDS) {
+    if (typeof cfg.consent?.[k] !== "string" || !cfg.consent[k].trim()) {
+      throw new Error(`config/contact-form.json: consent.${k} is missing`);
     }
   }
   return cfg;
@@ -103,23 +111,22 @@ const VEHICLE_ROW = `
  * "yes" or "no" under its name, so the email always says which.
  * Class names avoid "consent": cookie-banner filter lists hide such names.
  */
-const TICKS = (w) => `
+const TICKS = (c) => `
           <div class="inq-ticks">
-            <label class="inq-tick"><input type="checkbox" name="SMS consent" value="yes" data-yesno /> <span>${fill(w.smsBox)}</span></label>
-            <label class="inq-tick"><input type="checkbox" name="Marketing" value="yes" data-yesno /> <span>${fill(w.marketingBox)}</span></label>
-            <p class="inq-terms">${fill(w.termsLine)}</p>
+            <label class="inq-tick"><input type="checkbox" name="SMS consent" value="yes" data-yesno /> <span>${fill(c.smsBox)}</span></label>
+            <label class="inq-tick"><input type="checkbox" name="Marketing" value="yes" data-yesno /> <span>${fill(c.marketingBox)}</span></label>
+            <p class="inq-terms">${fill(c.termsLine)}</p>
           </div>
 `;
 
 /**
  * The same two boxes and terms line under the /book card (Imperion, November
  * 14). Not a form: funnel.js reads them when the booking form opens (#bpSms
- * pre-ticks its own SMS box; #bpMarketing goes into the booking). Empty in a
- * mode without consent boxes, so switching the Contact form back clears both.
+ * pre-ticks its own SMS box; #bpMarketing goes into the booking). On every
+ * mode (Emmett, November 26).
  */
 export function bookPageConsent(cfg) {
-  const w = cfg.modes[cfg.mode];
-  if (!w.smsBox) return "";
+  const w = cfg.consent;
   return `      <div class="bp-consent inq-ticks">
         <label class="inq-tick"><input type="checkbox" id="bpSms" /> <span>${fill(w.smsBox)}</span></label>
         <label class="inq-tick"><input type="checkbox" id="bpMarketing" /> <span>${fill(w.marketingBox)}</span></label>
@@ -131,7 +138,7 @@ export function bookPageConsent(cfg) {
 export function contactHead(cfg) {
   const w = cfg.modes[cfg.mode];
   return `          <span class="eyebrow">Contact Us</span>
-          <h2>${w.heading}</h2>
+          <h1>${w.heading}</h1>
           <p>${fill(w.intro)}</p>
 `;
 }
@@ -140,10 +147,10 @@ export function contactHead(cfg) {
 export function contactCard(cfg) {
   const quote = cfg.mode === "quote";
   const w = cfg.modes[cfg.mode];
-  const fields = quote ? CONTACT_ROW + VEHICLE_ROW + QUESTION_PAIR(w) + TICKS(w) : QUESTION_PAIR(w) + CONTACT_ROW + VEHICLE_ROW;
-  return `        <h3>${w.cardTitle}</h3>
+  const fields = quote ? CONTACT_ROW + VEHICLE_ROW + QUESTION_PAIR(w) + TICKS(cfg.consent) : QUESTION_PAIR(w) + CONTACT_ROW + VEHICLE_ROW + TICKS(cfg.consent);
+  return `        <h2>${w.cardTitle}</h2>
         <p class="fc-sub">${fill(w.cardSub)}</p>
-        <form id="inquiryForm" class="js-w3form${quote ? " inq-quote" : ""}" action="https://api.web3forms.com/submit" method="POST" novalidate${quote ? ` data-success="${w.success.replace(/"/g, "&quot;")}"` : ""}>
+        <form id="inquiryForm" class="js-w3form inq-compact" action="https://api.web3forms.com/submit" method="POST" novalidate${quote ? ` data-success="${w.success.replace(/"/g, "&quot;")}"` : ""}>
           <input type="hidden" name="access_key" value="8a502fe3-2a53-4904-98e9-b18dabb1f579" />
           <input type="hidden" name="subject" value="${w.subject}" />
           <input type="hidden" name="from_name" value="513 Auto Clean Website" />

@@ -14,6 +14,15 @@
   functions = "netlify/functions"
   command = "npm run build"
 
+# Netlify's Pretty URLs: on, as it has been since launch, and written here so
+# the dashboard can't change it unseen (until November 18 it lived only
+# there, rewrote every link to /about while the pages declared /about.html,
+# and split each page into two addresses). The build now writes clean links
+# itself (web/scripts/site-urls.mjs), so this rewrites nothing; it stays on
+# because the redirects were tested with it on.
+[build.processing.html]
+  pretty_urls = true
+
 [build.environment]
   NODE_VERSION = "22"
 
@@ -41,6 +50,23 @@
 
 [functions]
   node_bundler = "esbuild"
+
+# Cards scheduled for a later day go out from 8 AM Cincinnati time, hourly
+# until 6 PM, so a busy morning finishes in a later run (13:00 to 23:00 UTC;
+# an hour later in the clock's terms during daylight time). Published site only.
+[functions."gift-deliver"]
+  schedule = "0 13-23 * * *"
+
+# The master calendar, 513 All Jobs, made to match the detailers' bookings
+# calendars every 10 minutes (docs/MASTER-CALENDAR-SETUP.md). Published site
+# only, like every schedule; it does nothing while ALL_JOBS_CALENDAR_ID is unset.
+[functions."jobs-mirror"]
+  schedule = "*/10 * * * *"
+
+# A fresh build on the sale's first day and the day after it ends, at about
+# 00:15 Cincinnati time (05:15 UTC), so the page's HTML matches the checkout.
+[functions."gift-rebuild"]
+  schedule = "15 5 * * *"
 
 # ---------------------------------------------------------------------------
 # Lighthouse, on every build
@@ -84,6 +110,11 @@
 # ---------------------------------------------------------------------------
 # Redirects
 # ---------------------------------------------------------------------------
+
+# Each page's old .html address (/about.html) 301s to its one address
+# (/about): dist/_redirects, written by web/scripts/site-urls.mjs from the
+# pages themselves, so a new page needs nothing here. Netlify reads that file
+# before the rules below.
 
 # PRINTED QR CODES: /golf (golf course booklet) and /prestige (Prestige Living
 # magazine). These two addresses are in print from 2027 for about a year and
@@ -153,6 +184,33 @@
 [[redirects]]
   from = "/api/booking-followup"
   to = "/.netlify/functions/booking-followup"
+  status = 200
+
+# Gift cards (docs/GIFT-CARDS-PLAN-2026-11-23.md). The webhook's address goes
+# into Stripe: Developers, Webhooks, endpoint https://513autoclean.com/api/gift-webhook.
+[[redirects]]
+  from = "/api/gift-checkout"
+  to = "/.netlify/functions/gift-checkout"
+  status = 200
+
+[[redirects]]
+  from = "/api/gift-webhook"
+  to = "/.netlify/functions/gift-webhook"
+  status = 200
+
+[[redirects]]
+  from = "/api/gift-card"
+  to = "/.netlify/functions/gift-card"
+  status = 200
+
+[[redirects]]
+  from = "/api/gift-admin"
+  to = "/.netlify/functions/gift-admin"
+  status = 200
+
+[[redirects]]
+  from = "/api/gift-send"
+  to = "/.netlify/functions/gift-send"
   status = 200
 
 [[redirects]]

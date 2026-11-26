@@ -25,8 +25,11 @@
  */
 (function () {
   var c = window.AC_CONFIG || {};
-  var GA = c.ga4MeasurementId || '';
-  var CL = c.clarityProjectId || '';
+  // A private page (<meta name="ac-private">, the gift certificate: its address
+  // opens a gift card) loads no analytics at all, as if no ids were set.
+  var priv = !!(document.querySelector && document.querySelector('meta[name="ac-private"]'));
+  var GA = priv ? '' : c.ga4MeasurementId || '';
+  var CL = priv ? '' : c.clarityProjectId || '';
   var CHOICE_KEY = 'ac-analytics';
   var SOURCE_KEY = 'ac-source';
   var loaded = false;
@@ -107,13 +110,30 @@
     return v;
   };
 
-  /** "golf-code: code", for the booking email. Empty when in no test. */
+  /**
+   * "golf-code: code", for the booking email. Empty when in no test.
+   * Every running test this visitor is in, not only the ones this page asked
+   * about: someone shown a headline on the home page who books from Services
+   * was recorded with no version (found with the headline test, November 16).
+   */
+  function visitorTests() {
+    var out = {}, all = storedTests();
+    TESTS.forEach(function (t) {
+      if (t.status !== 'running') return;
+      if (t.versions.some(function (x) { return x[0] === all[t.id]; })) out[t.id] = all[t.id];
+    });
+    Object.keys(given).forEach(function (id) { out[id] = given[id]; });
+    return out;
+  }
   window.AC_EXPS = function () {
-    return Object.keys(given).map(function (id) { return id + ': ' + given[id]; }).join(', ');
+    var out = visitorTests();
+    return Object.keys(out).map(function (id) { return id + ': ' + out[id]; }).join(', ');
   };
 
+  /* The same tests on every analytics event, so a booking on Services counts for the home headline too. */
   function variantString() {
-    return Object.keys(given).map(function (id) { return 'ac-' + id + '-' + given[id]; }).join(',').slice(0, 100);
+    var out = visitorTests();
+    return Object.keys(out).map(function (id) { return 'ac-' + id + '-' + out[id]; }).join(',').slice(0, 100);
   }
 
   /* GA4's own pattern for outside testing tools, and a Clarity tag to filter recordings. */
@@ -135,8 +155,55 @@
       if (window.AC_EXP(parts[0]) === parts[1]) el.classList.add('exp-on');
     });
   }
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', showTestElements);
-  else showTestElements();
+  /*
+   * A version's words in an element the page needs either way (a headline):
+   * data-exp-words="test-id" and, per version, data-exp-<version>="its HTML".
+   * The page carries the control's words, so search engines and anyone
+   * without scripts read those; only a visitor in another version gets
+   * theirs.
+   *
+   * BEFORE THE FIRST PAINT. The hero fades in from CSS without waiting for
+   * scripts, so a swap from a deferred script came after the control's words
+   * were already on screen on a slow phone (validation, November 16). This
+   * file is therefore loaded without defer, in the head, and swaps each
+   * element as soon as the parser has closed it: a MutationObserver callback
+   * runs before the browser paints again. "Closed" means a node follows it,
+   * so a network chunk ending inside the headline can't swap half of it.
+   */
+  function swapWords(el) {
+    if (el.acSwapped) return;
+    el.acSwapped = true;
+    var v = window.AC_EXP(el.getAttribute('data-exp-words'));
+    var html = v ? el.getAttribute('data-exp-' + v) : null;
+    if (html) el.innerHTML = html;
+  }
+  function closed(el) {
+    for (var n = el; n && n !== document.documentElement; n = n.parentNode) if (n.nextSibling) return true;
+    return false;
+  }
+  function swapTestWords(all) {
+    document.querySelectorAll('[data-exp-words]').forEach(function (el) {
+      if (all || closed(el)) swapWords(el);
+    });
+  }
+  /* Once the page is parsed: when it turns "interactive", before the deferred scripts run. */
+  function whenParsed(fn) {
+    if (document.readyState !== 'loading') return fn();
+    document.addEventListener('readystatechange', function once() {
+      document.removeEventListener('readystatechange', once);
+      fn();
+    });
+  }
+  var watch = null;
+  if (document.readyState === 'loading' && typeof MutationObserver !== 'undefined') {
+    watch = new MutationObserver(function () { swapTestWords(false); });
+    watch.observe(document.documentElement, { childList: true, subtree: true });
+  }
+  whenParsed(function () {
+    if (watch) watch.disconnect();
+    swapTestWords(true);
+    showTestElements();
+  });
 
   /** Record an event. Does nothing unless analytics is loaded. */
   window.AC_TRACK = function (name, params) {
@@ -254,6 +321,6 @@
     else if (choice !== 'denied') showBanner();
   }
 
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);
-  else start();
+  // The same moment as when this file was deferred: parsed, before the other scripts run.
+  whenParsed(start);
 })();

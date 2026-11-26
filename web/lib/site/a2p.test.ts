@@ -88,6 +88,17 @@ describe("T1: the phone number", () => {
     expect(phoneHashSalt(undefined)).toBe("");
   });
 
+  it("covers every file the build writes into dist/, including _redirects and llms.txt, because it runs after them", () => {
+    const dir = sampleDist();
+    fs.writeFileSync(path.join(dir, "llms.txt"), `- Phone: ${REPO_PHONE.display}\n`);
+    fs.writeFileSync(path.join(dir, "_redirects"), `/call tel:${REPO_PHONE.e164} 302\n`);
+    const { changed } = stampPhone(dir, NEW);
+    expect(changed).toEqual(expect.arrayContaining(["llms.txt", "_redirects"]));
+    const build = read("web/scripts/build-dist.mjs");
+    const at = (s: string) => build.indexOf(s);
+    for (const writer of ["applyCleanUrls(dist)", 'path.join(dist, "llms.txt")']) expect(at(writer), writer).toBeLessThan(at("stampPhone(dist)"));
+  });
+
   it("a bad value stops the build with the reason", () => {
     expect(() => stampPhone(sampleDist(), "513-279-291")).toThrow(/BUSINESS_PHONE.*not 10 US digits/);
   });
@@ -105,9 +116,32 @@ describe("T2: the Contact form", () => {
   const cfg = loadContactForm();
   const as = (mode: string) => ({ ...cfg, mode });
 
-  it("question mode is the form exactly as it was on November 12", () => {
+  it("question mode is the form exactly as it was on November 12, plus the standard boxes", () => {
     expect(contactHead(as("question"))).toBe(read("web/lib/site/fixtures/contact-question-head.html"));
-    expect(contactCard(as("question"))).toBe(read("web/lib/site/fixtures/contact-question-card.html"));
+    // The boxes and their compact spacing are on every mode since November 26 (Emmett); the rest is byte for byte.
+    const card = contactCard(as("question"));
+    const ticks = /\n          <div class="inq-ticks">[\s\S]*?\n          <\/div>\n/.exec(card);
+    expect(ticks, "the boxes, after the last field and before the button").not.toBeNull();
+    expect(card.indexOf(ticks![0])).toBeLessThan(card.indexOf('<div class="form-foot">'));
+    expect(card.replace(ticks![0], "").replace("js-w3form inq-compact", "js-w3form")).toBe(read("web/lib/site/fixtures/contact-question-card.html"));
+  });
+
+  it("the two boxes and the terms line are on every mode, unticked and optional (Emmett, November 26)", () => {
+    for (const mode of ["question", "quote"]) {
+      const card = contactCard(as(mode));
+      const boxes = card.match(/<input type="checkbox" name="(?:SMS consent|Marketing)"[^>]*>/g) ?? [];
+      expect(boxes.length, mode).toBe(2);
+      for (const b of boxes) expect(b, mode).toMatch(/data-yesno/);
+      for (const b of boxes) expect(b, mode).not.toMatch(/checked|required/);
+      expect(card, mode).toContain(cfg.consent.termsLine);
+      expect(card, mode).toContain('class="js-w3form inq-compact"');
+    }
+  });
+
+  it("a missing box wording fails the build", () => {
+    const tmp = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "a2p-cf-")), "c.json");
+    fs.writeFileSync(tmp, JSON.stringify({ ...cfg, consent: { ...cfg.consent, smsBox: "" } }));
+    expect(() => loadContactForm(tmp)).toThrow(/consent\.smsBox is missing/);
   });
 
   it("contact.html carries the mode the config names", () => {
@@ -138,7 +172,7 @@ describe("T2: the Contact form", () => {
     expect(card).toContain('value="QUOTE REQUEST from 513autoclean.com"');
     expect(card).toMatch(/<button type="submit"[^>]*>\s*Request Quote/);
     expect(card).toContain("No spam, ever. We only use your info to send your quote.");
-    expect(contactHead(as("quote"))).toContain("<h2>Request a quote</h2>");
+    expect(contactHead(as("quote"))).toContain("<h1>Request a quote</h1>");
   });
 
   it("script.js sends each box as yes or no, so the email says which", () => {
@@ -160,14 +194,14 @@ describe("T3: the booking form's texts box", () => {
     const m = /var SMS_CONSENT = ((?:'[^']*'\s*\+?\s*)+);/.exec(src);
     expect(m, "SMS_CONSENT in funnel.js").not.toBeNull();
     const text = [...m![1]!.matchAll(/'([^']*)'/g)].map((x) => x[1]).join("");
-    const want = loadContactForm().modes.quote.smsBox.replace("{phone}", REPO_PHONE.display);
+    const want = loadContactForm().consent.smsBox.replace("{phone}", REPO_PHONE.display);
     expect(text).toBe(want);
   });
 
   it("the marketing box says exactly what the Contact form's says, and sits under the texts box", () => {
     const m = /var MARKETING_CONSENT = '([^']*)';/.exec(src);
     expect(m, "MARKETING_CONSENT in funnel.js").not.toBeNull();
-    expect(m![1]).toBe(loadContactForm().modes.quote.marketingBox);
+    expect(m![1]).toBe(loadContactForm().consent.marketingBox);
     const details = src.slice(src.indexOf("function rDetails()"), src.indexOf("function rAgree()"));
     const sms = details.indexOf("consentBox('sms', 'bkSms', SMS_CONSENT, '')");
     const mk = details.indexOf("consentBox('marketing', 'bkMarketing', MARKETING_CONSENT, '')");

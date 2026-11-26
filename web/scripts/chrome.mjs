@@ -18,6 +18,9 @@
  *   contact  "Contact Us": the form itself on contact.html, the page elsewhere
  *   areas    footer place links: in-page on service-area.html, that page elsewhere
  *   hours    the opening hours in words, from config/business.json (the same on every page)
+ *   detailing, cityguides  links to the published service and city pages (page-links.mjs; the same on every page)
+ *   gift     the gift card link in the top bar, from config/gift-cards.json (every page; nothing when off)
+ *   giftmenu the same link at the end of the phone menu (nothing when off)
  *   locpill  the red "Cincinnati, OH" pill in the top bar, beside the phone: booking.html only
  *            (A2P plan T7; moved out of the header, owner's pick, November 13)
  */
@@ -27,7 +30,11 @@ import { fileURLToPath } from "node:url";
 import { hoursText } from "../../netlify/functions/_pricing.mjs";
 
 export const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
-export const CHROME_PAGES = ["index.html", "services.html", "about.html", "service-area.html", "faq.html", "contact.html", "lp-golf.html", "lp-prestige.html", "booking.html"];
+import { generatedPages, loadLocations, loadServices } from "./locations.mjs";
+import { CERT_PAGE, giftPages, giftTopLink, loadGiftCards, viewAt } from "./gift-cards.mjs";
+import { footerDetailing, footerCities } from "./page-links.mjs";
+// The city and service pages (config/locations/, config/services/) join automatically.
+export const CHROME_PAGES = ["index.html", "services.html", "about.html", "service-area.html", "faq.html", "contact.html", "lp-golf.html", "lp-prestige.html", "booking.html", ...generatedPages(), ...giftPages(), CERT_PAGE];
 const PARTS = ["HEAD", "HEADER", "FOOTER", "SCRIPTS"];
 /** The build stamps asset URLs (?v=hash) after this step; compare without them. */
 export const unstamp = (s) => s.replace(/\?v=[0-9a-f]{10}/g, "");
@@ -48,8 +55,16 @@ export function valuesFor(page, html) {
     contact: page === "contact.html" ? "#inquiry" : "contact.html",
     areas: page === "service-area.html" ? "" : "service-area.html",
     hours: hoursText(),
+    // Published service and city pages, linked from every page (page-links.mjs).
+    detailing: footerDetailing(loadServices()),
+    cityguides: footerCities(loadLocations()),
     // In the top bar, not the header: in the header it took the room of two
     // links (owner's pick, November 13, docs/mockups/a2p-decision-4-*).
+    // Gift cards, while config/gift-cards.json has them on (gift-cards.mjs).
+    // Not on the booking page: its top bar carries the location pill, and the two wrapped at 720 to 768 px.
+    gift: page === "booking.html" ? "" : giftTopLink(viewAt(loadGiftCards())),
+    // The phone menu too: under 355 px the top bar has no room for the link (validation pass 1).
+    giftmenu: loadGiftCards().mode === "off" ? "" : '\n  <a class="mm-link" href="gift-cards.html">Gift cards</a>',
     locpill: page === "booking.html" ? '\n      <span class="loc-pill tb-loc"><i aria-hidden="true"></i>Cincinnati, OH</span>' : "",
   };
 }

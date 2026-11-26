@@ -14,6 +14,7 @@ import path from "node:path";
 // @ts-expect-error: plain ESM Netlify function, no types
 import { bookingEvents, eventDescription, eventTitle } from "../../netlify/functions/send-confirmation.mjs";
 import { priceFromWire, type WireCart } from "./server-entry.js";
+import { JOBS_SYNC_DETAILER, JOBS_SYNC_OFFICE, JOBS_SYNC_SKIP_TITLE, isJob, notAJob, titleDetailer } from "./availability/masterCalendar.js";
 
 /* ---- From JobsSync.gs (findMoney, findBlock, findZip, the detailer match) ---- */
 const TOTAL = /TOTAL:\s*\$([\d,]+(?:\.\d\d)?)/i;
@@ -115,3 +116,59 @@ describe("a job longer than one day, as JobsSync reads it (November 13)", () => 
   });
 });
 
+
+describe("what counts as a job: 513 All Jobs copies exactly what JobsSync counts (November 26)", () => {
+  const gs = fs.readFileSync(path.join(__dirname, "../../tools/jobs-sync/JobsSync.gs"), "utf8");
+  /** A regular expression literal from JobsSync.gs, as written there. */
+  const literal = (pattern: RegExp): RegExp => {
+    const m = pattern.exec(gs);
+    expect(m, String(pattern)).not.toBeNull();
+    const src = m![1]!;
+    const end = src.lastIndexOf("/");
+    return new RegExp(src.slice(1, end), src.slice(end + 1));
+  };
+
+  it("uses JobsSync's own skipTitle, officeMatch and DETAILER patterns", () => {
+    const same = (a: RegExp, b: RegExp) => { expect(a.source).toBe(b.source); expect(a.flags).toBe(b.flags); };
+    same(JOBS_SYNC_SKIP_TITLE, literal(/skipTitle:\s*(\/.+?\/[a-z]*),/));
+    same(JOBS_SYNC_OFFICE, literal(/officeMatch:\s*(\/.+?\/[a-z]*),/));
+    same(JOBS_SYNC_DETAILER, literal(/const DETAILER = (\/.+\/[a-z]*);/));
+  });
+
+  it("skips what jobRow skips, in its order: deleted, Free, a skipped title, the office, all day with no $ amount", () => {
+    // jobRow's own lines, so a new rule there fails here until notAJob has it too.
+    const row = gs.slice(gs.indexOf("function jobRow("), gs.indexOf("const start = eventTime(ev.start);"));
+    const rules = [...row.matchAll(/^\s*if \((.+?)\) return null;/gm)].map((m) => m[1]);
+    expect(rules).toEqual([
+      "ev.status === 'cancelled'",
+      "ev.transparency === 'transparent'",
+      "CONFIG.skipTitle.test(title.trim())",
+      "CONTINUATION_DAY.test(title.trim())",
+      "CONFIG.officeMatch.test(loc) || CONFIG.officeMatch.test(desc)",
+      "allDay && !/\\$\\d/.test(title + desc)",
+    ]);
+    const at = { start: { dateTime: "2026-12-01T13:00:00-05:00" } };
+    const day = { start: { date: "2026-12-01" } };
+    expect(notAJob({ ...at, summary: "Full Interior, Ada", status: "cancelled" })).toBe("deleted");
+    expect(notAJob({ ...at, summary: "Full Interior, Ada", transparency: "transparent" })).toBe("free");
+    for (const t of ["OPEN", "OPEN +20%", "best", "DNS dentist", "Busy", "Blocked", "Unavailable", "Availability", "Hold", "personal"]) {
+      expect(notAJob({ ...at, summary: t }), t).toBe("title");
+    }
+    expect(notAJob({ ...at, summary: "Pick up", location: "505 Sandheger Ct" })).toBe("office");
+    expect(notAJob({ ...at, summary: "Errand", description: "at 505  Sandheger" })).toBe("office");
+    expect(notAJob({ ...day, summary: "Vacation" })).toBe("all-day");
+    expect(notAJob({ ...day, summary: "Fleet wash, $400" })).toBe("");
+    // Counted by JobsSync once (day 1); copied every day, like the originals.
+    expect(notAJob({ ...at, summary: "Kris: Day 2 of 2, Paint Correction, Ada" })).toBe("");
+    expect(notAJob({ ...at, summary: "Openshaw: Full Interior" })).toBe("");
+    expect(isJob({ ...at, summary: "Kris: Full Interior, Ada" })).toBe(true);
+  });
+
+  it("names the detailer as JobsSync does: a name in the title first, else the calendar's", () => {
+    expect(titleDetailer("Kris: Full Interior, Ada", "Elijah")).toBe("Kris");
+    expect(titleDetailer("SHORT NOTICE, accept or decline: Kris: Full Interior, Ada", "Elijah")).toBe("Kris");
+    expect(titleDetailer("Full Interior, Ada", "Elijah")).toBe("Elijah");
+    // JobsSync.gs: (title.match(DETAILER) || [])[1] || cal.detailer
+    expect(gs).toContain("(title.match(DETAILER) || [])[1] || cal.detailer");
+  });
+});

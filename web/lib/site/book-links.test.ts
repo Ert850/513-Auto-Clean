@@ -79,10 +79,13 @@ describe("Book links to /book (config/booking-page.json bookLinks)", () => {
 
 describe("the /book consent boxes", () => {
   const cfg = loadContactForm();
-  it("say exactly what the Contact form's boxes say", () => {
+  it("say exactly what the Contact form's boxes say, on every mode", () => {
     const span = (html: string) => [...html.matchAll(/<label class="inq-tick">.*?<span>(.*?)<\/span><\/label>/g)].map((m) => m[1]);
-    expect(span(bookPageConsent(cfg))).toEqual(span(contactCard(cfg)));
-    expect(bookPageConsent(cfg)).toContain(cfg.modes[cfg.mode].termsLine.replace(/\{phone\}/g, "").slice(0, 20));
+    for (const mode of ["question", "quote"]) {
+      const c = { ...cfg, mode };
+      expect(span(bookPageConsent(c)), mode).toEqual(span(contactCard(c)));
+      expect(bookPageConsent(c), mode).toContain(cfg.consent.termsLine.slice(0, 20));
+    }
   });
   it("are unticked and optional", () => {
     const boxes = bookPageConsent(cfg).match(/<input[^>]*>/g) ?? [];
@@ -91,6 +94,7 @@ describe("the /book consent boxes", () => {
   });
   it("are in booking.html as built", () => {
     expect(read("booking.html")).toContain(bookPageConsent(cfg).trim().slice(0, 60));
+    expect(read("booking.html")).toContain('id="bpSms"');
   });
   it("a marketing yes reaches the server, and an odd value is dropped", () => {
     const NOW = Date.now();
@@ -103,5 +107,14 @@ describe("the /book consent boxes", () => {
     expect(ok.ok && ok.booking.consent).toMatchObject({ sms: true, marketing: true });
     const odd = validateWire({ ...base, consent: { marketing: "yes" } }, { nowMs: NOW, mode: "card_only" });
     expect(odd.ok && odd.booking.consent.marketing).toBeUndefined();
+  });
+});
+
+describe("navigation links are never Book links", () => {
+  it("the hero's View Services goes to the Services page, not the booking form", () => {
+    const hero = read("index.html").split('class="hero-cta')[1].split("</div>")[0];
+    const view = /<a\b[^>]*>(?:(?!<\/a>)[\s\S])*View Services/.exec(hero)?.[0] ?? "";
+    expect(view).toContain('href="services.html"');
+    expect(view).not.toMatch(/book\.html|data-book-/);
   });
 });

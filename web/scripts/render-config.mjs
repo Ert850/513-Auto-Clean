@@ -20,7 +20,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { experimentsForPage } from "./experiments.mjs";
+import { checkExperimentPages, experimentsForPage } from "./experiments.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const TEMPLATE = path.join(root, "js/config.template.js");
@@ -69,10 +69,33 @@ if (/\{\{[A-Z0-9_]+\}\}/.test(out)) {
   throw new Error("render-config: a placeholder survived substitution");
 }
 
+// js/config.js is public, and netlify.toml tells the secret scanner to skip
+// this variable (SECRETS_SCAN_OMIT_KEYS), so nothing else would stop a secret
+// key pasted into the publishable slot from being served to every visitor
+// (review, November 23, P10). The value itself is never printed.
+{
+  const pk = String(process.env.STRIPE_PUBLISHABLE_KEY ?? "").trim();
+  if (pk && !pk.startsWith("pk_")) {
+    console.error(
+      "render-config: STRIPE_PUBLISHABLE_KEY does not start with pk_" +
+        (/^(sk|rk)_/.test(pk) ? " and looks like a SECRET key. Roll it in Stripe, then" : ".") +
+        " Set it to the publishable key (pk_live_ or pk_test_) in Netlify.",
+    );
+    process.exit(1);
+  }
+}
+
 // The A/B tests (config/experiments.json), checked here so a mistake fails the
 // build. JSON is valid JavaScript, and the ids and version names are limited
 // to letters, digits and dashes, so nothing in it can end the statement.
 const experiments = experimentsForPage();
+// And every page's test markup against the file.
+checkExperimentPages(
+  experiments,
+  Object.fromEntries(
+    fs.readdirSync(root).filter((f) => f.endsWith(".html")).map((f) => [f, fs.readFileSync(path.join(root, f), "utf8")]),
+  ),
+);
 
 // The rush fee and discount code files are checked when the pricing code
 // loads. esbuild bundles them without running anything, so load the server
@@ -88,6 +111,17 @@ const { parseDetailers } = await import("../../netlify/functions/_pricing.mjs");
   const { problems } = parseDetailers(process.env.DETAILERS);
   if (problems.length) {
     console.error("render-config: DETAILERS has a problem, fix it in Netlify:\n  " + problems.join("\n  "));
+    process.exit(1);
+  }
+}
+
+// The master calendar (ALL_JOBS_CALENDAR_ID, docs/MASTER-CALENDAR-SETUP.md) is
+// only ever written. As one of the calendars the site reads, every copy would
+// block time a second time and the copier would mirror its own copies.
+{
+  const { masterClash } = await import("../../netlify/functions/_mastercal.mjs");
+  if (masterClash()) {
+    console.error("render-config: ALL_JOBS_CALENDAR_ID is also a calendar the site reads (GOOGLE_*_CALENDAR_ID, GOOGLE_BUSY_ONLY_CALENDAR_IDS or DETAILERS). Give 513 All Jobs its own calendar.");
     process.exit(1);
   }
 }

@@ -9,6 +9,11 @@ import path from "node:path";
 // @ts-expect-error: plain ESM build script, no types
 import { root, CHROME_PAGES, expectedChrome, currentChrome, unstamp } from "../../scripts/chrome.mjs";
 
+// The top bar's "20% off" is hidden or shown by the day the page was built
+// (gift-cards.mjs viewAt); the browser corrects it on the day. Which one a
+// committed page carries is not drift (validation pass 2: red on Nov 27).
+const daily = (s: string) => s.replace(/(<span class="tb-gift-sale") hidden>/g, "$1>");
+
 describe("shared header and footer", () => {
   for (const page of CHROME_PAGES as string[]) {
     it(`${page} carries the partials exactly`, () => {
@@ -17,7 +22,7 @@ describe("shared header and footer", () => {
       for (const part of ["HEAD", "HEADER", "FOOTER", "SCRIPTS"]) {
         const got = currentChrome(html, part);
         expect(got, `${page} is missing CHROME:${part} markers`).not.toBeNull();
-        expect(unstamp(got ?? ""), `${page} ${part} differs from web/partials/: edit the partial, then npm run build`).toBe(want[part]);
+        expect(daily(unstamp(got ?? "")), `${page} ${part} differs from web/partials/: edit the partial, then npm run build`).toBe(daily(want[part]));
       }
     });
   }

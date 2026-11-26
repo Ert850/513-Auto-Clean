@@ -1,0 +1,176 @@
+/**
+ * The gift card emails: to the buyer, to the person it's for, and to Elijah.
+ * Same shell, escaping and sender as the booking emails (send-confirmation.mjs).
+ * No em-dashes, and every amount from the card itself.
+ */
+import { SHELL, esc, redact } from "./send-confirmation.mjs";
+import { dollars, longDate } from "./_giftcards.mjs";
+
+const pause = (ms) => new Promise((r) => setTimeout(r, ms));
+
+/**
+ * Sends one gift card email through Resend. "ok", "busy" (rate limited, the
+ * service down or no connection: try again later, it doesn't count against
+ * the card) or "refused" (the address or message was rejected). A 429 is
+ * waited out twice before giving up as "busy": Resend allows only a few sends
+ * a second, and a Christmas-morning batch would otherwise burn every card's
+ * tries in one run (validation pass 3).
+ */
+export async function sendMail(apiKey, from, to, { subject, html }, tries = 3) {
+  for (let i = 0; i < tries; i++) {
+    let res;
+    try {
+      res = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ from, to: [to], subject, html }),
+      });
+    } catch (e) {
+      console.error("resend network", redact(String(e)).slice(0, 200));
+      return "busy";
+    }
+    if (res.ok) return "ok";
+    if (res.status === 429 && i < tries - 1) { await pause(1100 * (i + 1)); continue; }
+    console.error("resend", res.status, redact(await res.text()).slice(0, 300));
+    return res.status === 429 || res.status >= 500 ? "busy" : "refused";
+  }
+  return "busy";
+}
+
+/**
+ * How a card is used: book as usual, and show the card when paying, where
+ * Elijah takes it off the total after tax (Elijah, November 23: customers
+ * don't enter it anywhere, and nobody pays online).
+ */
+const howToUse = (card) =>
+  `To use it, book online at <a href="https://513autoclean.com" style="color:#c41414;font-weight:700">513autoclean.com</a> as usual, ` +
+  `and show the card when you pay: we take it off your total, after tax. ` +
+  `It works on any detail, add-on or travel, and whatever is left stays on the card${card.expires ? ` until ${longDate(card.expires)}` : ""}. ` +
+  `There's no sales tax on the card; tax is added to the detail when it's used.`;
+
+const longDay = (iso) => new Date(iso + "T12:00:00Z").toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", timeZone: "UTC" });
+
+/** The card as a block that survives every mail app: a table, inline styles, no images needed. */
+export function cardBlock(card, code, link) {
+  // What is left, once some of it has been used (a resend in January).
+  const left = card.balanceCents != null && card.balanceCents < card.valueCents
+    ? `<div style="font-size:13px;color:#a7b0bd;margin-top:4px">${dollars(card.balanceCents)} left on it</div>` : "";
+  const to = card.toName ? `<div style="font-size:13px;color:#a7b0bd;margin-top:14px">For ${esc(card.toName)}${card.fromName ? `, from ${esc(card.fromName)}` : ""}</div>` : "";
+  const msg = card.message ? `<div style="font-size:15px;color:#eef1f4;margin-top:8px;font-style:italic">&ldquo;${esc(card.message)}&rdquo;</div>` : "";
+  return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="border-collapse:separate;margin:4px 0 18px">
+<tr><td style="background:#0b0e13;border-radius:14px;padding:20px 22px;border-bottom:5px solid #c41414;color:#fff">
+<div style="font-size:13px;font-weight:800;letter-spacing:.02em">513 Auto Clean</div>
+<div style="font-size:44px;font-weight:800;line-height:1.05;margin-top:10px">${dollars(card.valueCents)}</div>
+<div style="font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#a7b0bd">Gift card</div>${left}${card.expires ? `<div style="font-size:13px;color:#a7b0bd;margin-top:4px">Good through ${longDate(card.expires)}</div>` : ""}
+<div style="margin-top:16px;font:700 20px/1.2 Menlo,Consolas,monospace;letter-spacing:.06em">${esc(code)}</div>
+${to}${msg}
+</td></tr></table>
+<p style="margin:0 0 14px"><a href="${esc(link)}" style="display:inline-block;background:#c41414;color:#fff;font-weight:700;text-decoration:none;padding:12px 20px;border-radius:999px">View, print or share the card</a></p>`;
+}
+
+/**
+ * Where the card is going, from its delivery state (gift_deliver), never from
+ * the send date alone: the webhook, a resend and the hourly run all say the
+ * same thing (validation passes 2 and 3). The address is printed, so a buyer
+ * can spot a typo.
+ */
+/**
+ * "3 PM on Sunday, November 29": the last moment the card's page can send it,
+ * on Cincinnati's clock, rounded down to the hour so it never promises later
+ * than it is.
+ */
+export function sendByWords(ms) {
+  const d = new Date(ms);
+  const hour = d.toLocaleTimeString("en-US", { hour: "numeric", timeZone: "America/New_York" });
+  const day = d.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", timeZone: "America/New_York" });
+  return `${hour} on ${day}`;
+}
+
+/**
+ * `sendLink` and `sendBy` (ms): the card's page and the last moment it can
+ * still email the card to someone (sendDeadline, while sendRefusal is null).
+ * Buying is one click, so a card usually has no one yet: the buyer gives it,
+ * or has us send it from that page (November 26).
+ */
+export function whenLine(card, deliver, toEmail, sendLink = "", sendBy = null) {
+  const who = toEmail ? `${card.toName ? esc(card.toName) + " " : ""}(${esc(toEmail)})` : "";
+  if (!toEmail || deliver === "none") {
+    const send = sendLink && sendBy
+      ? ` Or we can email it to them for you, right away or on the day you choose: <a href="${esc(sendLink)}" style="color:#c41414;font-weight:700">open your card</a> and choose &ldquo;Send it to someone&rdquo; by ${sendByWords(sendBy)}.`
+      : "";
+    return `Forward this email, or print the card to give it in person.${send}`;
+  }
+  if (deliver === "pending" && card.sendOn) return `We'll email it to ${who} on ${longDay(card.sendOn)}. You can also forward this email or print the card.`;
+  if (deliver === "sent") return `We've emailed it to ${who}.`;
+  if (deliver === "failed" || deliver === "cancelled") return `We couldn't email it to ${who}. Please forward this email, or print the card.`;
+  return `We're emailing it to ${who}. If it doesn't arrive, forward this email.`;
+}
+
+export function buyerEmail({ card, code, link, payCents, toEmail, deliver, sendBy = null }) {
+  const when = whenLine(card, deliver, toEmail, link, sendBy);
+  const paid = payCents < card.valueCents ? ` You paid ${dollars(payCents)} (${card.percentOff}% off).` : ` You paid ${dollars(payCents)}.`;
+  return {
+    subject: `Your ${dollars(card.valueCents)} 513 Auto Clean gift card`,
+    html: SHELL(
+      "Your gift card is ready",
+      `${cardBlock(card, code, link)}<p style="margin:0 0 12px">${when}${paid}</p><p style="margin:0 0 12px;color:#5a6069">${howToUse(card)}</p>`,
+      `${dollars(card.valueCents)} gift card, code ${code}`,
+    ),
+  };
+}
+
+export function recipientEmail({ card, code, link }) {
+  // Never "Someone sent you...": with no name it reads like phishing (validation pass 1).
+  const v = dollars(card.valueCents);
+  const subject = card.fromName ? `${card.fromName} sent you a ${v} gift card from 513 Auto Clean` : `You've received a ${v} gift card from 513 Auto Clean`;
+  const lead = card.fromName ? `${esc(card.fromName)} sent you a 513 Auto Clean gift card` : "You've received a 513 Auto Clean gift card";
+  return {
+    subject,
+    html: SHELL(
+      "You've got a gift card",
+      `<p style="margin:0 0 14px">${lead} for a mobile detail: we come to you.</p>${cardBlock(card, code, link)}<p style="margin:0 0 12px;color:#5a6069">${howToUse(card)}</p>`,
+      `${v} gift card${card.fromName ? ` from ${card.fromName}` : ""}`,
+    ),
+  };
+}
+
+export function ownerEmail({ card, code, payCents, buyer, toEmail, problem }) {
+  const rows = [
+    ["Card", `${dollars(card.valueCents)}, code ending ${code.slice(-4)}`],
+    ["Paid", `${dollars(payCents)}${card.percentOff ? ` (${card.percentOff}% off)` : ""}`],
+    ["Buyer", buyer || "(no email)"],
+    ["For", [card.toName, toEmail].filter(Boolean).join(", ") || "(not said)"],
+    ["Send to them", card.sendOn ? longDay(card.sendOn) : toEmail ? "now" : "Not sent to anyone yet (the buyer can send it from the card's page, or give it themselves)"],
+  ].map(([k, v]) => `<tr><td style="padding:4px 12px 4px 0;color:#5a6069">${k}</td><td style="padding:4px 0">${esc(v)}</td></tr>`).join("");
+  const warn = problem ? `<p style="margin:0 0 12px;color:#b41212;font-weight:700">${esc(problem)}</p>` : "";
+  return {
+    subject: `${problem ? "CHECK: " : ""}Gift card sold: ${dollars(card.valueCents)} for ${dollars(payCents)}`,
+    html: SHELL("Gift card sold", `${warn}<table role="presentation" style="border-collapse:collapse;font-size:15px">${rows}</table><p style="margin:14px 0 0;color:#5a6069">Look it up or mark it used at /gift-admin. It's also on the payment in Stripe.</p>`),
+  };
+}
+
+/** Elijah's address for the gift card emails: OWNER_EMAIL, or the default every gift function uses. */
+export const ownerAddress = (env = process.env) => env.OWNER_EMAIL || "elijahthackerllc@gmail.com";
+
+/**
+ * To Elijah when a card is sent to someone from its page after buying
+ * (gift-send.mjs; owner, November 26): who it's for, from whom, when it goes,
+ * and the card. `state`: "sent", "pending" (a later day, card.sendOn) or
+ * "retrying" (the email didn't go yet: the hourly run tries again).
+ */
+export function ownerSendEmail({ card, code, toEmail, state }) {
+  const when = state === "sent" ? "Now (emailed)"
+    : state === "pending" && card.sendOn ? `${longDay(card.sendOn)} (scheduled)`
+    : "Now, but the email didn't go through yet: the hourly run tries again, and tells you if it can't";
+  const rows = [
+    ["Card", `${dollars(card.valueCents)}, code ending ${code.slice(-4)}`],
+    ["For", [card.toName, toEmail].filter(Boolean).join(", ")],
+    ["From", card.fromName || "(not said)"],
+    ["Emailed to them", when],
+  ].map(([k, v]) => `<tr><td style="padding:4px 12px 4px 0;color:#5a6069">${k}</td><td style="padding:4px 0">${esc(v)}</td></tr>`).join("");
+  return {
+    subject: `${state === "retrying" ? "CHECK: " : ""}Gift card sent to someone: ${dollars(card.valueCents)}, code ending ${code.slice(-4)}`,
+    html: SHELL("Gift card sent to someone", `<p style="margin:0 0 12px">The buyer sent this card to someone from its page.</p><table role="presentation" style="border-collapse:collapse;font-size:15px">${rows}</table><p style="margin:14px 0 0;color:#5a6069">Look it up at /gift-admin. It's also on the payment in Stripe.</p>`),
+  };
+}
+

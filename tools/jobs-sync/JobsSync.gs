@@ -36,6 +36,8 @@
 // the calendar's Settings and sharing > Integrate calendar > Calendar ID),
 // its name (used to find it if the ID is still a PASTE- placeholder), and
 // who did the job when the event title names nobody.
+// Never add "513 All Jobs" here: it holds a copy of every job on these
+// calendars, so each job would be counted twice.
 const CALENDARS = [
   {
     id: '75726fed82aa92a27201386beda7b3a15f550a3a5691e5e6cfc51382f0f0b9cf@group.calendar.google.com',

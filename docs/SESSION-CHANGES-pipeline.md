@@ -1417,6 +1417,1055 @@ From the live calendar (read only), the code, and your voice notes:
 - **Where the answer goes:** `consent.marketing` goes with the booking, and Elijah's email shows "Marketing: yes/no". A tick on the `/book` page carries into this box.
 - **Test it:** checkout at 1440 and 375 shows both boxes, and a booking with marketing ticked reads "Marketing: yes" in Elijah's email.
 
+## eNov14: the new home hero and the four service buttons (Elijah and Emmett, November 14)
+
+- **Hero:**
+  - "Professional mobile detailing in Greater Cincinnati." (Emmett's pick; the 513 versions are kept for an A/B test later);
+  - Elijah's two lines;
+  - Book Now, View Services and Contact Us on laptops, and Book Now and View Services on phones (the bottom bar has Contact Us).
+  - Mockups: `docs/mockups/eNov14-hero-buttons-*`.
+- **The four buttons** ("What does your car need?": Interior, Exterior, Spills and Stains, Paint Correction + Ceramic Coatings), with the hours line under them. They come from `config/home-services.json` (`HOME:SERVICES` in `render-site.mjs`).
+  - `linkTo: "book"` writes them as Book links carrying `data-book-intent`, `data-book-package` or `data-book-interest`, so `bookLinks` routes them like every other (`/book?intent=interior`).
+  - `"page"` links each to its page (for the service pages in Round B).
+  - A bad value, a missing photo or a wrong package id fails the build. Tests: `home-services.test.ts`.
+- **The form** understands `intent` (Interior or Exterior chosen, the package still theirs to pick), both in place and on arrival at `/book`.
+- **Photos are placeholders** from the site until Elijah's "03 Website" ones arrive; swapping them is a config change.
+- **Measured:**
+  - at 1440×900 the buttons start at 787 px, so their tops show;
+  - at 1440×790 and on a phone (812) they start just under the first screen, because the longer headline takes three lines on a laptop and four on a phone.
+
+## eNov14: Book link words from config (Emmett, November 14)
+
+- **What:** `config/booking-page.json` `bookLinkParams` names the address words (`package`, `interest`, `intent`, `browse`).
+  - `web/lib/booking/bookLinks.ts` (`arrivalQuery`, `parseArrival`, `BOOK_INTENTS`) is the one table that `book-links.mjs`, `funnel.js` and the home buttons' check all use.
+  - The allowed intents are the catalog's own categories, and package or interest values must be real package ids.
+- **Checked:** renaming `intent` to `side` in the config changed every built link to `?side=…` and the form's reading of it. Tests: `bookLinks.test.ts`.
+
+## eNov14: Elijah's photos in the gallery and on the home buttons (November 14)
+
+- **What:** 5 before/after pairs from Drive "03 Website" (third-row seat stains, Soul cargo, Civic front floor, captain's chair, Forester front floor), with Elijah's captions, now first in `data/gallery.json` (11 pairs).
+  - Resized to 420, 760 and 1120 px WebP plus a 760 px JPG, each under 150 KB (Imperion B6).
+  - The Interior and Spills and Stains home buttons use them.
+  - Exterior and Paint Correction still use placeholder photos: no exterior or polisher photos yet.
+- **To confirm with Elijah:**
+  - the Soul cargo "before" shows a bag, and the third-row "before" shows papers and a bag (his rule: no personal items);
+  - the third-row "after" is landscape against a portrait "before", so that wipe compares two framings;
+  - replace the 6 old pairs, or keep them after his.
+- **How the photos were made:** downloaded through the folder's share link and resized with Pillow (quality stepped down until under 150 KB). There's no checked-in resize script yet; one comes with the photo pipeline.
+
+## eNov14: the quote form compacted on phones (Elijah, November 13; mockup approved November 14)
+
+- **What:** under 768 px only, on both `contact.html` and the home page copy:
+  - Name and Phone share a row, and so do Vehicle and City; Email and "Best way to reach you" stay full width;
+  - tighter field spacing and padding, shorter text boxes, and slightly smaller consent text.
+- **Unchanged:** every field and Imperion's wording. Inputs keep 16 px text (no iPhone zoom). Laptops are unchanged.
+- **Measured:** at 375 px, Request Quote moves from 1819 to 1531 px down the page.
+- **Test it:** contact.html at 375 and 320 (no sideways scroll; labels readable), and submit on the test site once it exists.
+
+## eNov14: the logo in the booking emails (Emmett's pick A, November 14)
+
+- **What:** every email (customer and owner) starts with the bottle logo on a white tile, beside "513 AUTO CLEAN" in its original red small-caps style.
+  - `images/email-logo.png` (96 px, 5 KB) is cropped from `logo-mark.png` onto white, so it needs no `object-fit`, which Outlook ignores.
+  - `build-dist.mjs` publishes it, because no page names it.
+  - The address is `process.env.URL` (set by Netlify), else the domain.
+- **The inbox picture beside the sender** (Elijah's question) is a different thing: BIMI, in DNS plus a paid logo certificate. It's in the queue.
+- **Test it:** after deploy, a booking email shows the logo, and the name still shows when images are blocked.
+
+## eNov14: city-page pipeline and the first two drafts (SEO pass, November 14)
+
+- **Research:** `docs/SEO-COMPLIANCE.md` covers Google's doorway and scaled-content policies (there's no official "% unique"), our bar, page structure, structured data, the claims policy and sourced local facts.
+- **The pipeline:** one file per city in `config/locations/<slug>.json`.
+  - `render-locations.mjs` (first in the build) writes `<slug>.html` from `web/templates/location.html`.
+  - `locations.mjs` registers it everywhere: the shared chrome, `FILES`, `PAGES`, and the `LOCATIONS` regions in `sitemap.xml` and on the Range & Travel hub.
+  - Addresses are flat (`/mobile-detailing-delhi-price-hill-oh`): the shared files use relative paths, so a sub-folder would break them.
+  - Structured data is BreadcrumbList plus Service, with `areaServed` (places and ZIPs) and the provider as AutoWash. There's no review or FAQ markup (self-serving reviews; FAQ rich results ended).
+- **The build fails on:**
+  - a title over 60 or a meta description over 155 characters, or a local paragraph outside 100 to 190 words;
+  - fewer than 3 neighborhoods or 3 FAQ answers;
+  - an unknown photo pair or review;
+  - a published page with fewer than 2 local jobs or no local review;
+  - two pages overlapping above 0.30 (word 5-gram Jaccard on their own text, place names and ZIPs blanked; warns above 0.20), or over half of one page appearing in another.
+- **Drafts** (`"status": "draft"`) carry `noindex` and stay out of the sitemap and the hub.
+- **The first two (drafts):** Delhi & Price Hill, and Indian Hill & Madeira, using sourced facts only. They overlap 0.02.
+  - The local jobs and reviews come from Elijah: the job folders are tagged by region, not town.
+- **Tests:** `locations.test.ts`. Mockups: `docs/mockups/eNov14-city-*.png`.
+
+## eNov14: the home page's business data fixed (Emmett, November 14)
+
+- **Root cause:** the JSON-LD used `"@type": "AutoDetailing"`, which isn't a schema.org type (404), so Google most likely ignored the whole business block. It also carried an `aggregateRating` of our own Google rating, which is self-serving and never eligible for stars, with a small manual-action risk. Details: `docs/STRUCTURED-DATA-AUDIT.md`.
+- **Fix:**
+  - `"@type": "AutoWash"`, with `"@id": "https://513autoclean.com/#business"`, the same id the city pages point at;
+  - `aggregateRating` removed, together with the code that kept it up to date: `syncSchema()` in `js/reviews.js`, and the `ratingValue`/`reviewCount` stamps in `render-site.mjs`.
+- **Unchanged:** the visible rating (hero pill, trust badge, ticker).
+- **Check after the unfreeze:** Google's Rich Results Test and validator.schema.org on the live home page.
+
+## eNov14: service-page pipeline and the first two drafts (SEO B4, November 14)
+
+- **The pipeline:** `config/services/<slug>.json` holds the words only (intro, steps, the honest note, questions). `render-services.mjs` fills everything else from the catalog:
+  - package names, "from" prices, times, contents, what's not included;
+  - add-on prices, including Restoration's total and steam's per-package price;
+  - the size surcharges.
+  - The before/afters are gallery pairs tagged with the service, each with the customer's comment when there is one.
+- **Registration:** `locations.mjs` `generatedPages()` registers cities and services alike, and the `SERVICEPAGES` sitemap region lists published ones.
+- **The build fails on:** a missing field, title or description lengths (as rendered), an unknown package or add-on, fewer than 3 steps or 3 questions, and a published page with fewer than 2 photo pairs.
+- **Drafts:**
+  - Interior Car Detailing (`/interior-car-detailing-cincinnati`): Basic, Full and Full + Steam compared, plus add-ons;
+  - Stain, Spill & Odor Treatment (`/car-stain-odor-treatment-cincinnati`): no removal promises, and a "Straight answer" note.
+- **Bug found while building:** the first service build cut `sitemap.xml` down to its first line. Its markers were missing, because an earlier edit didn't match, and `indexOf` returned -1, so the slice kept almost nothing. Restored from git; the generator now stops with an error when the markers are missing, as the city one already did.
+- **Tests:** 694 pass. Mockups: `docs/mockups/eNov14-service-*.png`.
+
+## eNov14: calendar fix 1, the server checks the time is still free (November 14)
+
+- **Root cause:** only the booking form checked the time before Confirm. The server wrote the event without looking, so two people who picked the same time seconds apart both got it, and so did a request edited by hand. And the form sent the confirmation without waiting for an answer, so the server could not have told the customer anyway.
+- **Fix:**
+  - **One check:** `web/lib/availability/stillFree.ts` (`checkRange`, `slotStillFree`), used by the form's `verifySlot` and by the server, so the two cannot disagree. It reads Cincinnati days, where the form used the visitor's own midnight.
+  - **The server:** `_detailers.mjs` `slotStatus()` reads the same calendars the form reads for whoever has the time, plus Elijah's personal calendar on his times (`personal-busy.mjs` `readPersonal`, shared). `send-confirmation` runs it after the retry check and before the write.
+  - **Taken:** a 409; no event, no emails. The form waits for that answer (up to `CONFIRM_WAIT_MS`, 15 s; the request is never aborted), then reopens Time with "Someone booked that time while you were deciding". Web3Forms is not sent.
+  - **Calendar unreadable:** written, but the customer's email doesn't say confirmed, and the owner's subject starts "CHECK THE TIME" with a note saying why.
+  - **Kept on purpose:**
+    - A time that fails only on the server's longer measured drive (measured at the appointment, against the form's no-time measurement) is kept (`tight`). A refusal is only for a real clash with a job or the hours.
+    - A paid booking is never turned away; it is written as one to check.
+  - **What's left:** two Confirms in the same second can still both pass, because both read before either writes. That window used to be minutes; it is now about a second.
+- **Test (preview):** book a time, then book the same time from a second browser that loaded the form before the first booking. The second should land back on Time, with no event and no email.
+- **Tests:** `still-free.test.ts`; 707 pass.
+
+## eNov14: calendar fix 2, every booking date is a Cincinnati date (November 14)
+
+- **Root cause:** the form built some dates from the visitor's own clock (`new Date(y, m, d)`, `getDate()`, `setHours(0)`). Anyone booking from another time zone, such as a parent in California booking for a UC student, could see request days, the 365-day limit and the correction start date a day off near midnight. The final time check also read the wrong day's calendar for them.
+- **Fix:**
+  - `dayStartIn(n)` (Cincinnati midnight, through noon so a clock change can't slip a day) replaces `startOfToday()`;
+  - request days are keyed and labelled by `cinciKey`/`tzDay`;
+  - the week's date box reads and writes Cincinnati dates;
+  - `verifySlot` reads Cincinnati days (fix 1).
+  - `P.localDayStart` is now in the browser bundle.
+  - Left alone on purpose: the "Booked · Nov 14, 5:58 PM" stamp on Done, which is the visitor's own moment.
+- **Guard:** `still-free.test.ts` fails if `funnel.js` reads a date part from the visitor's clock again.
+- **Test (preview):** in Chrome DevTools, under Sensors, set the location to Tokyo, open Time and "tell us when suits". The ten days start tomorrow in Cincinnati. Pick days, send a request, and the owner email lists the same days.
+
+## eNov14: calendar fix 3, the drive home is measured at the job's end (November 14)
+
+- **Root cause:**
+  - The form sent the job's length to `/api/travel` as `service`, but the function reads `serviceMin`.
+  - The server's own measurement (`measuredOneWayMinutes`) read `cart.serviceDurationMin`, which the wire cart never carries.
+  - So both measured the drive home as leaving at the start time. They agreed, so the price shown was the price charged. But a job ending in rush hour was priced on the wrong traffic.
+- **Fix:**
+  - The form sends `serviceMin`. The function also still accepts `service`, for a page loaded before the deploy.
+  - `_routes.mjs` `jobMinutes(cart)` works out the length with the pricing engine (the form's `holdMinutes`: the work, else the advice hold), so both legs are timed the same way.
+  - At checkout the form measures again when the detail changes (a no-op otherwise), so the screen uses the length the server prices.
+- **Test:** `still-free.test.ts` stubs Routes with a slower rush-hour drive home. The screen's minutes equal the receipt's, and the drive home departs at the finish.
+- **Test (preview):** book a 1pm Full Interior (it ends around 5pm). The travel line on the screen equals the receipt's Travel row and the owner email's.
+
+## eNov14: calendar fix 4, standard-price evening starts count as standard in the week (November 14)
+
+- **Root cause:** the week builder (`buildWeek`) marked a start as a fee start by the clock's bands, and the day views folded "Earlier times" and "Later times" at a fixed 10am and 6pm (`REG_FROM`/`REG_TO`). The price shown came from the calendar, but the star and the folding came from the clock. So Kris's 6pm, standard price on his calendar, got no star and sat folded under "Later times".
+- **Fix:**
+  - `buildWeek` takes `isPremium` (the form passes `timeFeeApplies`, which reads the calendar of whoever takes the time). Its stars come from `daySuggestions`, which already took it.
+  - `foldsOpen` sets each day's regular hours from that day's standard-price starts (whole hours, first to last). For Elijah's usual day that is still 10am to 6pm, so nothing changes for him.
+- **Not changed, on purpose:** the fee's name ("early start" or "late start") stays decided by noon. The receipt line (`quote.ts` `surchargeLabel`) names it by noon, on screen and in the emails. Naming it by the calendar block in the picker alone would let the picker and the receipt disagree. Noon gives the right name for every calendar today, Kris's included. Moving both to the calendar's rule means carrying the fee block's side through the pricing engine; that's a separate change if it's ever needed.
+- **Tests:** `week.test.ts`, "calendar fix 4".
+- **Test (preview):** with Kris's evening open, choose an interior job and open a day he works. The 6pm start is visible without opening "Later times", reads "Standard price", and can carry the star.
+
+## eNov14: calendar fix 5, the last typed scheduling numbers moved into settings (November 14)
+
+- **Root cause:** the same numbers were typed into several places: 24 hours of short notice (the form, plus three times in `send-confirmation`), the 30 minute drive fallback (form and server), correction's `[0, 6]` weekend days (three places), the hour-long arrival window (the form's "10 to 11am" text and `ARRIVAL_WINDOW_MIN`), the hour's minimum notice, and the 365/400 day horizon (`funnel.js` and `wire.ts`). It's the same trap as the rush-fee days: a change means hunting for every copy.
+- **Fix:** `config/scheduling.json`, checked on load by `web/lib/availability/scheduling.ts`. A bad value fails the build, and so does `acceptAheadDays` set below `bookAheadDays`. Both bundles export `SCHEDULING`; every copy above reads it.
+  - The form's arrival window text now uses the window of whoever has the time, the same window the confirmation email states. It is 60 for everyone today.
+- **No change in behaviour:** `scheduling.test.ts` pins today's values and checks that no copy is left typed.
+- **Tests:** 716 pass.
+
+## eNov14: the review's findings on fixes 1 to 5 (November 14)
+
+An independent review found nothing that loses or duplicates a normal booking. It did find these, now fixed:
+- **The taken time came back.** After a 409, Time was redrawn from its cache, so the taken time was still offered "as still open". Root cause: `dropSlot` doesn't change the cache key. Now the taken branch clears `lastSlotsKey`, so the calendar is read again.
+- **A customer whose browser couldn't read the calendar was refused in a loop.** The form offers standard hours then. The server could read the calendar, so it refused any of those times outside an OPEN block, and the redraw offered the same times again. The form now sends `standardHours`, and a clash is then a request: nothing is written, and the customer is told we will confirm. The owner email says "NOT ON THE CALENDAR", gives the reason and says to offer another time.
+- **The same request path now covers:**
+  - a booking marked paid;
+  - a retry whose lookup of the first try failed. The clash could be their own first event, so refusing would have led them to book a second job.
+  - Nothing is ever written onto a taken time. A hand-edited request therefore gets, at worst, a request flagged to the owner, never a silent double booking.
+- **The lenient drive was zero minutes,** so a real clash could pass. The second try now uses the drive the form itself allowed for. With several detailers, that is each one's drive measured with no time of day (`measureEachDetailer`), measured the same way by `plainDrive`. With one detailer, the form used the timed drive, so there is no second try. With no measurement, the clash stands.
+- **Recommended times still judged fees by the clock.** `recommendStarts` takes `isPremium` now, and `daySuggestions` passes it.
+- **Reviewed and left alone:**
+  - If the whole server chain took over 15 s, the form would carry on as before. Netlify stops a function at 10 s, so a late 409 can't happen.
+  - `CORRECTION_RULES.weekendOnly` is unused, and the form still says "weekend morning" in words. Both stay true while `correctionWeekdays` is the weekend. Change them together.
+- **Tests:** `still-free.test.ts` and `week.test.ts`; 719 pass. The ranking test fails without the change.
+
+## eNov14: checked on the private preview (Deploy Preview #13, November 15)
+
+- **Private:** without the password, `/`, `/book`, `/api/send-confirmation` and `/js/funnel.js` all return 401; with it they work. Every response carries `noindex`. The live site answers 200 with no password, unchanged.
+- **Fix 1, double bookings:**
+  - **Kris, Wednesday December 9 at 6pm:** the first booking was written to 513 TEST Kris Bookings; a second customer at the same time got 409 and nothing was written.
+  - **Elijah at 2pm:** the same, on 513 TEST Bookings.
+  - **A first try at 10am was refused correctly:** Elijah's personal calendar is busy 11am to 12:30pm. The form doesn't offer that time either.
+  - Both test events were deleted afterwards (Emmett's approval).
+- **Fix 2, time zones:** on a Tokyo clock (already the 15th), the request days start on the 15th, Cincinnati's tomorrow. The week view and timeline draw with no script errors.
+- **Fix 3, drive home:** Mason, a 1pm start, real Routes data. With no job length the drive home is 31 minutes and travel is $25. With a 4-hour job it leaves at 5pm: 45 minutes, $35. This is question 17 for Elijah.
+- **Preview setup added for these checks (calendar session, Emmett's yes):**
+  - both TEST calendars are public as free/busy only;
+  - `GOOGLE_BUSY_ONLY_CALENDAR_IDS` adds 513 TEST Bookings for Deploy Previews only.
+
+## Decisions, November 15 (Emmett)
+
+- **Accepted:** the fee's name stays decided by noon, so the picker matches the receipt (fix 4).
+- **Accepted:** a clash that shouldn't turn the customer away goes to Elijah as a request, with nothing written onto the taken time. The three cases are standard hours, already paid, and a failed retry lookup.
+- **Approved:** test bookings on the preview, with the test events deleted afterwards.
+- **Rush-hour travel (fix 3):** kept for now, and asked of Elijah as question 17.
+
+## Overnight, November 15: the real form on the preview
+
+- **The taken-time path through the actual form:** a patched `fetch` sent another customer's booking with the form's own details just before Confirm. The server wrote theirs and refused ours with a 409. The form reopened Time with "Someone booked that time while you were deciding. These are the times still open." The taken Saturday 10am was not among the 5 times offered. No script errors. Screenshot: `docs/mockups/eNov14-preview-time-taken.png`. The other customer's test event was deleted.
+- **Kris's evening:** on Tuesday, November 17, 6pm, 6:30pm and 7pm read "Standard price", and 6pm carries the "Suggested" star. Only the fee starts from 8pm fold under "Later times". Screenshot: `docs/mockups/eNov14-preview-kris-tuesday.png`.
+- **Email logo broken on the preview:** expected. It points at the live site, where the image arrives with the same deploy.
+
+## eNov15: city and service pages rewritten after Emmett's review (November 15)
+
+**Emmett:** "Too direct. What are the buttons adding? The recent stain treatment doesn't have a before photo. What is a Delhi quote?"
+
+**Root cause:** the pages were written to the SEO checklist, not to a customer. The generators made that easy:
+- **Button text:** a free-text `cta` field on each page. Each page put its place name in it to look unique, so the button promised an "instant Delhi quote", which doesn't exist. The button opens the same booking form as every Book Now on the site.
+  - There were also four links to two places: the hero button, the end button, the end "See all packages", and the "Every package" link beside the packages.
+- **The hero photo:** a single image and a free-text caption. The city pages showed an "after" with no "before", captioned with a place ("on the west side", "on the northeast side") that nobody had checked. That breaks the owner rule that wording reflects reality.
+- **Proof photos:** service pages hand-picked their before/after pairs with no check that they showed that service. "Stains before and after" showed an interior reset and a console.
+- **Headings:** the defaults put the place name into every heading ("Why Delhi & Price Hill drivers trust 513 Auto Clean", "Proudly serving all of...", "Delhi & Price Hill questions").
+- **Local words:** with no local jobs or reviews from Elijah yet, they were filled with geography trivia (roads, river, truck traffic, bridle-trail mileage) to pass the duplicate-text check. That makes text unique, not useful.
+- **One untrue line:** Indian Hill said Showroom Ready Restoration is "priced after we see the car". The catalog has it at a fixed starting total.
+
+**Fix (two rounds):**
+- **Generators:**
+  - Every Book button reads "Book Now", typed in the templates, the same as the rest of the site. The `cta` field is gone. City pages end with one button; the packages link stays beside the packages.
+  - The hero is always a gallery before/after pair (`split-hero.mjs`, shared by both page types). The halves are labelled Before and After, and the caption is the gallery's own, with no place claimed. The build fails without a real pair.
+  - Service pages must list `proofServices`. Every hero and proof pair must carry one of those tags in `data/gallery.json`, and the hero isn't repeated in the proof row. The stain page now shows its one real stain pair and no proof row, until Elijah sends more.
+  - Default headings are plain: "Where we set up", "Where we go", "Common questions".
+- **Words:**
+  - Practical local detail instead of trivia: driveways in Delhi, street parking in Price Hill, garages and gates in Indian Hill.
+  - Elijah's voice (warm, plain).
+  - No location claims and no removal promises.
+  - H1s read "Mobile car detailing in Delhi and Price Hill".
+  - The eyebrows are the business's own area names (West side, Northeast).
+  - Trust pills don't repeat the opening sentence.
+- **Tests:** `locations.test.ts`, three new checks:
+  - every Book button says Book Now;
+  - every hero is a labelled pair with no place claim;
+  - no stuffed headings.
+  - 722 pass. No sideways scroll at 320, 375, 820 or 1440 px.
+- **Screenshots:** `docs/mockups/eNov15-seo-*`, before and after. All four pages are still drafts (`noindex`).
+- **Validation round (an independent agent):**
+  - **Delhi's street-parking advice contradicted the business rule** ("no driveway, we meet at a nearby lot", `BUSINESS-CONTEXT.md` 4.11). It now points to the form's own "I do not have a good location for a detail near me" box.
+  - **Two stiff lines** are rewritten.
+  - **Restoration wording** was repeated; it's now said once.
+  - **"What people book"** claimed local demand nobody has measured. It now reads "What you can book".
+  - **Stain treatment** now comes from the catalog (`{addon:stain}`).
+  - **The generators:**
+    - job and proof photos carry Before/After labels (`pairPics`, one markup for all three);
+    - the job, review and proof headings default to plain words;
+    - every city page must set its own eyebrow;
+    - a city hero needs both photos;
+    - a test bans the place name from city section headings.
+- **Not touched, for Emmett:** the catalog wording that also shows on services.html. "Not included: A promise every stain comes out completely" on the package cards reads oddly, and the ozone line says it "destroys the compounds causing the smell".
+
+## eNov15: catalog wording on services.html and the booking form (Emmett, November 15)
+
+- **Root cause:** catalog lines written as fragments or claims:
+  - "Not included: A promise every stain comes out completely" (Full Interior, Full Interior + Steam);
+  - "Not included: Anything deep: there should be nothing deep left" (Maintenance), plus "Keeps a already-detailed car right";
+  - "Ozone (O3) destroys the compounds causing the smell, not just the smell", which is close to the removal promises the rules ban.
+- **Now:**
+  - "Every set-in stain gone completely: some only fade";
+  - "Deep cleaning: it keeps an already detailed car that way", and "Keeps an already detailed car right";
+  - "An ozone treatment for smells that linger, run after the source is cleaned".
+  - The stain page's FAQ says the ozone reset "works on" what lingers, not "takes out".
+- **Where it shows:** the catalog is the one source, so services.html, the home page cards, the booking form and the SEO pages all change together.
+- **Also:** Elijah's November 15 answers are recorded (`QUESTIONS-FOR-ELIJAH-PACKAGES.md`); follow-ups and the SEO-page carousels are queued (`QUEUE-AFTER-FRIDAY.md`); JobsSync instructions as `docs/JOBSSYNC-INSTALL.pdf`.
+
 ## Leftovers noticed, not touched
 
 - `book.css` still has `.bk-time`, `.bk-times`, `.bk-bucket` and `.bk-juston` rules from an older slot design. They were unused before tonight.
+
+## Validation round, November 15 (end of day)
+
+- **Promo codes parked:** GOLF10 and PRESTIGE10 go back to Emmett as a question for after the freeze (`QUEUE-AFTER-FRIDAY.md`). Both stay `active: false`.
+- **Maintenance note:**
+  - **What changed:** "because there should not be anything deep left" is dropped, and "three months" and "a month or two ago" now read `MAINT_PRIOR.maxMonths` (`web/lib/catalog/seed.ts`), the same object as `requiresPriorDetail`.
+  - **Root cause:** the earlier wording fix covered the Not-included lines and missed the note and tip beside them. The month count was typed into the wording next to the setting it describes.
+  - **Test:** the booking form, Maintenance, the note and tip read "3 months".
+- **Delhi & Price Hill page:**
+  - **What changed:** "Plenty of people book us at work" is removed from the paragraph and FAQ 2.
+  - **Root cause:** it claims a demand nobody measured, the same kind of line as "What people book", which the validation round removed.
+- **Stale notes:**
+  - `test-gate.js` and `PLAN-eNov14.md` now describe the Deploy Preview, not a branch deploy.
+  - `CALENDAR-FIXES-PLAN.md` fix 4 records that the fee's name stays decided by noon.
+- **Status:** `STATUS-2026-11-15.md` is rewritten and now has a merge checklist: the gallery pairs, the draft pages that `build-dist` publishes, and the edge function on production.
+
+## Before/after carousel as the hero of the city and service pages (November 15)
+
+- **What:** Emmett picked option A ("as long as it has the animations"). The hero photo on all four draft pages is now the home page's Results carousel, one card in view, running the same 8 s shared wipe with the same controls.
+  - **Delhi & Price Hill:** 4 interior pairs.
+  - **Indian Hill & Madeira:** 4 different interior pairs, so the two city pages share no captions (R2).
+  - **Stain:** its one stain pair, which wipes on its own.
+  - **Interior:** 5 pairs.
+- **How:**
+  - `web/scripts/split-hero.mjs` `carouselHero()` writes the cards into the HTML. The photos and alt text are crawlable, and the first card is `fetchpriority="high"` and never lazy (SEO-COMPLIANCE.md, images and Core Web Vitals).
+  - `js/gallery.js` finds cards already in `#baGrid` and only starts the carousel, with no fetch. `script.js` has already bound their handles.
+  - `.loc-hero-ba` in `styles.css` sets one card in view, plus `min-width: 0`.
+- **City pages:** `hero.pair` became `hero.pairs`, a list of cards, checked at build for both photos.
+- **Service pages:** their separate before/after row is gone, because the carousel now shows those pairs. `proofH2` was removed with it.
+- **Bug caught in the mockup:**
+  - **Symptom:** on a 375 px phone the page grew to 746 px wide.
+  - **Root cause:** the hero grid's one column is `1fr`, whose minimum is the content's width, and the carousel track is a row of all its cards side by side.
+  - **Fix:** `min-width: 0` on `.loc-hero-ba`.
+- **Guard:** `locations.test.ts` checks that every hero card is a labelled pair with no place claim, that the first card is not lazy, that `gallery.js` is loaded, and that the card markup matches gallery.js `card()`.
+- **Checked:** headless Chrome at 1440×790 and 375×812 on all four pages.
+  - The wipe runs (before, then after, a hold, then the next card); the single stain card loops.
+  - No sideways scroll and no script errors.
+  - Book Now stays in the first screen.
+- **Test:** open each of the four pages. The hero should wipe from the before to the after and move on every 8 s. Pause should stop it, and the arrows and dots should change the card.
+
+## SEO spec recheck of the four draft pages (November 15)
+
+An independent audit went through every requirement in `docs/SEO-COMPLIANCE.md` (R1 to R7, the page checklist, structured data, claims).
+
+**Already met:**
+- titles 53 to 59 characters and descriptions 136 to 145, all different;
+- one H1 each;
+- canonicals that point to the page itself;
+- all images under 150 KB;
+- the first hero photo never lazy;
+- R2 duplicate scores well under the limit (city pair Jaccard 0.098, containment 0.19);
+- ZIPs from BUSINESS-CONTEXT;
+- no typed prices;
+- no review or FAQ markup;
+- no licensed or insured, best, tanks or ceramic claims.
+
+**Fixed now:**
+- **Invalid schema type:**
+  - **What changed:** `areaServed` used `"@type": "PostalCode"`, which isn't a schema.org type. ZIPs are now a `Place` with a `PostalAddress`, and the city `Service` has an `@id` and a `name`, as in the spec's example.
+  - **Root cause:** the type was written from memory and never checked against schema.org.
+- **Unmeasured claim:**
+  - **What changed:** "Plenty of customers leave us the keys" (interior FAQ) is gone.
+  - **Root cause:** it's the same unmeasured kind of line fc7258e removed from Delhi; that fix searched one page, not all four.
+- **Removal outcome in alt text:** the pet hair pair's after alt said "pet hair removed" and now reads "vehicle floor and seats cleaned of pet hair".
+- **Oversized photo:**
+  - **What changed:** `ba-pethair-before-1120.webp` was 157 KB and is recompressed to 126 KB, at the same 1120×840.
+  - **Root cause:** the carousel's `srcset` now offers the 1120 width, which nothing on the city and service pages used before.
+- **Unsourced neighborhood:** "Camargo" is removed from Indian Hill's list. It's a road and a company there, not a neighborhood.
+- **R7:** city pages now link to each published service page (none yet, while they're drafts).
+
+**Left for before publishing** (recorded in `STATUS-2026-11-15.md`): drafts ship in `dist/`; the R1 job ZIP check; R2 measured on rendered text; R7 nearby pages; the ZIPs from one source; the R6 typed-number check; R3 `writtenBy` and a person's sign-off on the paragraphs; area-specific FAQs (R5); the hub and URL scheme sign-off; the Rich Results Test.
+
+## SEO build checks (November 15, Emmett: "Start the SEO build checks")
+
+**What changed.** The build now enforces `docs/SEO-COMPLIANCE.md`, not just part of it.
+- **R6:** a page config that types a business number fails: `$`, `%`, minutes, hours, days, months, miles, degrees or a clock time. Prices are said through `{price:}` and `{addon:}`, and ZIPs and road numbers are allowed (`typedNumbers()`).
+- **R2:** the duplicate check runs on each page's rendered visible text with both pages' place names blanked. City pages are compared with each other and with Range & Travel and the home page; service pages with each other and with Services and the home page.
+  - Today the city pair scores 0.10 (containment 0.19), the service pair 0.11 (0.25), and nothing scores above 0.04 against a hand-written page.
+  - **Root cause of the old gap:** it compared config fields only, so shared template text (trust pills, price lines) was never counted, and the home and Range & Travel pages were never compared.
+- **R4:** each city names its `area`, and its ZIPs must be in that area of the new `config/areas.json`. That file is the Accounting sheet's `AREAS` table, copied once, and a test fails if `tools/jobs-sync/JobsSync.gs` and it differ. City pages need 3 to 12 neighborhoods.
+  - **Root cause:** the ZIPs were typed per page and never checked against anything.
+- **R3:** the local paragraph is held to 120 to 180 words, up from 100 to 190.
+- **On publish:**
+  - **R1:** each local job carries its job `zip` (one of the page's) and `reviewed: true`, and each review carries the reviewer's `area`. Review names now link to the Google profile.
+  - **R3:** `writtenBy` must be Elijah or Emmett.
+  - **R7:** a published page can't list a draft as nearby, and every `nearby` entry must exist (at most 4).
+- **Drafts stay off the live site.** `build-dist.mjs` publishes only published pages when Netlify's `CONTEXT` is `production`; Deploy Previews still get the drafts for review.
+  - **Root cause:** `generatedPages()` fed every page to publishing, so a merge would have put four unfinished pages at public addresses.
+- **Delhi and Indian Hill no longer list each other as nearby.** They're on opposite sides of town.
+
+**Checked.** I broke the Delhi config on purpose (a typed "3 hours", a Northeast ZIP, an unknown nearby page, published with no evidence) and the build named all six problems. Restored, rebuilt, and a `CONTEXT=production` dist has no draft pages. 728 tests pass.
+
+**Not built (owner's call, `STATUS-2026-11-15.md`):** the flat addresses instead of `/locations/<slug>/`, and Range & Travel as the hub.
+
+## Open fixes from the November 13 review, no mockup needed (November 15, Emmett: "start working on all readily open tasks")
+
+A read-only triage checked every item still queued from the November 13 pre-release review. None had been fixed. A8a (Package then Continue "skips" Extras) turned out not to be a bug: the extras are folded behind "View additional options" by the owner's November 10 rule. The items below needed no mockup and no decision.
+
+- **A saved booking no longer shows "Something went wrong" (A11c).**
+  - **Symptom:** when the site's own confirmation had saved the booking (event written, emails sent) but the Web3Forms copy failed, the customer saw "Something went wrong… call or text" with a confirmation email already in their inbox.
+  - **Root cause:** `sendConfirmation()` only reported a 409, so `sendRecord()` judged success by Web3Forms alone.
+  - **Fix:** it now also reports `saved` (Elijah's email went out, the calendar has it, or an earlier try saved it), and Done shows whenever the booking is saved.
+- **A booking the site couldn't save is flagged to Elijah (A11a, reply side).**
+  - **Symptom:** a refused confirmation (a missing Turnstile token, a server error, no answer in 15 s) went on through Web3Forms with no sign it never reached the calendar.
+  - **Root cause:** the form ignored every reply except 409.
+  - **Fix:** the Web3Forms subject and body now start "CHECK THE CALENDAR".
+- **Turnstile drawn for every booking (A11a).**
+  - **Symptom:** once `TURNSTILE_SECRET_KEY` was set, every booking would have been refused.
+  - **Root cause:** the box was drawn only inside the card step, which doesn't exist while card-on-file is off, and it was drawn only if the script had already loaded.
+  - **Fix:** the box is now drawn in Review whenever there's a site key, and `mountTurnstile()` waits up to about 20 s for the script. Nothing changes without a site key (none today).
+  - **Guard:** `funnel.smoke.test.mjs` checks the box appears with a key and cards off.
+- **A fee time is never steered (S9).**
+  - **Symptom:** a 6am pick was offered 6pm.
+  - **Root cause:** `steerFor()` compared fee percentages, on the assumption that suggestions are fee-free; a calendar BEST start can carry a late fee equal to the early one.
+  - **Fix:** a time with an early or late fee gets no suggestion, as the owner's November 10 rule says.
+- **Typed numbers moved to settings (S11):**
+  - the Done screen's "within the next day" test was a typed `86400000`; it's now `shortNotice()`, and the words come from `shortNoticeHours` (`noticeWords()`), as does the advice step's line;
+  - "We arrive within its first hour" now reads the detailer's arrival window (`spanWords(windowMin())`);
+  - a promo `label` or `blurb` whose "10%" or "$N" differs from its `percentOff`/`dollarsOff` now fails the build (`checkPromoCodes`).
+  - **Guards:** `scheduling.test.ts` and `promos.test.ts`.
+- **One clock style (S3).**
+  - **What changed:** every date with a time in the form (Review, Done, the leave dialog, the time-switch warning, the advice hold, the multi-day list) and in the emails (subject, heading, arrival line) now reads "Monday, November 16 at 10am", the time picker's style. It used to say "10:00 AM" in some places and "10am" in others, and the emails mixed "10:00 AM" with "10 AM".
+  - **How:** `longWhen()` in the form; `whenLabel()` and `clock()` in `send-confirmation.mjs`. The calendar event and JobsSync are untouched. The Web3Forms subject, which only Elijah reads, keeps its numeric date.
+- **The phone menu uses the nav names (S7):** "Services" and "Range & Travel" (were "Services & Pricing" and "Range & Travel Costs"), per the CLAUDE.md nav-name rule. The second Contact Us waits for Emmett's pick.
+- **Ozone:** "Expect a 60 to 90% reduction in organic odors" is gone; it now reads "How much it helps depends on the smell and how long it has set in." It was a percentage promise, against the no-removal-promises rule.
+
+**Checked:** 730 tests pass and the build passes.
+
+## Confirm froze the page when the calendar couldn't be read (found November 15, live since November 13)
+
+- **Symptom:** on Review, Confirm froze the browser tab for good: nothing was sent, and the page stopped responding. It was found while testing the save fixes on a local copy with no calendar key.
+- **Root cause:**
+  - `advance()` re-checks the time before booking when the last free check is over 5 minutes old (cdfcbe8, final review, November 13).
+  - `verifySlot()` answers "free" without stamping `lastFreeCheck` whenever it has nothing to check against: no calendar key, a calendar read that fails, or a multi-day plan it can't make.
+  - `checkThenAdvance()` then called `advance()`, which saw the old stamp and checked again, in an endless loop of instant promise steps that never let the page paint.
+  - **On the live site** (`main`, c184f26) this happens whenever the calendar read fails at Confirm: a Google outage or quota, or a network or extension that blocks googleapis.com. The booking is lost, and Elijah gets nothing.
+- **Fix:** `checkThenAdvance()` stamps `lastFreeCheck` before it advances on a free answer, so one Confirm is one check.
+- **Guard:** `funnel.smoke.test.mjs`.
+- **Done no longer says "confirmed" when the site couldn't save** (CLAUDE.md: "confirmed" only once the event is written). When `send-confirmation` refuses or doesn't answer, Done now shows the existing not-on-the-calendar wording: the title "Request sent", "We confirm it, usually within a few hours… treat the time as requested", and "Nothing is settled until you hear back from us". Elijah's Web3Forms copy says "CHECK THE CALENDAR".
+- **Checked** in headless Chrome on the local build, with the network faked:
+  - **Saved, and Web3Forms returns 500:** "You're fully confirmed".
+  - **Refused (400), and Web3Forms OK:** "Request sent", and the Web3Forms subject starts "CHECK THE CALENDAR".
+  - **The same walk on 822be93's form:** froze at Confirm.
+- 731 tests pass.
+
+## Validation round on the booking and SEO fixes (November 15)
+
+An independent review of a5f1570..bc0a266 found:
+- **"Confirmed" on screen when the email said otherwise.**
+  - **Root cause:** Done used one flag, `saved`, for two jobs: "someone has it" (enough to skip the Web3Forms error) and "it's on the calendar" (needed to say confirmed). A failed calendar write, a taken time sent to Elijah as a request, or a time that couldn't be checked before writing all showed "You're fully confirmed" while the customer's email said "we will confirm".
+  - **Fix:** `sendConfirmation()` now returns `confirmed` too: a duplicate, or `calendar.ok` and not `unchecked`, the same test as `customerEmail()`. Done and next steps read `state.unconfirmed`.
+  - **Checked** in headless Chrome:
+    - **Calendar write failed, Elijah's email sent:** "Request sent", and Web3Forms carries no CHECK flag, because Elijah's own email already says NOT ON THE CALENDAR.
+    - **Saved:** "You're fully confirmed".
+    - **Refused:** "Request sent" and CHECK THE CALENDAR.
+- **Turnstile tokens are single-use.**
+  - **Symptom:** the card and PayPal checks spent the token, then the confirmation was refused. A retry reused a spent token, and a fast Confirm sent none.
+  - **Fix:** `spendTurnstile()` after each server check resets the widget. `turnstileReady()` waits up to 8 s for a fresh token before the confirmation; without one it still books, refused and flagged to Elijah.
+- **"CHECK THE CALENDAR" went on requests too**, which never touch the calendar. It's now only for bookings.
+- **The number check (R6) is wider:**
+  - **What now counts:** word numbers ("an hour", "two to four days"), a word in between ("2 business days"), "40°", "percent", "noon" and "next day". Every string field of a page config is scanned, headings included (`configWords()`), not a hand-picked list.
+  - **A false positive is gone:** "2 amazing" no longer reads as 2am.
+- **Duplicate check:**
+  - `mainText()` throws on a page with no `<main>` and no chrome markers, rather than comparing nothing.
+  - Hex entities are decoded.
+  - A `roads` list is blanked like other place names.
+- **Reviews:** a review's `area` must be a place the page covers.
+- **Promo check:** only the amount off ("10% off", "$20 off") must match its setting, so a blurb can state its minimum.
+- **Done's top strip** now uses the same clock style ("Nov 15 at 3:41pm").
+
+**Left as is:** the 15 s timeout race. A server slower than 15 s means a "Confirmed" email beside a "Request sent" screen, and Elijah gets two emails. That's safe in the conservative direction.
+
+## Emmett's picks, November 15
+
+- **"Tap" on desktop, reworded, the same on every device:**
+  - "Tap a time to pick it" became "Pick the time that suits you".
+  - "Saved. Tap Book Now whenever you are ready and it will be here" became "Saved. Next time you open Book Now, your answers will be filled in". Emmett turned down "Book Now brings it back" as vague.
+  - "A few taps" became "A few quick questions".
+- **Leave dialog:** "Back to my booking" became "Back to my quote", and "Cancel my booking" became "Discard this quote". No booking exists at that point, and the title already says "quote".
+- **Phone menu:** the Contact Us list link is dropped; Contact Us stays as the button under Book Now (`web/partials/header.html`). It used to show twice. CLAUDE.md's nav rule now says so.
+- **Live site:** no change, and no PR. The Confirm freeze fix waits for the eNov14 merge (Emmett: "WAIT FOR THE MERGE").
+
+## Booking form fixes 1 to 6 from the mockup sheet (Emmett, November 15: "Build all"; item 7 waits for a second go)
+
+Mockups: `docs/mockups/eNov15-booking-fixes-mockups.png`.
+
+1. **The week picker starts today.**
+   - **Root cause:** weeks were Sunday to Saturday (`weekStartOf`), so on a Wednesday the picker opened on three greyed past days.
+   - **Fix:** `weekFromToday()` in `week.ts`. This week starts today; later weeks are whole weeks on from it, counted in local days so a clock change can't shift them. The form's `weekOf()` uses it everywhere a week begins (opening, the arrows' disabled state, Back to today, back to the chosen time, Go to a date). The arrows still step a week (`addWeeks`).
+2. **The browse list shows add-on prices that depend on the package.**
+   - **Steam:** shows "$80 with Full Interior" under its $115.
+   - **Showroom Ready Restoration:** shows "$445+, total with Full Interior". It's also filtered and sorted at that total, so "Under $250" no longer lists a job that starts at $445.
+   - **Source:** both come from the catalog (`withPackage`, `totalWith`), and a promo code discounts them like any other price.
+3. **The weekend label.** A first no-rush day on a Saturday or Sunday is now the weekend pick, "This weekend" (`afterRushWeekend`), and the later weekend day is "Also open". Weekday picks keep "In N days" (owner, November 10). `TIME_RECOMMENDATION_RULES.version` goes to `best-2`, so analytics separate the two.
+4. **"tax included"** shows in the bottom bar once the ZIP is in.
+5. **The second-vehicle line is in Emmett's words:** "Take 10%, which would currently save $50.67. We only drive out once." The percentage comes from `RULES`, and the figure is today's saving on two.
+6. **The size pill says "No extra"**, which fits on one line on `/book`.
+
+**Checked:**
+- 733 tests pass, with new `weekFromToday` and weekend-label tests.
+- In headless Chrome on the build, with the clock set to Wednesday November 18:
+  - **Arrows:** the week reads Nov 18 to 24 with back disabled, then Nov 25 to Dec 1 and Dec 2 to 8, back again, and "today" returns to Nov 18.
+  - **Labels** (Thursday clock): Soonest, This weekend, Also open.
+  - **Browse prices:** match the mockup.
+  - **The pill:** one line (26 px).
+- No script errors.
+
+## Hover styles only where there's a mouse, site-wide (item 7; Emmett approved it and left booking form vs site to me, November 15)
+
+- **Symptom:** a phone treats a tap as hover and keeps it until the next tap elsewhere. A tapped option stays red or lifted beside the one actually chosen:
+  - the booking form's size cards and package rows;
+  - the Contact form's preference pills;
+  - the carousel's arrows and dots, and the reviews arrows;
+  - the home page's Call, Text and Email tiles, which stayed shifted and red after the dialer returned. Red means brand or error on this site, so a stuck red reads as wrong.
+- **Root cause:** every `:hover` rule (55 in `book.css`, 32 in `styles.css`) applied on any device. Nothing hid them from touch screens.
+- **Why site-wide, not just the booking form:**
+  - the same bug sits in the Contact form (the other place people choose between options) and on the home page's contact tiles;
+  - a single rule can be tested (`hover.test.ts` fails on any unwrapped `:hover`), while "booking form only" would leave the site to collect new unguarded rules;
+  - desktop is unchanged either way;
+  - phones lose only stuck states, because none of the 87 rules reveals content or a control, and the default tap flash still shows on every tap (no `-webkit-tap-highlight-color` is set).
+  - **The cost:** an iPad driven with a trackpad reports "no hover", so it loses the hover look. Touch laptops with a mouse keep it.
+- **How:** each rule is wrapped in `@media (hover: hover)` where it stands, so the order and specificity are unchanged. Three rules shared `:hover` with a state and were split, so the state still applies everywhere:
+  - `.bk-askrow.on`;
+  - `.nav-more > button[aria-expanded="true"]`;
+  - `.nav-more-menu a:focus-visible`.
+- **Checked** in headless Chrome:
+  - **Desktop, pointer over an element:** the same computed styles in the old and new builds (Contact pill red, button lifted 2 px, size card red and lifted 1 px).
+  - **Emulated phone (touch, no hover), pointer resting on an unchosen Contact pill:** red in the old build, grey in the new.
+  - **No pointer at all:** contact, faq and service-area are pixel-identical. services.html varies between two loads of the same build, so it can't be compared that way.
+- **Guard:** 735 tests pass, with the new `hover.test.ts`.
+
+## Validation round on the booking-form fixes (November 15)
+
+- **"This weekend" could name a weekend a week or more away.**
+  - **Root cause:** `afterRushWeekend` was set for any Saturday or Sunday.
+  - **Fix:** it's now set only for a weekend day before the next Monday (`thisWeekend`). On a Sunday that means today only.
+- **The card after "This weekend" could jump a week.**
+  - **Root cause:** with the coming weekend's Sunday full, the `weekend` reason took next Saturday, ahead of the open weekdays between.
+  - **Fix:** it now takes the next no-rush day after "This weekend", in date order.
+  - **Guard:** a new `week.test.ts` case for both.
+- **Picking Restoration from the browse list lost it silently.**
+  - **Root cause:** the pick set only the add-on, so choosing Basic Interior next dropped it with no word. This was older behaviour, made likelier by the list now saying "$445+ total with Full Interior".
+  - **Fix:** a `totalWith` add-on now starts the vehicle on that package.
+  - **Checked:** in the browser it shows Full Interior, 1 extra, $445.
+- **"tax included"** now also shows when a promo or the multi-vehicle saving applies.
+- **The with-package price under steam** shows one plain figure after a promo code, not a struck price inside the small grey line.
+- **"Tap to call, or copy the number"** on Contact and the home page now reads "Call, or copy the number". The privacy policy's "the next time you tap Book Now" waits for the next legal update, because changing it means a new policy date.
+- **Docs:**
+  - **Fixed:** the doc comment `weekOf()` had been put between; the status (test count, the live-bug line Emmett answered, the drafts decision, the carousel line); the queue (done items marked).
+  - **Noted:** a week shown across midnight keeps yesterday's start until "This week" or a fresh open. Prev and Next stay consistent.
+- **Tests:** 736 pass.
+
+## The bar's struck price matches "You saved"; Elijah's start-times line (November 15)
+
+- **Struck price vs "You saved":**
+  - **Symptom:** with a promo code on a two-vehicle booking, the bar struck $378.38 (only the code taken off) beside a $336.34 total, while the table said "You saved" about $78, and the two figures never subtracted to each other.
+  - **Root cause:** the bar re-priced the booking without ONE discount (the code, or the extra-vehicle rate), tax included, while "You saved" added up every discount line without tax.
+  - **Fix:** both now come from one re-pricing with every discount off (`undiscounted()`: no code, no extra-vehicle rate, no interior-and-exterior combo, not paid in full), tax included. Struck price minus total is "You saved", always. The percentage stays the share of the service, before tax.
+  - **Checked** in headless Chrome:
+    - **Two vehicles:** $420.42 struck, $378.38 total, "You saved $42.04 (10% off)".
+    - **Plus LIKENEW:** $420.42 struck, $336.34 total, "You saved $84.08 (20% off)".
+- **Standard start times:** the line shown when times are standard hours now reads, in Elijah's words, "These are our standard start times. Pick any time slot that suits you best." It used to read "Pick whichever suits and we will confirm it, usually within a few hours. If a time ever needs moving we will text you first."
+- **Tests:** 736 pass.
+
+## "You saved" says what it includes (Emmett's pick, November 15: "Keep it, label the tax")
+
+- **Symptom:** after the bar and the table were made to agree, "You saved" became the true difference, tax included, so a "-$25.00" combo row sat above "You saved $26.95". With a rush or early/late fee it was larger still, because the fee is a percentage of the discounted price.
+- **Root cause:** the figure changed meaning (rows before tax became money actually saved), and nothing on screen said so.
+- **Fix:**
+  - **The table:** "You saved $26.95 (5% off, tax included)", or "(…, tax and fees included)" when a fee is in the total (`savedNote()`).
+  - **The bar:** it now strikes the no-discount price for EVERY kind of discount, not just a code or a second vehicle. It names the discount when there is one ("interior + exterior saving applied", "paid-in-full saving applied") and says "savings applied" when there are several (`discountKinds()`). With two discounts it used to credit the whole saving to one of them.
+- **Also:** stale comments (the old `savings()` comment, "Re-priced without the code", `publicCalendar.ts` "still need confirming") and the status and queue lines.
+- **To test:** in Review, for each case, check that the struck price minus the total equals "You saved", with the label shown.
+
+  | Case | Bar | "You saved" | Struck minus total |
+  |---|---|---|---|
+  | Interior + exterior | "$517.44 interior + exterior saving applied · tax included" | "$26.95 (5% off, tax included)" | $26.95 |
+  | Two vehicles + LIKENEW | "$420.42 savings applied · tax included" | "$84.08 (20% off, tax included)" | $84.08 |
+  | Two vehicles, tomorrow (rush) | "multi-vehicle saving applied" | "$50.45 (10% off, tax and fees included)" | $50.45 |
+
+  All three were checked in headless Chrome.
+- **Guard:** `funnel.smoke.test.mjs`. 737 tests pass.
+
+## Validation round on the saving labels (November 16)
+
+- **The saving test only read the source text.**
+  - **What changed:** the words and the arithmetic moved to `web/lib/pricing/savings.ts` (`discountKinds`, `barLabel`, `savingSummary`), called by the form through the bundle, and `savings.test.ts` prices real carts.
+  - **What it checks:** no discount; the combo; two vehicles with a code ("savings applied"); one code ("LIKENEW applied"); a rush fee; and no ZIP yet. In each case it checks that struck minus total equals "You saved", and checks the note.
+- **"tax and fees included" could read as if travel were part of the saving.**
+  - **What changed:** the note now names the fee from its own line, singular: "tax and rush fee included", or "tax and late start fee included".
+  - **Root cause:** a generic plural for the one fee that's a percentage of the discounted price.
+- **The longest bar label reached the edge of a 320 px phone.**
+  - **Example:** "$544.39 interior + exterior saving applied · tax included".
+  - **Root cause:** the bar line never wraps (`.bk-total { white-space: nowrap }`).
+  - **Fix:** under 400 px it wraps, balanced over two lines so no word sits alone (CLAUDE.md, no orphaned words).
+  - **Checked** at 375 px (one line) and 320 px (two balanced lines). It never overlaps Continue or scrolls sideways.
+- **Tests:** 743 pass.
+
+## Long-session audit and the after-approval runbook (November 16, Emmett: "Make sure we have all the after toll free approval queue ready")
+
+**What the audit did.** It read every message from November 9 to 16, including the 93 typed while the agent was busy (stored apart from ordinary messages, so a plain filter misses them), and checked each one against the repo.
+
+**Findings:**
+- **One request lost:** booking links sent from the CRM.
+- **Partial:** the 513-brand headline A/B test; how a job is marked done from a phone (never asked); the travel-tax question (no owner).
+- **Stale:**
+  - the OneDrive shortcut step;
+  - the jobs calendar and Kris's sharing in `DETAILERS-GUIDE.md`;
+  - `STATUS-2026-11-13` (Place ID and `noFeeStarts`);
+  - the photo folder's access line;
+  - the phone swap's old due date.
+- **Dropped:** the `check-live.mjs` STALE issue.
+- **Standing rules kept only in plans:** mockups first, validation at the end of each push, private testing, public-repo hygiene, secrets, plain wording, and the freeze.
+
+**Fixes:**
+- **`docs/AFTER-TOLL-FREE-APPROVAL.md`, new:** every step that waits for approval, in order, with who approves it and the checks to run.
+  - **The git-history step was wrong in the old queue.** Emmett's email is only in f9a0f6b, on `eNov14`, so a plain merge would have copied it into `main`. The runbook now squash-merges PR #13, then deletes `eNov14` and asks GitHub Support to purge the old refs. `main` is never force-pushed.
+  - **Two steps added:** the privacy policy's "tap Book Now", and `automatedTexts`, which turns on only once GoHighLevel sends texts.
+- **`QUEUE-AFTER-FRIDAY.md`:** a "From the long-session audit" section (the CRM link, the headline test, `check-live`, done-marking, travel tax), and the stale lines fixed.
+- **`STATUS-2026-11-15.md`:** new sections for the after-approval runbook, Waiting on Imperion, and queued-but-not-started work; fuller Waiting on Emmett and Elijah lists.
+- **`DETAILERS-GUIDE.md`** and **`STATUS-2026-11-13.md`** (marked superseded) corrected.
+- **CLAUDE.md:** the Git rule now names `eNov14`, plus a freeze rule and "How Emmett wants work done".
+- **Memory:** the browser to use for Google and Netlify; the dangling `[[ghl-keys-request]]` link removed.
+
+## The headline A/B test, a demo of the test system (Emmett, November 16)
+
+- **What:** test `hero-headline`, `running`, splitting the home page headline three ways:
+  - "Professional mobile detailing in Greater Cincinnati." (control, 34);
+  - "…in Cincinnati." (33);
+  - "…across the 513." (33).
+
+  Emmett wants it as a first test to prove the system end to end. It starts when eNov14 is live; run 4 weeks, then end it with the winner.
+- **New: changing words without hiding them** (`data-exp-words` in `js/analytics.js`):
+  - **What it does:** the page keeps the control's words, so Google reads "Greater Cincinnati" and there's one `<h1>`. A visitor in another version gets the HTML from `data-exp-<version>` swapped in before the headline fades up.
+  - **Why not the old way:** `data-exp` hides every version until a script picks one, so a headline would start empty and the page would carry three.
+- **Bug found by the demo, fixed:**
+  - **Symptom:** a booking named only the tests asked about on the page where it was made. A visitor shown a headline on the home page who booked from Services was recorded with no version.
+  - **Root cause:** `AC_EXPS()` read this page's choices only.
+  - **Fix:** it now also lists every running test the visitor is in, from storage. Ended tests aren't reported.
+- **Tests:** `experiments.test.ts`: the swap for each version and for an off test; a booking on another page naming the version. 745 pass.
+- **Checked in the browser, on the build:**
+  - each version shows its own headline (one `<h1>`, the red ending right);
+  - on Services, `AC_EXPS()` names that version, which is what the booking email carries;
+  - a new visitor is drawn once and keeps the version on reload;
+  - no script errors.
+- **Also:** `docs/ELIJAH-UPDATE-2026-11-16.pdf`, the handoff to Elijah with all 70 FAQ questions, the 6 to rewrite and 64 new ones (the PDF he asked for).
+
+## Validation of the headline test (November 16)
+
+- **Bug: the control's headline showed first, then changed.**
+  - **Symptom:** a visitor in "across the 513" on a slow phone (1.6 Mbps, 150 ms) saw "Greater Cincinnati." at full opacity for about 0.4 s, then the swap and a shift. With reduced motion it was certain whenever the script was late.
+  - **Root cause:** the swap ran from `js/analytics.js`, which was `defer`, so only after the whole page had parsed. The hero fades in from CSS without waiting for scripts (on purpose: it's the page's largest paint). The comment and `AB-TESTING.md` said "before it fades up", and nothing made that true.
+  - **Fix:** `analytics.js` loads from the head without `defer` (the head partial). A `MutationObserver` swaps each `[data-exp-words]` element as soon as a node follows it, so the parser has closed it. The callback runs before the next paint. The banner and the `data-exp` elements wait for the page to be parsed (`readystatechange` to interactive), the same moment as when the file was deferred.
+- **Gap: nothing checked that a page carries words for every version.** A version added in config without its `data-exp-<version>` attribute would be recorded under its name while its visitors saw the control. `checkExperimentPages()` in `web/scripts/experiments.mjs` now runs in `render-config.mjs` over every page and fails the build. The check also covers `data-exp="test:version"` naming a real test and version. A version can't be called "words".
+- **GA4 events on other pages carried no headline version.** `variantString()` read this page's tests only; it now uses the same list as `AC_EXPS()`.
+- **Docs:**
+  - the runbook lists the headline test in what ships and in what to tell Elijah, with a step to write its real dates into the `note`;
+  - "rebase eNov14" became "merge `origin/main` in", because a rebase needs a force-push;
+  - STATUS no longer lists the test as not started.
+- **Elijah's PDF:** a booking that didn't reach the calendar is subject "NOT ON THE CALENDAR" from the server, and "CHECK THE CALENDAR" only from the backup form. The PDF said only the second; reprinted.
+- **Tests (757 pass):**
+  - the swap waits for the headline to close, then happens before parsing ends;
+  - an ended test shows the winner's words;
+  - GA events on another page carry the version;
+  - the banner still shows once the page is parsed;
+  - the page check, against every page as shipped and six wrong cases.
+- **Checked in headless Chrome on the build** (1.6 Mbps, 150 ms latency, 390 px wide), reading the headline every frame:
+  - versions the-513 and cincinnati, the control, a new visitor, reduced motion, and `analytics.js` held back by 0.8 s;
+  - every time, the first frame with a headline already showed the visitor's version;
+  - no script errors.
+
+## Validation cycle 2: the server and the calendar (November 16)
+
+- **A retry could be told its own booking was "taken".**
+  - **Root cause:** `findBookingEvent` (`_gcal.mjs`) returned `null`, meaning "no earlier event", when Google failed the lookup or there was no token. So `lookupFailed` was never set, the first try's own event read as a clash, and the form said "Someone booked that time".
+  - **Fix:** it throws when it couldn't look. The booking then goes through as a request, with nothing written and "NOT ON THE CALENDAR" to Elijah, as designed for an unknown retry. `booking-followup` already catches it.
+- **The event end ignored the arrival delay the server had just found.**
+  - **Root cause:** the events were built before the re-check, from the form's `arrivalLateMin`. A job booked since could push the arrival later, and the next job that day was then spaced short.
+  - **Fix:** the events are built after `slotStatus`, with the larger of the two lateness figures.
+- **The owner email didn't name the A/B test versions, the source or "heard about us".** Those were only in the calendar event, so a booking with no event recorded them nowhere. They're now rows in the email, escaped.
+- **No time limit on the reads before the write** (the calendars, the personal feed, Maps). `inTime()` (4 s) in `_detailers.mjs`: out of time counts as "could not read", which every caller already handles.
+- **Paint correction's starts and days weren't checked on the server's one-day path.** `slotStillFree` now passes them, as the form does.
+- **Not fixed, by design:** two different customers confirming the same time within about a second can both pass, because the check reads and then writes. The window is far smaller than before fix 1. Closing it needs a re-read after writing, which is a design change; it's in the improvements list.
+- **Tests (762 pass):**
+  - the failed-lookup retry;
+  - the event end with the server's lateness;
+  - the owner-email rows;
+  - the time limit;
+  - correction starts and days.
+
+## Validation cycle 3: city and service pages (November 16)
+
+- **R1, "a review from this area", passed for any Cincinnati review.**
+  - **Root cause:** the check matched the review's town against `placeNames()`, which splits "Price Hill, Cincinnati, OH" into `cincinnati` too.
+  - **Fix:** `reviewFromArea()` takes the review's own town (before a comma or bracket) and requires it to be the page's name, a neighborhood or an `areaServed` place, whole.
+- **Unchecked photos had no gate.** Elijah's 5 pairs would have led the home carousel on the live site.
+  - **Fix:** they carry `"reviewed": false`. `build-dist` fails on one outside a preview (`isPreviewBuild`), and `_howToAdd` says how.
+  - `third-row-seat-stains` is a portrait before against a landscape after. That's written into the runbook's review step.
+- **Drafts reached any build that wasn't exactly `CONTEXT=production`,** for example a laptop build deployed with `--prod`.
+  - **Fix:** `distPages()` includes drafts only on Netlify previews or with `PREVIEW_BUILD=1`.
+  - The test now checks the behaviour across contexts, not the source line.
+- **R6 holes:**
+  - a hyphenated count ("a 15-minute drive", "two-hour job", "30-mile") wasn't caught; now it is;
+  - a travel promise ("free travel", "no travel fee"), the spec's own example, is caught too.
+  - "Removal" is left alone: "Pet Hair Removal" is the catalog's own name, a parked question for Emmett.
+- **One job could be "local" to two city pages.** The build now fails on a pair used as a local job on more than one page.
+- **Service-page structured data stated the small-car "from" price as exact.** It's now a `priceSpecification` with `minPrice`.
+- **R2 gaps:** service pages are now compared with the city pages, `faq.html` and `about.html` as well. It passes today.
+- **Alt text:** the home "Paint Correction + Ceramic Coatings" button's photo is the headlight pair, and its alt now says so.
+  - The label is Elijah's (November 13). Showroom Ready does include a real ceramic coating, so it stays.
+- **Checked:** `/slug` addresses without `.html` answer 200 on the Deploy Preview (Netlify serves `slug.html`). Only the local demo server returned 404.
+- **Tests (765 pass):**
+  - drafts across contexts;
+  - the review town;
+  - R6's new cases;
+  - the photo gate.
+
+## Validation cycle 1: the booking form (November 16)
+
+- **The price table scrolled sideways on phones when a fee met a discount.**
+  - **Root cause:** the new "You saved" note ("(10% off, tax and rush and early start fee included)") sat in the price column, which is `nowrap`. At 375 px the table measured 444 px.
+  - **Fix:** the note is on its own line under the figure and wraps (`book.css`, `tr.saved td:last-child i`).
+  - **Measured at 320, 375 and 414:** the table is 254, 309 and 348 px wide, inside its box; the page doesn't scroll sideways.
+- **The check before Confirm used a different drive for a multi-day job than the search that offered it.**
+  - **Root cause:** `verifySlot` used `driveFor()` (per detailer), while `paintSlotsInner` plans long jobs with `travelAllowanceMin()`. The two plans could differ, so a free time read as taken.
+  - **Fix:** a job past one day is checked with `travelAllowanceMin()`.
+  - **Also:** `measureEachDetailer` re-measures when the job length changes, not only the address, because the drive home is timed from the finish.
+- **Browse list:** Showroom Ready Restoration's row showed the total with Full Interior beside the add-on's 3 hours alone. It now shows the whole job's time.
+- **Done when the calendar couldn't be confirmed:** the title said "Request sent", but the body said "We have your booking". It now says "We have your request for …. We will confirm the time with you shortly."
+- **A detailer with no arrival window (DETAILERS allows 0)** read "10am to 10am" and "within its first 0 minutes". It now reads "arrive 10am" and "We arrive at that time".
+- Tests: 765 pass. The savings sweep the agent ran (12,576 discounted combinations) found no wrong figure.
+
+## Validation cycle 5: wording, docs, privacy (November 16)
+
+- **Dropping an unchecked pair could leave its photos on the home page.** The home buttons named image files directly, so the photo gate never saw them.
+  - **Fix:** `render-site.mjs` fails the build when a home button's `ba-<slug>-` photo isn't a pair in `data/gallery.json`. An unchecked pair already fails any build except a preview.
+  - The runbook's review step now lists every place each of the 5 pairs is used.
+- **Runbook:**
+  - warn Elijah before the after-deploy real test booking (JobsSync can copy its total into his sheet);
+  - one legal update after the freeze, covering four things:
+    - the privacy policy's "tap";
+    - the terms' travel wording, which no longer matches the price (the drive out and back, with the drive back timed at the job's end);
+    - "two versions" (the headline test has three);
+    - "kilometre" and "outdoor tap";
+  - the personal details in `context_outline.txt` (on `main` since 77636b4) are recorded as a question for Emmett and Elijah, not deleted here;
+  - the commit count is updated.
+- **QUEUE** no longer describes the old force-push plan for the email; it points to runbook step 4.
+- **Catalog spelling:** "door jambs", "oxidizes".
+- **City map:** `role="region"` instead of `role="img"`, which had hidden Leaflet's zoom buttons and links from screen readers.
+- **STATUS:** the test count, and `PREVIEW_BUILD=1` for local builds while the pairs are unchecked.
+- Tests: 765 pass.
+
+## Validation cycle 4: the site in the browser (November 16)
+
+Nothing it found was new on this branch except the draft pages' favicon. These were fixed:
+- **Time picker at 700×400 left room for about one row.** `pinWeek()` left out the "Go to a date" bar, which pins to the bottom of the same scrolling area. It now subtracts that bar too.
+  - Checked: at 700×400 the week bar and the strip unpin (`nopin`).
+- **Focus dropped to the page when the leave dialog closed.** It now lands on × (`renderLeave`).
+  - Checked: after "Back to my quote", focus is on `bkClose`.
+- **Discounted package prices were red** (`.bk-cut`). They're ink now: red means the brand or an error (CLAUDE.md, Colors).
+- **The city and service page templates had no favicon** (a 404 on `/favicon.ico`). They now carry the same icon link as the other pages.
+
+Left for the improvements list (each needs a mockup and a go first):
+- the checkout tab strip at 320 px (349 px wide, under Back and ×);
+- the 1440 step tabs (715 px wide inside 680);
+- focus after a card advances the step;
+- phone tap targets under 40 px ("How it works" 17 px tall, "Change to suggested?", "Tell us when suits", Back and × at 34 px).
+
+All the fold tests pass at 1440×790, and nothing scrolls sideways on 15 pages at six widths. The headline versions fit at every width.
+
+## Improvements A to F built (November 16, Emmett: "Build all six")
+
+From `IMPROVEMENTS-2026-11-16.md`, as in the mockups. Checked in headless Chrome on the built site; 765 tests pass.
+- **A. Checkout bar on phones (under 560 px):** two rows. Back, "Checkout" and × on the first; the four tabs share the second (`book.css`, end of file).
+  - *Cause:* one row was 349 px wide at 320 px, so Back and × sat over "Checkout" and the outer tabs.
+  - Checked: 320, 375 and 559 px fit exactly (four 73 px tabs at 320); 700 px keeps the one-row bar.
+- **B. Time step on short phones (under 560 px wide and 740 px tall):**
+  - the Contact and Address rows take one line each; the Time row on Review keeps its two lines;
+  - "Pick the time that suits you." is gone from the recommended times' sub-line, because the section's intro already says it.
+  - Checked: at 320×640 the first recommended time ends at 564 px, above the bar at 575 (it was cut off at 610). At 320×800 the rows keep two lines.
+- **C. "Need a different start?":** "Earlier times (+$X fee) ›" first, then the standard starts, then "Later times (+$X fee) ›" (Emmett's wording, November 12; `otherStartOptions()`).
+  - Choosing one refills the same dropdown with that group alone, headed by "‹ Back to standard times", and reopens it where `showPicker()` is allowed.
+  - $X comes from `feeText()`; a group whose starts differ says "from".
+  - A start counts as early or late by `timeFeeApplies()`, named by noon like `feeWhy()`. A rush fee alone does not fold a start.
+  - Checked on a Monday: 14 standard starts between the two folded items. Earlier opens its three starts, Back restores the list, and picking an early start books it.
+- **D. Add a vehicle:** the build page is titled "Vehicle 2". Its sub-line reads "Vehicle 1: Small, Full Interior · Back to vehicle 1". The header's Back does the same (`backToVehicle()`).
+  - Going back drops the new vehicle only if it has no package yet, then returns to Extras on the vehicle before.
+  - Checked: going back with an empty vehicle 2 leaves one vehicle and "Build your detail". With a built vehicle 2, both stay ("Vehicle 1, Small", "Vehicle 2, Medium").
+- **E. Travel fee box:** a plain box with a grey rule, and the figure in ink, measured or not. "Too far" keeps the pink box and red text; "No travel fee" stays green.
+- **F. Landing pages:** Book Now right under the headline on `lp-golf` and `lp-prestige` (`.lp-booktop`), in one column only (under 960 px). Checked: at 375×667 it's at 303 to 361 px; hidden at 1440.
+- **To test (preview):**
+  - a phone at 320 and 375: the checkout bar, then the time step;
+  - open "More times on <day>", then "Need a different start?", on a day with early and late starts;
+  - add a vehicle, go back, add again and finish it;
+  - a ZIP with a travel fee;
+  - `/golf` on a phone.
+
+### A to F on the deploy preview (November 16)
+
+Checked on https://deploy-preview-13--513-auto-clean.netlify.app (09c3aab) at 375 and 320 px, in headless Chrome with phone emulation. Screenshots: `docs/mockups/eNov16-preview-check-375-320.png`.
+- **A:** at both widths the bar fits exactly, nothing scrolls sideways, and "Checkout" sits between Back and ×.
+- **B:**
+  - at 375×667 the first recommended time ends at 491 px, with the bar at 602;
+  - at 320×640 it ends at 518, with the bar at 575;
+  - the done rows are 41 px.
+- **C:** Monday listed 14 standard starts between "Earlier times (+$70.50 fee)" and "Later times (+$70.50 fee)". Later opened its starts and went back; picking 6:30pm booked it.
+- **D:** "Vehicle 2" and its summary; going back by the link and by Back both work. A finished vehicle 2 is kept.
+- **E:** a Mason ZIP showed "$30 travel" in ink on a white box with a grey rule. A Cincinnati ZIP showed the green "No travel fee".
+- **F:** the button is at 303 to 374 px on `/golf` and `/prestige`, and opens `/book`.
+- No page errors.
+
+## Validation pass over A to F (November 16)
+
+An independent read-only agent reviewed f6eb954..d191609. All 765 tests pass. Fixed, each checked in headless Chrome on the built site:
+- **D: "Back to vehicle 1" on the Help me decide path went to a skipped step.**
+  - *What happened:* Extras showed with no active tab, vehicle 1 read "Help me decide", and the booking stayed an advice booking.
+  - *Cause:* Help me decide (`state.advice`) is a setting for the whole booking, and `backToVehicle()` went to Extras without clearing it.
+  - *Fix:* dropping the vehicle that chose Help me decide now ends Help me decide too.
+  - Checked with the agent's own reproduction: Extras opens with its tab, and vehicle 1 reads Basic Interior.
+- **D: a half-built vehicle 2 could reach checkout.**
+  - *Example:* "Inside and out" with only an interior package.
+  - *Cause:* `firstProblem()` checks only the active vehicle, and `backToVehicle()` kept any vehicle that had a package.
+  - *Fix:* a vehicle that fails its own size, service or package checks is dropped on the way back.
+  - Checked: the "Inside and out" case goes back to one vehicle.
+- **Remove picked the wrong vehicle (older bug; D made it visible).**
+  - *What happened:* with three vehicles, removing vehicle 1 while on vehicle 2 switched to the old vehicle 3.
+  - *Fix:* the active index moves up with the list.
+  - Checked: the medium vehicle stays active.
+- **C: keyboard users could bounce between two lists.**
+  - *Cause:* arrow keys on a closed list fire `input`. Down from "Choose a time" opened Earlier; the next Down hit "‹ Back to standard times", which returned to "Choose a time", and so on.
+  - *Fix:* going back now rests on the group's own item ("Earlier times …"), so the next arrow reaches a standard start.
+  - Checked by stepping option by option.
+- **C: "from" was missing on Help me decide,** where every dollar fee is 0. Groups are now compared by their percentage.
+- **Docs:**
+  - NEXT-ROUND said JobsSync copies add-ons and A/B versions into the Accounting sheet. It copies only the service, total, pre-tax amount and lead source; the report would read the calendar events.
+  - STATUS still listed Earlier and Later times as queued.
+  - book.css's old note about never cutting the phone number now names B's exception.
+- **Left as is:** the dropdown says "‹ Back to standard times" (the November 16 mockup Emmett approved); the November 12 queue note had "‹ Standard times".
+
+### The A to F fixes on the deploy preview (November 16)
+
+bdd20b6 on the preview at 375 and 320 px. Each case was confirmed, with no page errors:
+- Help me decide on vehicle 2, then "Back to vehicle 1": Extras opens with its tab, and vehicle 1 shows Basic Interior.
+- An unfinished vehicle 2 is dropped on the way back.
+- Removing vehicle 1 while on vehicle 2 of 3 keeps the medium car active.
+- Arrowing through the start dropdown: Earlier, then back to "Earlier times", then a standard start books.
+
+## Validation passes 1 and 2 (November 16)
+
+Two read-only agents ran at the same time:
+- **Pass 1** reviewed the code for vehicles and the start dropdown.
+- **Pass 2** walked the whole booking path as a phone customer at 375×667, 320×568 and 390×844, from five entries.
+
+Fixed, each checked in headless Chrome on the built site; 765 tests pass:
+- **An empty vehicle took 10% off the real one.**
+  - *Example:* a link with a bare second vehicle opened at checkout with "multi-vehicle saving applied" for one Basic Interior. The empty Vehicle 2 page showed the saving too.
+  - *Cause:* the price, the server payload (`wireCart`) and quote links all used every vehicle, while the checks only look at the active one.
+  - *Fix:* `pricedVehicles()` leaves out a vehicle with no package while another has one (with Help me decide, none has one, and all are sent). `cart()`, `wireCart()` and quote links use it, and `applyQuote()` keeps only those.
+  - Checked: the link shows one vehicle with no saving; the empty Vehicle 2 page keeps $145.
+- **A quote link opened over a saved draft crashed the form** (`TypeError` in `vSize`).
+  - *Cause:* `applyQuote()` replaced the vehicles but kept the draft's `active`, `advice` and `browse`.
+  - *Fix:* it now resets all three.
+  - Checked: a two-vehicle draft, then a one-vehicle link, opens at Time with no error.
+- **Help me decide on vehicle 2 turned the whole booking into a request** while vehicle 1 kept its package and price.
+  - *Fix:* Help me decide is offered for the first vehicle only.
+  - Checked: vehicle 2's Service step has no "Help me decide".
+- **A not-yet-bookable package could be picked from Browse,** skipping the package check, and was refused by the server at Confirm.
+  - *Fix:* coming-soon packages show as "Soon" and can't be picked, as on the Package step.
+  - Checked: Paint Correction and Protection, Ceramic Coating and the other three are disabled.
+  - Also, "Add a vehicle" now checks the vehicle being left first.
+- **Browse stayed on after "Back to vehicle 1",** so vehicle 1's Service "Change" opened the catalogue. "Back to vehicle 1" and "Add a vehicle" now close it.
+- **Early and late fee starts were grouped by noon.** They're now grouped by the day's own standard starts: early is before the first, late is after the last. A fee start in between (a midday fee block) stays in the list with its fee.
+- **At 320 px, "★ Suggested" was cut off** in the phone day list ("Suggeste"). Below 360 px it may drop to its own line. Checked: it wraps inside its row.
+- **Wording:** the leave summary said "add-on", while the form says "Extras". It now says "extra".
+
+Not changed, each needs a mockup and Emmett's go (added to `IMPROVEMENTS-2026-11-16.md`):
+- **320×568 phones:**
+  - After a time is picked, the bars cover about 57% of the Time step.
+  - On Review the footer is 236 px.
+  - Arriving on Time shows no time above the action strip.
+  - "More times on <day>" opens its dropdown under the strip.
+- **Help me decide's "Not sure when, either?" box** is pink with a red border, the error look; its footer is an empty strip.
+- **Keyboard focus** falls to the page after a size, service or package card (already on the list).
+
+Not confirmed:
+- **The late fee before Review's receipt.** With a late-fee start, Review's top section shows the total (fee included), but the Time row's two lines cut off before the fee, and no fee line was found before the receipt. Whether the final receipt itemizes it wasn't checked here; that behaviour predates today.
+
+For Emmett's review, server side (not built):
+- **The server accepts a cart with a bare vehicle beside a priced one** (`web/lib/pricing/wire.ts:323-328`) and applies the multi-vehicle discount (`quote.ts:296-303`). The site no longer sends one, but a hand-edited request could.
+- **Proposed:** refuse a vehicle with no package unless every vehicle has none (Help me decide). That's about 5 lines and a test. It changes what the booking endpoint accepts, so it waits for a yes.
+
+### Server: a vehicle with nothing on it is refused (Emmett's yes, November 16)
+
+- **What:** `validateWire()` (`web/lib/pricing/wire.ts`) refuses a cart where any vehicle has no package, add-on or correction while another vehicle does: `empty_vehicle`, "Vehicle N has nothing chosen. Pick a package for it, or remove it."
+- **Why:** the bare vehicle still counted as a second vehicle and took the multi-vehicle discount off the real one. The booking form no longer sends one (`pricedVehicles()`); this closes it for a hand-made request or a tab opened before the deploy.
+- **Unchanged:** Help me decide (`kind: "advice"`), where every vehicle is empty on purpose, and an all-empty booking (still `empty_cart`).
+- **Tests:** two new ones in `wire.test.ts`: a bare vehicle before or after a real one is refused with its number, two real vehicles book, and a two-vehicle Help me decide passes. 767 pass.
+- **Where it runs:** `eNov14` and the deploy preview only. The live site gets it with the merge.
+
+### On the deploy preview, and validation pass 3 (November 16)
+
+**a87e5bb on the preview:**
+- **`send-confirmation` and `create-payment`:** a cart with a bare vehicle 1 or 2 was refused with `empty_vehicle`, and an all-empty cart with `empty_cart`. Both functions check the cart before they write or send anything.
+- **At 375 and 320:**
+  - a link with a bare vehicle 2 opens at Time with no saving, at $156.31 for one Basic Interior;
+  - the empty Vehicle 2 page keeps $145;
+  - vehicle 2 has no Help me decide;
+  - a saved two-vehicle draft followed by a one-vehicle link opens with no error;
+  - Browse shows the five not-yet-bookable services as disabled;
+  - "★ Suggested" stays in its row, on its own line at 320;
+  - the leave dialog says "plus 1 extra".
+
+**Validation pass 3** (read-only agent over bdd20b6..a87e5bb) found two problems. Both are fixed; 768 tests pass.
+- **Help me decide could still be switched on with two vehicles.**
+  - *Routes:* "Back to vehicle 1", then Back to Service; or a draft saved on the live site, which offers Help me decide on vehicle 2.
+  - *What happened:* the request went out as Help me decide carrying vehicle 1's package, held for the package's length, while the vehicle needing advice was left out.
+  - *Fix:* Help me decide is offered only while there is one vehicle. On reopening, a draft (`tidyRestoredVehicles()`) ends Help me decide when it has two vehicles. It keeps the vehicles with a package, plus the one being built on the build page.
+  - Checked at 375 and 320: no Help me decide on vehicle 1's Service after coming back. A live-style draft (Help me decide on a bare vehicle 2, saved at checkout) reopens as a Full Interior booking at $253.33, with no error.
+- **The server rule refused what the live form sends.**
+  - *What happened:* a tab opened before the deploy sends Help me decide with vehicle 1's package and a bare vehicle 2.
+  - *Why it mattered:* the live code doesn't wait for the answer, so the customer saw Done, no calendar hold was written, and nobody was told.
+  - *Fix:* `validateWire()` now **leaves out** a bare vehicle beside one with something on it, instead of refusing. That still removes the multi-vehicle discount. Help me decide keeps every vehicle and isn't priced.
+  - *Tests:* a bare vehicle before or after a real one is dropped; two real vehicles are kept; Help me decide with a bare vehicle 2 passes with both.
+  - The `empty_vehicle` refusal no longer exists; an all-empty cart is still `empty_cart`.
+
+**e1d1c0b on the preview:**
+- **`create-payment`:** carts with a bare vehicle 1 or 2 now pass the cart check and stop at the next step (`mandate_required`, sent on purpose with no authorization, so nothing reaches Stripe). An all-empty cart is still `empty_cart`.
+- **Not sent:** a request that would pass every check. It would write a booking or contact Stripe. That the bare vehicle is left out is covered by `wire.test.ts`.
+- **At 375 and 320:** no Help me decide on vehicle 1's Service after coming back from vehicle 2. A live-style draft (Help me decide on a bare vehicle 2, saved at checkout) reopens as Full Interior at $253.33, with no errors.
+
+## Validation pass 4, fixed by root cause (November 16)
+
+From now on, every pass root-causes each finding and sweeps the whole codebase for the same cause (Emmett: "identify all parallel occurrences of similar issue types"). Pass 4 was briefed with the four classes the earlier passes kept hitting. Fixes are per class; 772 tests pass.
+
+**(a) Checked for the active vehicle only, used for all.**
+- *Root cause:* the build checks read `veh()`, and checkout ran them for the active vehicle only. Eleven places assume every vehicle is finished.
+- *Class fix:* at Confirm, `firstProblem()` now runs the build checks on every vehicle. A problem carries its vehicle, and `showProblem()` switches to it. That closes the class at its last gate, whatever route an unfinished vehicle took.
+- *Checked at 375 and 320:* a draft whose vehicle 2 is "Inside and out" with only an interior package reaches Review. Confirm opens "Vehicle 2", Package, "Pick an exterior package too."
+
+**(b) Outside state not normalised.**
+- *Root cause:* drafts and quote links were trusted beyond their shape.
+- *Class fix:* one normaliser, `cleanImportedVehicle()`, for both drafts and links. It removes a size that doesn't exist, packages that don't exist or aren't bookable yet, a second package in a category, and unknown add-ons. `tidyRestoredVehicles()` (vehicles, `active`, Help me decide) runs after it.
+- *Also:* a two-vehicle Help me decide draft now says why the second vehicle went: "Help me decide works for one vehicle at a time, so we kept your other vehicle. Tell us about the second one in the notes, or ask us a question."
+- *Checked:* a draft with Paint Correction and Protection plus Basic Exterior, and size "huge", opens as Basic Exterior. The note shows on the live-style draft.
+
+**(c) A global mode outliving what set it.**
+- *Root cause:* "inquiry" was used to mean "no time". Help me decide with "tell us when suits" has no time, so `send-confirmation` tried to write it, got `no_slot`, and emailed Elijah "NOT ON THE CALENDAR … add it by hand now".
+- *Class fix:* `send-confirmation` decides by the time itself (`!cart.slot`) for the calendar write and both calendar flags.
+- *Swept:* every `kind === "inquiry"` (`_pricing.mjs` `inquiry_has_slot` is correct; `customerEmail` already used `!when`). `advice` and `browse` were swept in passes 1 to 3.
+- *Also in this class:* the advice hold. Help me decide carrying a package (an older tab) held only the package's length while the event said "Holding 4 hours". The browser (`holdMinutes`), the event (`bookingEvents`) and the still-free check (`stillFreeJob`) now hold at least `ADVICE_HOLD_MIN` for Help me decide.
+
+**(d) Browser and server disagree about the cart.**
+- **"My vehicles need separate times"** (also on the live site): the screen charged travel twice, but `wireCart()` never sent `visits`. So the server charged it once, and nothing told Elijah it was two visits.
+  - *Fix:* the form sends `visits`; the server already priced it.
+  - *Checked:* the request carries `"visits":2`. The receipt line "Travel, 2 separate visits" now reaches both emails.
+- **A vehicle the server leaves out** (an older tab only) changed the total without telling anyone.
+  - *Fix:* `validateWire()` reports `droppedVehicles`. Elijah's email gets "CHECK THE PRICE" in the subject and a line saying which vehicle was left out and that the total shown here is the real one.
+- **Swept, not changed:**
+  - Follow-up labels are numbered by the browser's vehicle order; from an older tab with a bare vehicle 1 they could name the wrong car.
+  - `state.serverTotalCents` and PayPal's `totalCents` are never compared with the screen. Payments are off.
+
+**Tests:**
+- `wire.test.ts`: dropped positions, no discount for the dropped vehicle, a request treated the same, separate visits charge the drive twice.
+- `confirmation-email.test.ts`: the Help me decide hold, and the "CHECK THE PRICE" email.
+- `funnel.smoke.test.mjs`: the hold rule.
+
+**Owner's call, not built:** with two vehicles there is no Help me decide; the notes box and "I have a question" remain.
+
+**63e332e on the preview at 375 and 320.** The test browser blocked every booking, payment, email and lead-capture request, and first confirmed the deployed script had the fix. Results:
+- **(a):** Confirm on a draft with an unfinished vehicle 2 opens "Vehicle 2", Package, "Pick an exterior package too."
+- **(b):** a coming-soon package and an unknown size are cleaned out of a draft.
+- **(b):** the two-vehicle Help me decide draft shows its note.
+- No page errors.
+
+**Not run on the preview,** because each needs a request that would book: the server-side changes (no-time Help me decide skips the calendar write, the advice hold, the CHECK THE PRICE email, separate visits priced). They're covered by unit tests, and the `"visits":2` request was checked against the local build.
+
+## Imperion's site audit (November 18)
+
+Five Semrush findings on the live site. Causes and fixes are in `docs/IMPERION-AUDIT-2026-11-18.md`, which is written to forward. Nothing reaches the live site before the eNov14 merge.
+
+- **One address per page (`/about`; owner's pick after research and a Netlify test).**
+  - **Root cause:** the address was decided in two places. Netlify's dashboard-only Pretty URLs rewrote links to `/about`, while the canonicals and sitemap said `/about.html`, and nothing compared them.
+  - **Fix:** `web/scripts/site-urls.mjs` (rewrite in dist/, `_redirects`, `checkDist` at build), and `pretty_urls` pinned in `netlify.toml`.
+- **One h1 per page.** Sub-page titles were h2s from the one-page era. Now h1, with the CSS on `:is(h1, h2)`. The home page's copy of the Contact section keeps an h2.
+- **Slimmer published HTML** (`web/scripts/slim-html.mjs`): Contact went from 10.0% to 12.4% text.
+- **`/llms.txt`,** generated (`web/scripts/llms-txt.mjs`).
+- **`/book` noindex:** intended, unchanged.
+- **New guard:** a published page linked from fewer than 2 pages fails the build. The city and service pages will need more links (a mockup) before the first one is published.
+- **Fixed in passing:** a type error in my own earlier `wire.test.ts` line.
+
+**What to test:**
+- **Deploy preview:**
+  - `/about.html` returns a 301 to `/about`, and `/about` returns 200;
+  - `/index.html` returns a 301 to `/`;
+  - `/llms.txt` loads;
+  - `/sitemap.xml` lists clean addresses;
+  - nav and footer links have no `.html`.
+- **Every page title looks as before** at 1440 and 375.
+- **Tests:** `cd web && TZ=America/New_York npx vitest run lib/site/seo-audit.test.ts`.
+
+**Validation pass on the audit fixes (November 18).** Fixed:
+- the hero's Contact Us button was hidden on phones by matching `a[href="contact.html"]`, which a clean link no longer matches. It's `.hero-contact` now. This rule was already broken on the live site and the preview by Netlify's rewrite;
+- the card payment's `return_url` is `/#book`;
+- the slimmer is one left-to-right pass, so a comment mentioning `<script` can't hide real markup;
+- canonical and noindex detection no longer depend on attribute order;
+- llms.txt keeps free text before its first H2, as the format asks.
+
+Noted, not changed:
+- heading levels skip from h1 to h3 under page titles;
+- links that scripts build still said `.html` (fixed in the next pass: only `script.js`'s map of old sections is left).
+
+Test: at 375 the home hero shows Book Now and View Services only; at 1440 it also shows Contact Us.
+
+**Links to the city and service pages:** mocked up (`docs/CITY-SERVICE-LINKS.md`, `docs/mockups/eNov18-city-service-links.png`). Nothing is built. Found while mocking: the City guides list as built lands at the bottom of the Range & Travel tool.
+
+## Links to the city and service pages built (November 18, owner's pick C)
+
+- **`web/scripts/page-links.mjs`** writes every link to a city or service page, for published pages only:
+  - footer on every page: a Detailing column (package pages first) and the city guides first under Service Areas;
+  - Range & Travel: each state's card lists its city guides. This replaces the City guides list that would have landed after the tool, below "Get an exact quote";
+  - Services: the tab row ("About interior detailing", shown with the Interior tab only, by CSS), and the Stain Treatment card ("More on stains and odors").
+- **Settings:** `config/services/*.json` `explains` (a tab or an add-on, plus the link's words), validated at build. A city's state comes from `areaServed`.
+- **Today:** with all four pages drafts, the site is unchanged.
+- **Checked with all four published (local build, publish gates bypassed temporarily, never committed):**
+  - each page is linked from 12 pages, and `checkDist` passes;
+  - at 1440×790 the Book buttons are at 698 px and the Indiana card ends at 747 px (legend 757);
+  - the Interior link hides on the Exterior tab;
+  - nothing scrolls sideways at 1440, 820, 375 or 320.
+- **Tests:** `web/lib/site/page-links.test.ts`.
+- **Fixed in passing:** a page whose `explains` named both a tab and an add-on was claiming the tab, so the next page got the blame.
+
+## Validation passes on the audit and links work (November 18): code and browser
+
+Two passes ran: one over code and build, one over the deploy preview in a browser (no submissions; every write request blocked). The browser pass found no regressions a visitor would notice. Fixed, by root cause:
+- **A step that wrote into dist/ ran after the phone stamp,** so the stamp's "no old number left" check couldn't see `llms.txt` or `_redirects`. The stamp now runs after every writer, covers files with no extension (`_redirects`, `_headers`), and a test pins the order.
+- **Links in the scripts and the structured data still said `.html`,** the same class as Netlify's rewrite.
+  - Root cause: the address rewrite and its check only read pages.
+  - Now: dist/js `href="..."` strings are rewritten and checked, and any absolute same-site `.html` address must be a real page.
+  - The JSON-LD offers go to `/book?package=<id>`.
+  - The `?v=` hash folds in the published page list (`urlSalt`, drafts excluded, so publishing one busts the cache).
+- **llms.txt reads what it claims to read:** the Services price sentence (the build fails if it's reworded), `BOOK_PAGE`, and the description whatever the attribute order.
+- **A test keyed on the old city link form** would have failed on the first publish. It uses `pageFile()` now.
+- **The slimmer** no longer eats a non-breaking space next to a line break.
+- **Stale comments** in `site-urls.mjs`, `build-dist.mjs` and `llms-txt.mjs` were corrected.
+
+**Left as they are:** see "Known and left as they are" in `docs/IMPERION-AUDIT-2026-11-18.md`:
+- heading levels (fixed in the next change);
+- the build-time review count;
+- `/book`'s own Book links;
+- `/404` answering 200;
+- the source sitemap's mixed forms;
+- the Stripe redirect-method risk, which needs the owner's Stripe dashboard.
+
+**Test:**
+- `BUSINESS_PHONE=8663715948 PREVIEW_BUILD=1 npm run build` gives the swapped number in `dist/llms.txt` and no old number anywhere;
+- `dist/js/funnel.js` and `dist/js/analytics.js` link to `/terms`, `/privacy` and `/contact`;
+- `dist/index.html`'s JSON-LD offers link to `/book?package=...`.
+
+## Heading levels without skips (November 18, Emmett: "Yes, fix headings")
+
+- **Root cause:** the sub-page titles were promoted to h1 while the headings under them stayed h3/h4, and the footer's column titles were h4 on every page.
+- **Now every page's outline steps one level at a time:**
+  - package cards take a `level` in `servicesHtml` (h2 on Services, h3 on the home page), and the correction tier is one below;
+  - add-on groups are h3;
+  - state cards h2, county groups h3;
+  - Contact's side and form titles h2, and its copy on the home page shifts every heading down one level;
+  - footer titles h2 (the partial and `page-links.mjs`).
+- **Guard:** `headingSkip()` in `checkDist` fails the build on any skip, drafts included; there's a test.
+- **Same look:** the stylesheet matches both levels.
+  - Two widened rules first caught a neighbouring heading: `.area-col :is(h2, h3)` restyled the county labels, and `.inq-side :is(h2, h3)` shrank the home page's Contact title. Both now target only their own heading, and CLAUDE.md has the rule.
+  - The package card rule is scoped to the card's own title for the same reason.
+- **Checked:** every element's box, font size, weight and colour, before against after, on 13 pages at 1440, 820, 375 and 320, with the home headline A/B version pinned.
+  - 51 of 52 identical.
+  - The 52nd is a 4×8 px animated mark on the home page that moves by a pixel between runs anyway.
+- **Test:** headings read top to bottom with a screen reader's heading list (VoiceOver rotor) on Services, Range & Travel and Contact.
+
+## Home hero "View Services" goes to the Services page (November 19, Emmett: "Why is the main home page view services button redirecting to the booking page?")
+
+- **What happened:** "View Services" took visitors to the booking page (`/book?browse=1`). This has been on the live site since November 14.
+- **Root cause:**
+  - The button was written as a booking-form link (`book.html` with `data-book-browse`, which opened the form's package list in place) from the September site onward.
+  - The November 14 switch that sends every Book link to `/book` (`bookLinks: "page"`, for the consent boxes) rewrites every `book.html` link, and couldn't tell this one from a Book button.
+  - The clean-address work didn't change it.
+- **Fix:** a plain link to `services.html` (published as `/services`). CLAUDE.md now says a link is a Book link only if its words are a booking action, and a test pins the hero.
+- **Every other link was checked** against the live site and against its own words. 62 destinations, each loading with its section present.
+  - **Three differences from live, all decided earlier:**
+    - the phone menu's names match the nav ("Services", "Range & Travel"; November 15);
+    - the four home service buttons open the booking form with that service (Elijah's `linkTo: "book"` in `config/home-services.json`; `"page"` sends them to the Services page);
+    - every page's address is clean (November 18).
+- **Test:** on the home page, View Services opens Services at 1440 and 375, and Book Now still opens `/book`.

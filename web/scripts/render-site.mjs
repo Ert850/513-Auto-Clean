@@ -32,8 +32,13 @@ import {
   MAX_ONE_WAY_MINUTES,
   packagesFor,
   unavailableReason,
+  BOOK_INTENTS,
+  arrivalQuery,
 } from "../../netlify/functions/_pricing.mjs";
 import { contactCard, contactHead, loadContactForm, bookPageConsent } from "./contact-form.mjs";
+import { loadServices } from "./locations.mjs";
+import { addonGuide } from "./page-links.mjs";
+import { BOOK_PAGE } from "./book-links.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 // The catalog is split across pages now: packages on the home page, add-ons
@@ -72,7 +77,7 @@ const TICK =
  * find out what the "+" on Showroom Ready meant. It now lives inside that
  * card, beside the package it belongs to.
  */
-function correctionBlock() {
+function correctionBlock(level = 4) {
   const baseMin = findPackage("showroom-exterior")?.durationMin ?? 0;
 
   // Hours are shown because the price only makes sense beside them: this is
@@ -94,7 +99,7 @@ function correctionBlock() {
   // checklists, and its `.svc-card ul.feat li { display: flex }` outranked
   // this list's own layout and split every tier into three squeezed columns.
   return `<div class="svc-corr">
-            <h4>Paint correction and ceramic coating</h4>
+            <h${level}>Paint correction and ceramic coating</h${level}>
             <details class="svc-explain">
               <summary>How it works: ${esc(COATING_EXPLAINER.heading)}</summary>
               <div class="how-body">
@@ -127,7 +132,10 @@ function correctionBlock() {
 // teaser there.
 const FOLD_AT = 3;
 
-function packageCard(p, { fold = false } = {}) {
+// `level`: the card titles' heading level, one below the section's heading:
+// h3 on the home page (under its h2 sections), h2 on services.html (under the
+// page's h1). The correction tier's heading is one below that.
+function packageCard(p, { fold = false, level = 3 } = {}) {
   const comps = componentsOf(p, SEED_CATALOG);
   const base = p.supersetOf ? findPackage(p.supersetOf) : null;
   const shown = base ? comps.slice(componentsOf(base, SEED_CATALOG).length) : comps;
@@ -155,7 +163,7 @@ function packageCard(p, { fold = false } = {}) {
   // in has just spelled the rest out.
   const bookLabel = p.name.replace(/\s*\([^)]*\)\s*$/, "");
 
-  const body = `          <h3>${esc(p.name)}</h3>
+  const body = `          <h${level}>${esc(p.name)}</h${level}>
           <div class="svc-meta">
             <span class="price">${price}</span>
             <span class="dur"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v4l3 2"/></svg> ${time}</span>
@@ -184,7 +192,7 @@ ${feats}
   // tiers on the right. Wrapping the left half keeps that a two-child grid
   // rather than a pile of items each needing its own placement rule.
   const inner = wide
-    ? `          <div class="swide-main">\n${body}\n          </div>\n          ${correctionBlock()}`
+    ? `          <div class="swide-main">\n${body}\n          </div>\n          ${correctionBlock(level + 1)}`
     : body;
 
   return `        <article class="svc-card${p.featured ? " featured" : ""}${wide} reveal">
@@ -194,12 +202,12 @@ ${p.featured ? '          <span class="svc-tag">Most Popular</span>\n' : ""}${
         </article>`;
 }
 
-function servicesHtml({ fold = false } = {}) {
+function servicesHtml({ fold = false, level = 3 } = {}) {
   const panel = (cat) => {
     const cards = packagesFor(cat)
       // Maintenance is returning-customer pricing and is not offered publicly.
       .filter((p) => !p.requiresPriorDetail)
-      .map((p) => packageCard(p, { fold }))
+      .map((p) => packageCard(p, { fold, level }))
       .join("\n\n");
     return `    <div class="svc-panel${cat === "interior" ? " active" : ""}" id="panel-${cat}">
       <div class="svc-grid">
@@ -231,6 +239,8 @@ ${panel("exterior")}
 /* ---------------- add-ons ---------------- */
 
 function addonsHtml() {
+  // A published service page that explains an add-on is linked from its card (page-links.mjs).
+  const services = loadServices();
   const card = (a) => {
     const why = unavailableReason(a);
     const priced = a.tiers.filter((t) => t.priceCents !== null);
@@ -269,7 +279,7 @@ function addonsHtml() {
     // clocks said only that all fifteen take time.
     return `        <div class="addon${why ? " addon-off" : ""} reveal">
           <span class="addon-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${addonIcon(a.icon)}</svg></span>
-          <div class="addon-body"><b>${esc(a.name)}${why ? "<sup>*</sup>" : ""}</b><span>${esc(a.description)}</span>${price}${how}</div>
+          <div class="addon-body"><b>${esc(a.name)}${why ? "<sup>*</sup>" : ""}</b><span>${esc(a.description)}</span>${addonGuide(services, a.id)}${price}${how}</div>
         </div>`;
   };
 
@@ -278,7 +288,8 @@ function addonsHtml() {
     // ADDONS directly is what keeps this page in the same order as the funnel.
     const list = addonsFor(scope);
     if (!list.length) return "";
-    return `      <h4 class="addon-grp">${scope === "interior" ? "Interior" : "Exterior"}</h4>
+    // h3: under the section's h2 ("Add-ons for any package").
+    return `      <h3 class="addon-grp">${scope === "interior" ? "Interior" : "Exterior"}</h3>
       <div class="addon-grid">
 ${list.map(card).join("\n")}
       </div>`;
@@ -327,7 +338,9 @@ function offersHtml() {
         ? "https://schema.org/PreOrder"
         : "https://schema.org/InStock",
       category: p.category,
-      url: "https://513autoclean.com/book.html",
+      // The booking page with this package chosen (book-links.mjs), not
+      // book.html, which is a 301 to /#book and then a script hop.
+      url: `https://513autoclean.com${BOOK_PAGE}${arrivalQuery("package", p.id)}`,
     }));
 
   const blob = {
@@ -357,7 +370,7 @@ const pages = Object.fromEntries(PAGES.map((f) => [f, read(f)]));
 // The full cards on both: the home page shows them as it always has, and
 // services.html carries them above the add-ons.
 pages["index.html"] = splice("index.html", pages["index.html"], "SERVICES", servicesHtml());
-pages["services.html"] = splice("services.html", pages["services.html"], "SERVICES", servicesHtml({ fold: true }));
+pages["services.html"] = splice("services.html", pages["services.html"], "SERVICES", servicesHtml({ fold: true, level: 2 }));
 pages["index.html"] = splice("index.html", pages["index.html"], "OFFERS", offersHtml());
 pages["services.html"] = splice("services.html", pages["services.html"], "ADDONS", addonsHtml());
 pages["faq.html"] = splice("faq.html", pages["faq.html"], "FAQPRICE", faqPriceText(), { inline: true });
@@ -377,8 +390,6 @@ pages["faq.html"] = splice("faq.html", pages["faq.html"], "FAQPRICE_JSON", JSON.
     const r1 = rating.toFixed(1);
     for (const f of PAGES) pages[f] = pages[f]
       .replace(/Rated [0-9.]+ across \d+ Google reviews/g, `Rated ${r1} across ${count} Google reviews`)
-      .replace(/"ratingValue": "[0-9.]+"/g, `"ratingValue": "${r1}"`)
-      .replace(/"reviewCount": "\d+"/g, `"reviewCount": "${count}"`)
       .replace(/<span class="num">[0-9.]+<\/span>/g, `<span class="num">${r1}</span>`)
       .replace(/<b>\d+ reviews<\/b> on Google/g, `<b>${count} reviews</b> on Google`)
       // The hero badge. It said "Rated 5.0 on Google & Yelp" with no count at
@@ -440,7 +451,6 @@ for (const f of PAGES) fs.writeFileSync(path.join(root, f), pages[f]);
     ["terms.html", /(counts as a cancellation inside )\d+( hours)/g, [R.refundMidWindowHours], 1],
     ["terms.html", /(A Basic Interior at \$)\d+( is a Basic Interior at \$)\d+()/g,
       [pkg("basic-interior").priceCents / 100, pkg("basic-interior").priceCents / 100], 1],
-    ["faq.html", /(billed at \$)\d+(\/hr)/g, [R.addonRateCents / 100], 2],
     ["faq.html", /(basic details around )[\d.]+( hours, and full details about )[\d.]+( hours)/g,
       [pkg("basic-interior").durationMin / 60, pkg("full-interior").durationMin / 60], 2],
   ];
@@ -483,7 +493,10 @@ for (const f of PAGES) fs.writeFileSync(path.join(root, f), pages[f]);
   const a = html.indexOf('<section class="inquiry" id="inquiry">');
   const b = html.indexOf("</section>", a);
   if (a < 0 || b < 0) throw new Error("render-site: the inquiry section was not found in contact.html");
-  const section = html.slice(a, b + "</section>".length).replace(/^<!-- CONTACT:(?:HEAD|CARD):(?:START|END) -->\n/gm, "");
+  // On contact.html its title is the page's h1 and the rest h2s; on the home
+  // page the hero is the h1, so every heading in the copy is one level down.
+  const section = html.slice(a, b + "</section>".length).replace(/^<!-- CONTACT:(?:HEAD|CARD):(?:START|END) -->\n/gm, "")
+    .replace(/<(\/?)h([1-5])\b/g, (m, close, n) => `<${close}h${Number(n) + 1}`);
   let home = read("index.html");
   const hs = "<!-- CONTACT:SECTION:START -->\n";
   const he = "<!-- CONTACT:SECTION:END -->";
@@ -533,6 +546,69 @@ for (const f of PAGES) fs.writeFileSync(path.join(root, f), pages[f]);
   fs.writeFileSync(path.join(root, "booking.html"), html);
 }
 
+/* ---------------- the home page's four service buttons, from config/home-services.json ---------------- */
+
+// Elijah, November 13: four big buttons under the hero (Interior, Exterior,
+// Spills and Stains, Paint Correction + Ceramic Coatings). "linkTo" decides
+// where they go: "book" writes them as Book links (book.html with what the
+// form starts with), so config/booking-page.json bookLinks then sends them to
+// /book or opens the form in place, like every other Book link; "page" links
+// each to its own page.
+{
+  const cfg = JSON.parse(read("config/home-services.json"));
+  const bad = (why) => { throw new Error(`config/home-services.json: ${why}`); };
+  if (!["book", "page"].includes(cfg.linkTo)) bad(`linkTo must be "book" or "page", not ${JSON.stringify(cfg.linkTo)}`);
+  if (typeof cfg.title !== "string" || !cfg.title) bad("title is missing");
+  if (!Array.isArray(cfg.buttons) || !cfg.buttons.length) bad("buttons is missing");
+  const img = (src) => {
+    if (typeof src !== "string" || !/^images\/[A-Za-z0-9._-]+$/.test(src) || !fs.existsSync(path.join(root, src))) bad(`"${src}" is not a file in images/`);
+    // A before/after photo belongs to a gallery pair, so the photo check
+    // ("reviewed" in data/gallery.json) covers it, and dropping a pair can't
+    // leave its photos on the home page (validation cycle 5, November 16).
+    const ba = /^images\/ba-(.+)-(?:before|after)-\d+\.(?:webp|jpg)$/.exec(src);
+    if (ba && !(JSON.parse(read("data/gallery.json")).pairs ?? []).some((p) => p.slug === ba[1])) bad(`"${src}" is from "${ba[1]}", which isn't a pair in data/gallery.json`);
+    return src;
+  };
+  const cards = cfg.buttons.map((b, i) => {
+    const where = `buttons[${i}]`;
+    if (typeof b.label !== "string" || !b.label) bad(`${where}.label is missing`);
+    if (typeof b.alt !== "string" || !b.alt) bad(`${where}.alt is missing`);
+    const photo = b.split
+      ? (Array.isArray(b.split) && b.split.length === 2 ? `<span class="pk-split"><img src="${img(b.split[0])}" alt="" loading="lazy" decoding="async" /><img src="${img(b.split[1])}" alt="" loading="lazy" decoding="async" /></span>` : bad(`${where}.split needs two photos`))
+      : `<img src="${img(b.image)}" alt="" loading="lazy" decoding="async" />`;
+    let attrs;
+    if (cfg.linkTo === "page") {
+      if (typeof b.page !== "string" || !b.page) bad(`${where}.page is missing`);
+      attrs = `href="${esc(b.page)}"`;
+    } else {
+      const k = b.book ?? {};
+      if (k.intent && !BOOK_INTENTS.includes(k.intent)) bad(`${where}.book.intent must be one of ${BOOK_INTENTS.join(", ")}`);
+      if (k.package && !findPackage(k.package)) bad(`${where}.book.package "${k.package}" is not a package`);
+      if (k.interest && !findPackage(k.interest)) bad(`${where}.book.interest "${k.interest}" is not a package`);
+      attrs = `href="book.html"` +
+        (k.package ? ` data-book-package="${k.package}"` : k.interest ? ` data-book-interest="${k.interest}"` : k.intent ? ` data-book-intent="${k.intent}"` : "");
+    }
+    return `      <a class="pk" ${attrs} aria-label="${esc(b.label)}: ${esc(b.alt)}">${photo}<span class="pk-l">${esc(b.label)} <i aria-hidden="true">&rarr;</i></span></a>`;
+  });
+  const body = `<section class="svc-pick" aria-labelledby="svcPickH">
+  <div class="wrap">
+    <h2 id="svcPickH">${esc(cfg.title)}</h2>
+    <div class="svc-pick-grid">
+${cards.join("\n")}
+    </div>
+    <p class="svc-pick-more">Available 7 days a week, 6 AM to midnight</p>
+  </div>
+</section>`;
+  let html = read("index.html");
+  const start = "<!-- HOME:SERVICES:START -->\n";
+  const end = "<!-- HOME:SERVICES:END -->";
+  const i = html.indexOf(start);
+  const j = html.indexOf(end);
+  if (i < 0 || j < 0) throw new Error("render-site: HOME:SERVICES markers not found in index.html");
+  html = html.slice(0, i + start.length) + body + "\n" + html.slice(j);
+  fs.writeFileSync(path.join(root, "index.html"), html);
+}
+
 /* ---------------- opening hours, from config/business.json ---------------- */
 
 // "7 days a week, 7 AM to 10 PM" was typed into four places while the hidden
@@ -544,7 +620,7 @@ for (const f of PAGES) fs.writeFileSync(path.join(root, f), pages[f]);
   const words = new RegExp(`(7 days a week, |7 days/week · )${T} to ${T}`, "g");
   const HOURS_STAMPS = [
     // [file, pattern, replacement, matches expected (the footer counts too)]
-    ["index.html", words, `$1${hoursText()}`, 3], // the hero, the copied Contact section, the footer
+    ["index.html", words, `$1${hoursText()}`, 4], // the hero, the service buttons, the copied Contact section, the footer
     ["contact.html", words, `$1${hoursText()}`, 2],
     ["index.html", /("opens": ")[\d:]+(", "closes": ")[\d:]+(")/g, `$1${HOURS.opens}$2${HOURS.closes}$3`, 1],
   ];

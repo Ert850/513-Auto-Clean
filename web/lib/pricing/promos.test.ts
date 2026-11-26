@@ -339,6 +339,14 @@ describe("config/promo-codes.json", () => {
     ["an impossible date", { codes: [{ code: "AB1", label: "x", percentOff: 10, active: true, until: "2027-02-30" }] }],
     ["the same code twice", { codes: [{ code: "AB1", label: "x", percentOff: 10, active: true }, { code: "ab 1", label: "y", percentOff: 5, active: true }] }],
   ];
+  it("refuses a label or blurb whose amount isn't the code's", () => {
+    const one = (o: object) => ({ codes: [{ code: "TEST10", label: "TEST10, 10% off", percentOff: 10, active: true, ...o }] });
+    expect(() => checkPromoCodes(one({}))).not.toThrow();
+    expect(() => checkPromoCodes(one({ percentOff: 15 }))).toThrow(/label says 10%/);
+    expect(() => checkPromoCodes(one({ blurb: "20% off your service." }))).toThrow(/blurb says 20%/);
+    expect(() => checkPromoCodes(one({ percentOff: undefined, dollarsOff: 20, label: "TEST10, $25 off" }))).toThrow(/label says \$25/);
+    expect(() => checkPromoCodes(one({ blurb: "10% off a detail of $150 or more.", minServiceDollars: 150 }))).not.toThrow();
+  });
   for (const [what, input] of bad) {
     it(`refuses ${what}`, () => expect(() => checkPromoCodes(input)).toThrow(/config\/promo-codes\.json/));
   }

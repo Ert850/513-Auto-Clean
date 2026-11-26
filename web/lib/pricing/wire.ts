@@ -20,6 +20,7 @@ import { findAddon, findCoatingTerm, findCorrectionTier, isSelectable } from "..
 import { LEGACY_PACKAGES, findPackage, upgradeLegacy, vehicleSize } from "../catalog/seed.js";
 import { MAX_ONE_WAY_MINUTES } from "../travel/zipRanges.js";
 import { sourceKey } from "./rush.js";
+import { SCHEDULING } from "../availability/scheduling.js";
 
 /* ---------------- shapes ---------------- */
 
@@ -105,6 +106,8 @@ export interface CleanBooking {
   kind: BookingKind;
   /** Derived from `mode`, never from the cart. */
   payInFull: boolean;
+  /** Vehicles left out because nothing was chosen on them, by their place in the request (1 = first). */
+  droppedVehicles?: number[];
 }
 
 export type WireValidation =
@@ -128,11 +131,10 @@ export const WIRE_LIMITS = {
   maxArrivalLateMin: 120,
   /**
    * How far ahead a slot may be. Past this it is a conversation, not a form.
-   * The same as the live site (November 11): the form offers 365 days
-   * (MAX_BOOK_DAYS in js/funnel.js), and this leaves a month of slack. If the
-   * owner shortens the form's limit (owner question 17), shorten this with it.
+   * config/scheduling.json: acceptAheadDays, kept a little above the form's
+   * bookAheadDays (the build refuses it lower).
    */
-  maxDaysAhead: 400,
+  maxDaysAhead: SCHEDULING.acceptAheadDays,
   /**
    * ZIPs we will price. Ohio is 43000 to 45999, Kentucky 40000 to 42799,
    * Indiana 46000 to 47999. Everything else is outside the twelve hour
@@ -225,6 +227,8 @@ export function validateWire(body: unknown, opts: ValidateOptions): WireValidati
 
   const vehicles: WireVehicle[] = [];
   let anything = false;
+  // Vehicles with nothing on them, by position.
+  const bare: boolean[] = [];
 
   for (const rv of rawVehicles) {
     if (!isObj(rv)) return fail("bad_vehicle", "A vehicle entry was not understood.");
@@ -320,12 +324,29 @@ export function validateWire(body: unknown, opts: ValidateOptions): WireValidati
       };
     }
 
-    if (packageIds.length || addons.length || v.correction) anything = true;
+    const has = Boolean(packageIds.length || addons.length || v.correction);
+    if (has) anything = true;
+    bare.push(!has);
     vehicles.push(v);
   }
   // The one cart that is allowed to be empty. Everything else with nothing
   // in it is a bug or a poke at the endpoint.
   if (!anything && kind !== "advice") return fail("empty_cart", "Pick at least one service.");
+  // A vehicle with nothing on it beside one that has something still counted
+  // as a second vehicle, so it took the multi-vehicle discount off the real
+  // one (validation pass 1, November 16). The booking form no longer sends
+  // one. From a hand-made request or a tab opened before a deploy, it is
+  // left out rather than refused: a refusal from the old code reached
+  // nobody, and the time stayed sellable (validation pass 3). Help me decide
+  // keeps every vehicle: the one with nothing on it is the one to advise on,
+  // and nothing is priced.
+  const droppedVehicles: number[] = [];
+  if (anything && kind !== "advice" && bare.some(Boolean)) {
+    // Said in Elijah's email: the request's own screen may have shown a
+    // two-vehicle price (validation pass 4).
+    bare.forEach((b, i) => { if (b) droppedVehicles.push(i + 1); });
+    for (let i = vehicles.length - 1; i >= 0; i--) if (bare[i]) vehicles.splice(i, 1);
+  }
 
   /* ---- slot ---- */
   let slot: number | null = null;
@@ -456,7 +477,7 @@ export function validateWire(body: unknown, opts: ValidateOptions): WireValidati
     payInFull,
   };
 
-  return { ok: true, booking: { cart: clean, contact, consent, kind, payInFull } };
+  return { ok: true, booking: { cart: clean, contact, consent, kind, payInFull, ...(droppedVehicles.length ? { droppedVehicles } : {}) } };
 }
 
 /** The drive cap, applied after the server has measured. */

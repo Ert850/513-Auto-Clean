@@ -85,7 +85,7 @@ body.bk-open { overflow: hidden; }
   cursor: pointer; color: var(--text-soft); font-size: 1.2rem; line-height: 1; padding: 0;
 }
 .bk-back svg { width: 16px; height: 16px; }
-.bk-back:hover, .bk-close:hover { border-color: var(--red); color: var(--red); }
+@media (hover: hover) { .bk-back:hover, .bk-close:hover { border-color: var(--red); color: var(--red); } }
 
 .bk-scroll { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; }
 /* "More below": sits over the bottom of the scrolling area, above the footer. */
@@ -101,7 +101,7 @@ body.bk-open { overflow: hidden; }
   background: var(--paper-2); border: 1px solid var(--line); border-radius: 999px;
   padding: .3rem .75rem; box-shadow: var(--shadow-sm);
 }
-.bk-cue button:hover { color: var(--red); border-color: var(--red); }
+@media (hover: hover) { .bk-cue button:hover { color: var(--red); border-color: var(--red); } }
 .bk-cue svg { width: 14px; height: 14px; }
 .bk-body { padding: 1.2rem 1.1rem 1.6rem; }
 
@@ -114,13 +114,19 @@ body.bk-open { overflow: hidden; }
 .bk-total { flex: none; display: flex; flex-direction: column; line-height: 1.2; white-space: nowrap; }
 .bk-total-amt { font-family: var(--font-display); font-weight: 800; font-size: 1.25rem; }
 .bk-total-sub { font-size: .76rem; color: var(--text-soft); }
+/* The longest saving line ("$1,051.05 interior + exterior saving applied · tax included")
+   reached the very edge of a 320 px phone on one line: let it wrap there instead. */
+@media (max-width: 400px) {
+  .bk-total { max-width: 100%; min-width: 0; }
+  .bk-total-sub { white-space: normal; text-wrap: balance; }
+}
 .bk-nextbtn {
   margin-left: auto; display: inline-flex; align-items: center; gap: .5rem;
   background: var(--red); color: #fff; border: 0; border-radius: var(--r-sm);
   font: inherit; font-weight: 800; padding: .8rem 1.3rem; cursor: pointer;
   transition: background .18s;
 }
-.bk-nextbtn:hover { background: var(--red-deep); }
+@media (hover: hover) { .bk-nextbtn:hover { background: var(--red-deep); } }
 .bk-nextbtn:disabled { opacity: .5; cursor: default; }
 .bk-nextbtn svg { width: 17px; height: 17px; }
 
@@ -153,7 +159,7 @@ body.bk-open { overflow: hidden; }
   padding: .95rem 1.05rem; cursor: pointer; font: inherit;
   transition: border-color .16s, box-shadow .16s;
 }
-.bk-pkg:hover { border-color: var(--red); }
+@media (hover: hover) { .bk-pkg:hover { border-color: var(--red); } }
 .bk-pkg.on { border-color: var(--red); box-shadow: 0 0 0 3px var(--red-ghost); }
 .bk-pkg-l { flex: 1; min-width: 0; }
 .bk-pkg-l b { font-family: var(--font-display); font-size: 1.04rem; }
@@ -201,9 +207,11 @@ body.bk-open { overflow: hidden; }
   border: 0; background: none; color: var(--text-soft); font: inherit; font-size: .8rem;
   cursor: pointer; text-decoration: underline; padding: 0; flex: none;
 }
-.bk-clear:hover { color: var(--red); }
+@media (hover: hover) { .bk-clear:hover { color: var(--red); } }
 
-.bk-travel.exact b { color: #1a8a3f; }
+/* A travel fee is a price, so it is ink in a plain box (improvement E,
+   November 16; CLAUDE.md, Colors): the pink box and red figure read as an
+   error. Only "Too far" stays red, because that one is a problem. */
 .bk-travel-why {
   display: block; font-style: normal; margin-top: .45rem;
   font-size: .78rem; line-height: 1.5; color: #7a5209;
@@ -215,7 +223,7 @@ body.bk-open { overflow: hidden; }
   vertical-align: bottom; animation: bkDots 1.2s steps(4, end) infinite;
 }
 @keyframes bkDots { from { width: 0; } to { width: 1.2em; } }
-.bk-travel.far { border-color: var(--red); }
+.bk-travel.far { background: var(--red-ghost); border-color: var(--red); }
 .bk-travel.far b { color: var(--red-deep); }
 
 /* Links out of a consent question, below the text they are agreeing to. */
@@ -229,7 +237,7 @@ body.bk-open { overflow: hidden; }
 /* Shown rather than hidden, because hiding a service hides the demand for
    it. Amber not red: this is information, not a call to action. */
 .bk-pkg.soon { border-style: dashed; }
-.bk-pkg.soon:hover { border-color: var(--amber); }
+@media (hover: hover) { .bk-pkg.soon:hover { border-color: var(--amber); } }
 .bk-pkg.soon.want { border-style: solid; border-color: var(--amber); background: rgba(240,169,63,.09); }
 .bk-flag.soon { background: rgba(240,169,63,.2); color: #7a5209; }
 .bk-want {
@@ -245,7 +253,7 @@ body.bk-open { overflow: hidden; }
   border: 1.5px dashed rgba(240,169,63,.6);
   transition: background .16s, border-color .16s, color .16s;
 }
-.bk-wantbtn:hover { border-color: var(--amber); background: rgba(240,169,63,.1); }
+@media (hover: hover) { .bk-wantbtn:hover { border-color: var(--amber); background: rgba(240,169,63,.1); } }
 .bk-wantbtn.on {
   border-style: solid; border-color: #2f9e5e; color: #1a8a3f;
   background: rgba(47,158,94,.1);
@@ -288,7 +296,7 @@ body.bk-open { overflow: hidden; }
   background: var(--paper-2); border: 1.5px solid var(--line); border-radius: var(--r-md);
   padding: .7rem 3rem .7rem 1rem; transition: border-color .16s, box-shadow .16s;
 }
-.bk-pick-card:hover { border-color: var(--red); box-shadow: 0 0 0 3px var(--red-ghost); }
+@media (hover: hover) { .bk-pick-card:hover { border-color: var(--red); box-shadow: 0 0 0 3px var(--red-ghost); } }
 .bk-pick-card.on, .bk-pickday.open .bk-pick-card { border-color: var(--red); }
 .bk-pick-go {
   display: flex; flex-direction: column; gap: .1rem; width: 100%; padding: 0; margin: 0;
@@ -328,7 +336,7 @@ body.bk-open { overflow: hidden; }
   display: flex; flex-direction: column; gap: .1rem; font: inherit; text-align: left; cursor: pointer; color: var(--text);
   background: var(--paper-2); border: 1.5px solid var(--line); border-radius: var(--r-sm); padding: .5rem .7rem;
 }
-.bk-more-t:hover, .bk-flex-day:hover { border-color: var(--red); box-shadow: 0 0 0 3px var(--red-ghost); }
+@media (hover: hover) { .bk-more-t:hover, .bk-flex-day:hover { border-color: var(--red); box-shadow: 0 0 0 3px var(--red-ghost); } }
 .bk-more-t b { display: flex; align-items: center; gap: .25rem; font-family: var(--font-display); font-size: .92rem; }
 .bk-more-t b svg { width: 11px; height: 11px; }
 .bk-more-in { grid-template-columns: repeat(4, 1fr); }
@@ -350,7 +358,7 @@ body.bk-open { overflow: hidden; }
   flex: none; font: inherit; font-size: .84rem; font-weight: 700; cursor: pointer; white-space: nowrap;
   background: var(--paper-2); color: var(--red); border: 1.5px solid var(--red); border-radius: 999px; padding: .45rem .9rem;
 }
-.bk-flex-b:hover { background: var(--red); color: #fff; }
+@media (hover: hover) { .bk-flex-b:hover { background: var(--red); color: #fff; } }
 @media (max-width: 559.98px) {
   .bk-recday-in, .bk-more-in { grid-template-columns: repeat(3, 1fr); }
   .bk-flex-in { grid-template-columns: repeat(4, 1fr); }
@@ -381,7 +389,7 @@ body.bk-open { overflow: hidden; }
   background: var(--paper); color: var(--red); border: 1.5px solid var(--red);
   border-radius: 999px; padding: .5rem .95rem;
 }
-.bk-recs-all:hover { background: var(--red); color: #fff; }
+@media (hover: hover) { .bk-recs-all:hover { background: var(--red); color: #fff; } }
 .bk-recs-foot .bk-askwhen-link, .bk-wk-gobar .bk-askwhen-link { margin: 0; width: auto; padding: 0; border: 0; }
 
 /* The week. */
@@ -398,7 +406,7 @@ body.bk-open { overflow: hidden; }
   background: var(--paper-2); border: 1.5px solid var(--line); border-radius: var(--r-sm); color: var(--text);
 }
 .bk-wk-arrow svg { width: 18px; height: 18px; }
-.bk-wk-arrow:hover:not(:disabled) { border-color: var(--red); color: var(--red); }
+@media (hover: hover) { .bk-wk-arrow:hover:not(:disabled) { border-color: var(--red); color: var(--red); } }
 .bk-wk-arrow:disabled { opacity: .35; cursor: not-allowed; }
 .bk-wk-today, .bk-wk-more {
   font: inherit; font-size: .82rem; font-weight: 700; cursor: pointer;
@@ -413,7 +421,7 @@ body.bk-open { overflow: hidden; }
   font: inherit; font-size: .78rem; font-weight: 700; color: var(--text-soft); cursor: pointer;
   background: none; border: 0; padding: .3rem 0; text-decoration: underline; text-underline-offset: 3px;
 }
-.bk-wk-feeq:hover { color: var(--text); }
+@media (hover: hover) { .bk-wk-feeq:hover { color: var(--text); } }
 .bk-wk-rules { flex-basis: 100%; margin: 0; font-size: .78rem; line-height: 1.45; color: var(--text-soft); }
 .bk-wk-key {
   width: 18px; height: 18px; border-radius: 4px; display: inline-grid; place-items: center; flex: none;
@@ -464,7 +472,7 @@ body.bk-open { overflow: hidden; }
   margin-top: .65rem; width: 100%; min-height: 44px; border: 0; border-radius: 8px; cursor: pointer;
   background: var(--red); color: #fff; font: inherit; font-weight: 800;
 }
-.bk-tl-card-go:hover { background: var(--red-deep); }
+@media (hover: hover) { .bk-tl-card-go:hover { background: var(--red-deep); } }
 /* The chosen time, labelled as the bar labels it (red, ticked). */
 .bk-tl-card p.bk-tl-card-mine { display: flex; align-items: center; gap: .25rem; margin-top: .6rem; color: var(--red); font-size: .7rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
 .bk-tl-card-mine svg { width: 12px; height: 12px; flex: none; }
@@ -480,7 +488,7 @@ button.bk-tl-s {
   cursor: pointer; background: var(--paper-2); border: 1.5px solid var(--line); color: var(--text);
   transition: border-color .14s, box-shadow .14s;
 }
-button.bk-tl-s:hover { border-color: var(--red); box-shadow: 0 0 0 3px var(--red-ghost); }
+@media (hover: hover) { button.bk-tl-s:hover { border-color: var(--red); box-shadow: 0 0 0 3px var(--red-ghost); } }
 .bk-tl-star {
   margin-left: auto; display: inline-flex; align-items: center; gap: .25rem;
   font-style: normal; font-size: .72rem; font-weight: 800; color: var(--ink);
@@ -535,7 +543,7 @@ button.bk-tl-s:hover { border-color: var(--red); box-shadow: 0 0 0 3px var(--red
   font: inherit; font-size: .76rem; font-weight: 700; color: var(--text); cursor: pointer;
   background: var(--paper-2); border: 1px solid var(--line); border-radius: 999px; padding: .3rem .8rem;
 }
-.bk-wk-fold:hover { border-color: var(--text-soft); }
+@media (hover: hover) { .bk-wk-fold:hover { border-color: var(--text-soft); } }
 .bk-wk-fold svg { width: 12px; height: 12px; }
 .bk-wk-day em {
   display: inline-block; font-style: normal; font-weight: 800; letter-spacing: .05em;
@@ -584,7 +592,7 @@ button.bk-tl-s:hover { border-color: var(--red); box-shadow: 0 0 0 3px var(--red
   font: inherit; text-align: left; cursor: pointer; padding: .5rem .8rem;
   background: var(--paper-2); border: 1.5px solid var(--line); border-radius: var(--r-sm); color: var(--text);
 }
-.bk-wk-item:hover { border-color: var(--red); }
+@media (hover: hover) { .bk-wk-item:hover { border-color: var(--red); } }
 .bk-wk-item b { font-family: var(--font-display); font-size: .98rem; white-space: nowrap; }
 .bk-wk-item .bk-px { flex: 1; font-size: .78rem; }
 .bk-pick-price.fee, .bk-more-t .fee { color: #7a5209; font-weight: 700; font-style: normal; }
@@ -600,7 +608,7 @@ button.bk-tl-s:hover { border-color: var(--red); box-shadow: 0 0 0 3px var(--red
   background: var(--paper-2); border: 1.5px solid var(--line); border-radius: var(--r-sm);
 }
 .bk-wk-alt i { font-style: normal; font-size: .66rem; font-weight: 600; color: var(--text-soft); }
-.bk-wk-alt:hover { border-color: var(--red); }
+@media (hover: hover) { .bk-wk-alt:hover { border-color: var(--red); } }
 .bk-wk-none { font-size: .88rem; color: var(--text-soft); background: var(--paper); border-radius: var(--r-sm); padding: .7rem .85rem; }
 
 .bk-wk-empty {
@@ -651,7 +659,7 @@ button.bk-tl-s:hover { border-color: var(--red); box-shadow: 0 0 0 3px var(--red
   color: var(--text-soft); background: var(--paper); padding: .15rem .6rem;
   border: 1px solid var(--line); border-radius: 999px;
 }
-.bk-steer:hover { color: var(--text); border-color: var(--text-soft); }
+@media (hover: hover) { .bk-steer:hover { color: var(--text); border-color: var(--text-soft); } }
 .bk-steer svg { width: 9px; height: 9px; flex: none; color: var(--text); }
 .bk-steer b { font-weight: 800; color: var(--text); }
 .bk-foot.steering { padding-bottom: calc(1.5rem + env(safe-area-inset-bottom)); }
@@ -688,7 +696,7 @@ button.bk-tl-s:hover { border-color: var(--red); box-shadow: 0 0 0 3px var(--red
   background: var(--paper); border: 1.5px solid var(--line); border-radius: var(--r-sm);
   padding: .5rem .3rem; transition: border-color .16s, background .16s;
 }
-.bk-pref-day:hover { border-color: var(--red); }
+@media (hover: hover) { .bk-pref-day:hover { border-color: var(--red); } }
 .bk-pref-day.on { border-color: var(--red); background: var(--red-ghost); }
 .bk-pref-day b { display: block; font-size: .82rem; font-weight: 800; }
 .bk-pref-day span { display: block; font-size: .72rem; color: var(--text-soft); margin-top: .1rem; }
@@ -702,7 +710,7 @@ button.bk-tl-s:hover { border-color: var(--red); box-shadow: 0 0 0 3px var(--red
   background: var(--paper); border: 1.5px solid var(--line); border-radius: var(--r-sm);
   padding: .55rem .7rem; transition: border-color .16s, background .16s;
 }
-.bk-pref-part:hover { border-color: var(--red); }
+@media (hover: hover) { .bk-pref-part:hover { border-color: var(--red); } }
 .bk-pref-part.on { border-color: var(--red); background: var(--red-ghost); }
 .bk-pref-part b { display: block; font-size: .85rem; font-weight: 700; }
 .bk-pref-part span { display: block; font-size: .72rem; color: var(--text-soft); margin-top: .1rem; }
@@ -738,7 +746,7 @@ button.bk-tl-s:hover { border-color: var(--red); box-shadow: 0 0 0 3px var(--red
   background: var(--paper); color: var(--red); border: 1.5px solid var(--red);
   border-radius: 999px; padding: .5rem .95rem;
 }
-.bk-timeswitch-b:hover { background: var(--red); color: #fff; }
+@media (hover: hover) { .bk-timeswitch-b:hover { background: var(--red); color: #fff; } }
 .bk-timeswitch-b:focus-visible { outline: 2px solid var(--red); outline-offset: 2px; }
 
 /* Somebody who has already said they are not sure what they want. Not being
@@ -764,7 +772,7 @@ button.bk-tl-s:hover { border-color: var(--red); box-shadow: 0 0 0 3px var(--red
   font: inherit; font-size: .88rem; font-weight: 700; color: var(--red);
   text-align: left; cursor: pointer;
 }
-.bk-askwhen-link:hover { text-decoration: underline; }
+@media (hover: hover) { .bk-askwhen-link:hover { text-decoration: underline; } }
 
 .bk-asknote {
   background: var(--ink); color: #fff; border-radius: var(--r-md);
@@ -789,7 +797,7 @@ button.bk-tl-s:hover { border-color: var(--red); box-shadow: 0 0 0 3px var(--red
   background: var(--paper); border: 1.5px solid var(--line); border-radius: var(--r-sm);
   padding: .7rem .85rem; transition: border-color .16s, background .16s;
 }
-.bk-day:hover { border-color: var(--red); }
+@media (hover: hover) { .bk-day:hover { border-color: var(--red); } }
 .bk-day.on { border-color: var(--red); background: var(--red-ghost); }
 .bk-day b { display: block; font-size: .92rem; font-weight: 700; }
 .bk-day span { display: block; font-size: .79rem; color: var(--text-soft); margin-top: .2rem; line-height: 1.5; }
@@ -812,7 +820,7 @@ button.bk-tl-s:hover { border-color: var(--red); box-shadow: 0 0 0 3px var(--red
   padding: .65rem 1.1rem; border-radius: var(--r-sm);
   border: 1.5px solid var(--ink); background: var(--ink); color: #fff;
 }
-.bk-promo-go:hover { background: var(--red); border-color: var(--red); }
+@media (hover: hover) { .bk-promo-go:hover { background: var(--red); border-color: var(--red); } }
 .bk-promo-err { margin: .4rem 0 0; font-size: .8rem; color: var(--red-deep); }
 
 .bk-promo.on {
@@ -829,7 +837,7 @@ button.bk-tl-s:hover { border-color: var(--red); box-shadow: 0 0 0 3px var(--red
   flex: none; font: inherit; font-size: .8rem; color: var(--text-soft);
   background: none; border: 0; cursor: pointer; text-decoration: underline;
 }
-.bk-promo-clear:hover { color: var(--red); }
+@media (hover: hover) { .bk-promo-clear:hover { color: var(--red); } }
 
 .bk-tiers { display: grid; gap: .45rem; }
 .bk-tier {
@@ -838,7 +846,7 @@ button.bk-tl-s:hover { border-color: var(--red); box-shadow: 0 0 0 3px var(--red
   background: var(--paper); border: 1.5px solid var(--line); border-radius: var(--r-sm);
   padding: .6rem .8rem; transition: border-color .16s, background .16s;
 }
-.bk-tier:hover { border-color: var(--red); }
+@media (hover: hover) { .bk-tier:hover { border-color: var(--red); } }
 .bk-tier.on { border-color: var(--red); background: var(--red-ghost); }
 .bk-tier-l { font-size: .89rem; font-weight: 700; }
 .bk-tier-l i { display: block; font-style: normal; font-weight: 400; font-size: .79rem; color: var(--text-soft); margin-top: .15rem; line-height: 1.45; }
@@ -850,7 +858,7 @@ button.bk-tl-s:hover { border-color: var(--red); box-shadow: 0 0 0 3px var(--red
   cursor: default; border-style: dashed; background: transparent; color: var(--text-soft);
   margin-bottom: .5rem;
 }
-.bk-tier.is-off:hover { border-color: var(--line); }
+@media (hover: hover) { .bk-tier.is-off:hover { border-color: var(--line); } }
 
 /* ---------- fields ---------- */
 .bk-field { margin-bottom: .9rem; position: relative; }
@@ -881,7 +889,7 @@ button.bk-tl-s:hover { border-color: var(--red); box-shadow: 0 0 0 3px var(--red
   display: block; width: 100%; text-align: left; border: 0; background: none;
   font: inherit; font-size: .88rem; padding: .6rem .8rem; cursor: pointer; color: var(--text);
 }
-.bk-ac-i:hover { background: var(--red-ghost); color: var(--red-deep); }
+@media (hover: hover) { .bk-ac-i:hover { background: var(--red-ghost); color: var(--red-deep); } }
 
 /* checkbox with a visible box and readable label */
 .bk-check {
@@ -889,7 +897,7 @@ button.bk-tl-s:hover { border-color: var(--red); box-shadow: 0 0 0 3px var(--red
   padding: .8rem .9rem; margin: .3rem 0 .9rem;
   border: 1.5px solid var(--line); border-radius: var(--r-md); background: var(--paper-2);
 }
-.bk-check:hover { border-color: var(--red); }
+@media (hover: hover) { .bk-check:hover { border-color: var(--red); } }
 .bk-check input {
   appearance: auto; accent-color: var(--red);
   width: 19px; height: 19px; flex: none; margin: .1rem 0 0;
@@ -921,7 +929,7 @@ button.bk-tl-s:hover { border-color: var(--red); box-shadow: 0 0 0 3px var(--red
   color: var(--red); font: inherit; font-size: .88rem; font-weight: 700;
   cursor: pointer; text-decoration: underline; text-underline-offset: 3px;
 }
-.bk-addveh:hover { color: var(--red-deep); }
+@media (hover: hover) { .bk-addveh:hover { color: var(--red-deep); } }
 /* Extras: a second vehicle, as one slim light card at the top. Light on
    purpose, so it is seen before scrolling without competing with the
    add-ons or with Continue. */
@@ -968,7 +976,7 @@ button.bk-tl-s:hover { border-color: var(--red); box-shadow: 0 0 0 3px var(--red
   border-radius: var(--r-sm); padding: .55rem; font: inherit; font-size: .9rem;
   font-weight: 800; cursor: pointer; color: var(--text-soft);
 }
-.bk-yn-b:hover { border-color: var(--red); }
+@media (hover: hover) { .bk-yn-b:hover { border-color: var(--red); } }
 .bk-yn-b.yes { border-color: #1a8a3f; background: rgba(26,138,63,.1); color: #14682f; }
 .bk-yn-b.no { border-color: var(--text-soft); background: var(--paper-2); color: var(--text); }
 
@@ -997,7 +1005,7 @@ button.bk-tl-s:hover { border-color: var(--red); box-shadow: 0 0 0 3px var(--red
   background: var(--paper-2); border: 2px solid var(--line); border-radius: var(--r-md);
   padding: .9rem 1rem; padding-right: 5.5rem; transition: border-color .16s, box-shadow .16s;
 }
-.bk-pay:hover { border-color: var(--red); }
+@media (hover: hover) { .bk-pay:hover { border-color: var(--red); } }
 .bk-pay.on { border-color: var(--red); box-shadow: 0 0 0 3px var(--red-ghost); }
 .bk-pay b { display: block; font-size: .97rem; }
 .bk-pay span { display: block; font-size: .83rem; color: var(--text-soft); margin-top: .15rem; line-height: 1.45; }
@@ -1031,7 +1039,7 @@ button.bk-tl-s:hover { border-color: var(--red); box-shadow: 0 0 0 3px var(--red
   border-radius: var(--r-sm); padding: .7rem 1.2rem; font: inherit; font-weight: 800;
   cursor: pointer; font-size: .92rem;
 }
-.bk-next-steps:hover { background: var(--red-ghost); }
+@media (hover: hover) { .bk-next-steps:hover { background: var(--red-ghost); } }
 .bk-steps { text-align: left; margin: 1.2rem 0 0; background: var(--paper-2); border: 1px solid var(--line); border-radius: var(--r-md); padding: 1rem 1.1rem 1rem 1.4rem; }
 .bk-steps ol { margin: 0; padding-left: 1.1rem; }
 .bk-steps li { font-size: .88rem; line-height: 1.6; color: var(--text-soft); margin-bottom: .6rem; }
@@ -1055,7 +1063,7 @@ button.bk-tl-s:hover { border-color: var(--red); box-shadow: 0 0 0 3px var(--red
   padding: .8rem .95rem; cursor: pointer; font: inherit; text-align: left; color: var(--text);
   transition: border-color .16s, background .16s;
 }
-.bk-browsebar:hover { border-color: var(--red); background: var(--red-ghost); }
+@media (hover: hover) { .bk-browsebar:hover { border-color: var(--red); background: var(--red-ghost); } }
 .bk-browsebar > svg { width: 18px; height: 18px; color: var(--red); flex: none; }
 .bk-browsebar span { flex: 1; }
 .bk-browsebar b { display: block; font-size: .93rem; }
@@ -1080,7 +1088,7 @@ button.bk-tl-s:hover { border-color: var(--red); box-shadow: 0 0 0 3px var(--red
   width: 24px; height: 24px; border: 0; background: var(--line); border-radius: 50%;
   color: var(--text); font-size: 1rem; line-height: 1; cursor: pointer; padding: 0;
 }
-.bk-qclear:hover { background: var(--red); color: #fff; }
+@media (hover: hover) { .bk-qclear:hover { background: var(--red); color: #fff; } }
 
 .bk-filters { display: flex; align-items: center; flex-wrap: wrap; gap: .35rem; margin-bottom: .4rem; }
 .bk-filtlab { font-size: .76rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--text-soft); margin-right: .2rem; }
@@ -1089,7 +1097,7 @@ button.bk-tl-s:hover { border-color: var(--red); box-shadow: 0 0 0 3px var(--red
   padding: .32rem .7rem; font: inherit; font-size: .8rem; font-weight: 700;
   cursor: pointer; color: var(--text-soft);
 }
-.bk-chip:hover { border-color: var(--red); color: var(--red); }
+@media (hover: hover) { .bk-chip:hover { border-color: var(--red); color: var(--red); } }
 .bk-chip.on { border-color: var(--red); background: var(--red-ghost); color: var(--red-deep); }
 
 .bk-count { font-size: .8rem; color: var(--text-soft); margin: 0 0 .6rem; }
@@ -1124,7 +1132,7 @@ button.bk-tl-s:hover { border-color: var(--red); box-shadow: 0 0 0 3px var(--red
   border-radius: var(--r-sm); padding: .55rem; font: inherit; font-size: .85rem;
   font-weight: 700; cursor: pointer; color: var(--text-soft);
 }
-.bk-method:hover { border-color: var(--red); }
+@media (hover: hover) { .bk-method:hover { border-color: var(--red); } }
 .bk-method.on { border-color: var(--red); background: var(--red-ghost); color: var(--red-deep); }
 
 /* ---------- paint correction ---------- */
@@ -1155,7 +1163,7 @@ button.bk-tl-s:hover { border-color: var(--red); box-shadow: 0 0 0 3px var(--red
   font: inherit; padding: .3rem .55rem; border-radius: var(--r-sm);
   border-bottom: 2px solid transparent; min-width: 4.2rem;
 }
-.bk-seg:hover:not(.locked) { background: var(--red-ghost); }
+@media (hover: hover) { .bk-seg:hover:not(.locked) { background: var(--red-ghost); } }
 .bk-seg-t { display: block; font-size: .73rem; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; color: var(--text-soft); }
 .bk-seg-s { display: block; font-size: .74rem; color: var(--text-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 8rem; }
 .bk-seg.done .bk-seg-t { color: var(--text); }
@@ -1169,7 +1177,7 @@ button.bk-tl-s:hover { border-color: var(--red); box-shadow: 0 0 0 3px var(--red
 .bk-star { color: var(--amber-ink); }
 .bk-soon { color: var(--amber-ink); font-size: .85rem; }
 .bk-pkg.off { opacity: .72; cursor: default; }
-.bk-pkg.off:hover { border-color: var(--line); }
+@media (hover: hover) { .bk-pkg.off:hover { border-color: var(--line); } }
 
 .bk-coverage { font-size: .82rem; color: var(--text-soft); line-height: 1.55; margin: 0 0 .9rem; }
 
@@ -1177,9 +1185,9 @@ button.bk-tl-s:hover { border-color: var(--red); box-shadow: 0 0 0 3px var(--red
 .bk-how-pkg { margin: -.2rem 0 .55rem .2rem; }
 .bk-how-pkg summary { font-size: .79rem; }
 
-.bk-travel { background: var(--red-ghost); border-left: 3px solid var(--red); border-radius: 0 var(--r-sm) var(--r-sm) 0; padding: .8rem .95rem; margin-top: .4rem; }
+.bk-travel { background: var(--paper-2); border-left: 3px solid #c9ccc6; border-radius: 0 var(--r-sm) var(--r-sm) 0; padding: .8rem .95rem; margin-top: .4rem; }
 .bk-travel.free { background: rgba(26,138,63,.1); border-left-color: #1a8a3f; }
-.bk-travel b { display: block; font-family: var(--font-display); font-size: 1.15rem; color: var(--red); }
+.bk-travel b { display: block; font-family: var(--font-display); font-size: 1.15rem; color: var(--text); }
 .bk-travel.free b { color: #14682f; }
 .bk-travel span { display: block; font-size: .84rem; color: var(--text-soft); line-height: 1.55; margin-top: .2rem; }
 
@@ -1245,17 +1253,17 @@ button.bk-tl-s:hover { border-color: var(--red); box-shadow: 0 0 0 3px var(--red
 }
 .bk-leave-acts svg { width: 16px; height: 16px; flex: none; }
 .bk-leave-acts .bk-leave-go { background: var(--red); border-color: var(--red); color: #fff; }
-.bk-leave-acts .bk-leave-go:hover { background: var(--red-deep); border-color: var(--red-deep); }
+@media (hover: hover) { .bk-leave-acts .bk-leave-go:hover { background: var(--red-deep); border-color: var(--red-deep); } }
 .bk-leave-pair { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; }
 .bk-leave-pair button { flex-direction: column; gap: .3rem; padding: .7rem .5rem; font-size: .86rem; line-height: 1.25; }
 .bk-leave-pair svg { width: 19px; height: 19px; color: var(--red); }
-.bk-leave-pair button:hover { border-color: var(--red); background: var(--paper); }
+@media (hover: hover) { .bk-leave-pair button:hover { border-color: var(--red); background: var(--paper); } }
 .bk-leave-acts .bk-leave-drop {
   align-self: center; background: none; border-color: transparent; padding: .45rem .8rem;
   color: var(--text-soft); font-weight: 600; font-size: .86rem;
   text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--line);
 }
-.bk-leave-acts .bk-leave-drop:hover { color: var(--red); text-decoration-color: currentColor; }
+@media (hover: hover) { .bk-leave-acts .bk-leave-drop:hover { color: var(--red); text-decoration-color: currentColor; } }
 .bk-leave-note { margin: .85rem 0 0; font-size: .76rem; color: var(--text-soft); line-height: 1.5; }
 
 /* ---------- A word after the modal has gone ---------- */
@@ -1306,7 +1314,8 @@ button.bk-tl-s:hover { border-color: var(--red); box-shadow: 0 0 0 3px var(--red
   margin-right: .25em;
 }
 .bk-pkg-r s { display: block; font-size: .8rem; margin: 0 0 .1rem; }
-.bk-cut { color: var(--red); }
+/* Ink, not red: red means the brand or "that did not work" (CLAUDE.md, Colors; validation cycle 4). */
+.bk-cut { color: var(--text); }
 .bk-tier-p .bk-cut { font-weight: 800; }
 
 /* ---------- Promo code on the package screen ---------- */
@@ -1334,7 +1343,7 @@ button.bk-tl-s:hover { border-color: var(--red); box-shadow: 0 0 0 3px var(--red
   border: 1.5px solid var(--line); background: var(--paper); color: var(--text);
   transition: border-color .16s, background .16s;
 }
-.bk-acc-b:hover { border-color: var(--red); }
+@media (hover: hover) { .bk-acc-b:hover { border-color: var(--red); } }
 .bk-acc-b.on { border-color: var(--red); background: var(--red-ghost); color: var(--red-deep); }
 /* Filming, on the details step: the same white box as the Terms and texts
    questions above it, with small Yes / No buttons beside the question so the
@@ -1344,7 +1353,7 @@ button.bk-tl-s:hover { border-color: var(--red); box-shadow: 0 0 0 3px var(--red
   margin: .3rem 0 .9rem; padding: .8rem .9rem;
   border: 1.5px solid var(--line); border-radius: var(--r-md); background: var(--paper-2);
 }
-.bk-acc.bk-media:hover { border-color: var(--red); }
+@media (hover: hover) { .bk-acc.bk-media:hover { border-color: var(--red); } }
 .bk-media-t { flex: 1; min-width: 0; }
 .bk-media .bk-acc-h { margin-bottom: 0; }
 .bk-media .bk-acc-h a { color: var(--red); }
@@ -1376,7 +1385,7 @@ button.bk-tl-s:hover { border-color: var(--red); box-shadow: 0 0 0 3px var(--red
   border: 1.5px solid var(--line); background: var(--paper-2); color: var(--text);
   transition: border-color .16s;
 }
-.bk-done-acts button:hover { border-color: var(--red); }
+@media (hover: hover) { .bk-done-acts button:hover { border-color: var(--red); } }
 .bk-done-fix { border-color: var(--red) !important; color: var(--red) !important; }
 .bk-done-call { font-size: .84rem; color: var(--text-soft); line-height: 1.55; margin: 0 0 .4rem; }
 .bk-done-call a { color: var(--red); font-weight: 700; }
@@ -1446,7 +1455,7 @@ button.bk-tl-s:hover { border-color: var(--red); box-shadow: 0 0 0 3px var(--red
   background: none; border: 0; padding: 0; cursor: pointer;
   text-decoration: underline; text-underline-offset: 3px; white-space: nowrap;
 }
-.bk-extra-x:hover { color: var(--red); }
+@media (hover: hover) { .bk-extra-x:hover { color: var(--red); } }
 
 .bk-extra-add { display: block; }
 .bk-extra-add span {
@@ -1515,7 +1524,7 @@ button.bk-tl-s:hover { border-color: var(--red); box-shadow: 0 0 0 3px var(--red
   font: inherit; text-align: left; cursor: pointer; color: var(--text);
   background: var(--paper-2); border: 1.5px solid var(--line); border-radius: var(--r-sm); padding: .5rem .8rem;
 }
-.bk-donerow:hover { border-color: var(--red); }
+@media (hover: hover) { .bk-donerow:hover { border-color: var(--red); } }
 .bk-donerow span { flex: none; width: 5.2rem; font-size: .7rem; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; color: var(--text-soft); }
 .bk-donerow b { flex: 1; min-width: 0; font-size: .9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .bk-donerow em { flex: none; font-style: normal; font-size: .78rem; font-weight: 700; color: var(--red); text-decoration: underline; text-underline-offset: 2px; }
@@ -1535,7 +1544,7 @@ button.bk-tl-s:hover { border-color: var(--red); box-shadow: 0 0 0 3px var(--red
   background: var(--paper-2); border: 2px solid var(--line); border-radius: var(--r-md);
   transition: border-color .16s, box-shadow .16s, transform .16s;
 }
-.bk-pic:hover { border-color: var(--red); transform: translateY(-1px); }
+@media (hover: hover) { .bk-pic:hover { border-color: var(--red); transform: translateY(-1px); } }
 .bk-pic.on { border-color: var(--red); box-shadow: 0 0 0 3px var(--red-ghost); }
 .bk-pic-ic { width: 46px; height: 46px; color: var(--ink); margin-bottom: .15rem; }
 .bk-pic b { font-family: var(--font-display); font-size: 1.02rem; }
@@ -1559,7 +1568,8 @@ button.bk-tl-s:hover { border-color: var(--red); box-shadow: 0 0 0 3px var(--red
   font: inherit; text-align: left; cursor: pointer; color: var(--text);
   background: var(--paper); border: 1.5px dashed var(--line); border-radius: var(--r-md); padding: .6rem .9rem;
 }
-.bk-askrow:hover, .bk-askrow.on { border-color: var(--red); border-style: solid; }
+.bk-askrow.on { border-color: var(--red); border-style: solid; }
+@media (hover: hover) { .bk-askrow:hover { border-color: var(--red); border-style: solid; } }
 .bk-askrow .bk-pic-ic { width: 26px; height: 26px; margin: 0; color: var(--red); flex: none; }
 .bk-askrow span { flex: 1; }
 .bk-askrow b { display: block; font-size: .92rem; }
@@ -1576,10 +1586,10 @@ button.bk-tl-s:hover { border-color: var(--red); box-shadow: 0 0 0 3px var(--red
   background: var(--paper-2); border: 2px solid var(--line); border-radius: var(--r-md);
   transition: border-color .16s, box-shadow .16s;
 }
-.bk-pkgcard:hover { border-color: var(--red); }
+@media (hover: hover) { .bk-pkgcard:hover { border-color: var(--red); } }
 .bk-pkgcard.on { border-color: var(--red); box-shadow: 0 0 0 3px var(--red-ghost); }
 .bk-pkgcard .bk-pkg { border: 0; background: none; border-radius: var(--r-md); padding: .75rem 1rem .2rem; align-items: center; }
-.bk-pkgcard .bk-pkg:hover { border: 0; }
+@media (hover: hover) { .bk-pkgcard .bk-pkg:hover { border: 0; } }
 /* Phones stack the card, so its text lines up on the left like every other
    card (final validation, November 11: the rule above outranked the phone
    rule's stretch and centred "Showroom Ready" and the short taglines). */
@@ -1601,7 +1611,7 @@ button.bk-tl-s:hover { border-color: var(--red); box-shadow: 0 0 0 3px var(--red
   font: inherit; text-align: left; cursor: pointer; color: var(--text);
   background: var(--paper-2); border: 1.5px solid var(--line); border-radius: var(--r-md); padding: .8rem .95rem;
 }
-.bk-extras-open:hover { border-color: var(--red); }
+@media (hover: hover) { .bk-extras-open:hover { border-color: var(--red); } }
 .bk-extras-open span { flex: 1; }
 .bk-extras-open b { display: block; font-size: .95rem; }
 .bk-extras-open i { display: block; font-style: normal; font-size: .8rem; color: var(--text-soft); margin-top: .1rem; }
@@ -1661,7 +1671,7 @@ button.bk-tl-s:hover { border-color: var(--red); box-shadow: 0 0 0 3px var(--red
   font: inherit; font-size: .92rem; font-weight: 800; cursor: pointer; color: #fff;
   background: var(--ink); border: 0; border-radius: var(--r-sm); padding: .7rem 1.2rem;
 }
-.bk-ckcont:hover { background: var(--ink-2); }
+@media (hover: hover) { .bk-ckcont:hover { background: var(--ink-2); } }
 .bk-ckcont svg { width: 15px; height: 15px; }
 /* Its spot (option A, Emmett, November 12): a quiet line saying what is still
    missing, which becomes the button once the section is ready. One fixed
@@ -1700,7 +1710,8 @@ button.bk-tl-s:hover { border-color: var(--red); box-shadow: 0 0 0 3px var(--red
 #bookFunnel .bk-pick-change { min-height: 24px; padding: .2rem .35rem; margin: -.2rem -.35rem; }
 #bookFunnel .bk-recs-foot .bk-askwhen-link, #bookFunnel .bk-wk-gobar .bk-askwhen-link { min-height: 28px; display: inline-flex; align-items: center; }
 #bookFunnel .bk-err.bk-okmsg { background: var(--paper); color: var(--text); border-left-color: var(--text-soft); }
-/* A summary that does not fit wraps to a second line rather than cutting off the phone number or the time. */
+/* A summary that does not fit wraps to a second line rather than cutting off the phone number or the time.
+   Exception: Contact and Address take one line on short phones (improvement B, end of file). */
 @media (max-width: 819.98px) {
   #bookFunnel .bk-donerow b { white-space: normal; overflow: visible; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 }
@@ -1800,7 +1811,7 @@ button.bk-tl-s:hover { border-color: var(--red); box-shadow: 0 0 0 3px var(--red
   margin-top: .9rem; border: 0; cursor: pointer; font: inherit; font-weight: 700; font-size: .95rem;
   background: var(--red); color: #fff; border-radius: 999px; padding: .7rem 1.25rem; min-height: 44px;
 }
-#bookFunnel .bk-prep-send:hover { background: var(--red-deep); }
+@media (hover: hover) { #bookFunnel .bk-prep-send:hover { background: var(--red-deep); } }
 #bookFunnel .bk-prep-send:disabled { opacity: .6; cursor: default; }
 
 /* Phone checkout bar: tab names only, so all four fit beside back and close
@@ -1809,6 +1820,46 @@ button.bk-tl-s:hover { border-color: var(--red); box-shadow: 0 0 0 3px var(--red
   #bookFunnel .bk-modal.ck .bk-navgrp-ck .bk-seg-s { display: none; }
 }
 
+/* Phone checkout bar on two rows (improvement A, November 16): back,
+   "Checkout" and close on the first, the four tabs sharing the second.
+   On one row the bar was 349 px wide at 320 px, so back and close sat over
+   "Checkout" and the outer tabs. The grid always fits, so nothing scrolls. */
+@media (max-width: 559.98px) {
+  #bookFunnel .bk-modal.ck .bk-nav { display: grid; grid-template-columns: auto 1fr auto; align-items: center; overflow: visible; column-gap: .4rem; row-gap: .15rem; }
+  #bookFunnel .bk-modal.ck .bk-nav > .bk-back { grid-column: 1; grid-row: 1; position: static; box-shadow: none; margin: 0; }
+  #bookFunnel .bk-modal.ck .bk-nav > .bk-close { grid-column: 3; grid-row: 1; position: static; box-shadow: none; margin: 0; }
+  #bookFunnel .bk-modal.ck .bk-navgrp-ck { display: contents; }
+  #bookFunnel .bk-modal.ck .bk-navgrp-ck .bk-navgrp-l { grid-column: 2; grid-row: 1; text-align: center; margin: 0; }
+  #bookFunnel .bk-modal.ck .bk-navgrp-ck .bk-navgrp-t { grid-column: 1 / -1; grid-row: 2; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .2rem; }
+  #bookFunnel .bk-modal.ck .bk-navgrp-ck .bk-seg { min-width: 0; padding: .3rem .1rem; text-align: center; }
+}
+
 /* Weather limits, said under the heading when they removed days. */
 #bookFunnel .bk-recs-weather { margin: -.35rem 0 .7rem; font-size: .82rem; color: var(--text-soft); }
 #bookFunnel .bk-recs-weather b { color: var(--text); }
+
+/* "You saved" note on its own line under the figure, free to wrap: the price
+   column is nowrap, and "(10% off, tax and rush fee included)" pushed the
+   table wider than a phone (validation cycle 1, November 16). */
+.bk-lines tr.saved td:last-child i { display: block; white-space: normal; text-wrap: balance; }
+
+/* Time step on a short phone (improvement B, November 16): the Contact and
+   Address rows take one line each, so the first recommended time is in view
+   at 320x640. They are typed answers with a Change button; the Time row on
+   Review keeps its two lines, so a time is never cut off. */
+@media (max-width: 559.98px) and (max-height: 740px) {
+  #bookFunnel .bk-donerow[data-cksec="details"] b, #bookFunnel .bk-donerow[data-cksec="where"] b { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+}
+
+/* "Back to vehicle 1" in the title line while a second vehicle is built (improvement D). */
+#bookFunnel .bk-vehback {
+  border: 0; background: none; padding: .2rem 0; font: inherit; font-weight: 700; cursor: pointer;
+  color: var(--red); text-decoration: underline; text-underline-offset: 2px;
+}
+
+/* At 320 px "★ Suggested" ran past its row in the phone day list and read
+   "Suggeste" under the "or 10:30am" button (validation pass, November 16).
+   Below 360 px the tag may drop to its own line under the time. */
+@media (max-width: 359.98px) {
+  #bookFunnel .bk-wk-item { flex-wrap: wrap; row-gap: .1rem; }
+}

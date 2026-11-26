@@ -58,7 +58,7 @@ function serviceAccount() {
 }
 
 /** The calendar jobs are written to. Defaults to the one already being read. */
-function bookedCalendarId() {
+export function bookedCalendarId() {
   return (
     process.env.GOOGLE_BOOKED_CALENDAR_ID ||
     process.env.GOOGLE_CALENDAR_ID ||
@@ -188,21 +188,7 @@ export async function createBookingEvent({
   const token = await accessToken();
   if (!token) return { ok: false, reason: "auth_failed" };
 
-  const title = /^open/i.test(String(summary).trim()) ? `Booking: ${summary}` : String(summary);
-
-  const body = {
-    summary: title.slice(0, 200),
-    description: String(description ?? "").slice(0, 7000),
-    location: String(location ?? "").slice(0, 300),
-    start: { dateTime: new Date(startMs).toISOString(), timeZone: TIME_ZONE },
-    end: { dateTime: new Date(endMs).toISOString(), timeZone: TIME_ZONE },
-    // Busy, explicitly. A "free" event is discarded by the reader, which
-    // would leave the job invisible to the scheduler that wrote it.
-    transparency: "opaque",
-    // The booking key, so a retry can be recognised as the same job rather
-    // than written twice.
-    ...(key ? { extendedProperties: { private: { bookingKey: String(key).slice(0, 120), ...(phone ? { phone: String(phone).slice(0, 10) } : {}) } } } : {}),
-  };
+  const body = bookingEventBody({ summary, description, location, startMs, endMs, key, phone });
 
   const url =
     `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId || bookedCalendarId())}/events`;
@@ -222,6 +208,29 @@ export async function createBookingEvent({
   return { ok: true, id: j.id ?? null, link: j.htmlLink ?? null };
 }
 
+/**
+ * The event createBookingEvent writes, exactly. The master calendar copy
+ * (_mastercal.mjs) is made from this too, so the copy written at booking
+ * time is the one the reconciler would make from the event it reads back.
+ */
+export function bookingEventBody({ summary, description, location, startMs, endMs, key, phone }) {
+  const title = /^open/i.test(String(summary).trim()) ? `Booking: ${summary}` : String(summary);
+
+  return {
+    summary: title.slice(0, 200),
+    description: String(description ?? "").slice(0, 7000),
+    location: String(location ?? "").slice(0, 300),
+    start: { dateTime: new Date(startMs).toISOString(), timeZone: TIME_ZONE },
+    end: { dateTime: new Date(endMs).toISOString(), timeZone: TIME_ZONE },
+    // Busy, explicitly. A "free" event is discarded by the reader, which
+    // would leave the job invisible to the scheduler that wrote it.
+    transparency: "opaque",
+    // The booking key, so a retry can be recognised as the same job rather
+    // than written twice.
+    ...(key ? { extendedProperties: { private: { bookingKey: String(key).slice(0, 120), ...(phone ? { phone: String(phone).slice(0, 10) } : {}) } } } : {}),
+  };
+}
+
 function eventsUrl(calendarId) {
   return `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId || bookedCalendarId())}/events`;
 }
@@ -229,11 +238,16 @@ function eventsUrl(calendarId) {
 /**
  * The event a booking wrote, found by its booking key within a day of its
  * start, or null. Only events this site wrote carry the key.
+ *
+ * THROWS WHEN IT COULDN'T LOOK. Null means "no earlier event", so a failed
+ * read returned as null made a retry's own first event look like someone
+ * else's job: the customer was told their time was taken (validation cycle 2,
+ * November 16). Callers catch it and treat the answer as unknown.
  */
 export async function findBookingEvent({ key, calendarId, aroundMs }) {
   if (!gcalConfigured() || !key || !aroundMs) return null;
   const token = await accessToken();
-  if (!token) return null;
+  if (!token) throw new Error("gcal find: no access token");
   const q = new URLSearchParams({
     privateExtendedProperty: `bookingKey=${String(key).slice(0, 120)}`,
     timeMin: new Date(aroundMs - 86_400_000).toISOString(),
@@ -243,8 +257,9 @@ export async function findBookingEvent({ key, calendarId, aroundMs }) {
   });
   const res = await fetch(`${eventsUrl(calendarId)}?${q}`, { headers: { Authorization: `Bearer ${token}` } });
   if (!res.ok) {
-    console.error("gcal find", res.status, (await res.text()).slice(0, 300));
-    return null;
+    const body = (await res.text()).slice(0, 300);
+    console.error("gcal find", res.status, body);
+    throw new Error(`gcal find ${res.status}`);
   }
   const j = await res.json();
   return (j.items ?? []).find((e) => e.status !== "cancelled") ?? null;
@@ -264,4 +279,48 @@ export async function setEventDescription({ calendarId, eventId, description }) 
     return { ok: false, reason: `http_${res.status}` };
   }
   return { ok: true };
+}
+
+/**
+ * One Calendar API call on a named calendar, for the master calendar copy
+ * (_mastercal.mjs). The calendar id is required: unlike the calls above,
+ * an empty one never falls back to the bookings calendar. Never throws:
+ * {ok, status, data, reason}, status 0 when there was no token or Google
+ * couldn't be reached. `signal` ends the call, sign-in included, when it
+ * aborts (reason "timed out"), so a caller's time limit holds even when
+ * Google never answers.
+ */
+export async function gcalRequest(method, calendarId, path = "", { query, body, signal } = {}) {
+  if (!calendarId) return { ok: false, status: 0, data: null, reason: "no_calendar" };
+  const timedOut = { ok: false, status: 0, data: null, reason: "timed out" };
+  if (signal?.aborted) return timedOut;
+  const call = async () => {
+    const token = await accessToken().catch(() => null);
+    if (signal?.aborted) return timedOut;
+    if (!token) return { ok: false, status: 0, data: null, reason: "auth_failed" };
+    const qs = query ? `?${new URLSearchParams(query)}` : "";
+    try {
+      const res = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events${path}${qs}`, {
+        method,
+        headers: { Authorization: `Bearer ${token}`, ...(body ? { "Content-Type": "application/json" } : {}) },
+        ...(body ? { body: JSON.stringify(body) } : {}),
+        ...(signal ? { signal } : {}),
+      });
+      const text = await res.text();
+      let data = null;
+      try { data = text ? JSON.parse(text) : null; } catch { data = null; }
+      return { ok: res.ok, status: res.status, data, reason: res.ok ? "" : `http_${res.status}` };
+    } catch (e) {
+      if (signal?.aborted) return timedOut;
+      return { ok: false, status: 0, data: null, reason: `network: ${String(e?.message || e).slice(0, 120)}` };
+    }
+  };
+  if (!signal) return call();
+  let onAbort;
+  const stop = new Promise((resolve) => { onAbort = () => resolve(timedOut); signal.addEventListener("abort", onAbort, { once: true }); });
+  try {
+    return await Promise.race([call(), stop]);
+  } finally {
+    signal.removeEventListener("abort", onAbort);
+  }
 }

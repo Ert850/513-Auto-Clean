@@ -27,6 +27,7 @@ import {
   CAPABILITIES,
   DEFAULT_RULES,
   DRAFT_KEEP_DAYS,
+  GIFT_CARDS,
   LEGAL,
   cancellationLadder,
   copyFor,
@@ -112,6 +113,11 @@ function collectList() {
   if (isLive("checkoutFollowUp")) {
     items.push(
       "If you reach checkout and leave without booking: the name, phone number and email you typed there, the city and ZIP, the services and time you had picked, and how you found us",
+    );
+  }
+  if (isLive("giftCardSales")) {
+    items.push(
+      "If you buy a gift card: your email address (Stripe asks for it on its payment page), and the name and email of the person it is for, your name, your message and the day to send it, if you give them",
     );
   }
   if (isLive("cardOnFile")) {
@@ -230,6 +236,18 @@ function retainPara() {
   return `<p>${base}${stored}</p>`;
 }
 
+/** The gift card rules (terms, section 4), from config/gift-cards.json; nothing while gift cards aren't sold. */
+function giftCardTerms() {
+  if (!isLive("giftCardSales")) return "";
+  const days = GIFT_CARDS.refundDays;
+  const refund = days > 0
+    ? `If a card hasn't been used, you can have what you paid for it refunded within ${days} days of buying it. After that, or once any of it has been used, it can't be refunded.`
+    : "Gift cards can't be refunded.";
+  return `<h3 id="gift-cards">Gift cards</h3>
+    <p>A gift card is worth its full face value, including a card bought at a sale price, and it can be used for ${GIFT_CARDS.expiryYears} years from the day it was bought: the last day is printed on the card. There are no fees. It can be used on any service, add-on, travel and sales tax, over as many bookings as you like, and whatever is left stays on the card. There is no sales tax when you buy a card: tax is added to the detail when the card is used, at the rate for where the work is done.</p>
+    <p>A card can't be exchanged for cash, except where the law requires it. ${refund} If the payment for a card is refunded in full, the card is cancelled. While the payment is disputed the card is on hold, and it is cancelled if the dispute goes against us. If a card is lost, contact us and we will resend it to the email address it was bought with.</p>`;
+}
+
 function changesPara() {
   return `<p>If we change how we handle your information, we will update this page and change the version date at the top. The date of the terms you accepted is recorded with your booking. Significant changes will be made clear on the website.</p>`;
 }
@@ -263,6 +281,7 @@ const inline = { inline: true };
   s("AUTHORIZATION", copyFor("authorization"));
   s("WHY_A_CARD", copyFor("whyACard"), inline);
   s("REFUNDS", copyFor("refunds"), inline);
+  s("GIFTCARDS", giftCardTerms());
   s("MESSAGES", copyFor("messages"), inline);
   s("LADDER", ladderTable());
   s("CHANGES", changeRules());

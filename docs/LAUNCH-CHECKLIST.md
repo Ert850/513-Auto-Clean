@@ -27,12 +27,12 @@ actually does, down to which companies handle customer data. A test fails the
 build if a page and the switches ever disagree, so neither page can promise
 something that is not working or name a processor that is not in use.
 
-The switches, as of today. Five of nine live, each verified against
+The switches, as of today. Four of these nine live, each verified against
 production rather than assumed:
 
 | Switch | State | Verified by |
 |---|---|---|
-| `cardOnFile` | **live** | `/api/create-payment` returns a `seti_` client secret |
+| `cardOnFile` | off | switched off September 14 with `payInFull`: no card is taken (`docs/SESSION-CHANGES-payments.md` before switching it on) |
 | `liveCalendar` | **live** | the funnel paints real openings from 513 Auto Clean |
 | `measuredTravel` | **live** | `/api/travel` answers `source: "routes"` |
 | `automatedEmail` | **live** | `/api/send-confirmation` returns `sent: true` |
@@ -114,7 +114,7 @@ Nothing else has to change.
 1. dashboard.stripe.com, sign up. You do not need business verification to
    get test keys.
 2. Developers, API keys, copy the **Publishable key**. It starts `pk_test_`.
-3. Paste it into `js/config.js` as `stripePublishableKey`.
+3. Paste it into Netlify as `STRIPE_PUBLISHABLE_KEY` (`js/config.js` is built from it).
 4. Copy the **Secret key** (`sk_test_`) into Netlify as `STRIPE_SECRET_KEY`.
    That one never goes in the page, ever.
 
@@ -270,6 +270,9 @@ and Link, but **Stripe cannot do Venmo**, which is why this is separate.
 
 **Send me (safe to share):** the client ID. It is public, and it goes in
 `window.AC_CONFIG` alongside the Stripe publishable key.
+
+In Netlify: `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`, and `PAYPAL_ENV` set to
+`live` or `sandbox` to match them. Without `PAYPAL_ENV`, PayPal does not run.
 
 ---
 

@@ -26,7 +26,7 @@ var COMPONENTS = [
   c("int-mats-dress", "Wash and dress floor mats", "interior", 20),
   c("int-leather", "Condition leather", "interior", 30),
   c("int-glass", "Clean glass", "interior", 15),
-  c("int-jams", "Clean door jams", "interior", 15),
+  c("int-jams", "Clean door jambs", "interior", 15),
   c("int-crevice", "Brush detail every crack and crevice", "interior", 45),
   /* ---- interior: showroom ---- */
   c("int-steam-full", "Full upholstery and applicable trim steam treatment", "interior", 60),
@@ -70,6 +70,7 @@ var BASIC_EXT_IDS = [
   "ext-wheels",
   "ext-tire-dress"
 ];
+var MAINT_PRIOR = { minMonths: 1, maxMonths: 3 };
 var PACKAGES = [
   /* ---------------- interior ---------------- */
   {
@@ -77,17 +78,17 @@ var PACKAGES = [
     slug: "maintenance-interior",
     name: "Maintenance",
     category: "interior",
-    tagline: "Keeps a already-detailed car right, at a lower price.",
-    note: "The same work as a Basic Interior, priced lower because a car detailed a month or two ago has far less built up in it. It resets the everyday mess: crumbs, dust, fingerprints, mats. It does NOT include shampooing, stain work or anything deep, because there should not be anything deep left. If it has been longer than three months, or something has been spilled since, start from Basic or Full instead.",
-    notIncluded: ["Shampoo or stain work", "Anything deep: there should be nothing deep left"],
-    tip: "Been longer than three months, or a spill since? Start from Basic or Full instead.",
+    tagline: "Keeps an already detailed car right, at a lower price.",
+    note: `The same work as a Basic Interior, priced lower because a car detailed in the last ${MAINT_PRIOR.maxMonths} months has far less built up in it. It resets the everyday mess: crumbs, dust, fingerprints, mats. It does NOT include shampooing or stain work. If it has been longer than ${MAINT_PRIOR.maxMonths} months, or something has been spilled since, start from Basic or Full instead.`,
+    notIncluded: ["Shampoo or stain work", "Deep cleaning: it keeps an already detailed car that way"],
+    tip: `Been longer than ${MAINT_PRIOR.maxMonths} months, or a spill since? Start from Basic or Full instead.`,
     priceCents: 11500,
     durationMin: 105,
     componentIds: [...BASIC_INT_IDS],
     featured: false,
     sortOrder: 0,
     /** Returning customers only, 1 to 3 months after a previous detail. */
-    requiresPriorDetail: { minMonths: 1, maxMonths: 3 }
+    requiresPriorDetail: MAINT_PRIOR
   },
   {
     id: "basic-interior",
@@ -110,8 +111,8 @@ var PACKAGES = [
     name: "Full Interior",
     category: "interior",
     tagline: "A deep, top to bottom detail that makes it feel new again.",
-    note: "Everything in Basic, then the deep work: engrained particles pulled out of the carpet, upholstery shampooed and scrubbed, mats washed and dressed, leather conditioned, glass and door jams cleaned, and every crack and crevice brush detailed. Stain reduction is part of it. It does NOT guarantee a stain comes out completely, steam sanitize the whole vehicle, or remove the seats to get underneath them. Most engrained fibers and pet hair come out at this level, but the truly stubborn ones woven deep into the carpet backing need the individual fiber lifting in Showroom Ready Restoration. Deep set stains want the Stain Treatment extra and lingering smells want the Ozone Odor Reset.",
-    notIncluded: ["A promise every stain comes out completely", "Steam sanitizing the whole vehicle", "Taking the seats out to clean underneath"],
+    note: "Everything in Basic, then the deep work: engrained particles pulled out of the carpet, upholstery shampooed and scrubbed, mats washed and dressed, leather conditioned, glass and door jambs cleaned, and every crack and crevice brush detailed. Stain reduction is part of it. It does NOT guarantee a stain comes out completely, steam sanitize the whole vehicle, or remove the seats to get underneath them. Most engrained fibers and pet hair come out at this level, but the truly stubborn ones woven deep into the carpet backing need the individual fiber lifting in Showroom Ready Restoration. Deep set stains want the Stain Treatment extra and lingering smells want the Ozone Odor Reset.",
+    notIncluded: ["Every set-in stain gone completely: some only fade", "Steam sanitizing the whole vehicle", "Taking the seats out to clean underneath"],
     tip: "Deep stains or smells? Add a Stain Treatment or the Ozone Odor Reset. The most stubborn pet hair needs Showroom Ready Restoration.",
     priceCents: 23500,
     durationMin: 240,
@@ -130,7 +131,7 @@ var PACKAGES = [
     category: "interior",
     tagline: "Our most popular detail: Full Interior with the whole cabin steam sanitized.",
     note: "Everything in Full Interior, then the whole vehicle steamed: every safe surface sanitized and scrubbed with heat rather than chemicals, into the vents, seams and seat rails that no cloth reaches. The heat kills bacteria on contact and everything dries in minutes. It does NOT guarantee a stain comes out completely or repair damage. Deep set stains want the Stain Treatment extra and lingering smells want the Ozone Odor Reset.",
-    notIncluded: ["A promise every stain comes out completely", "Repairing tears, burns or worn out material"],
+    notIncluded: ["Every set-in stain gone completely: some only fade", "Repairing tears, burns or worn out material"],
     tip: "Deep stains or smells? Add a Stain Treatment or the Ozone Odor Reset.",
     priceCents: 31500,
     // Steam counts as an hour on top of Full here (Elijah, November 12).
@@ -366,8 +367,8 @@ var ADDONS = [
     name: "Ozone Odor Reset",
     scope: "interior",
     icon: "molecule",
-    description: "Ozone (O3) destroys the compounds causing the smell, not just the smell.",
-    note: "A generator converts the oxygen in the air (O2) into ozone (O3). That extra atom is unstable, so it breaks away and oxidises odor molecules, bacteria and smoke residue on contact. Because it works as a gas it reaches the vents, headliner and seat foam that wiping cannot. It then reverts to ordinary oxygen and leaves nothing behind. The vehicle is sealed while it runs and aired out afterwards. Expect a 60 to 90% reduction in organic odors. It has to be paired with a stain treatment, or with a Full Interior or above, because ozone cannot remove what is still soaked into the fabric.",
+    description: "An ozone treatment for smells that linger, run after the source is cleaned.",
+    note: "A generator converts the oxygen in the air (O2) into ozone (O3). That extra atom is unstable, so it breaks away and oxidizes odor molecules, bacteria and smoke residue on contact. Because it works as a gas it reaches the vents, headliner and seat foam that wiping cannot. It then reverts to ordinary oxygen and leaves nothing behind. The vehicle is sealed while it runs and aired out afterwards. How much it helps depends on the smell and how long it has set in. It has to be paired with a stain treatment, or with a Full Interior or above, because ozone cannot remove what is still soaked into the fabric.",
     tiers: [{ id: "std", label: "Ozone treatment", priceCents: 5e3, durationMin: 60 }],
     // Ozone attacks what is left in the air and the plastics. Running it over
     // material that has not been extracted first mostly wastes the customer's
@@ -612,7 +613,7 @@ var COATING_EXPLAINER = {
   does: [
     "Makes the paint strongly hydrophobic, so water beads up and rolls off instead of sheeting and drying into spots",
     "Keeps dirt, brake dust and road film from keying into the surface, so the car stays cleaner between washes and washes far faster",
-    "Blocks UV, which is what oxidises and fades paint over time",
+    "Blocks UV, which is what oxidizes and fades paint over time",
     "Resists the things that actually etch paint: bird droppings, bug guts, tree sap, road salt",
     "Adds real depth and gloss, and holds it rather than dulling after a month"
   ],
@@ -1080,7 +1081,57 @@ function rushWindow(b, nowMs, s = RUSH_SETTINGS, timeZone = "America/New_York") 
   return { minLeadDays: rule ? rule.rushDays : s.defaultRushDays };
 }
 
+// ../config/scheduling.json
+var scheduling_default = {
+  _read_me: [
+    "Scheduling numbers the booking form and the booking functions both read. A change goes live on the next deploy; a mistake fails the build instead of reaching customers.",
+    "minNoticeMinutes: the soonest a booking can start, counted from now (owner, November 10: an hour).",
+    "shortNoticeHours: a booking starting sooner than this is a request until a detailer accepts it, in the form, the emails and the calendar title.",
+    `arrivalWindowMinutes: how long after the start time we may arrive ("we arrive between 6 and 7pm"). A detailer's own arrivalWindow in DETAILERS overrides it for them.`,
+    "driveFallbackMinutes: the one-way drive allowed for when the drive could not be measured.",
+    "correctionWeekdays: the days paint correction may start, 0 Sunday to 6 Saturday.",
+    "bookAheadDays: how far ahead the form offers times. acceptAheadDays: how far ahead the server accepts one; keep it a little above bookAheadDays.",
+    "Moved here from code on November 14, 2026 (calendar fix 5), with no change in behaviour."
+  ],
+  minNoticeMinutes: 60,
+  shortNoticeHours: 24,
+  arrivalWindowMinutes: 60,
+  driveFallbackMinutes: 30,
+  correctionWeekdays: [0, 6],
+  bookAheadDays: 365,
+  acceptAheadDays: 400
+};
+
+// lib/availability/scheduling.ts
+function checkScheduling(input) {
+  const o = input ?? {};
+  const bad = (field, what) => {
+    throw new Error(`config/scheduling.json: ${field}: ${what}`);
+  };
+  const whole = (field, min, max) => {
+    const v = o[field];
+    return typeof v === "number" && Number.isInteger(v) && v >= min && v <= max ? v : bad(field, `must be a whole number from ${min} to ${max}`);
+  };
+  const days = o["correctionWeekdays"];
+  if (!Array.isArray(days) || !days.length || days.some((d) => !Number.isInteger(d) || d < 0 || d > 6)) {
+    bad("correctionWeekdays", "must be a list of days, 0 Sunday to 6 Saturday");
+  }
+  const s = {
+    minNoticeMinutes: whole("minNoticeMinutes", 0, 7 * 24 * 60),
+    shortNoticeHours: whole("shortNoticeHours", 0, 14 * 24),
+    arrivalWindowMinutes: whole("arrivalWindowMinutes", 0, 240),
+    driveFallbackMinutes: whole("driveFallbackMinutes", 0, 240),
+    correctionWeekdays: [...new Set(days)].sort(),
+    bookAheadDays: whole("bookAheadDays", 1, 730),
+    acceptAheadDays: whole("acceptAheadDays", 1, 800)
+  };
+  if (s.acceptAheadDays < s.bookAheadDays) bad("acceptAheadDays", "must be at least bookAheadDays, or the server refuses times the form offers");
+  return s;
+}
+var SCHEDULING = checkScheduling(scheduling_default);
+
 // lib/availability/slots.ts
+var ZONE = "America/New_York";
 var DEFAULT_BOOKING_WINDOW = {
   earliestStartMin: 6 * 60,
   // 10pm. Which does NOT mean any job can start at 10pm: serviceEndByMin
@@ -1095,7 +1146,91 @@ var DEFAULT_BOOKING_WINDOW = {
 };
 var IGNORE_RETURN_AFTER_MIN = 18 * 60;
 var IGNORE_OUTBOUND_BEFORE_MIN = 10 * 60;
-var ARRIVAL_WINDOW_MIN = 60;
+var TRAVEL_FITS_IN_HOUR_MIN = 45;
+function travelBufferMin(oneWayMinutes) {
+  const drive = Number.isFinite(oneWayMinutes) ? Math.max(0, oneWayMinutes) : 0;
+  return drive <= TRAVEL_FITS_IN_HOUR_MIN ? 60 : drive + 15;
+}
+var MIN = 6e4;
+function mergeIntervals(list) {
+  if (list.length === 0) return [];
+  const sorted = [...list].sort((a, b) => a.start - b.start);
+  const out = [{ ...sorted[0] }];
+  for (let i = 1; i < sorted.length; i++) {
+    const cur = sorted[i];
+    const last = out[out.length - 1];
+    if (cur.start <= last.end) last.end = Math.max(last.end, cur.end);
+    else out.push({ ...cur });
+  }
+  return out;
+}
+function subtractIntervals(open, busy) {
+  const merged = mergeIntervals(busy);
+  let free = mergeIntervals(open);
+  for (const b of merged) {
+    const next = [];
+    for (const f of free) {
+      if (b.end <= f.start || b.start >= f.end) {
+        next.push(f);
+        continue;
+      }
+      if (b.start > f.start) next.push({ start: f.start, end: b.start });
+      if (b.end < f.end) next.push({ start: b.end, end: f.end });
+    }
+    free = next;
+  }
+  return free;
+}
+function computeSlots(req) {
+  const commitmentMs = (req.travelBeforeMin + req.serviceDurationMin + req.travelAfterMin) * MIN;
+  if (commitmentMs <= 0) return [];
+  const free = subtractIntervals(req.openBlocks, req.busy);
+  const stretches = mergeIntervals(req.openBlocks);
+  const dayOpens = new Set(stretches.map((b) => b.start));
+  const dayCloses = new Set(stretches.map((b) => b.end));
+  const step = Math.max(1, req.granularityMin) * MIN;
+  const out = [];
+  const wanted = req.preferredStartsMin;
+  const win = req.bookingWindow ?? DEFAULT_BOOKING_WINDOW;
+  for (const f of free) {
+    const outboundFree = (start) => req.ignoreOutboundBeforeMin !== void 0 && // This free interval has to BEGIN where availability begins. A gap that
+    // opens at 9am because a job finished is not the start of the day, and
+    // the drive to the next customer genuinely does have to fit in it:
+    // without this check, two jobs could be booked back to back with no
+    // time to drive between them.
+    dayOpens.has(f.start) && // Not straight after other work: a separate OPEN block or a job that
+    // ends less than a drive before this stretch opens (review, November
+    // 14) means the detailer is driving from there, inside the day.
+    !stretches.some((b) => b.end < f.start && b.end > f.start - req.travelBeforeMin * MIN) && !req.busy.some((b) => b.end <= f.start && b.end > f.start - req.travelBeforeMin * MIN) && // And only for a start the drive could not have fitted in front of.
+    // 7am with an hour's drive fits inside a 6am opening on its own.
+    start - f.start < req.travelBeforeMin * MIN;
+    const slack = Math.max(0, req.arrivalWindowMin ?? 0) * MIN;
+    const earliest = outboundFree(ceilTo(Math.max(f.start, req.notBefore), step)) ? Math.max(f.start, req.notBefore) : Math.max(f.start + req.travelBeforeMin * MIN - slack, f.start, req.notBefore);
+    let t = ceilTo(earliest, step);
+    while (true) {
+      const arrival = outboundFree(t) ? t : Math.max(t, f.start + req.travelBeforeMin * MIN);
+      const late = arrival - t;
+      const returnMin = req.ignoreReturnAfterMin !== void 0 && dayCloses.has(f.end) && localMinutesOfDay(t, req.timeZone) >= req.ignoreReturnAfterMin ? 0 : req.travelAfterMin;
+      const commitmentEnd = arrival + (req.serviceDurationMin + returnMin) * MIN;
+      if (arrival + req.serviceDurationMin * MIN > f.end) break;
+      if (commitmentEnd > f.end) {
+        t += step;
+        continue;
+      }
+      if (t > req.notAfter) break;
+      if (late <= slack && (!req.allowedWeekdays || req.allowedWeekdays.includes(localWeekday(t, req.timeZone ?? ZONE))) && withinBookingWindow(t, req.serviceDurationMin + late / MIN, win, req.timeZone, req.hasExterior) && matchesPreferred(t, wanted, req.timeZone)) {
+        out.push(t);
+        if (req.lateBy && late > 0) req.lateBy.set(t, late / MIN);
+      }
+      t += step;
+    }
+  }
+  return out.sort((a, b) => a - b);
+}
+function ceilTo(ms, step) {
+  return Math.ceil(ms / step) * step;
+}
+var ARRIVAL_WINDOW_MIN = SCHEDULING.arrivalWindowMinutes;
 var TIME_BANDS = [
   {
     id: "early",
@@ -1137,6 +1272,21 @@ var TIME_BANDS = [
     range: "6pm to 10pm"
   }
 ];
+function withinBookingWindow(ms, serviceDurationMin, win, timeZone, hasExterior) {
+  const startMin = localMinutesOfDay(ms, timeZone);
+  if (startMin < win.earliestStartMin || startMin > win.latestStartMin) return false;
+  if (hasExterior && win.latestExteriorStartMin !== void 0 && startMin > win.latestExteriorStartMin) {
+    return false;
+  }
+  return startMin + serviceDurationMin <= win.serviceEndByMin;
+}
+function matchesPreferred(ms, wanted, timeZone) {
+  if (!wanted) return true;
+  const mins = localMinutesOfDay(ms, timeZone);
+  const day = localWeekday(ms, timeZone ?? ZONE);
+  const list = day === 0 || day === 6 ? wanted.weekend : wanted.weekday;
+  return list.includes(mins);
+}
 function localMinutesOfDay(ms, timeZone = "America/New_York") {
   const parts = new Intl.DateTimeFormat("en-US", {
     timeZone,
@@ -1336,6 +1486,11 @@ function checkPromoCodes(input) {
     if (usd !== void 0 && (typeof usd !== "number" || !(usd > 0))) bad(where, "dollarsOff must be more than 0");
     const until = o["until"];
     if (until !== void 0 && !isRealDate(until)) bad(where, "until must be a real date like 2027-06-30");
+    for (const k of ["label", "blurb"]) {
+      const words = typeof o[k] === "string" ? o[k] : "";
+      for (const m of words.matchAll(/(\d+(?:\.\d+)?)\s*%\s*off/gi)) if (Number(m[1]) !== pct) bad(where, `${k} says ${m[0]} but percentOff is ${pct ?? "not set"}`);
+      for (const m of words.matchAll(/\$\s*(\d+(?:\.\d+)?)\s*off/gi)) if (Number(m[1]) !== usd) bad(where, `${k} says ${m[0]} but dollarsOff is ${usd ?? "not set"}`);
+    }
     const min = o["minServiceDollars"];
     if (min !== void 0 && (typeof min !== "number" || min < 0)) bad(where, "minServiceDollars must be 0 or more");
     return {
@@ -1629,11 +1784,10 @@ var WIRE_LIMITS = {
   maxArrivalLateMin: 120,
   /**
    * How far ahead a slot may be. Past this it is a conversation, not a form.
-   * The same as the live site (November 11): the form offers 365 days
-   * (MAX_BOOK_DAYS in js/funnel.js), and this leaves a month of slack. If the
-   * owner shortens the form's limit (owner question 17), shorten this with it.
+   * config/scheduling.json: acceptAheadDays, kept a little above the form's
+   * bookAheadDays (the build refuses it lower).
    */
-  maxDaysAhead: 400,
+  maxDaysAhead: SCHEDULING.acceptAheadDays,
   /**
    * ZIPs we will price. Ohio is 43000 to 45999, Kentucky 40000 to 42799,
    * Indiana 46000 to 47999. Everything else is outside the twelve hour
@@ -1672,6 +1826,7 @@ function validateWire(body, opts) {
   const kind = cart["kind"] === "inquiry" ? "inquiry" : cart["kind"] === "advice" ? "advice" : "booking";
   const vehicles = [];
   let anything = false;
+  const bare = [];
   for (const rv of rawVehicles) {
     if (!isObj(rv)) return fail("bad_vehicle", "A vehicle entry was not understood.");
     const v = {};
@@ -1753,10 +1908,19 @@ function validateWire(body, opts) {
         ...rc["noGarage"] === true ? { noGarage: true } : {}
       };
     }
-    if (packageIds.length || addons.length || v.correction) anything = true;
+    const has = Boolean(packageIds.length || addons.length || v.correction);
+    if (has) anything = true;
+    bare.push(!has);
     vehicles.push(v);
   }
   if (!anything && kind !== "advice") return fail("empty_cart", "Pick at least one service.");
+  const droppedVehicles = [];
+  if (anything && kind !== "advice" && bare.some(Boolean)) {
+    bare.forEach((b, i) => {
+      if (b) droppedVehicles.push(i + 1);
+    });
+    for (let i = vehicles.length - 1; i >= 0; i--) if (bare[i]) vehicles.splice(i, 1);
+  }
   let slot = null;
   const rawSlot = cart["slot"];
   if (rawSlot !== void 0 && rawSlot !== null) {
@@ -1866,7 +2030,7 @@ function validateWire(body, opts) {
     ...address ? { address } : {},
     payInFull
   };
-  return { ok: true, booking: { cart: clean, contact, consent, kind, payInFull } };
+  return { ok: true, booking: { cart: clean, contact, consent, kind, payInFull, ...droppedVehicles.length ? { droppedVehicles } : {} } };
 }
 function driveTooFar(oneWayMinutes) {
   return typeof oneWayMinutes === "number" && oneWayMinutes > MAX_ONE_WAY_MINUTES;
@@ -1888,7 +2052,9 @@ var LEGAL = {
    * terms describe taking a card again, and the privacy policy names two
    * more processors.
    */
-  termsEffective: "2026-11-14",
+  termsEffective: "2026-11-25",
+  // 2026-11-25: gift cards last 5 years from purchase (the date is printed on the card), not "never expire".
+  // 2026-11-23: section 4 has the gift card rules while gift cards are sold online (giftCardSales).
   // 2026-11-14: section 11 describes the text program for the toll-free number verification.
   // 2026-11-09: Google Analytics and Microsoft Clarity behind a consent
   // banner, and the arrival source kept for the visit.
@@ -1907,7 +2073,9 @@ var LEGAL = {
   // not exist, and the record of what was agreed names the terms' date.
   // 2026-11-11 (later): A/B tests (config/experiments.json) remember which
   // version a visitor saw and send it with a booking. Same day, nothing live.
-  privacyEffective: "2026-11-14"
+  privacyEffective: "2026-11-25"
+  // 2026-11-25: Amazon Pay named while it is offered for gift cards.
+  // 2026-11-23: Stripe for gift cards, and what a gift card purchase collects (giftCardSales).
   // 2026-11-14: opt-in data "will not be shared with any third parties or affiliates" (no carve-out), and a text messaging provider in the list.
 };
 function longDate(iso) {
@@ -2513,6 +2681,135 @@ function cancellationLadder(r) {
   ];
 }
 
+// ../config/gift-cards.json
+var gift_cards_default = {
+  _read_me: [
+    "The gift card page (gift-cards.html) and its links. The build writes every amount, date and 'Covers ...' line from this file and the catalog: never type one into a page.",
+    'mode "sale": the holiday discount runs (sale.percentOff off every card, through sale.ends). mode "regular": cards sell at their value, no sale wording. mode "off": no page and no links anywhere; the site is exactly as it was before gift cards.',
+    "sale.starts and sale.ends are Cincinnati dates (YYYY-MM-DD). The page says 'through' the end date; the checkout refuses the discount outside them. sale.next (optional): next year's dates. Once this sale has ended, the page says it's over, that cards are full price, and when the next sale runs, until that day comes. Wording only: next year, copy them into starts and ends.",
+    "tiers: up to 4 card values in whole dollars, smallest first. featured: true on one of them makes it the highlighted card (none, Elijah November 23: 'a little salesy'). Any other amount, to the cent, is bought from the calculator, between custom.min and custom.max.",
+    "checkout.enabled: true sends the buy buttons to Stripe (netlify/functions/gift-checkout.mjs). It needs STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET and GIFT_CODE_SECRET in Netlify; without them the checkout refuses and takes nothing. false shows the buttons disabled. A production build fails while mode is not off and checkout is off. Once a card has been sold, leave it true: it keeps the gift card terms and the privacy policy's Stripe entry on the site while cards are out.",
+    "refundDays: an unused card can be refunded (what was paid) within this many days of buying it. The terms say it from here.",
+    "scheduleDays: how far ahead a buyer can pick the day the card is emailed to the person it's for.",
+    "sendWindowHours: for how many hours after buying the card's page offers 'Send it to someone' (netlify/functions/gift-send.mjs). The card is emailed to one person, once: after that, or after this window, it can only be printed or shared by link, and Elijah can resend it from /gift-admin. A short window means a card link forwarded weeks later can't be used to email it to someone else.",
+    "expiryYears: a card is good for this many years from the day it's bought, and the date is printed on it. Federal law (the CARD Act) sets 5 years as the shortest; the build refuses less. A card keeps the date it was sold with.",
+    "checkout.methods: how a buyer can pay on Stripe's page. Allowed: card (includes Apple Pay and Google Pay), link, amazon_pay; each must also be switched on in the Stripe dashboard. If Stripe refuses one, the checkout falls back to card and link so a sale is never lost. Not allowed, by the providers' own rules for gift cards: Afterpay, Cash App Pay, Klarna; PayPal through Stripe is Europe only. Affirm is allowed by its rules but Elijah chose to skip it (November 24).",
+    "A mistake in this file fails the build."
+  ],
+  mode: "sale",
+  sale: { percentOff: 20, starts: "2026-11-23", ends: "2026-12-25", next: { starts: "2027-11-27", ends: "2027-12-25" } },
+  tiers: [
+    { value: 50 },
+    { value: 100 },
+    { value: 150 },
+    { value: 250 }
+  ],
+  custom: { min: 25, max: 500 },
+  refundDays: 30,
+  scheduleDays: 60,
+  sendWindowHours: 72,
+  expiryYears: 5,
+  checkout: { enabled: true, methods: ["card", "link", "amazon_pay"] }
+};
+
+// lib/catalog/giftCards.ts
+var SIZE_WORDS = {
+  small: "car",
+  medium: "SUV or truck",
+  large: "3-row SUV or van"
+};
+function maxTaxRateBp(table = SEED_TAX_TABLE) {
+  return Math.max(...table.rates.map((r) => r.rateBp));
+}
+function withTax(cents, rateBp) {
+  return cents + Math.round(cents * rateBp / 1e4);
+}
+function coverTable(rateBp = maxTaxRateBp()) {
+  return SEED_CATALOG.packages.filter((p) => !p.requiresPriorDetail && !p.comingSoon && p.priceCents > 0).map((p) => ({
+    id: p.id,
+    name: p.name,
+    cents: Object.fromEntries(VEHICLE_SIZES.map((s) => [s.id, withTax(p.priceCents + s.upchargeCents, rateBp)]))
+  }));
+}
+function salePriceCents(valueCents, cfg) {
+  if (cfg.mode !== "sale") return valueCents;
+  return Math.round(valueCents * (100 - cfg.sale.percentOff) / 100);
+}
+function coverage(valueCents, sizeId, rows = coverTable()) {
+  const priced = rows.map((r) => ({ name: r.name, cents: r.cents[sizeId] ?? Infinity }));
+  const covered2 = priced.filter((r) => r.cents <= valueCents).sort((a, b) => b.cents - a.cents);
+  const above = priced.filter((r) => r.cents > valueCents && Number.isFinite(r.cents)).sort((a, b) => a.cents - b.cents)[0];
+  return { covered: covered2, next: above ? { name: above.name, shortCents: above.cents - valueCents } : null };
+}
+var CHECKOUT_METHODS = ["card", "link", "amazon_pay"];
+var MIN_EXPIRY_YEARS = 5;
+function expiresOn(issued, years) {
+  const [y, m, d] = issued.split("-").map(Number);
+  const t = new Date(Date.UTC(y + years, m - 1, d));
+  return t.toISOString().slice(0, 10);
+}
+function giftCardProblems(cfg) {
+  const out = [];
+  const day = /^\d{4}-\d{2}-\d{2}$/;
+  if (!["sale", "regular", "off"].includes(cfg.mode)) out.push(`mode must be sale, regular or off, not "${cfg.mode}"`);
+  const pct = cfg.sale?.percentOff;
+  if (!Number.isInteger(pct) || pct < 1 || pct > 50) out.push("sale.percentOff must be a whole number from 1 to 50");
+  if (!day.test(cfg.sale?.starts ?? "") || !day.test(cfg.sale?.ends ?? "")) out.push("sale.starts and sale.ends must be YYYY-MM-DD (Cincinnati dates)");
+  else if (cfg.sale.starts > cfg.sale.ends) out.push("sale.starts is after sale.ends");
+  else if (cfg.sale.next !== void 0) {
+    const n = cfg.sale.next;
+    if (!day.test(n?.starts ?? "") || !day.test(n?.ends ?? "")) out.push("sale.next.starts and sale.next.ends must be YYYY-MM-DD");
+    else if (n.starts <= cfg.sale.ends || n.starts > n.ends) out.push("sale.next must come after the sale and start before it ends");
+  }
+  const values = (cfg.tiers ?? []).map((t) => t.value);
+  if (values.length < 1 || values.length > 4) out.push("tiers: 1 to 4 cards");
+  values.forEach((v, i) => {
+    if (!Number.isInteger(v) || v < 5 || v > 2e3) out.push(`tiers[${i}].value must be whole dollars, 5 to 2000`);
+    if (i && v <= values[i - 1]) out.push("tiers must go up in value");
+  });
+  if ((cfg.tiers ?? []).filter((t) => t.featured).length > 1) out.push("at most one featured tier");
+  const { min, max } = cfg.custom ?? {};
+  if (!Number.isInteger(min) || !Number.isInteger(max) || min < 5 || min >= max) out.push("custom.min and custom.max must be whole dollars, min below max");
+  if (typeof cfg.checkout?.enabled !== "boolean") out.push("checkout.enabled must be true or false");
+  const methods = cfg.checkout?.methods;
+  if (!Array.isArray(methods) || !methods.includes("card") || methods.some((m) => !CHECKOUT_METHODS.includes(m)) || new Set(methods).size !== methods.length) {
+    out.push(`checkout.methods must include "card" and only these: ${CHECKOUT_METHODS.join(", ")}`);
+  }
+  if (!Number.isInteger(cfg.expiryYears) || cfg.expiryYears < MIN_EXPIRY_YEARS || cfg.expiryYears > 50) out.push(`expiryYears must be a whole number of years, at least ${MIN_EXPIRY_YEARS} (federal law)`);
+  if (!Number.isInteger(cfg.refundDays) || cfg.refundDays < 0 || cfg.refundDays > 365) out.push("refundDays must be a whole number of days, 0 to 365");
+  if (!Number.isInteger(cfg.scheduleDays) || cfg.scheduleDays < 1 || cfg.scheduleDays > 365) out.push("scheduleDays must be a whole number of days, 1 to 365");
+  if (!Number.isInteger(cfg.sendWindowHours) || cfg.sendWindowHours < 1 || cfg.sendWindowHours > 24 * 30) out.push("sendWindowHours must be a whole number of hours, 1 to 720");
+  return out;
+}
+var GIFT_CARDS = gift_cards_default;
+function cincinnatiDay(nowMs) {
+  const { y, mo, d } = localParts(nowMs, "America/New_York");
+  return `${y}-${String(mo).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+}
+function saleOn(cfg, nowMs) {
+  if (cfg.mode !== "sale") return false;
+  const day = cincinnatiDay(nowMs);
+  return day >= cfg.sale.starts && day <= cfg.sale.ends;
+}
+function saleEndedNext(cfg, nowMs) {
+  if (cfg.mode !== "sale" || !cfg.sale.next) return false;
+  const day = cincinnatiDay(nowMs);
+  return day > cfg.sale.ends && day < cfg.sale.next.starts;
+}
+function dollarsToCents(v) {
+  if (typeof v !== "number" || !Number.isFinite(v)) return null;
+  const c2 = Math.round(v * 100);
+  return Math.abs(v * 100 - c2) < 1e-6 ? c2 : null;
+}
+function giftOffer(value, nowMs, cfg = GIFT_CARDS) {
+  if (cfg.mode === "off") return { ok: false, error: "off" };
+  const valueCents = dollarsToCents(value);
+  const tier = cfg.tiers.some((t) => t.value * 100 === valueCents);
+  if (valueCents === null || !tier && (valueCents < cfg.custom.min * 100 || valueCents > cfg.custom.max * 100)) return { ok: false, error: "bad_amount" };
+  const percentOff = saleOn(cfg, nowMs) ? cfg.sale.percentOff : 0;
+  return { ok: true, valueCents, payCents: Math.round(valueCents * (100 - percentOff) / 100), percentOff };
+}
+
 // lib/site/capabilities.ts
 var DRAFT_KEEP_DAYS = 14;
 var CAPABILITIES = [
@@ -2698,6 +2995,17 @@ var CAPABILITIES = [
     // nothing while it is off.
     live: true,
     blockedBy: "nothing: it uses the booking email service"
+  },
+  {
+    id: "giftCardSales",
+    what: "Gift cards sold online, paid on Stripe's own page",
+    // Follows config/gift-cards.json checkout.enabled, NOT mode: the terms'
+    // gift card rules (how long a card lasts, refunds) and the privacy policy's
+    // Stripe entry must stay while any card sold online is out, even after
+    // the page is switched off (validation pass 1). Leave checkout.enabled
+    // true once a card has been sold.
+    live: GIFT_CARDS.checkout.enabled,
+    blockedBy: "config/gift-cards.json checkout.enabled false"
   }
 ];
 var PROCESSORS = [
@@ -2714,6 +3022,7 @@ var PROCESSORS = [
   { name: "Google Calendar", does: "holds our availability and our schedule. When you book, the job goes onto our booking calendar with your name, phone, email, address and notes, so we know where to be. That calendar is private: anyone else sees only that the time is taken. Your browser reads only our open times.", capability: "liveCalendar" },
   { name: "Stripe", does: "takes card payments and keeps your card on file. Card details go straight to Stripe over an encrypted connection; we never see or store the card number.", capability: "cardOnFile" },
   { name: "PayPal", does: "takes PayPal and Venmo payments.", capability: "digitalWallets" },
+  { name: "Stripe (gift cards)", does: "takes payment for gift cards on its own secure page, and keeps the record of each card: its value, what is left on it, and the names, email address and message given for it. Card details go straight to Stripe; we never see or store the card number." + (GIFT_CARDS.checkout.methods.includes("amazon_pay") ? " If you pay with Amazon Pay, Amazon handles that payment under its own privacy notice." : "") + " The gift card emails are sent by Resend.", capability: "giftCardSales" },
   // Named generically on purpose (Emmett, November 14): the provider may change
   // (GoHighLevel's LeadConnector today), and the policy should not need a rewrite.
   { name: "Our text messaging provider", does: "delivers the text messages we send you. It receives your mobile number and each message, only to deliver it, and may not use them for anything else." },
@@ -2919,6 +3228,56 @@ function planDays(req) {
     longestDoorToDoorMin: longestDoorToDoor
   };
 }
+var OUTBOUND_BEFORE_DAY_MAX_MIN = 60;
+var covered = (block, open) => mergeIntervals(open).some((o) => o.start <= block.start && o.end >= block.end);
+var clashes = (block, busy) => busy.some((b) => b.start < block.end && b.end > block.start);
+function findMultiDayStarts(req) {
+  const tz = req.timeZone ?? "America/New_York";
+  const limit = req.limit ?? 12;
+  const out = [];
+  let cursor = localDayStart(req.notBefore, tz);
+  for (let guard = 0; guard < 400 && cursor <= req.notAfter && out.length < limit; guard++) {
+    const nextDay = localTimeOnDay(cursor, 1, 0, tz);
+    if (req.allowedWeekdays && req.plan.days.some((d) => !req.allowedWeekdays.includes(localWeekday(localTimeOnDay(cursor, d.index, 12 * 60, tz), tz)))) {
+      cursor = nextDay;
+      continue;
+    }
+    const blocks = [];
+    const days = [];
+    let fits = true;
+    for (const day of req.plan.days) {
+      const block = {
+        start: localTimeOnDay(cursor, day.index, day.blockStartMin, tz),
+        end: localTimeOnDay(cursor, day.index, day.blockEndMin, tz)
+      };
+      const outbound = day.startMin - day.blockStartMin;
+      const work = {
+        start: localTimeOnDay(cursor, day.index, day.startMin - (outbound > OUTBOUND_BEFORE_DAY_MAX_MIN ? outbound : 0), tz),
+        end: localTimeOnDay(cursor, day.index, day.endMin, tz)
+      };
+      if (block.start < req.notBefore || !covered(work, req.openBlocks) || clashes(block, req.busy)) {
+        fits = false;
+        break;
+      }
+      blocks.push(block);
+      days.push({
+        startMs: localTimeOnDay(cursor, day.index, day.startMin, tz),
+        endMs: localTimeOnDay(cursor, day.index, day.endMin, tz),
+        workMin: day.workMin
+      });
+    }
+    if (fits && days.length === req.plan.days.length) {
+      out.push({ startMs: days[0].startMs, days, blocks });
+    }
+    cursor = nextDay;
+  }
+  return out;
+}
+function multiDayStillFits(req) {
+  const tz = req.timeZone ?? "America/New_York";
+  const day0 = localDayStart(req.startMs, tz);
+  return findMultiDayStarts({ ...req, notBefore: day0, notAfter: day0 + 1, limit: 1 }).some((o) => Math.abs(o.startMs - req.startMs) < 6e4);
+}
 function multiDayEvents(req) {
   const tz = req.timeZone ?? "America/New_York";
   if (fitsOneDay(req.serviceMinutes, LONGEST_DAY, req.travelMin, req.travelMin)) return null;
@@ -2934,6 +3293,272 @@ function multiDayEvents(req) {
     const start = d.index === 0 ? req.slotMs : localTimeOnDay(day0, d.index, d.startMin, tz);
     return { startMs: start, endMs: start + d.workMin * 6e4 };
   });
+}
+
+// lib/availability/stillFree.ts
+var ZONE2 = "America/New_York";
+var DAY2 = 864e5;
+function multiDayPlan(job) {
+  if (fitsOneDay(job.serviceMin, LONGEST_DAY, job.driveMin, job.driveMin)) return null;
+  const plan = planDays({
+    serviceMinutes: job.serviceMin,
+    travelBeforeMin: job.driveMin,
+    travelAfterMin: job.driveMin,
+    preferredStartsMin: job.correction ? CORRECTION_RULES.allowedStartsMin : LONG_JOB_STARTS
+  });
+  return plan.ok ? plan : void 0;
+}
+function checkRange(job) {
+  const day0 = localDayStart(job.slotMs, ZONE2);
+  const plan = multiDayPlan(job);
+  if (plan === void 0) return null;
+  return { from: day0 - DAY2, to: day0 + ((plan ? plan.totalDays : 1) + 1) * DAY2 };
+}
+function slotStillFree(job, win) {
+  const range = checkRange(job);
+  if (!range) return { free: true, lateMin: 0 };
+  const plan = multiDayPlan(job);
+  if (plan) {
+    const free = multiDayStillFits({
+      plan,
+      startMs: job.slotMs,
+      openBlocks: win.open,
+      busy: win.busy,
+      ...job.correction ? { allowedWeekdays: SCHEDULING.correctionWeekdays } : {}
+    });
+    return { free, lateMin: 0 };
+  }
+  const buffer = travelBufferMin(job.driveMin);
+  const late = /* @__PURE__ */ new Map();
+  const slots = computeSlots({
+    lateBy: late,
+    openBlocks: win.open,
+    busy: win.busy,
+    serviceDurationMin: job.serviceMin,
+    travelBeforeMin: buffer,
+    travelAfterMin: buffer,
+    granularityMin: 30,
+    notBefore: range.from,
+    notAfter: range.to,
+    hasExterior: job.hasExterior,
+    ignoreReturnAfterMin: IGNORE_RETURN_AFTER_MIN,
+    ...job.driveMin <= 60 ? { ignoreOutboundBeforeMin: IGNORE_OUTBOUND_BEFORE_MIN } : {},
+    ...job.arrivalWindowMin !== void 0 ? { arrivalWindowMin: job.arrivalWindowMin } : {},
+    // Paint correction keeps its own starts and days, as the form offers them
+    // (validation cycle 2, November 16: a hand-edited request got a Tuesday 3pm).
+    ...job.correction ? {
+      preferredStartsMin: { weekday: CORRECTION_RULES.allowedStartsMin, weekend: CORRECTION_RULES.allowedStartsMin },
+      allowedWeekdays: SCHEDULING.correctionWeekdays
+    } : {}
+  });
+  const hit = slots.find((ms) => Math.abs(ms - job.slotMs) < 6e4);
+  return { free: hit !== void 0, lateMin: hit !== void 0 ? late.get(hit) ?? 0 : 0 };
+}
+
+// ../config/master-calendar.json
+var master_calendar_default = {
+  _about: "The copy of every booked job on the master calendar 513 All Jobs, for GoHighLevel (docs/MASTER-CALENDAR-SETUP.md). Off until ALL_JOBS_CALENDAR_ID is set in Netlify; the calendar id lives only there.",
+  colors: {
+    _about: "Google Calendar event colour ids by detailer name: 7 Peacock, 10 Basil, 8 Graphite, 9 Blueberry, 5 Banana, 6 Tangerine, 3 Grape, 4 Flamingo, 2 Sage, 1 Lavender, 11 Tomato.",
+    Elijah: "7",
+    Kris: "10"
+  },
+  defaultColor: "9",
+  cancelledColor: "8",
+  cancelMode: "mark",
+  maxCancelsPerRun: 10,
+  daysBack: 14,
+  daysAhead: 120,
+  writeTimeoutMs: 2500,
+  runBudgetMs: 2e4
+};
+
+// lib/availability/masterCalendar.ts
+var COLOR_ID = /^(?:[1-9]|1[01])$/;
+function checkMasterCalendar(input) {
+  const o = input ?? {};
+  const bad = (field, what) => {
+    throw new Error(`config/master-calendar.json: ${field}: ${what}`);
+  };
+  const whole = (field, min, max) => {
+    const v = o[field];
+    return typeof v === "number" && Number.isInteger(v) && v >= min && v <= max ? v : bad(field, `must be a whole number from ${min} to ${max}`);
+  };
+  const color = (field, v) => typeof v === "string" && COLOR_ID.test(v) ? v : bad(field, 'must be a Google event colour id, "1" to "11"');
+  const colors = {};
+  const rawColors = o["colors"];
+  if (!rawColors || typeof rawColors !== "object" || Array.isArray(rawColors)) bad("colors", "must be an object of detailer name to colour id");
+  for (const [name, v] of Object.entries(rawColors)) {
+    if (name.startsWith("_")) continue;
+    colors[name.trim().toLowerCase()] = color(`colors.${name}`, v);
+  }
+  const mode = o["cancelMode"];
+  if (mode !== "mark" && mode !== "delete") bad("cancelMode", 'must be "mark" or "delete"');
+  return {
+    colors,
+    defaultColor: color("defaultColor", o["defaultColor"]),
+    cancelledColor: color("cancelledColor", o["cancelledColor"]),
+    cancelMode: mode,
+    maxCancelsPerRun: whole("maxCancelsPerRun", 0, 1e3),
+    daysBack: whole("daysBack", 0, 366),
+    daysAhead: whole("daysAhead", 1, 800),
+    writeTimeoutMs: whole("writeTimeoutMs", 500, 1e4),
+    runBudgetMs: whole("runBudgetMs", 1e3, 25e3)
+  };
+}
+var MASTER_CALENDAR = checkMasterCalendar(master_calendar_default);
+var JOBS_SYNC_SKIP_TITLE = /^(open|best|dns|busy|blocked?|unavailable|availability|hold|personal)\b/i;
+var JOBS_SYNC_OFFICE = /505\s+Sandheger/i;
+var JOBS_SYNC_DETAILER = /^(?:SHORT NOTICE[^:]*:\s*)?([A-Z][a-z]+):/;
+function notAJob(e) {
+  const title = String(e.summary ?? "");
+  const loc = String(e.location ?? "");
+  const desc = String(e.description ?? "");
+  if (e.status === "cancelled") return "deleted";
+  if (e.transparency === "transparent") return "free";
+  if (JOBS_SYNC_SKIP_TITLE.test(title.trim())) return "title";
+  if (JOBS_SYNC_OFFICE.test(loc) || JOBS_SYNC_OFFICE.test(desc)) return "office";
+  if (!e.start?.dateTime && !/\$\d/.test(title + desc)) return "all-day";
+  return "";
+}
+var isJob = (e) => notAJob(e) === "";
+var CANCELLED_PREFIX = "CANCELLED: ";
+var SHORT_NOTICE = /^(SHORT NOTICE[^:]*:\s*)/;
+var titleDetailer = (title, fallback) => JOBS_SYNC_DETAILER.exec(String(title ?? "").trim())?.[1] || fallback;
+function masterTitle(title, detailer) {
+  const t = String(title ?? "").trim();
+  if (JOBS_SYNC_DETAILER.test(t)) return t.slice(0, 250);
+  const pre = SHORT_NOTICE.exec(t)?.[1] ?? "";
+  const rest = t.slice(pre.length);
+  return `${pre}${detailer}: ${rest || "Job"}`.slice(0, 250);
+}
+function masterDescription(h) {
+  return [
+    `Status: ${h.status}`,
+    `Detailer: ${h.detailer}`,
+    `Booking key: ${h.key}`,
+    `Source calendar: ${h.source}`,
+    "---",
+    String(h.original ?? "")
+  ].join("\n").slice(0, 8e3);
+}
+var colorFor = (detailer, s = MASTER_CALENDAR) => s.colors[String(detailer).trim().toLowerCase()] ?? s.defaultColor;
+var sourceIdOf = (calendarId, eventId) => `${calendarId}|${eventId}`;
+function splitSourceId(v) {
+  const i = String(v ?? "").lastIndexOf("|");
+  return i > 0 ? { calendarId: v.slice(0, i), eventId: v.slice(i + 1) } : null;
+}
+var keyOf = (e) => e.extendedProperties?.private?.["bookingKey"] || `manual:${e.id}`;
+function masterCopy(i) {
+  const s = i.settings ?? MASTER_CALENDAR;
+  const o = i.original;
+  const who = titleDetailer(o.summary ?? "", i.detailer);
+  return {
+    summary: masterTitle(o.summary ?? "", who),
+    description: masterDescription({ status: "Booked", detailer: who, key: i.key, source: i.label, original: o.description ?? "" }),
+    location: o.location ?? "",
+    start: pickTime(o.start),
+    end: pickTime(o.end),
+    // As the original: a job is Busy, so GHL blocks its time.
+    transparency: o.transparency === "transparent" ? "transparent" : "opaque",
+    colorId: colorFor(who, s),
+    extendedProperties: { private: { bookingKey: i.key, sourceId: sourceIdOf(i.calendarId, String(o.id ?? "")) } }
+  };
+}
+function pickTime(t) {
+  if (!t) return {};
+  if (t.date) return { date: t.date };
+  return { ...t.dateTime ? { dateTime: t.dateTime } : {}, ...t.timeZone ? { timeZone: t.timeZone } : {} };
+}
+function cancelledPatch(copy, s = MASTER_CALENDAR) {
+  const summary = String(copy.summary ?? "");
+  const desc = String(copy.description ?? "");
+  return {
+    summary: summary.startsWith(CANCELLED_PREFIX) ? summary : `${CANCELLED_PREFIX}${summary}`.slice(0, 250),
+    description: /^Status: .*$/m.test(desc) ? desc.replace(/^Status: .*$/m, "Status: Cancelled") : `Status: Cancelled
+${desc}`,
+    transparency: "transparent",
+    colorId: s.cancelledColor
+  };
+}
+var isCancelledCopy = (e) => String(e.summary ?? "").startsWith(CANCELLED_PREFIX) && /^Status: Cancelled$/m.test(String(e.description ?? ""));
+function copyPatch(have, want) {
+  const kind = (t) => t?.date ? "date" : "dateTime";
+  if (kind(have.start) !== kind(want.start) || kind(have.end) !== kind(want.end)) return null;
+  return want;
+}
+var instant = (t) => t?.date ? `d:${t.date}` : t?.dateTime ? `t:${Date.parse(t.dateTime)}` : "";
+function sameCopy(have, want) {
+  const hp = have.extendedProperties?.private ?? {};
+  const wp = want.extendedProperties?.private ?? {};
+  return (have.summary ?? "") === (want.summary ?? "") && (have.description ?? "") === (want.description ?? "") && (have.location ?? "") === (want.location ?? "") && instant(have.start) === instant(want.start) && instant(have.end) === instant(want.end) && (have.transparency || "opaque") === (want.transparency || "opaque") && (have.colorId ?? "") === (want.colorId ?? "") && hp["bookingKey"] === wp["bookingKey"] && hp["sourceId"] === wp["sourceId"];
+}
+function keyHolder(originals, copy) {
+  const follows = splitSourceId(copy?.extendedProperties?.private?.["sourceId"])?.eventId;
+  const same = originals.find((e) => follows && e.id === follows);
+  if (same) return same;
+  const made = (e) => {
+    const t = Date.parse(String(e.created ?? ""));
+    return Number.isFinite(t) ? t : Infinity;
+  };
+  return [...originals].sort((a, b) => made(a) - made(b) || String(a.id).localeCompare(String(b.id)))[0];
+}
+function planMirror(sources, master, s = MASTER_CALENDAR, idFor) {
+  const plan = { creates: [], updates: [], missing: [], foreign: [], duplicates: [], skipped: 0 };
+  const copies = /* @__PURE__ */ new Map();
+  for (const e of master) {
+    if (e.status === "cancelled") continue;
+    const p = e.extendedProperties?.private ?? {};
+    if (!p["sourceId"] || !p["bookingKey"]) {
+      plan.foreign.push(String(e.id));
+      continue;
+    }
+    const key = p["bookingKey"];
+    const held = copies.get(key);
+    if (held) {
+      if (idFor && e.id === idFor(key) && held.id !== idFor(key)) {
+        plan.duplicates.push(String(held.id));
+        copies.set(key, e);
+      } else plan.duplicates.push(String(e.id));
+      continue;
+    }
+    copies.set(key, e);
+  }
+  const jobs = [];
+  const ids = /* @__PURE__ */ new Set();
+  for (const src of sources) {
+    for (const e of src.events) {
+      if (e.status === "cancelled" || !e.id) continue;
+      if (!isJob(e)) {
+        plan.skipped++;
+        continue;
+      }
+      if (ids.has(e.id)) {
+        plan.skipped++;
+        continue;
+      }
+      ids.add(e.id);
+      jobs.push({ src, e });
+    }
+  }
+  const byKey = /* @__PURE__ */ new Map();
+  for (const { e } of jobs) byKey.set(keyOf(e), [...byKey.get(keyOf(e)) ?? [], e]);
+  const seen = /* @__PURE__ */ new Set();
+  for (const { src, e } of jobs) {
+    const shared = byKey.get(keyOf(e));
+    const key = shared.length > 1 && keyHolder(shared, copies.get(keyOf(e))) !== e ? `manual:${e.id}` : keyOf(e);
+    seen.add(key);
+    const want = masterCopy({ original: e, key, calendarId: src.calendarId, label: src.label, detailer: src.detailer, settings: s });
+    const have = copies.get(key);
+    if (!have) plan.creates.push({ key, body: want });
+    else if (!sameCopy(have, want)) plan.updates.push({ id: String(have.id), key, have, body: want, restore: isCancelledCopy(have) });
+  }
+  for (const [key, copy] of copies) {
+    if (seen.has(key)) continue;
+    if (isCancelledCopy(copy)) continue;
+    plan.missing.push({ id: String(copy.id), key, copy });
+  }
+  return plan;
 }
 
 // ../config/business.json
@@ -3006,6 +3631,158 @@ function hoursText(h = HOURS) {
   return `${hourWords(h.opens)} to ${hourWords(h.closes)}`;
 }
 hoursText();
+
+// ../config/booking-page.json
+var booking_page_default = {
+  _read_me: [
+    "The booking page at 513autoclean.com/book (booking.html), the link on the Google Business Profile.",
+    'video.src: the 9:16 video beside the booking card, a path such as "images/book-montage.mp4" (put the file in images/). Empty: the slot shows the hero photo, cropped to 9:16.',
+    'video.poster: the still shown before the video plays, such as "images/book-montage-poster.jpg". Empty: the hero photo.',
+    "The video plays muted, looping, inline, on its own; only its first frames load until it plays.",
+    'bookLinks: "page" sends every Book link on the other pages to /book, where the consent boxes are, and the form opens from there (Imperion, November 14, for the toll-free verification). "inline": Book links open the form in place on every page, as before. Switching back is this one word.',
+    "bookLinkParams: the address words a Book link uses to carry what it started with into /book: package (a package id), interest (a coming-soon package id), intent (interior or exterior, the catalog's own categories) and browse (the full list). Change a word here and every link, the booking form and the build follow; the values themselves always come from the catalog.",
+    "A mistake in this file fails the build."
+  ],
+  video: {
+    src: "",
+    poster: ""
+  },
+  bookLinks: "page",
+  bookLinkParams: {
+    package: "package",
+    interest: "interest",
+    intent: "intent",
+    browse: "browse"
+  }
+};
+
+// lib/booking/bookLinks.ts
+var KINDS2 = ["package", "interest", "intent", "browse"];
+function load() {
+  const p = booking_page_default.bookLinkParams;
+  if (!p || typeof p !== "object") throw new Error("config/booking-page.json: bookLinkParams is missing");
+  const out = {};
+  const seen = /* @__PURE__ */ new Set();
+  for (const k of KINDS2) {
+    const v = p[k];
+    if (typeof v !== "string" || !/^[a-z][a-z0-9_-]{0,19}$/.test(v)) {
+      throw new Error(`config/booking-page.json: bookLinkParams.${k} must be a short lowercase word`);
+    }
+    if (seen.has(v)) throw new Error(`config/booking-page.json: bookLinkParams uses "${v}" twice`);
+    seen.add(v);
+    out[k] = v;
+  }
+  return out;
+}
+var BOOK_LINK_PARAMS = load();
+var BOOK_INTENTS = [...new Set(SEED_CATALOG.packages.map((p) => p.category))];
+function arrivalValueOk(kind, id) {
+  if (kind === "browse") return id === "1";
+  if (kind === "intent") return BOOK_INTENTS.includes(id);
+  return Boolean(findPackage(id));
+}
+function arrivalQuery(kind, id = "1") {
+  if (!kind || !arrivalValueOk(kind, id)) return "";
+  return `?${BOOK_LINK_PARAMS[kind]}=${encodeURIComponent(id)}`;
+}
+function parseArrival(search) {
+  const q = new URLSearchParams(search || "");
+  for (const k of KINDS2) {
+    const v = q.get(BOOK_LINK_PARAMS[k]);
+    if (v !== null && arrivalValueOk(k, v)) return { kind: k, id: v };
+  }
+  return null;
+}
+
+// lib/travel/zipGeo.ts
+var ZIP_GEO = [
+  // Cincinnati core
+  { zip: "45220", lat: 39.135, lon: -84.517 },
+  { zip: "45219", lat: 39.128, lon: -84.512 },
+  { zip: "45216", lat: 39.185, lon: -84.492 },
+  { zip: "45217", lat: 39.166, lon: -84.497 },
+  { zip: "45223", lat: 39.163, lon: -84.541 },
+  { zip: "45225", lat: 39.135, lon: -84.545 },
+  { zip: "45232", lat: 39.183, lon: -84.523 },
+  { zip: "45229", lat: 39.148, lon: -84.494 },
+  { zip: "45206", lat: 39.125, lon: -84.487 },
+  { zip: "45207", lat: 39.14, lon: -84.47 },
+  { zip: "45212", lat: 39.157, lon: -84.451 },
+  { zip: "45202", lat: 39.109, lon: -84.507 },
+  { zip: "45214", lat: 39.117, lon: -84.541 },
+  { zip: "45224", lat: 39.203, lon: -84.541 },
+  { zip: "45237", lat: 39.187, lon: -84.457 },
+  { zip: "45208", lat: 39.135, lon: -84.435 },
+  { zip: "45209", lat: 39.155, lon: -84.425 },
+  { zip: "45213", lat: 39.178, lon: -84.42 },
+  { zip: "45226", lat: 39.113, lon: -84.428 },
+  { zip: "45227", lat: 39.145, lon: -84.375 },
+  { zip: "45215", lat: 39.226, lon: -84.452 },
+  { zip: "45211", lat: 39.155, lon: -84.605 },
+  { zip: "45238", lat: 39.1, lon: -84.61 },
+  { zip: "45239", lat: 39.208, lon: -84.59 },
+  { zip: "45231", lat: 39.246, lon: -84.539 },
+  { zip: "45230", lat: 39.079, lon: -84.375 },
+  { zip: "45233", lat: 39.108, lon: -84.69 },
+  { zip: "45236", lat: 39.196, lon: -84.386 },
+  { zip: "45243", lat: 39.18, lon: -84.343 },
+  { zip: "45244", lat: 39.117, lon: -84.335 },
+  { zip: "45245", lat: 39.083, lon: -84.253 },
+  { zip: "45255", lat: 39.058, lon: -84.32 },
+  { zip: "45240", lat: 39.283, lon: -84.52 },
+  { zip: "45246", lat: 39.288, lon: -84.48 },
+  { zip: "45241", lat: 39.283, lon: -84.4 },
+  { zip: "45242", lat: 39.25, lon: -84.365 },
+  { zip: "45249", lat: 39.283, lon: -84.325 },
+  { zip: "45247", lat: 39.18, lon: -84.65 },
+  { zip: "45248", lat: 39.155, lon: -84.665 },
+  { zip: "45251", lat: 39.26, lon: -84.61 },
+  { zip: "45252", lat: 39.29, lon: -84.585 },
+  { zip: "45150", lat: 39.17, lon: -84.29 },
+  { zip: "45140", lat: 39.27, lon: -84.265 },
+  { zip: "45069", lat: 39.34, lon: -84.4 },
+  { zip: "45011", lat: 39.4, lon: -84.52 },
+  { zip: "45013", lat: 39.41, lon: -84.6 },
+  { zip: "45014", lat: 39.335, lon: -84.545 },
+  { zip: "45015", lat: 39.37, lon: -84.545 },
+  { zip: "45040", lat: 39.36, lon: -84.31 },
+  { zip: "45036", lat: 39.435, lon: -84.205 },
+  { zip: "45066", lat: 39.55, lon: -84.23 },
+  { zip: "45044", lat: 39.51, lon: -84.4 },
+  { zip: "45005", lat: 39.56, lon: -84.3 },
+  { zip: "45056", lat: 39.505, lon: -84.745 },
+  { zip: "45030", lat: 39.26, lon: -84.79 },
+  { zip: "45103", lat: 39.08, lon: -84.17 },
+  // Northern Kentucky
+  { zip: "41011", lat: 39.075, lon: -84.52 },
+  { zip: "41014", lat: 39.06, lon: -84.505 },
+  { zip: "41016", lat: 39.085, lon: -84.545 },
+  { zip: "41017", lat: 39.04, lon: -84.545 },
+  { zip: "41071", lat: 39.085, lon: -84.487 },
+  { zip: "41073", lat: 39.1, lon: -84.475 },
+  { zip: "41075", lat: 39.075, lon: -84.45 },
+  { zip: "41076", lat: 39.02, lon: -84.44 },
+  { zip: "41018", lat: 39.01, lon: -84.6 },
+  { zip: "41042", lat: 38.99, lon: -84.635 },
+  { zip: "41048", lat: 39.03, lon: -84.7 },
+  { zip: "41005", lat: 39.02, lon: -84.73 },
+  { zip: "41051", lat: 38.94, lon: -84.545 },
+  { zip: "41091", lat: 38.94, lon: -84.68 },
+  { zip: "41001", lat: 38.955, lon: -84.39 },
+  { zip: "41094", lat: 38.875, lon: -84.61 },
+  // Southeast Indiana
+  { zip: "47025", lat: 39.1, lon: -84.86 },
+  { zip: "47001", lat: 39.06, lon: -84.9 },
+  { zip: "47060", lat: 39.25, lon: -84.815 },
+  { zip: "47012", lat: 39.42, lon: -85.01 },
+  { zip: "47006", lat: 39.3, lon: -85.22 }
+];
+var BY_ZIP = Object.fromEntries(
+  ZIP_GEO.map((p) => [p.zip, p])
+);
+function zipGeo(zip) {
+  return BY_ZIP[(zip || "").trim().slice(0, 5)] ?? null;
+}
 
 // lib/server-entry.ts
 function priceFromWire(wire, opts = {}) {
@@ -3137,54 +3914,98 @@ export {
   ADDONS,
   ADVICE_HOLD_MIN,
   ARRIVAL_WINDOW_MIN,
+  BOOK_INTENTS,
+  BOOK_LINK_PARAMS,
+  CANCELLED_PREFIX,
   CAPABILITIES,
+  CHECKOUT_METHODS,
   COATING_COVERAGE,
   COATING_EXPLAINER,
   CORRECTION_RULES,
   CORRECTION_TIERS,
   DEFAULT_RULES,
   DRAFT_KEEP_DAYS,
+  GIFT_CARDS,
   HOURS,
+  JOBS_SYNC_DETAILER,
+  JOBS_SYNC_OFFICE,
+  JOBS_SYNC_SKIP_TITLE,
   LEGAL,
   LONG_JOB_STARTS,
+  MASTER_CALENDAR,
   MAX_BOOKING_CENTS,
   MAX_ONE_WAY_MINUTES,
   REPO_PHONE,
+  SCHEDULING,
   SEED_CATALOG,
+  SIZE_WORDS,
+  VEHICLE_SIZES,
   addonIcon,
   addonsFor,
+  arrivalQuery,
   blockFeeAt,
   businessPhone,
   canDo,
   cancellationLadder,
+  cancelledPatch,
+  checkMasterCalendar,
+  checkRange,
+  cincinnatiDay,
+  colorFor,
   componentsOf,
   copyFor,
+  copyPatch,
+  coverTable,
+  coverage,
+  dollarsToCents,
   driveTooFar,
   estimateOneWayMinutes,
+  expiresOn,
   findAddon,
   findPackage,
+  giftCardProblems,
+  giftOffer,
   hoursText,
+  isCancelledCopy,
+  isJob,
   isLive,
+  keyOf,
   legalFingerprint,
   liveProcessors,
   loadWindow,
   localMinutesOfDay,
   longDate,
+  masterCopy,
+  masterDescription,
+  masterTitle,
+  maxTaxRateBp,
   mergeBusy,
   mileageFeeCents,
   multiDayEvents,
+  notAJob,
   packagesFor,
+  parseArrival,
   parseDetailers,
   parseIcsBusy,
   parsePhone,
   phoneTrace,
+  planMirror,
   priceFromWire,
+  saleEndedNext,
+  saleOn,
+  salePriceCents,
+  sameCopy,
+  slotStillFree,
+  sourceIdOf,
+  splitSourceId,
   swapPhone,
   tierPriceFor,
+  titleDetailer,
   unavailableReason,
   upgradeLegacy,
   validateWire,
   vehicleSize,
   waivesFeeAt,
-  wireNeeds
+  wireNeeds,
+  zipGeo
 };

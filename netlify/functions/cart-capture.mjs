@@ -16,6 +16,7 @@
  * are rate limited per client.
  */
 import { limited } from "./_ratelimit.mjs";
+import { redact } from "./send-confirmation.mjs";
 
 function json(statusCode, body) {
   return {
@@ -109,7 +110,7 @@ export async function handler(event) {
     body: JSON.stringify({ from, to: [owner], subject, html, ...(capture.email ? { reply_to: capture.email } : {}) }),
   });
   if (!res.ok) {
-    console.error("resend", res.status, (await res.text()).slice(0, 300));
+    console.error("resend", res.status, redact(await res.text()).slice(0, 300));
     return json(200, { captured: false, reason: "send_failed" });
   }
   return json(200, { captured: true });

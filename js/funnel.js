@@ -244,9 +244,19 @@
     return state.vehicles.some(function (v) { return Boolean(v.correctionTier); });
   }
 
+  /**
+   * The vehicles that are priced and booked. One with no package yet (vehicle 2
+   * mid-build, or brought in by a link) is left out while another has one: it
+   * took 10% off the real one (validation pass, November 16). With Help me
+   * decide no vehicle has a package, and all of them are sent.
+   */
+  function pricedVehicles() {
+    var some = state.vehicles.some(function (v) { return v.packageIds.length; });
+    return some ? state.vehicles.filter(function (v) { return v.packageIds.length; }) : state.vehicles;
+  }
   function cart() {
     return {
-      vehicles: state.vehicles.map(function (v) {
+      vehicles: pricedVehicles().map(function (v) {
         var size = v.size ? P.vehicleSize(v.size) : null;
         return {
           label: v.label || 'Vehicle',
@@ -276,7 +286,7 @@
       zip: state.address.zip || null,
       payInFull: state.payInFull,
       promoCode: state.promoCode || null,
-      visits: state.separateTimes ? state.vehicles.length : 1
+      visits: state.separateTimes ? pricedVehicles().length : 1
     };
   }
 
@@ -346,6 +356,12 @@
     return '<s>' + $(cents) + tail + '</s> <span class="bk-cut">' + $(cents - off) + tail + '</span>';
   }
 
+  /** A price after any promo code, as one plain figure (for small print, where a struck price would break the line). */
+  function svcPlain(cents) {
+    var bp = promoRate();
+    return $(bp && cents > 0 ? cents - Math.round((cents * bp) / 10000) : cents);
+  }
+
   /** The same, for a figure written as an addition: "+$50". */
   function svcPlus(cents) {
     var bp = promoRate();
@@ -372,6 +388,9 @@
       if (p.requiresPriorDetail) return;
       out.push({
         kind: 'package', id: p.id, name: p.name, category: p.category,
+        // Shown, not pickable, as on the Package step: a pick jumped past the
+        // package check and the server refused it at Confirm (validation pass, November 16).
+        unavailable: p.comingSoon ? (p.comingSoonNote || 'Not bookable yet.') : '',
         priceCents: p.priceCents, pricePlus: Boolean(p.pricePlus),
         durationMin: p.durationMin, tagline: p.tagline, featured: p.featured,
         note: p.note || '',
@@ -404,11 +423,23 @@
       }
       a.tiers.forEach(function (t) {
         if (t.priceCents === null) return;
+        // Priced with a package (Emmett, November 15: the list showed steam at
+        // $115 and Restoration at $210 with no word of $80 or "$445+"). A
+        // `totalWith` add-on is shown, filtered and sorted at its total with
+        // that package; a `withPackage` price is said under the standard one.
+        var base = t.totalWith && P.findPackage(t.totalWith);
+        var withList = !base && t.withPackage
+          ? Object.keys(t.withPackage).filter(P.findPackage).map(function (k) { return { cents: t.withPackage[k], name: P.findPackage(k).name }; })
+          : [];
         out.push({
           kind: 'addon', id: a.id, tierId: t.id,
           name: a.tiers.length > 1 ? a.name + ': ' + t.label : a.name,
-          category: a.scope, priceCents: t.priceCents, pricePlus: false,
-          durationMin: t.durationMin, tagline: a.description, featured: false,
+          category: a.scope,
+          priceCents: base ? base.priceCents + (t.withPackage && t.withPackage[t.totalWith] !== undefined ? t.withPackage[t.totalWith] : t.priceCents) : t.priceCents,
+          pricePlus: Boolean(base), totalWith: base ? base.name : '', withList: withList,
+          // The whole job's time beside the whole job's price (validation cycle 1:
+          // "$445+ total with Full Interior" sat next to the add-on's 3 hrs).
+          durationMin: base ? (base.durationMin || 0) + t.durationMin : t.durationMin, tagline: a.description, featured: false,
           note: a.note || '', detail: t.description || '',
           search: a.name + ' ' + t.label + ' ' + a.description + ' ' + (t.description || '') + ' ' + a.scope
         });
@@ -433,7 +464,10 @@
    * calendar event with, so the block on the calendar is the block the
    * customer was offered.
    */
-  function holdMinutes() { return totalDurationMin() || P.ADVICE_HOLD_MIN; }
+  function holdMinutes() {
+    // Help me decide holds at least the advice block, whatever is chosen.
+    return state.advice ? Math.max(totalDurationMin(), P.ADVICE_HOLD_MIN) : totalDurationMin() || P.ADVICE_HOLD_MIN;
+  }
 
   /* ================= dom ================= */
 
@@ -898,10 +932,30 @@
       (holdMinutes() ? ' · about ' + fmtDur(holdMinutes()) + ' detailing' : '');
   }
 
-  /** "10 to 11am": the hour we arrive in, from the start time. */
+  /**
+   * "10 to 11am": the window we arrive in, from the start time. The window of
+   * whoever has the time (DETAILERS arrivalWindow, else arrivalWindowMinutes
+   * in config/scheduling.json), the same one the confirmation email states.
+   */
+  /** Minutes the arrival window spans for whoever has the time (the owner's until a detailer is chosen). */
+  function windowMin() {
+    var who = crew().filter(function (d) { return d.id === state.detailer; })[0] ||
+      crew().filter(function (d) { return d.owner; })[0];
+    return who && typeof who.arrivalWindowMin === 'number' ? who.arrivalWindowMin : P.ARRIVAL_WINDOW_MIN;
+  }
+
+  /** "hour", "90 minutes", "2 hours": a span of minutes in words, from the setting. */
+  function spanWords(min) {
+    if (min === 60) return 'hour';
+    return min % 60 ? min + ' minutes' : (min / 60) + ' hours';
+  }
+
   function arrivalWindow(ms) {
     var m = localMin(ms);
-    return endLabel(m).replace(/(am|pm)$/, endLabel(m).slice(-2) === endLabel(m + 60).slice(-2) ? '' : '$1') + ' to ' + endLabel(m + 60);
+    var w = windowMin();
+    // A detailer with no arrival window (DETAILERS allows 0): "10am to 10am" said nothing.
+    if (!w) return endLabel(m);
+    return endLabel(m).replace(/(am|pm)$/, endLabel(m).slice(-2) === endLabel(m + w).slice(-2) ? '' : '$1') + ' to ' + endLabel(m + w);
   }
 
   /** "(513) 555-0123" from whatever was typed, or what was typed when it is not ten digits. */
@@ -943,6 +997,10 @@
     // with Contact and Address still folded above it.
     if (onCheckout() && !state.ckOpen) ckPrefill();
     if (onCheckout()) slotStillFits();
+    // A detail changed at checkout changes when the drive home starts, so it
+    // is measured again (a no-op when nothing changed): the server measures
+    // with the length booked, and the two must agree.
+    if (onCheckout() && state.slot && addressComplete()) measureTravel();
     var s = step();
     var scroller = el('bkScroll');
     keptScroll = scroller ? scroller.scrollTop : 0;
@@ -953,10 +1011,20 @@
 
     el('bkBar').style.width = pct + '%';
     el('bkProgress').setAttribute('aria-valuenow', String(pct));
-    el('bkTitle').textContent = onCheckout() ? s.title : 'Build your detail';
-    if (!onCheckout()) s = Object.assign({}, s, { sub: 'A few taps. Your price updates as you go.' });
+    // With two vehicles the build page says which one it is building, what
+    // the other is, and how to get back to it (improvement D, November 16:
+    // "Add a vehicle" opened a bare "Build your detail" with no Back).
+    var multi = !onCheckout() && state.vehicles.length > 1;
+    el('bkTitle').textContent = onCheckout() ? s.title : multi ? 'Vehicle ' + (state.active + 1) : 'Build your detail';
+    if (!onCheckout()) s = Object.assign({}, s, { sub: 'A few quick questions. Your price updates as you go.' });
     var sub = el('bkTitleSub');
-    if (sub) { sub.textContent = s.sub || ''; sub.hidden = !s.sub; }
+    if (sub && multi) {
+      sub.innerHTML = state.vehicles.map(function (v, i) {
+        return i === state.active ? '' : esc(vehicleLine(v, i));
+      }).filter(Boolean).join(' · ') +
+        (state.active > 0 ? ' · <button type="button" class="bk-vehback" data-vehback>Back to vehicle ' + state.active + '</button>' : '');
+      sub.hidden = false;
+    } else if (sub) { sub.textContent = s.sub || ''; sub.hidden = !s.sub; }
     renderNav();
     // Entering checkout reads the calendar fresh; re-rendering it does not.
     if (onCheckout() && lastRenderedStep !== s.id) lastSlotsKey = '';
@@ -973,7 +1041,7 @@
     else ckCont.id = null;
 
     var back = el('bkBack');
-    back.hidden = state.step === 0;
+    back.hidden = state.step === 0 && !(multi && state.active > 0);
 
     var next = el('bkNext');
     next.hidden = s.auto || (onCheckout() && ckNextIdle());
@@ -1038,27 +1106,19 @@
     box.querySelector('.bk-total-amt').textContent = $(quote.totalCents);
     var dur = quote.serviceDurationMin;
     var sub = box.querySelector('.bk-total-sub');
+    // The total includes tax once the ZIP is in; say so (review, November 13).
+    var taxed = quote.taxCents > 0 && !quote.taxIsEstimate;
 
-    if (quote.promoDiscountCents > 0) {
-      // Re-priced without the code rather than adding the discount back by
-      // hand, so the struck figure includes the tax that came off with it and
-      // the two numbers on screen really do subtract to the saving beside
-      // them.
-      var plain = cart();
-      plain.promoCode = null;
-      var before = P.quote(plain, RULES);
-      // The saving itself is said once, in the price table's "You saved"
-      // (validation, November 11: this bar said $13.47 with the tax, the
-      // table $12.50 without, on one screen).
-      sub.innerHTML = '<s>' + $(before.totalCents) + '</s> ' + esc(quote.promoCode) + ' applied';
-    } else if (quote.multiVehicleDiscountCents > 0) {
-      // Lead with the saving, not the duration: this is the moment the second
-      // vehicle has to look like a good idea.
-      // The amount is said once, in the price table's "You saved", as with a
-      // promo code (final validation, November 11: $75 there, $64.68 here).
-      sub.innerHTML = '<s>' + $(quote.grossBeforeMultiCents) + '</s> multi-vehicle saving applied';
+    var label = P.barLabel(quote);
+    if (label) {
+      // Any discount: lead with the saving, not the duration. Struck: the
+      // same booking with every discount off (undiscounted), tax included, so
+      // struck minus total is exactly the table's "You saved" (Emmett,
+      // November 15). The amount itself is said once, in the table. The
+      // label names one discount, or says "savings" for several (P.barLabel).
+      sub.innerHTML = '<s>' + $(undiscounted().totalCents) + '</s> ' + esc(label) + (taxed ? ' · tax included' : '');
     } else {
-      sub.textContent = dur ? 'about ' + fmtDur(dur) + ' on site' : '';
+      sub.textContent = [dur ? 'about ' + fmtDur(dur) + ' on site' : '', taxed ? 'tax included' : ''].filter(Boolean).join(' · ');
     }
   }
 
@@ -1360,10 +1420,19 @@
    */
   function firstProblem() {
     if (onCheckout()) {
-      for (var b = 0; b < LOC_I; b++) {
-        var early = asProblem(STEPS[b].valid(), b);
-        if (early) return early;
+      // Every vehicle, not only the active one: the build checks read veh(),
+      // and a vehicle that was never finished reached checkout by several
+      // routes (validation passes 1 to 4, November 16). The problem carries
+      // its vehicle, and showProblem() switches to it.
+      var was = state.active;
+      for (var vi = 0; vi < state.vehicles.length; vi++) {
+        state.active = vi;
+        for (var b = 0; b < LOC_I; b++) {
+          var early = asProblem(STEPS[b].valid(), b);
+          if (early) { state.active = was; early.vehicle = vi; return early; }
+        }
       }
+      state.active = was;
       // The checkout reads top to bottom, so it is checked top to bottom.
       for (var c = 0; c < CK.length; c++) {
         var found0 = asProblem(CK[c].valid(), LAST);
@@ -1380,6 +1449,7 @@
 
   /** Take them to it, point at it, and put the cursor in it. */
   function showProblem(prob) {
+    if (prob.vehicle !== undefined && prob.vehicle !== state.active) state.active = prob.vehicle;
     // On the checkout, every problem in that section at once.
     var sc0 = prob.sec && CK[ckIndex(prob.sec)];
     if (sc0 && sc0.all && onCheckout()) {
@@ -1579,70 +1649,31 @@
     // Nothing authoritative to check against, so nothing to contradict.
     if (!P.calendarConfigured(cfg)) return Promise.resolve(true);
 
-    var dur = holdMinutes();
-    var dayStart = new Date(slot);
-    dayStart.setHours(0, 0, 0, 0);
-    var from = dayStart.getTime() - DAY;
-    var to = dayStart.getTime() + 2 * DAY;
-    var myDrive = driveFor(who.id);
-    var buffer = P.travelBufferMin(myDrive);
-
-    // A job past one day's work was offered by the multi-day search, so it
-    // is checked by the same search (paintMultiDay): the slot search below
-    // can never fit it and refused every one as taken (review, November 13).
-    var drive = travelAllowanceMin();
-    if (!P.fitsOneDay(dur, P.LONGEST_DAY, drive, drive)) {
-      var corr = hasCorrection();
-      var plan = P.planDays({
-        serviceMinutes: dur,
-        travelBeforeMin: drive,
-        travelAfterMin: drive,
-        preferredStartsMin: corr ? P.CORRECTION_RULES.allowedStartsMin : P.LONG_JOB_STARTS
-      });
-      if (!plan.ok) return Promise.resolve(true);
-      return P.loadWindow(cfg, from, dayStart.getTime() + (plan.totalDays + 1) * DAY)
-        .then(function (win) {
-          var ok = P.multiDayStillFits({
-            plan: plan,
-            startMs: slot,
-            openBlocks: win.open,
-            busy: win.busy || [],
-            allowedWeekdays: corr ? [0, 6] : undefined
-          });
-          if (ok) lastFreeCheck = Date.now();
-          return ok;
-        })
-        .catch(function () { return true; });
-    }
-
+    // The same check the server runs before it writes the job
+    // (P.slotStillFree, calendar fix 1), over Cincinnati days.
+    // A job past one day is offered from travelAllowanceMin() (paintSlotsInner),
+    // so it's checked with the same drive, or the plan could differ and a free
+    // time read as taken (validation cycle 1, November 16).
+    var hold = holdMinutes(), d1 = driveFor(who.id);
+    var job = {
+      slotMs: slot,
+      serviceMin: hold,
+      driveMin: P.fitsOneDay(hold, P.LONGEST_DAY, d1, d1) ? d1 : travelAllowanceMin(),
+      hasExterior: hasExterior(),
+      correction: hasCorrection(),
+      arrivalWindowMin: who.arrivalWindowMin
+    };
+    var range = P.checkRange(job);
+    if (!range) return Promise.resolve(true);
     var personal = who.owner ? personalBusy() : Promise.resolve([]);
-    return Promise.all([P.loadWindow(cfg, from, to), personal])
+    return Promise.all([P.loadWindow(cfg, range.from, range.to), personal])
       .then(function (both) {
         var win = both[0];
-        var late = new Map();
-        var slots = P.computeSlots({
-          lateBy: late,
-          openBlocks: win.open,
-          busy: (win.busy || []).concat(both[1]),
-          serviceDurationMin: dur,
-          travelBeforeMin: buffer,
-          travelAfterMin: buffer,
-          granularityMin: 30,
-          notBefore: from,
-          notAfter: to,
-          hasExterior: hasExterior(),
-          ignoreReturnAfterMin: P.IGNORE_RETURN_AFTER_MIN,
-          ignoreOutboundBeforeMin:
-            myDrive <= 60 ? P.IGNORE_OUTBOUND_BEFORE_MIN : undefined,
-          arrivalWindowMin: who.arrivalWindowMin
-        });
-        // To the minute, not the millisecond: the grid is rebuilt from a
-        // different `now` and need not land on the same instant.
-        var hit = slots.filter(function (ms) { return Math.abs(ms - slot) < 60000; })[0];
+        var res = P.slotStillFree(job, { open: win.open, busy: (win.busy || []).concat(both[1]) });
         // The planned arrival from the calendar as it is now, for the event's end.
-        if (hit !== undefined && state.slot === slot) state.slotLateMin = late.get(hit) || 0;
-        if (hit !== undefined) lastFreeCheck = Date.now();
-        return hit !== undefined;
+        if (res.free && state.slot === slot) state.slotLateMin = res.lateMin;
+        if (res.free) lastFreeCheck = Date.now();
+        return res.free;
       })
       .catch(function () { return true; });
   }
@@ -1660,6 +1691,12 @@
       label.textContent = was;
       if (free) {
         state.checkedSlot = state.slot;
+        // Checked now, whatever the answer rested on. verifySlot also says
+        // "free" when it has nothing to check against (no calendar key, a read
+        // that failed, a plan it can't make) without stamping the time, and
+        // advance() then asked again, and again, in a loop that froze the page
+        // on Confirm (found November 15; live since cdfcbe8, November 13).
+        lastFreeCheck = Date.now();
         return advance();
       }
       // Gone. Reload the step so they are choosing from what is actually
@@ -1711,6 +1748,7 @@
 
   /** Back, past anything the forward walk skipped on the way here. */
   function goBack() {
+    if (!onCheckout() && state.step === 0 && state.active > 0) return backToVehicle();
     var ci = onCheckout() ? ckIndex(ckOpenId()) : -1;
     if (ci > 0) {
       state.ckOpen = CK[ci - 1].id;
@@ -1799,7 +1837,7 @@
         return '<button type="button" class="bk-pic' + (v.size === s.id ? ' on' : '') + '" data-size="' + s.id + '">' +
           pic(s.id) + '<b>' + esc(s.label) + '</b>' +
           '<span>' + esc(s.examples) + '</span>' +
-          '<i class="bk-pic-price' + (s.upchargeCents ? '' : ' none') + '">' + (s.upchargeCents ? '+' + $(s.upchargeCents) : 'No extra cost') + '</i>' +
+          '<i class="bk-pic-price' + (s.upchargeCents ? '' : ' none') + '">' + (s.upchargeCents ? '+' + $(s.upchargeCents) : 'No extra') + '</i>' +
           '</button>';
       }).join('') + '</div>';
   }
@@ -1843,10 +1881,15 @@
       // Nobody should have to already know what they want in order to ask.
       // This turns the booking into a request: no package, no price, no time
       // to commit to, and we come back with what we would recommend.
+      // Help me decide turns the whole booking into a request, so it is
+      // offered only while there is one vehicle: on vehicle 2, or on vehicle 1
+      // reached back from vehicle 2, it sent vehicle 1's package as an advice
+      // request held for the package's length (validation passes, November 16).
+      (state.vehicles.length > 1 ? '' :
       '<button type="button" class="bk-askrow' + (state.advice ? ' on' : '') + '" data-intent="advice">' +
         pic('ask') + '<span><b>Not sure? Help me decide</b><i>We look at your vehicle and recommend one</i></span>' +
         '<svg class="bk-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M9 6l6 6-6 6"/></svg>' +
-      '</button>' +
+      '</button>') +
       '<button type="button" class="bk-browsebar" id="bkBrowse">' +
         '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>' +
         '<span><b>Browse through all options</b><i>Every package and price, side by side</i></span>' +
@@ -2013,7 +2056,7 @@
             // to nowrap made every row wider than a phone, so the list
             // scrolled sideways and the filters above it did not.
             ? '<b class="bk-soon">Soon</b><i class="bk-soonwhy">' + esc(i.unavailable) + '</i>'
-            : '<b>' + svc(i.priceCents, i.pricePlus ? '+' : '') + '</b>' + (dur ? '<i>' + dur + '</i>' : '')) +
+            : '<b>' + svc(i.priceCents, i.pricePlus ? '+' : '') + '</b>' + (i.totalWith ? '<i>total with ' + esc(i.totalWith) + '</i>' : (i.withList || []).length ? '<i>' + i.withList.map(function (w) { return svcPlain(w.cents) + ' with ' + esc(w.name); }).join(', ') + '</i>' : '') + (dur ? '<i>' + dur + '</i>' : '')) +
           '</span>' +
           '</button>' +
           (i.note
@@ -2393,11 +2436,38 @@
       RULES
     );
     return '<div class="bk-morevehs">' +
-      '<p class="bk-morevehs-l"><b>Another vehicle at this address?</b> Take ' + pct + '% off both, ' +
-      $(withTwo.grossBeforeMultiCents - withTwo.totalCents) + ' on one like this. We only drive out once.</p>' +
+      // Emmett's words, November 15 ("Take 10% off both, $50.67 on one like
+      // this" read as a saving on one vehicle; the figure is the saving on both).
+      '<p class="bk-morevehs-l"><b>Another vehicle at this address?</b> Take ' + pct + '%, which would currently save ' +
+      $(withTwo.grossBeforeMultiCents - withTwo.totalCents) + '. We only drive out once.</p>' +
       '<button type="button" class="bk-addveh" id="bkAddVeh">Add a vehicle</button></div>';
   }
   function vAddons() { return null; }
+  /** "Vehicle 1: Small, Full Interior", for the title line while another vehicle is built. */
+  function vehicleLine(v, i) {
+    var size = v.size ? P.vehicleSize(v.size) : null;
+    var names = v.packageIds.map(function (id) { return (P.findPackage(id) || {}).name; }).filter(Boolean);
+    return 'Vehicle ' + (i + 1) + ': ' + ([size && size.label].concat(names).filter(Boolean).join(', ') || 'nothing chosen yet');
+  }
+  /**
+   * Back from the vehicle being built to the one before it, on Extras, where
+   * "Add a vehicle" was. A vehicle that is not finished (no size, service or
+   * package, a half-chosen "both", or Help me decide) is dropped on the way:
+   * only the active vehicle is checked before checkout, so keeping it would
+   * book it unfinished (validation, November 16). Help me decide is a setting
+   * for the whole booking, so it ends with the vehicle that chose it; the
+   * vehicles left all have packages, or "Add a vehicle" was not reachable.
+   */
+  function backToVehicle() {
+    var i = state.active;
+    if (state.advice || vSize() || vIntent() || vPackage()) {
+      state.vehicles.splice(i, 1);
+      state.advice = false;
+    }
+    state.active = Math.max(0, i - 1);
+    state.browse = false;
+    go(indexOfStep('addons'));
+  }
 
   /* ================= step 5: location ================= */
 
@@ -2496,15 +2566,17 @@
   }
   function measureEachDetailer() {
     var line = addressLine();
-    if (travelByKey === line.toUpperCase()) return;
-    travelByKey = line.toUpperCase();
+    // The drive home is timed from the finish, so a different job length is a different measurement.
+    var key = line.toUpperCase() + '|' + holdMinutes();
+    if (travelByKey === key) return;
+    travelByKey = key;
     travelBy = {};
     crew().forEach(function (d) {
-      fetch('/api/travel?address=' + encodeURIComponent(line) + '&service=' + encodeURIComponent(holdMinutes()) +
+      fetch('/api/travel?address=' + encodeURIComponent(line) + '&serviceMin=' + encodeURIComponent(holdMinutes()) +
             '&zip=' + encodeURIComponent(state.address.zip || '') + (d.owner ? '' : '&detailer=' + encodeURIComponent(d.id)), { cache: 'default' })
         .then(function (r) { return r.ok ? r.json() : Promise.reject(new Error(String(r.status))); })
         .then(function (j) {
-          if (travelByKey !== line.toUpperCase()) return;
+          if (travelByKey !== key) return;
           if (j && j.reachable !== false && !j.tooFar && typeof j.minutes === 'number') {
             travelBy[d.id] = j.minutes;
             scheduleSlotsRefresh();
@@ -2543,7 +2615,9 @@
     travelTimer = setTimeout(function () {
       fetch('/api/travel?address=' + encodeURIComponent(addressLine()) +
             (state.slot ? '&at=' + encodeURIComponent(state.slot) : '') +
-            '&service=' + encodeURIComponent(holdMinutes()) +
+            // The job's length, so the drive home is measured at the finish
+            // (calendar fix 3: sent as `service`, which the server never read).
+            '&serviceMin=' + encodeURIComponent(holdMinutes()) +
             '&zip=' + encodeURIComponent(state.address.zip || '') +
             (who ? '&detailer=' + encodeURIComponent(who) : ''), { cache: 'default' })
         .then(function (r) { return r.ok ? r.json() : Promise.reject(new Error(String(r.status))); })
@@ -2723,7 +2797,7 @@
      */
     var html = state.advice
       // A short-notice time is still a request (final validation, November 11).
-      ? '<p class="bk-sub">Pick a time and we hold it for you (a time within the next day is a request until a detailer accepts it). We will work out the right package with you ' +
+      ? '<p class="bk-sub">Pick a time and we hold it for you (a time within ' + noticeWords() + ' is a request until a detailer accepts it). We will work out the right package with you ' +
         'before we start, so nothing is priced yet.</p>' +
         '<p class="bk-note">We are holding <b>' + Math.round(P.ADVICE_HOLD_MIN / 60) + ' hours</b>, ' +
         // Not "our longest detail": Showroom Ready runs 7 to 8 hours (final review, November 13).
@@ -2750,9 +2824,9 @@
     // No "I need it soon" box: the rush days are marked on the
     // calendar itself, and the fee follows the time that is picked.
     if (hasCorrection()) {
-      var lead = new Date(startOfToday().getTime() + P.CORRECTION_RULES.minLeadDays * DAY);
+      var lead = dayStartIn(P.CORRECTION_RULES.minLeadDays);
       html += '<p class="bk-note">Correction work starts on a weekend morning from <b>' +
-        lead.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }) +
+        tzDay(lead, { weekday: 'long', month: 'long', day: 'numeric' }) +
         '</b>, and runs across consecutive days.</p>';
     }
     // No "standard prices start from" note: the calendar marks the rush days itself.
@@ -2825,7 +2899,7 @@
     var payload = {
       v: 1,
       ts: Math.floor(Date.now() / 1000),
-      vs: state.vehicles.map(function (v) {
+      vs: pricedVehicles().map(function (v) {
         var out = {};
         if (v.size) out.z = v.size;
         if (v.intent) out.i = v.intent;
@@ -2874,15 +2948,23 @@
       }
       // A link made before a package was retired opens as its replacement.
       var up = P.upgradeLegacy(v.packageIds, v.addons);
-      v.packageIds = up.packageIds.filter(function (id) { return P.findPackage(id); });
+      v.packageIds = up.packageIds;
       v.addons = up.addons;
+      cleanImportedVehicle(v);
       if (raw.l) v.label = raw.l;
       if (raw.c) v.correctionTier = raw.c;
       if (raw.t) v.coatingTerm = raw.t;
       if (raw.g) v.noGarage = true;
       return v;
     });
+    // Only the finished vehicles, and nothing kept from a saved draft that
+    // describes other vehicles: a draft's active vehicle 2 against a one-vehicle
+    // link crashed the form (validation pass, November 16).
+    state.vehicles = pricedVehicles();
     if (!state.vehicles.length) state.vehicles = [newVehicle()];
+    state.active = 0;
+    state.advice = false;
+    state.browse = false;
 
     if (payload.ad) {
       state.address.line1 = payload.ad[0] || '';
@@ -2949,8 +3031,8 @@
   function preferenceSummary() {
     var days = state.prefer.days.map(function (k) {
       var b = k.split('-');
-      return new Date(Number(b[0]), Number(b[1]) - 1, Number(b[2]))
-        .toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+      return tzDay(dayStartFromInput(b[0] + '-' + String(b[1]).padStart(2, '0') + '-' + String(b[2]).padStart(2, '0')),
+        { weekday: 'long', month: 'short', day: 'numeric' });
     });
     var parts = state.prefer.parts.map(function (id) {
       var w = DAY_PARTS.filter(function (x) { return x.id === id; })[0];
@@ -2975,9 +3057,17 @@
     else list_.push(value);
   }
 
-  function startOfToday() {
-    var d = new Date();
-    return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  /** The week a time falls in, counted from today (P.weekFromToday). */
+  function weekOf(ms) { return P.weekFromToday(ms, Date.now(), TZ); }
+
+  /**
+   * Cincinnati midnight, n days from today (calendar fix 2, November 14).
+   * The visitor's own midnight shifted request days and the booking horizon
+   * by a day for anyone booking from another time zone. Through noon, so a
+   * clock change between can't land on the wrong day.
+   */
+  function dayStartIn(n) {
+    return P.localDayStart(P.localDayStart(Date.now(), TZ) + n * DAY + DAY / 2, TZ);
   }
 
   /*
@@ -3015,13 +3105,20 @@
   /** The last slot calculation: starts, who takes each, busy time, weather. */
   var lastCalc = null;
 
-  /** Owner, November 10: a booking can start an hour from now, not sooner. */
-  var MIN_NOTICE_MIN = 60;
+  /** Owner, November 10: a booking can start an hour from now, not sooner (config/scheduling.json). */
+  var MIN_NOTICE_MIN = P.SCHEDULING.minNoticeMinutes;
   /** Inside this, a booking is a request until a detailer accepts it. */
-  var SHORT_NOTICE_HOURS = 24;
+  var SHORT_NOTICE_HOURS = P.SCHEDULING.shortNoticeHours;
 
   function shortNotice(ms) {
     return Boolean(ms) && ms - Date.now() < SHORT_NOTICE_HOURS * 3600000;
+  }
+
+  /** "the next day", "the next 2 days", "the next 12 hours": the short-notice span in words, from the setting. */
+  function noticeWords() {
+    var h = SHORT_NOTICE_HOURS;
+    if (h % 24) return 'the next ' + h + ' hours';
+    return h === 24 ? 'the next day' : 'the next ' + (h / 24) + ' days';
   }
 
   /** The assigned detailer's id for the server, or '' for the owner. */
@@ -3036,7 +3133,7 @@
     return d ? d.name : '';
   }
 
-  function lastBookableMs() { return startOfToday().getTime() + MAX_BOOK_DAYS * DAY; }
+  function lastBookableMs() { return dayStartIn(MAX_BOOK_DAYS); }
 
   /**
    * The crew in booking order. Just the owner unless DETAILERS lists others.
@@ -3251,7 +3348,7 @@
     var CR = P.CORRECTION_RULES;
     var now = Date.now();
     var soonest = now + MIN_NOTICE_MIN * 60000;
-    var lead = corr && CR.minLeadDays > 0 ? startOfToday().getTime() + CR.minLeadDays * DAY : 0;
+    var lead = corr && CR.minLeadDays > 0 ? dayStartIn(CR.minLeadDays) : 0;
 
     // The WHOLE job, however long. Anything past a day gets planned across
     // consecutive days rather than truncated to its first morning.
@@ -3266,7 +3363,7 @@
       // Our recommended times look across the next two weeks; the calendar
       // shows one week at a time.
       if (!state.showAll || !state.weekStart) {
-        state.weekStart = P.weekStartOf(state.showAll && state.slot && state.slot > now ? state.slot : Math.max(soonest, lead));
+        state.weekStart = weekOf(state.showAll && state.slot && state.slot > now ? state.slot : Math.max(soonest, lead));
       }
       ws = state.weekStart;
       from = Math.max(soonest, lead, ws);
@@ -3356,12 +3453,12 @@
    * The travel allowance used for scheduling.
    *
    * A measured drive when we have one, otherwise a deliberately generous flat
-   * 30 minutes: a slot we offer has to be one we can keep.
+   * allowance (driveFallbackMinutes): a slot we offer has to be one we can keep.
    */
   function travelAllowanceMin() {
     return state.travel.source === 'routes' && state.travel.minutes !== null
       ? state.travel.minutes
-      : 30;
+      : P.SCHEDULING.driveFallbackMinutes;
   }
 
   /**
@@ -3384,7 +3481,7 @@
       busy: win.busy || [],
       notBefore: from,
       notAfter: to,
-      allowedWeekdays: corr ? [0, 6] : undefined,
+      allowedWeekdays: corr ? P.SCHEDULING.correctionWeekdays : undefined,
       limit: 8
     }).filter(function (opt) {
       // Every day of it has to be workable: a coating cannot stop for rain.
@@ -3415,8 +3512,7 @@
         ' to ' + last.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', timeZone: TZ }) + '</b>' +
         '<span>' + opt.days.map(function (d, i) {
           return 'Day ' + (i + 1) + ': ' +
-            new Date(d.startMs).toLocaleTimeString('en-US', { hour: 'numeric', timeZone: TZ }) + ' to ' +
-            new Date(d.endMs).toLocaleTimeString('en-US', { hour: 'numeric', timeZone: TZ });
+            tzTime(d.startMs) + ' to ' + tzTime(d.endMs);
         }).join(' &middot; ') + '</span>' +
         '</button>';
     });
@@ -3492,17 +3588,15 @@
    * then nothing below, which is a dead end dressed up as an instruction.
    */
   function preferPicker() {
-    var today = startOfToday();
-
     var days = '';
     for (var i = 1; i <= 10; i++) {
-      var d = new Date(today.getTime() + i * DAY);
-      var key = d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate();
+      var d = dayStartIn(i);
+      var key = cinciKey(d);
       var on = state.prefer.days.indexOf(key) > -1;
       days += '<button type="button" class="bk-pref-day' + (on ? ' on' : '') +
         '" data-prefday="' + key + '">' +
-        '<b>' + d.toLocaleDateString('en-US', { weekday: 'short' }) + '</b>' +
-        '<span>' + d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + '</span>' +
+        '<b>' + tzDay(d, { weekday: 'short' }) + '</b>' +
+        '<span>' + tzDay(d, { month: 'short', day: 'numeric' }) + '</span>' +
         '</button>';
     }
 
@@ -3594,7 +3688,7 @@
       };
       if (corr) {
         req.preferredStartsMin = { weekday: P.CORRECTION_RULES.allowedStartsMin, weekend: P.CORRECTION_RULES.allowedStartsMin };
-        req.allowedWeekdays = [0, 6];
+        req.allowedWeekdays = P.SCHEDULING.correctionWeekdays;
       }
       return P.computeSlots(req);
     };
@@ -3696,6 +3790,16 @@
     return new Date(ms).toLocaleDateString('en-US', Object.assign({ timeZone: TZ }, opts));
   }
 
+  /**
+   * "Monday, November 16 at 10am" ("Mon, Nov 16 at 10am" short): every date
+   * with a time in the form, in the same clock style as the time picker
+   * (review, November 13: "10:00 AM" in some places and "10am" in others).
+   */
+  function longWhen(ms, short) {
+    return tzDay(ms, short ? { weekday: 'short', month: 'short', day: 'numeric' } : { weekday: 'long', month: 'long', day: 'numeric' }) +
+      ' at ' + tzTime(ms);
+  }
+
   /** "10am to 12pm": the start and the estimated finish, everywhere a time is offered. */
   function spanLabel(ms, dur) {
     return tzTime(ms) + ' to ' + endLabel(localMin(ms) + dur);
@@ -3760,8 +3864,9 @@
   function feeWhy(ms) {
     var parts = [];
     if (needsPriority(ms)) parts.push('rush');
-    var m = localMin(ms);
-    if (timeFeeApplies(ms)) parts.push(m < 12 * 60 ? 'early start' : 'late start');
+    // Named by noon, the same rule as the receipt line (quote.ts
+    // surchargeLabel), so the picker and the receipt always agree.
+    if (timeFeeApplies(ms)) parts.push(localMin(ms) < 12 * 60 ? 'early start' : 'late start');
     return parts.join(' and ') + ' fee';
   }
 
@@ -3870,8 +3975,8 @@
   function unconfiguredNote(calc) {
     // A note, not a warning: these ARE our hours.
     return calc.mode === 'unconfigured'
-      ? '<p class="bk-note">These are our <b>standard start times</b>. Pick whichever suits and we will ' +
-        'confirm it, usually within a few hours. If a time ever needs moving we will text you first.</p>'
+      // Elijah's words, November 15.
+      ? '<p class="bk-note">These are our <b>standard start times</b>. Pick any time slot that suits you best.</p>'
       : '';
   }
 
@@ -3883,6 +3988,7 @@
   function pickWhy(pk) {
     if (pk.reason === 'soonest') return 'Soonest';
     if (pk.reason === 'weekend') return 'Weekend';
+    if (pk.reason === 'afterRushWeekend') return 'This weekend';
     if (pk.reason === 'afterRush') return pk.daysAway === 1 ? 'Tomorrow' : 'In ' + pk.daysAway + ' days';
     return 'Also open';
   }
@@ -3966,7 +4072,9 @@
       html += '<p class="bk-wk-none">Nothing open in the next two weeks for this detail. ' +
         'See additional times for later dates, or tell us when suits.</p>';
     } else {
-      html += '<p class="bk-recs-sub">Tap a time to pick it. We arrive within its first hour' +
+      // "Pick a time" is said once, by the section's own intro (improvement B).
+      html += '<p class="bk-recs-sub">' +
+        (windowMin() ? 'We arrive within its first ' + spanWords(windowMin()) : 'We arrive at that time') +
         (dur ? ', and the detail takes about ' + esc(fmtDur(dur)) : '') + '.</p>' + weatherLine(calc);
     }
     picks.forEach(function (pk, i) {
@@ -4102,20 +4210,62 @@
       var others = startsOnDay(lead).filter(function (ms) {
         return !sameMinute(ms, lead) && !best.some(function (b2) { return sameMinute(ms, b2); });
       });
+      // Early and late fee starts fold into one item each (improvement C,
+      // Emmett's wording, November 12): a Saturday listed 26 starts.
+      // Early is a fee start before the day's first standard start, late one
+      // after its last; a fee start in between (a midday fee block) stays in
+      // the list with its fee. A day with no standard start splits at noon.
+      var std = startsOnDay(lead).filter(function (ms) { return !timeFeeApplies(ms); });
+      var firstStd = std.length ? Math.min.apply(null, std) : null, lastStd = std.length ? Math.max.apply(null, std) : null;
+      var group = function (ms) {
+        if (!timeFeeApplies(ms)) return 'std';
+        if (firstStd === null) return localMin(ms) < 12 * 60 ? 'early' : 'late';
+        return ms < firstStd ? 'early' : ms > lastStd ? 'late' : 'std';
+      };
+      var ids = function (g) { return others.filter(function (ms) { return group(ms) === g; }).join(','); };
       inner.innerHTML = best.map(chip).join('') +
         (others.length
           ? '<label class="bk-more-other"><span>Need a different start?</span>' +
-            '<select data-otherstart data-rank="' + btn.dataset.rank + '" data-reason="' + btn.dataset.reason + '" tabindex="-1">' +
-            '<option value="">Choose a time</option>' +
-            others.map(function (ms) {
-              var fee = feeText(ms);
-              return '<option value="' + ms + '">' + esc(spanLabel(ms, dur) + (fee ? ' (' + fee + ')' : '')) + '</option>';
-            }).join('') + '</select></label>'
+            '<select data-otherstart data-rank="' + btn.dataset.rank + '" data-reason="' + btn.dataset.reason + '"' +
+            ' data-std="' + ids('std') + '" data-early="' + ids('early') + '" data-late="' + ids('late') + '" tabindex="-1">' +
+            otherStartOptions(ids('std'), ids('early'), ids('late'), '') + '</select></label>'
           : '');
     }
     if (togglePanel(wrap, btn)) {
       track('time_more_open', { rank: Number(btn.dataset.rank), reason: btn.dataset.reason, rules: P.TIME_RECOMMENDATION_RULES.version });
     }
+  }
+
+  /**
+   * The options of "Need a different start?". Standard view: "Earlier times
+   * (+$X fee) ›", the standard starts, "Later times (+$X fee) ›". Choosing
+   * one of those refills the list with that group alone, headed by a way
+   * back. $X is the group's own fee from feeText(), never written in; when
+   * the starts in a group differ, the smallest is said with "from".
+   */
+  function otherStartOptions(std, early, late, mode) {
+    var dur = holdMinutes();
+    var list = function (csv) { return csv ? csv.split(',').map(Number) : []; };
+    var opt = function (ms) {
+      var fee = feeText(ms);
+      return '<option value="' + ms + '">' + esc(spanLabel(ms, dur) + (fee ? ' (' + fee + ')' : '')) + '</option>';
+    };
+    var folder = function (csv, name, value) {
+      var ms = list(csv);
+      if (!ms.length) return '';
+      // By the percentage: on Help me decide every dollar amount is 0.
+      var bps = ms.map(surchargeBp);
+      var low = ms[bps.indexOf(Math.min.apply(null, bps))];
+      var same = bps.every(function (b) { return b === bps[0]; });
+      return '<option value="' + value + '">' + esc(name + ' (' + (same ? '' : 'from ') + feeText(low) + ' fee)') + '  \u203a</option>';
+    };
+    if (mode === 'early' || mode === 'late') {
+      return '<option value="">' + (mode === 'early' ? 'Choose an earlier time' : 'Choose a later time') + '</option>' +
+        '<option value="std">\u2039  Back to standard times</option>' +
+        list(mode === 'early' ? early : late).map(opt).join('');
+    }
+    return '<option value="">Choose a time</option>' + folder(early, 'Earlier times', 'early') +
+      list(std).map(opt).join('') + folder(late, 'Later times', 'late');
   }
 
   /**
@@ -4167,12 +4317,16 @@
    * at the cost of a timing fee upsell", which means never steering someone
    * off a time they are paying an early or late fee for (round 9 read it as
    * "never add a fee" and offered 10am, rush only, for a 6am rush + early
-   * pick: a downsell). Suggested starts are never early or late, so a fee
-   * pick gets no suggestion. None once they have taken a suggestion, or when
-   * the time they picked is already one.
+   * pick: a downsell). A fee pick gets no suggestion. That used to rest on
+   * "suggested starts are never early or late", which stopped being true once
+   * the calendar's BEST starts became suggestions: a 6pm BEST with a late fee
+   * matched a 6am early fee's percentage, and a 6am pick was steered to 6pm
+   * (review, November 13). Now it's said outright. None once they have taken
+   * a suggestion, or when the time they picked is already one.
    */
   function steerFor(ms) {
     if (state.steerUsed || !ms) return null;
+    if (timeFeeApplies(ms)) return null;
     var sug = suggestionsOnDay(ms);
     if (!sug.length || sug.some(function (s) { return sameMinute(s, ms); })) return null;
     var bp = surchargeBp(ms);
@@ -4232,14 +4386,16 @@
     var ws = state.weekStart;
     var nextWs = P.addWeeks(ws, 1);
     var canNext = nextWs < lastBookableMs();
-    var canPrev = ws > P.weekStartOf(now);
+    var canPrev = ws > weekOf(now);
     var week = P.buildWeek({
       slots: calc.slots, weekStart: ws, busy: calc.busy, travelGapMin: calc.buffer,
       nowMs: now, needsPriority: needsPriority, timeZone: TZ,
       // Down to the last hour an offered job is still running in, no further.
       lastRowMin: P.lastRowForSlots(calc.slots, dur),
       // Stars on the calendars' best times, when they set any.
-      suggested: bestStarts(calc) || undefined
+      suggested: bestStarts(calc) || undefined,
+      // The fee from the calendar of whoever takes it, not the clock.
+      isPremium: timeFeeApplies
     });
 
     // Landing on an empty week shows the next one with something in it,
@@ -4361,21 +4517,28 @@
   var CHEV_UP = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 15l6-6 6 6"/></svg>';
   var CHEV_DN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>';
 
-  /** The regular hours a day opens on (owner, November 10): starts from 10am to before 6pm. */
-  var REG_FROM = 10 * 60, REG_TO = 18 * 60;
-
   /**
    * Whether the early and late starts are shown. Folded behind "Earlier
    * times" and "Later times" until asked for, unless the chosen time is
-   * there, or the day has nothing in the regular hours to open on.
+   * there, or the day has nothing at standard price to open on.
+   *
+   * The day's regular hours (owner, November 10) are its standard-price
+   * starts, by the calendar of whoever takes each (calendar fix 4, November
+   * 14), whole hours from the first to the last. A fixed 10am to 6pm folded
+   * Kris's standard-price 6pm under "Later times". `from`/`to` are minutes.
    */
   function foldsOpen(starts) {
-    var reg = starts.some(function (s) { var m = localMin(s.ms); return m >= REG_FROM && m < REG_TO; });
+    var std = starts.filter(function (s) { return !timeFeeApplies(s.ms); }).map(function (s) { return localMin(s.ms); });
+    var reg = std.length > 0;
+    var from = reg ? Math.floor(Math.min.apply(null, std) / 60) * 60 : 0;
+    var to = reg ? Math.floor(Math.max.apply(null, std) / 60) * 60 + 60 : 24 * 60;
     var mine = state.slot && starts.some(function (s) { return sameMinute(s.ms, state.slot); });
     var at = mine ? localMin(state.slot) : -1;
     return {
-      early: state.wkEarly || !reg || (mine && at < REG_FROM),
-      late: state.wkLate || !reg || (mine && at >= REG_TO),
+      early: state.wkEarly || !reg || (mine && at < from),
+      late: state.wkLate || !reg || (mine && at >= to),
+      from: from,
+      to: to
     };
   }
 
@@ -4439,8 +4602,8 @@
         esc(tzDay(day.dayStart + DAY / 2, { weekday: 'long' })) + '. Try another day.</p>';
     }
     var folds = foldsOpen(dayStarts(day));
-    var early = cells.filter(function (c) { return c.hourMin < REG_FROM; });
-    var late = cells.filter(function (c) { return c.hourMin >= REG_TO; });
+    var early = cells.filter(function (c) { return c.hourMin < folds.from; });
+    var late = cells.filter(function (c) { return c.hourMin >= folds.to; });
     var startsOf = function (list) {
       var out = [];
       list.forEach(function (c) { c.starts.forEach(function (ms) { out.push({ ms: ms }); }); });
@@ -4448,7 +4611,7 @@
     };
 
     var shown = cells.filter(function (c) {
-      return (c.hourMin >= REG_FROM || folds.early) && (c.hourMin < REG_TO || folds.late);
+      return (c.hourMin >= folds.from || folds.early) && (c.hourMin < folds.to || folds.late);
     });
     var groups = [];
     shown.forEach(function (c) {
@@ -4519,12 +4682,12 @@
     // start in them: a grey row only between two times, or under a job's
     // tail (owner, November 11: no dead rows).
     var range = P.timelineRange(starts.map(function (s) { return localMin(s.ms); }), dur, folds,
-      { from: REG_FROM, to: REG_TO }, rows[rows.length - 1] + 60);
+      { from: folds.from, to: folds.to }, rows[rows.length - 1] + 60);
     if (!range) range = { from: localMin(starts[0].ms), last: localMin(starts[0].ms), to: localMin(starts[0].ms) + 30 };
     var shown = [];
     for (var m = range.from; m < range.to; m += 30) shown.push(m);
-    var hidEarly = folds.early ? [] : starts.filter(function (s) { return localMin(s.ms) < REG_FROM; });
-    var hidLate = folds.late ? [] : starts.filter(function (s) { return localMin(s.ms) >= REG_TO; });
+    var hidEarly = folds.early ? [] : starts.filter(function (s) { return localMin(s.ms) < folds.from; });
+    var hidLate = folds.late ? [] : starts.filter(function (s) { return localMin(s.ms) >= folds.to; });
     // Rows after the last start shown are only the tail of its job.
     byMin = {};
     starts.forEach(function (s) { var x = localMin(s.ms); if (x >= range.from && x <= range.last) byMin[x] = s; });
@@ -4598,7 +4761,7 @@
 
   /** "Arriving between 6 and 7am" (owner, November 11). */
   function arrivingBetween(ms) {
-    return 'Arriving between ' + arrivalWindow(ms).replace(' to ', ' and ');
+    return windowMin() ? 'Arriving between ' + arrivalWindow(ms).replace(' to ', ' and ') : 'Arriving at ' + arrivalWindow(ms);
   }
 
   /**
@@ -4764,7 +4927,11 @@
       // a half rows, the week bar and the strip scroll away; the small
       // heading stays pinned.
       var sc = el('bkScroll'), band = wk.querySelector('.bk-wk-band');
-      var room = sc ? sc.clientHeight - hh - sh - (band ? band.getBoundingClientRect().height : 0) : Infinity;
+      // The "Go to a date" bar pins to the bottom of the same area, so it
+      // takes room too (validation cycle 4: about one row left at 700x400).
+      var pb = el('bkBody') && el('bkBody').querySelector('.bk-pinbar');
+      var room = sc ? sc.clientHeight - hh - sh - (band ? band.getBoundingClientRect().height : 0) -
+        (pb ? pb.getBoundingClientRect().height : 0) : Infinity;
       wk.classList.toggle('nopin', room < PIN_ROOM_MIN);
     };
     set();
@@ -4854,23 +5021,23 @@
    * How far ahead anyone can book: the live site's year (November 11: "keep
    * booking ahead cap equivalent to live site"; it was three months from the
    * November 10 answers). Owner question 17 in docs/OWNER-QUESTIONS-MAGAZINES.md.
+   * config/scheduling.json bookAheadDays.
    */
-  var MAX_BOOK_DAYS = 365;
+  var MAX_BOOK_DAYS = P.SCHEDULING.bookAheadDays;
 
-  /** "2026-03-14" as local midnight. Built by parts: Date.parse treats a bare
-   *  date string as UTC, which lands on the previous evening in Cincinnati. */
+  /** "2026-03-14" as Cincinnati midnight. Built by parts: Date.parse treats a
+   *  bare date string as UTC, which lands on the previous evening here. */
   function dayStartFromInput(value) {
     var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(value || ''));
     if (!m) return 0;
-    var d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
-    return isNaN(d.getTime()) ? 0 : d.getTime();
+    var noon = Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]), 17);
+    return isNaN(noon) ? 0 : P.localDayStart(noon, TZ);
   }
 
+  /** The Cincinnati date of an instant, as a date box wants it. */
   function dateInputValue(ms) {
-    var d = new Date(ms);
-    return d.getFullYear() + '-' +
-      String(d.getMonth() + 1).padStart(2, '0') + '-' +
-      String(d.getDate()).padStart(2, '0');
+    var p = tzDay(ms, { year: 'numeric', month: '2-digit', day: '2-digit' }).split('/');
+    return p[2] + '-' + p[0] + '-' + p[1];
   }
 
   /**
@@ -4898,7 +5065,7 @@
         '</div>' +
         (state.slot
           ? '<p class="bk-timeswitch-warn">You have <b>' +
-            esc(new Date(state.slot).toLocaleString('en-US', { timeZone: TZ, weekday: 'long', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit' })) +
+            esc(longWhen(state.slot)) +
             '</b> picked. Choosing a day below swaps that confirmed time for a request.</p>'
           : '') +
         '<button type="button" class="bk-timeswitch-b" id="bkSlotMode">Show me real times instead</button>' +
@@ -5431,7 +5598,7 @@
     // "By email" only when they gave an address (validation, November 11).
     var email = P.isLive('automatedEmail') && Boolean(String(state.contact.email || '').trim());
     var texts = P.isLive('automatedTexts');
-    var calendar = P.isLive('liveCalendar');
+    var calendar = P.isLive('liveCalendar') && !state.unconfirmed;
     var requested = isInquiry();
     var out = [];
 
@@ -5473,8 +5640,8 @@
       // Inside a day, the calendar is still right but nobody may have read a
       // phone between this booking and the van needing to leave. Saying so is
       // better than a booking that quietly needs chasing.
-      if (state.slot && state.slot - Date.now() < 86400000) {
-        out.push('<li><b>Because it is within the next day</b>, we will send a quick message to ' +
+      if (state.slot && shortNotice(state.slot)) {
+        out.push('<li><b>Because it is within ' + noticeWords() + '</b>, we will send a quick message to ' +
           'double check we can make it. If anything has to move we call you.</li>');
       }
     } else {
@@ -5637,7 +5804,7 @@
         '<span>' +
         (state.slot
           ? 'We are holding ' + Math.round(P.ADVICE_HOLD_MIN / 60) + ' hours on ' +
-            esc(new Date(state.slot).toLocaleString('en-US', { timeZone: TZ, weekday: 'long', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit' })) +
+            esc(longWhen(state.slot)) +
             '. Before we start we will look at the vehicle with you, recommend the package, and tell you ' +
             'what it costs. You can say no to it and we will do less, or nothing at all, at no charge. '
           : esc(preferenceSummary()) + ' We will read what you have told us, come back with the package we ' +
@@ -5812,10 +5979,6 @@
           '</span></label>';
       }
 
-      if (CFG.turnstileSiteKey) {
-        html += '<div id="bkTurnstile" class="bk-turnstile"></div>';
-      }
-
       html += '<div id="bkPayMount" class="bk-stripe">' +
         (state.mandate || viaPaypal
           ? '<p class="bk-loading">Loading payment options...</p>'
@@ -5836,10 +5999,64 @@
         'Sales tax' + (quote.taxIsEstimate ? ' is added once we have your ZIP' : ' at ' + (quote.taxRateBp / 100).toFixed(2) + '% is included') + '.</p>';
     }
 
+    // The bot check, for EVERY booking (November 15). It used to sit inside the
+    // card box, which isn't drawn while cards are off, while the server asks
+    // for its token on every booking once TURNSTILE_SECRET_KEY is set.
+    if (CFG.turnstileSiteKey) html += '<div id="bkTurnstile" class="bk-turnstile"></div>';
+
     html += '<div class="bk-msg" id="bkMsg" role="status" aria-live="polite"></div>';
 
+    setTimeout(function () { mountTurnstile(0); }, 0);
     if (wantCard) setTimeout(mountPayment, 0);
     return html;
+  }
+
+  /**
+   * Draws the bot check once its script is in (js/vendors.js loads it only
+   * when there is a site key). The script can arrive after the step is drawn,
+   * so it waits for it rather than giving up.
+   */
+  var TURNSTILE_TRIES = 66;   // every 300 ms, about 20 s
+  function mountTurnstile(tries) {
+    if (!CFG.turnstileSiteKey) return;
+    var ts = root.querySelector('#bkTurnstile');
+    if (!ts || ts.dataset.rendered) return;
+    if (!window.turnstile) {
+      var n = (tries || 0) + 1;
+      if (n < TURNSTILE_TRIES) setTimeout(function () { mountTurnstile(n); }, 300);
+      return;
+    }
+    ts.dataset.rendered = '1';
+    ts.dataset.widget = window.turnstile.render(ts, {
+      sitekey: CFG.turnstileSiteKey,
+      callback: function (token) { state.turnstileToken = token; },
+      'expired-callback': function () { state.turnstileToken = null; }
+    });
+  }
+
+  /**
+   * Resolves once there is a token to send, or after TURNSTILE_CONFIRM_WAIT_MS
+   * (a browser that blocks Cloudflare still books: the server then refuses it,
+   * and it reaches Elijah through Web3Forms marked CHECK THE CALENDAR).
+   */
+  var TURNSTILE_CONFIRM_WAIT_MS = 8000;
+  function turnstileReady() {
+    if (!CFG.turnstileSiteKey || state.turnstileToken) return Promise.resolve();
+    return new Promise(function (ok) {
+      var tries = 0;
+      (function poll() {
+        if (state.turnstileToken || ++tries > TURNSTILE_CONFIRM_WAIT_MS / 200) return ok();
+        setTimeout(poll, 200);
+      })();
+    });
+  }
+
+  /** A token is good for one check: drop it and ask the widget for a new one. */
+  function spendTurnstile() {
+    if (!CFG.turnstileSiteKey) return;
+    state.turnstileToken = null;
+    var ts = root.querySelector('#bkTurnstile');
+    try { if (ts && window.turnstile && ts.dataset.widget) window.turnstile.reset(ts.dataset.widget); } catch (e) { /* a new token just won't come */ }
   }
 
   function vPay() {
@@ -5882,7 +6099,12 @@
 
   function wireCart() {
     return {
-      vehicles: state.vehicles.map(function (v) {
+      // The same vehicles the price shown was made from (pricedVehicles), and
+      // the same number of visits: "My vehicles need separate times" charged
+      // travel twice on screen while the server, never told, charged it once
+      // and the booking never said two visits (validation pass 4).
+      visits: cart().visits,
+      vehicles: pricedVehicles().map(function (v) {
         return {
           label: v.label || '',
           sizeId: v.size,
@@ -5933,15 +6155,7 @@
     var mount = root.querySelector('#bkPayMount');
     if (!mount) return;
 
-    var ts = root.querySelector('#bkTurnstile');
-    if (ts && window.turnstile && !ts.dataset.rendered) {
-      ts.dataset.rendered = '1';
-      window.turnstile.render(ts, {
-        sitekey: CFG.turnstileSiteKey,
-        callback: function (token) { state.turnstileToken = token; },
-        'expired-callback': function () { state.turnstileToken = null; }
-      });
-    }
+    mountTurnstile();
 
     if (state.payInFull && state.payMethod === 'paypal') return mountPayPal(mount);
     // The card form does not load until the card-on-file authorization is
@@ -5949,11 +6163,17 @@
     if (!state.mandate) {
       mount.innerHTML = '<p class="bk-hint">Tick the authorization above to load the secure payment form.</p>';
       root._stripe = null;
+      payMountSeq++;   // and a form still loading must not appear (P2)
       return;
     }
-    // Already mounted: leave it alone rather than rebuilding a live card
-    // field underneath somebody's fingers.
-    if (root._stripe) return;
+    // Already mounted HERE: leave it alone rather than rebuilding a live card
+    // field underneath somebody's fingers. Only here: a full render() draws a
+    // new #bkPayMount, and the element in the old one left the page with it.
+    // This used to return on any root._stripe, so after choosing "pay now"
+    // (a render) the screen said "Loading payment options..." for good, and
+    // Confirm used the old, unseen card-only form (review, November 23, P2).
+    if (root._stripe && root._stripe.mount === mount) return;
+    root._stripe = null;
     return mountStripe(mount);
   }
 
@@ -6040,6 +6260,8 @@
     else mount.innerHTML = html;
   }
 
+  /** Which payment form request is the current one (P2). */
+  var payMountSeq = 0;
   function mountStripe(mount) {
     // A fresh attempt, so a problem that has since been fixed is not
     // remembered for the life of the page.
@@ -6066,6 +6288,7 @@
         'Use 4242 4242 4242 4242, any future date, any CVC. Real cards will be declined.</p>'
       : '';
 
+    var seq = ++payMountSeq;
     fetch('/api/create-payment', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -6082,7 +6305,8 @@
         timeFeeBp: shownTimeFeeBp()
       })
     })
-      .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+      // The server checked the token; Confirm will need a fresh one.
+      .then(function (r) { spendTurnstile(); return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
       .then(function (r) {
         if (!r.ok || !r.j.clientSecret) {
           // Both branches say the same thing, because from the customer's
@@ -6104,9 +6328,13 @@
           clientSecret: r.j.clientSecret,
           appearance: { theme: 'flat', variables: { colorPrimary: '#e01a1a', borderRadius: '10px' } }
         });
+        // Redrawn, unticked or asked again while this was loading: a later
+        // request has the mount, and this one must not become the form
+        // Confirm uses (P2).
+        if (seq !== payMountSeq || mount.isConnected === false) return;
         mount.innerHTML = testBanner + '<div id="bkStripeEl"></div>';
         elements.create('payment', { layout: 'tabs' }).mount(mount.querySelector('#bkStripeEl'));
-        root._stripe = { stripe: stripe, elements: elements, kind: r.j.kind };
+        root._stripe = { stripe: stripe, elements: elements, kind: r.j.kind, mount: mount };
       })
       .catch(function () {
         mount.innerHTML = '<p class="bk-hint">No card needed today. ' +
@@ -6151,6 +6379,8 @@
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               action: 'create',
+              // One order per request, even if this is sent twice (P6).
+              idempotencyKey: bookingKey(),
               cart: wireCart(),
               contact: state.contact,
               consent: consentPayload(),
@@ -6159,7 +6389,7 @@
               // The early or late fee shown, used by the server only if it cannot read the calendar.
               timeFeeBp: shownTimeFeeBp()
             })
-          }).then(function (r) { return r.json(); }).then(function (j) {
+          }).then(function (r) { spendTurnstile(); return r.json(); }).then(function (j) {
             if (!j.id) throw new Error(j.message || 'PayPal could not start');
             return j.id;
           });
@@ -6197,24 +6427,23 @@
   /* ================= summary table ================= */
 
   /**
-   * What every discount on this booking is worth, together.
-   *
-   * Summed from the lines the customer is already looking at, so the figure
-   * at the bottom is the arithmetic of the rows above it rather than a
-   * second calculation that might disagree with them.
-   *
-   * The percentage is against the SERVICE list price, not the grand total.
-   * Travel is never discounted, so including it would quietly shrink the
-   * number: a 25% discount would read as 19% because of a drive.
+   * The same booking with no discount at all: no code, no extra-vehicle rate,
+   * no interior-and-exterior combo, not paid in full. Tax included, like the
+   * total, so "You saved" and the bar's struck price always subtract to the
+   * same figure (Emmett, November 15: the bar struck the price before ONE
+   * discount, with tax, while "You saved" added up every discount without
+   * tax; with a code and two vehicles the two disagreed).
    */
+  function undiscounted() {
+    var c = cart();
+    c.promoCode = null;
+    c.payInFull = false;
+    return P.quote(c, Object.assign({}, RULES, { additionalVehicleDiscountBp: 0, comboDiscountCents: 0, payInFullDiscountBp: 0 }));
+  }
+
+  /** What every discount is worth, with its note (web/lib/pricing/savings.ts). */
   function savings(quote) {
-    var off = 0, list = 0;
-    quote.lines.forEach(function (l) {
-      if (l.kind === 'travel' || l.kind === 'tax' || l.kind === 'surcharge') return;
-      if (l.amountCents < 0) off -= l.amountCents;
-      else list += l.amountCents;
-    });
-    return { cents: off, pct: list > 0 ? Math.round((off / list) * 100) : 0 };
+    return P.discountKinds(quote).length ? P.savingSummary(quote, undiscounted().totalCents) : { cents: 0, pct: 0, note: '' };
   }
 
   function lineTable(quote) {
@@ -6291,8 +6520,7 @@
     // stays right when a fifth is added.
     var won = savings(quote);
     var saved = won.cents > 0
-      ? '<tr class="saved"><td>You saved</td><td>' + $(won.cents) +
-        (won.pct >= 1 ? ' <i>(' + won.pct + '% off)</i>' : '') + '</td></tr>'
+      ? '<tr class="saved"><td>You saved</td><td>' + $(won.cents) + (won.note ? ' <i>(' + esc(won.note) + ')</i>' : '') + '</td></tr>'
       : '';
     return '<table class="bk-lines">' + rows + travel + tax +
       '<tr class="tot"><td>Total</td><td>' + $(quote.totalCents) + '</td></tr>' + saved + when + '</table>';
@@ -6303,7 +6531,7 @@
   function onClick(e) {
     var t = e.target.closest(
       '[data-size],[data-intent],[data-pkg],[data-addon],[data-clear],[data-slot],' +
-      '[data-pay],[data-delveh],[data-browsepick],[data-max],[data-sort],[data-pkgfirst],' +
+      '[data-pay],[data-delveh],[data-vehback],[data-browsepick],[data-max],[data-sort],[data-pkgfirst],' +
       '[data-kind],[data-paymethod],[data-corr],[data-coating],[data-garage],[data-step],' +
       '[data-prefday],[data-prefpart],[data-interest],[data-interest-only],[data-wkday],[data-more],[data-steer],[data-flexday],[data-wkfold],[data-ckcont],[data-cksec],[data-access],[data-extrarm],' +
       '#bkWkPrev,#bkWkNext,#bkWkNext2,#bkWkToday,#bkWkBack,#bkShowAll,#bkShowRecs,#bkFeeWhy,' +
@@ -6380,6 +6608,13 @@
         state.advice = false;
         v.intent = def.scope;
         v.addons = [{ addonId: def.id, tierId: t.dataset.browsetier }];
+        // Shown at its total with a package ("$445+ total with Full
+        // Interior"): start them on that package, or the add-on would be
+        // dropped the moment a different one is picked.
+        var tierDef = def.tiers.filter(function (x) { return x.id === t.dataset.browsetier; })[0];
+        if (tierDef && tierDef.totalWith && !(v.packageIds || []).some(function (id) { return (def.requiresAnyPackageId || []).indexOf(id) > -1; })) {
+          v.packageIds = [tierDef.totalWith];
+        }
         state.browse = false;
         return go(v.size ? 2 : 0);
       }
@@ -6399,6 +6634,7 @@
     if (t.dataset.size) { v.size = t.dataset.size; return advance(); }
     if (t.dataset.intent) {
       if (t.dataset.intent === 'advice') {
+        if (state.vehicles.length > 1) return;
         state.advice = true;
         v.intent = null;
         v.packageIds = [];
@@ -6547,8 +6783,8 @@
       // Another week starts with Earlier and Later times folded, as a new
       // view does (owner, November 11).
       state.wkEarly = state.wkLate = false;
-      state.weekStart = t.id === 'bkWkToday' ? P.weekStartOf(Date.now())
-        : t.id === 'bkWkBack' ? P.weekStartOf(state.slot)
+      state.weekStart = t.id === 'bkWkToday' ? weekOf(Date.now())
+        : t.id === 'bkWkBack' ? weekOf(state.slot)
         : P.addWeeks(state.weekStart, t.id === 'bkWkPrev' ? -1 : 1);
       return loadSlots();
     }
@@ -6563,7 +6799,7 @@
       state.weekTouched = false;
       autoSkips = 0;
       // The calendar opens on the week of the time already chosen, if any.
-      state.weekStart = state.showAll && state.slot ? P.weekStartOf(state.slot) : 0;
+      state.weekStart = state.showAll && state.slot ? weekOf(state.slot) : 0;
       return loadSlots();
     }
     if (t.dataset.wkday !== undefined) {
@@ -6662,12 +6898,21 @@
     if (t.dataset.pay) { state.payInFull = t.dataset.pay === 'now'; return render(); }
 
     if (t.id === 'bkAddVeh') {
+      // The vehicle being left has to be finished: only the active one is
+      // checked before checkout (validation pass, November 16).
+      var unfinished = firstProblem();
+      if (unfinished) { showProblem(unfinished); return; }
+      state.browse = false;
       state.vehicles.push(newVehicle());
       state.active = state.vehicles.length - 1;
       return go(0);
     }
+    if (t.dataset.vehback !== undefined) return backToVehicle();
     if (t.dataset.delveh) {
-      state.vehicles.splice(Number(t.dataset.delveh), 1);
+      var gone = Number(t.dataset.delveh);
+      state.vehicles.splice(gone, 1);
+      // The vehicles after the removed one move up one place, the active one included.
+      if (gone < state.active) state.active--;
       state.active = Math.min(state.active, state.vehicles.length - 1);
       return render();
     }
@@ -6686,7 +6931,7 @@
       var kept = saveDraft();
       close();
       return toast(kept
-        ? 'Saved. Tap Book Now whenever you are ready and it will be here.'
+        ? 'Saved. Next time you open Book Now, your answers will be filled in.'
         : 'This browser will not let us save it, sorry. Text us and we will hold it for you.');
     }
     if (t.id === 'bkLeaveAsk') return askAboutIt();
@@ -6820,11 +7065,25 @@
       state.weekTouched = true;
       state.weekDay = -1;
       state.wkEarly = state.wkLate = false;
-      state.weekStart = P.weekStartOf(jumped + DAY / 2);
+      state.weekStart = weekOf(jumped + DAY / 2);
       return loadSlots();
     }
     if (t.dataset.otherstart !== undefined) {
       if (!t.value) return;
+      if (t.value === 'early' || t.value === 'late' || t.value === 'std') {
+        var from = t.dataset.mode || '', to = t.value;
+        t.innerHTML = otherStartOptions(t.dataset.std, t.dataset.early, t.dataset.late, to);
+        t.dataset.mode = to === 'std' ? '' : to;
+        // Back from a group rests on that group's own item, not on "Choose a
+        // time": arrow keys on a closed list fire input, and resting on the
+        // first line sent the next arrow straight back into the group, so a
+        // keyboard user bounced between the two lists (validation, November 16).
+        t.value = to === 'std' ? from : '';
+        t.focus();
+        // Open it again where the browser allows; otherwise it waits, focused, for one more tap.
+        try { if (t.showPicker) t.showPicker(); } catch (err) { /* needs a fresh tap */ }
+        return;
+      }
       selectSlot(Number(t.value), 'recommended_other', { rank: Number(t.dataset.rank), reason: t.dataset.reason });
       return timeChosen();
     }
@@ -6991,14 +7250,26 @@
         .then(function (r) {
           if (r.error) throw r.error;
           var fn = sp.kind === 'setup' ? sp.stripe.confirmSetup : sp.stripe.confirmPayment;
+          // Never redirects: create-payment offers only methods that finish
+          // on this page (PAYMENT_METHODS), because nothing here completes a
+          // booking on the way back (P4).
           return fn.call(sp.stripe, {
             elements: sp.elements,
             redirect: 'if_required',
-            confirmParams: { return_url: location.origin + '/index.html#book' }
+            confirmParams: { return_url: location.origin + '/#book' }
           });
         })
         .then(function (r) {
           if (r && r.error) throw r.error;
+          /*
+           * PAID MEANS SUCCEEDED (P5). No error is not the same thing: a bank
+           * debit comes back "processing", and can still fail days later,
+           * and was recorded here as paid in full.
+           */
+          var intent = r && (r.paymentIntent || r.setupIntent);
+          if (!intent || intent.status !== 'succeeded') {
+            throw new Error('That payment has not gone through yet, so your booking was not sent.');
+          }
           state.payState = 'paid';
           record();
         })
@@ -7019,17 +7290,29 @@
   /**
    * The confirmation email, to the customer and to Elijah.
    *
-   * Fire and forget, deliberately. Web3Forms below is the path that must not
-   * fail, and until today it was the ONLY email in the system: the customer
-   * filled in nine screens and got nothing. An email problem is never the
-   * customer's problem, so nothing here can reject, delay or be waited on.
+   * Web3Forms below is the path that must not fail, and until today it was
+   * the ONLY email in the system: the customer filled in nine screens and got
+   * nothing. An email problem is never the customer's problem, so nothing
+   * here can reject. It IS waited on now, for two answers (calendar fix 1,
+   * November 14; November 15):
+   *   taken  the server read the calendar again and someone else has the
+   *          time (409): nothing was written.
+   *   saved  the server has the booking: Elijah's email went out, or it was
+   *          already saved by an earlier try. Then a Web3Forms failure is no
+   *          reason to tell the customer it failed (they already have their
+   *          confirmation email).
+   * Anything else (refused, an error, no answer within CONFIRM_WAIT_MS) and the
+   * booking goes on through Web3Forms as before, marked so Elijah checks the
+   * calendar: a refusal (a missing Turnstile check, say) used to drop the job
+   * from the calendar with nobody told.
    *
    * Ids only. The server reprices the whole thing, so the receipt that lands
    * in an inbox is its arithmetic rather than the browser's.
    */
+  var CONFIRM_WAIT_MS = 15000;
   function sendConfirmation() {
     try {
-      fetch('/api/send-confirmation', {
+      var sent = fetch('/api/send-confirmation', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -7050,27 +7333,78 @@
           // own DETAILERS setting; anything else books the default calendar.
           detailer: detailerParam(),
           // The early or late fee shown, used by the server only if it cannot read the calendar.
-          timeFeeBp: shownTimeFeeBp()
+          timeFeeBp: shownTimeFeeBp(),
+          // The times were standard hours, because this browser could not read
+          // the calendar: a clash then goes to the owner as a request.
+          standardHours: Boolean(lastCalc && lastCalc.mode === 'unconfigured')
         })
-      }).catch(function () {});
+      })
+        .then(function (r) {
+          if (r.status === 409) return { taken: true, saved: false, confirmed: false };
+          return r.json().then(function (j) {
+            var ok = Boolean(r.ok && j);
+            return {
+              taken: false,
+              // Someone has it: Elijah's email went out, the calendar has it,
+              // or an earlier try saved it.
+              saved: ok && Boolean(j.duplicate || j.owner || (j.calendar && j.calendar.ok)),
+              // And the time is really on the calendar, checked just before it
+              // was written: the same test as the customer's email
+              // (send-confirmation customerEmail), so screen and inbox agree.
+              confirmed: ok && Boolean(j.duplicate || (j.calendar && j.calendar.ok && !j.calendar.unchecked))
+            };
+          }, function () { return { taken: false, saved: false, confirmed: false }; });
+        })
+        .catch(function () { return { taken: false, saved: false, confirmed: false }; });
+      // Never aborted: the server may still be writing the job.
+      var waited = new Promise(function (ok) { setTimeout(function () { ok({ taken: false, saved: false, confirmed: false }); }, CONFIRM_WAIT_MS); });
+      return Promise.race([sent, waited]);
     } catch (e) { /* an email must never cost us a booking */ }
+    return Promise.resolve({ taken: false, saved: false, confirmed: false });
   }
 
   function record() {
     var quote = q();
     var msg = root.querySelector('#bkMsg');
 
-    sendConfirmation();
+    turnstileReady().then(sendConfirmation).then(function (res) {
+      // A Turnstile token is good once: a retry or a second Confirm needs a new one.
+      spendTurnstile();
+      if (!res.taken) return sendRecord(quote, msg, res);
+      // The server found the time booked by someone else since it was checked:
+      // nothing was written or sent. Back to Time, with the times still open.
+      state.sending = false;
+      el('bkNext').disabled = false;
+      track('time_taken_at_confirm', {});
+      // A fresh calendar read, so the taken time is not offered again.
+      lastSlotsKey = '';
+      dropSlot('Someone booked that time while you were deciding. These are the times still open.');
+      render();
+    });
+  }
 
-    var body = buildSummary(quote);
+  /**
+   * The booking to Elijah through Web3Forms, then Done. `saved`: the site's
+   * own confirmation already has it, so a Web3Forms failure still ends on Done.
+   * Not saved: the subject says so, so Elijah puts it on the calendar.
+   */
+  function sendRecord(quote, msg, res) {
+    var saved = res.saved;
+    // Done says "confirmed" only when the time is on the calendar (CLAUDE.md:
+    // a booking is "confirmed" to the customer only once its event is written).
+    state.unconfirmed = !res.confirmed;
+    // A request never goes on the calendar, so only a booking can need checking.
+    var check = !saved && !isInquiry();
+    var body = (check ? 'CHECK THE CALENDAR: the site could not confirm it saved this booking. Add it to the calendar if it is not there.\n\n' : '') +
+      buildSummary(quote);
     var fd = new FormData();
     fd.append('access_key', WEB3FORMS_KEY);
-    fd.append('subject', state.advice
+    fd.append('subject', (check ? 'CHECK THE CALENDAR, ' : '') + (state.advice
       ? 'HELP ME DECIDE, ' + state.contact.name + ', ' +
         (state.slot ? new Date(state.slot).toLocaleString('en-US', { timeZone: TZ }) : (state.address.zip || 'no zip'))
       : (isInquiry() ? 'REQUEST, ' : shortNotice(state.slot) ? 'SHORT NOTICE REQUEST, ' : 'BOOKING, ') +
         (detailerName() ? detailerName() + ', ' : '') + state.contact.name + ', ' + $(quote.totalCents) +
-        (state.slot ? ', ' + new Date(state.slot).toLocaleString('en-US', { timeZone: TZ }) : ''));
+        (state.slot ? ', ' + new Date(state.slot).toLocaleString('en-US', { timeZone: TZ }) : '')));
     fd.append('from_name', '513 Auto Clean Booking');
     fd.append('name', state.contact.name);
     fd.append('phone', state.contact.phone);
@@ -7084,10 +7418,15 @@
       .then(function (r) {
         state.sending = false;
         el('bkNext').disabled = false;
-        if (r.ok && r.j.success) done(quote);
+        if ((r.ok && r.j.success) || saved) done(quote);
         else showSendError(msg);
       })
-      .catch(function () { state.sending = false; el('bkNext').disabled = false; showSendError(msg); });
+      .catch(function () {
+        state.sending = false;
+        el('bkNext').disabled = false;
+        if (saved) done(quote);
+        else showSendError(msg);
+      });
   }
 
   /** Writes the send failure into the status line. Takes the NODE, not text. */
@@ -7182,9 +7521,7 @@
     });
 
     add('When', state.slot
-      ? new Date(state.slot).toLocaleString('en-US', { timeZone: TZ,
-          weekday: 'long', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit'
-        })
+      ? longWhen(state.slot)
       : (isInquiry() ? preferenceSummary() || 'Times requested' : ''));
     add('Where', [state.address.line1, state.address.city, state.address.region, state.address.zip]
       .filter(Boolean).join(', '));
@@ -7230,7 +7567,7 @@
     // landing halfway down a receipt is not reading it.
     lastRenderedStep = null;
     el('bkBar').style.width = '100%';
-    var asked = isInquiry() || (state.slot && shortNotice(state.slot));
+    var asked = isInquiry() || (state.slot && shortNotice(state.slot)) || state.unconfirmed;
     el('bkTitle').textContent = asked ? 'Request sent' : "You're fully confirmed";
     el('bkNext').hidden = true;
     el('bkBack').hidden = true;
@@ -7250,8 +7587,8 @@
     // Nothing is left in the footer on Done (an empty strip on phones).
     root.querySelector('.bk-modal').classList.add('is-done');
     el('bkNav').innerHTML = '<span class="bk-nav-done">' +
-      (isInquiry() ? 'Request sent' : 'Booked') + ' &middot; ' +
-      esc(new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })) +
+      (isInquiry() || state.unconfirmed ? 'Request sent' : 'Booked') + ' &middot; ' +
+      esc(longWhen(Date.now(), true).replace(/^[A-Za-z]+, /, '')) +
       '</span>';
 
     el('bkBody').innerHTML =
@@ -7270,16 +7607,21 @@
           : 'We have your request and the times that suit you. 513 Auto Clean will come back with a time to confirm.')
         : state.advice
           ? 'Your time is held' + (state.slot ? ' for <b>' +
-              new Date(state.slot).toLocaleString('en-US', { timeZone: TZ, weekday: 'long', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit' }) +
+              longWhen(state.slot) +
               '</b>' : '') + '. There is no total yet, because we have not recommended anything yet. ' +
             'We will do that with you before we start, and nothing is charged until you have agreed to it.'
           : shortNotice(state.slot)
           ? 'We have your short-notice request for <b>' +
-              new Date(state.slot).toLocaleString('en-US', { timeZone: TZ, weekday: 'long', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit' }) +
+              longWhen(state.slot) +
               '</b>. It is not confirmed until we reply, which depends on whether a detailer can take it. ' +
               'We will be in touch as fast as we can. Your total is <b>' + $(quote.totalCents) + '</b>' + travelWord(quote) + '.'
+          : state.unconfirmed
+          // The calendar could not be confirmed (validation cycle 1, November
+          // 16): the title says "Request sent", so the body says request too.
+          ? 'We have your request for <b>' + longWhen(state.slot) + '</b>. We will confirm the time with you shortly. ' +
+              'Your total is <b>' + $(quote.totalCents) + '</b>' + travelWord(quote) + '.'
           : 'We have your booking' + (state.slot ? ' for <b>' +
-              new Date(state.slot).toLocaleString('en-US', { timeZone: TZ, weekday: 'long', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit' }) +
+              longWhen(state.slot) +
               '</b>' : '') + '. Your total is <b>' + $(quote.totalCents) + '</b>' + travelWord(quote) + '.') +
       '</p>' +
 
@@ -7418,6 +7760,52 @@
     'advice', 'timeMode'
   ];
 
+  /**
+   * A vehicle from outside this page (a saved draft, a quote link) holds only
+   * what the server would book: a size that exists, packages that exist and
+   * are bookable now, one per category, add-ons that exist. A coming-soon
+   * package in a draft or link reached checkout and was refused at Confirm
+   * (validation pass 4).
+   */
+  function cleanImportedVehicle(v) {
+    if (v.size && !P.vehicleSize(v.size)) v.size = null;
+    var cats = {};
+    v.packageIds = (v.packageIds || []).filter(function (id) {
+      var p = P.findPackage(id);
+      if (!p || p.comingSoon || cats[p.category]) return false;
+      cats[p.category] = true;
+      return true;
+    });
+    v.addons = (v.addons || []).filter(function (a) { return P.findAddon(a.addonId); });
+  }
+
+  /**
+   * A draft saved by an older build can hold what this one never makes: Help
+   * me decide with two vehicles (the live site offered it on vehicle 2), or a
+   * vehicle with nothing chosen carried into checkout, where only the active
+   * vehicle is checked (validation pass 3, November 16). Keep the vehicles
+   * that have a package, plus the one being built on the build page; Help me
+   * decide stays only for a single vehicle.
+   */
+  function tidyRestoredVehicles() {
+    var vs = state.vehicles;
+    var act = vs[state.active] ? state.active : 0;
+    if (state.advice && vs.length > 1) {
+      state.advice = false; act = -1;
+      // Said once the form opens: the vehicle they wanted advice on is gone.
+      state.restoreNote = 'Help me decide works for one vehicle at a time, so we kept your other vehicle. ' +
+        'Tell us about the second one in the notes, or ask us a question.';
+    }
+    if (state.advice) { state.active = 0; return; }
+    var building = !inCheckout(state.step) && act > -1;
+    var kept = vs.filter(function (v, i) { return v.packageIds.length || (building && i === act); });
+    if (!kept.length) kept = [vs[0]];
+    var nowAt = building ? kept.indexOf(vs[act]) : -1;
+    state.vehicles = kept;
+    state.active = nowAt > -1 ? nowAt : 0;
+    if (!building && !kept[0].packageIds.length) state.step = 0;
+  }
+
   function saveDraft() {
     try {
       var keep = {};
@@ -7474,13 +7862,12 @@
       var names = v.packageIds.map(function (id) { return (P.findPackage(id) || {}).name; }).filter(Boolean);
       var size = v.size ? P.vehicleSize(v.size) : null;
       var line = [size ? size.label : '', names.join(' + ')].filter(Boolean).join(', ');
-      if (v.addons.length) line += ' plus ' + v.addons.length + ' add-on' + (v.addons.length === 1 ? '' : 's');
+      // "Extras", the form's own word for them (validation pass, November 16).
+      if (v.addons.length) line += ' plus ' + v.addons.length + ' extra' + (v.addons.length === 1 ? '' : 's');
       if (line) bits.push(line);
     });
     if (state.slot) {
-      bits.push(new Date(state.slot).toLocaleString('en-US', { timeZone: TZ,
-        weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit'
-      }));
+      bits.push(longWhen(state.slot, true));
     }
     if (state.address.city || state.address.zip) {
       bits.push([state.address.city, state.address.zip].filter(Boolean).join(' '));
@@ -7553,9 +7940,11 @@
           // A draft kept from before a package was retired opens as its
           // replacement; anything else unknown is dropped, never rendered.
           var up = P.upgradeLegacy(v.packageIds, v.addons);
-          v.packageIds = up.packageIds.filter(function (id) { return P.findPackage(id); });
-          v.addons = up.addons.filter(function (a) { return P.findAddon(a.addonId); });
+          v.packageIds = up.packageIds;
+          v.addons = up.addons;
+          cleanImportedVehicle(v);
         });
+        tidyRestoredVehicles();
       } catch (e) {
         clearDraft();
         reset();
@@ -7569,6 +7958,7 @@
     document.addEventListener('keydown', trapTab);
     render();
     el('bkClose').focus();
+    if (state.restoreNote) { toast(state.restoreNote); state.restoreNote = ''; }
   }
 
   /**
@@ -7590,8 +7980,12 @@
     if (!box) return close();
 
     if (!state.leaving) {
+      // Focus was in the dialog: give it somewhere to land, or it drops to the
+      // page and the next Tab starts from the top (validation cycle 4).
+      var hadFocus = box.contains(document.activeElement);
       box.hidden = true;
       box.innerHTML = '';
+      if (hadFocus && el('bkClose')) el('bkClose').focus();
       return;
     }
 
@@ -7606,12 +8000,12 @@
             '</ul>'
           : '') +
         '<div class="bk-leave-acts">' +
-          '<button type="button" class="bk-leave-go" id="bkLeaveStay">' + CHEV_L + 'Back to my booking</button>' +
+          '<button type="button" class="bk-leave-go" id="bkLeaveStay">' + CHEV_L + 'Back to my quote</button>' +
           '<div class="bk-leave-pair">' +
             '<button type="button" id="bkLeaveKeep">' + LEAVE_SAVE + 'Keep it for next time</button>' +
             '<button type="button" id="bkLeaveAsk">' + LEAVE_ASK + 'I have a question</button>' +
           '</div>' +
-          '<button type="button" class="bk-leave-drop" id="bkLeaveDrop">Cancel my booking</button>' +
+          '<button type="button" class="bk-leave-drop" id="bkLeaveDrop">Discard this quote</button>' +
         '</div>' +
         '<p class="bk-leave-note">Keeping it stores your answers in this browser only, for ' +
           DRAFT_DAYS + ' days.' + (P.isLive('checkoutFollowUp') && onCheckout() && canFollowUp()
@@ -7804,7 +8198,7 @@
    * A package or a "register interest" from a Book link: set it exactly as if
    * it had been picked inside the form. Returns the step to go to, or null.
    */
-  function applyIntent(wanted, id) {
+  function applyIntent(wanted, id, side) {
     if (wanted) {
       if (state.interest.indexOf(wanted) < 0) state.interest.push(wanted);
       var wv = veh();
@@ -7820,6 +8214,12 @@
       v.addons = [];
       return 0;
     }
+    // "Interior" or "Exterior" from the home page's service buttons: that
+    // side chosen, the package still theirs to pick.
+    if (side && P.BOOK_INTENTS.indexOf(side) > -1) {
+      veh().intent = side;
+      return 0;
+    }
     return null;
   }
 
@@ -7828,11 +8228,8 @@
    * November 14): what the link carried rides in the query and is applied the
    * first time the form opens here. Used once, so a later open starts fresh.
    */
-  var arrival = (function () {
-    var m = /[?&](package|interest)=([a-z0-9-]+)/.exec(location.search || '');
-    if (m) return { kind: m[1], id: m[2] };
-    return /[?&]browse=1\b/.test(location.search || '') ? { kind: 'browse' } : null;
-  })();
+  // Read with the words in config/booking-page.json bookLinkParams (bookLinks.ts).
+  var arrival = P.parseArrival(location.search || '');
   function applyArrival() {
     if (!arrival) return null;
     var a = arrival;
@@ -7841,6 +8238,7 @@
     if (state.resumed) return null;
     // "View Services": the catalogue, as the link did on its own page.
     if (a.kind === 'browse') { state.step = 1; state.browse = true; return null; }
+    if (a.kind === 'intent') return applyIntent(null, null, a.id);
     return a.kind === 'interest' ? applyIntent(a.id, null) : applyIntent(null, a.id);
   }
 
@@ -8099,7 +8497,7 @@
     });
 
     // Any Book Now link opens the funnel in place rather than navigating.
-    document.querySelectorAll('a[href="book.html"], a[href="./book.html"], [data-book-browse], [data-book-interest]').forEach(function (a) {
+    document.querySelectorAll('a[href="book.html"], a[href="./book.html"], [data-book-browse], [data-book-interest], [data-book-intent]').forEach(function (a) {
       a.addEventListener('click', function (e) {
         // A link the build pointed at /book (config/booking-page.json
         // bookLinks) goes there; the form opens on that page.
@@ -8121,7 +8519,7 @@
         // "Register interest" from the services grid: open the funnel with
         // that box already ticked, so they land on the picker able to carry
         // on and book something they CAN have.
-        var to = applyIntent(a.getAttribute('data-book-interest'), a.getAttribute('data-book-package'));
+        var to = applyIntent(a.getAttribute('data-book-interest'), a.getAttribute('data-book-package'), a.getAttribute('data-book-intent'));
         if (to === null) to = applyArrival();
         if (to !== null) return go(to);
       });

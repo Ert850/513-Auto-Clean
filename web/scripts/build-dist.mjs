@@ -18,7 +18,13 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { stampPhone } from "./phone-stamp.mjs";
+import { slimHtml } from "./slim-html.mjs";
+import { applyCleanUrls, checkDist } from "./site-urls.mjs";
+import { llmsTxt } from "./llms-txt.mjs";
+import { SEED_CATALOG, businessPhone, hoursText } from "../../netlify/functions/_pricing.mjs";
 import { routeDist } from "./book-links.mjs";
+import { distPages, isPreviewBuild, unreviewedPairs } from "./locations.mjs";
+import { GIFT_TOOL_PAGES, giftPages, loadGiftCards } from "./gift-cards.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const dist = path.join(root, "dist");
@@ -44,6 +50,15 @@ const FILES = [
   "robots.txt",
   "sitemap.xml",
   "manifest.webmanifest",
+  // City and service pages, written by render-locations.mjs and render-services.mjs.
+  // Drafts reach previews only (distPages in locations.mjs): Netlify sets
+  // CONTEXT, and every other build gets published pages alone
+  // (docs/SEO-COMPLIANCE.md R1).
+  ...distPages(),
+  // The gift card page, unless config/gift-cards.json has gift cards off, and
+  // the card's own page and Elijah's lookup page, which stay either way.
+  ...giftPages(),
+  ...GIFT_TOOL_PAGES,
 ];
 const DIRS = ["js", "data"];
 
@@ -53,6 +68,16 @@ function copy(rel) {
   fs.mkdirSync(path.dirname(to), { recursive: true });
   fs.copyFileSync(from, to);
   return fs.statSync(to).size;
+}
+
+// A gift card page whose buy buttons do nothing must never reach the live
+// site: previews may show it while the checkout is being built.
+{
+  const gc = loadGiftCards();
+  if (gc.mode !== "off" && !gc.checkout.enabled && !isPreviewBuild()) {
+    console.error('build-dist: config/gift-cards.json has gift cards on but checkout.enabled is false. Switch the checkout on, or set mode "off".');
+    process.exit(1);
+  }
 }
 
 fs.rmSync(dist, { recursive: true, force: true });
@@ -118,17 +143,51 @@ for (const rel of MINIFY) {
 }
 bytes -= saved;
 
-// The published phone number: BUSINESS_PHONE in Netlify, swapped into every
-// page and script here (A2P plan T1). Unset, nothing changes. See phone-stamp.mjs.
-{
-  const { phone, changed } = stampPhone(dist);
-  if (changed.length) console.log(`phone: ${phone.display} (BUSINESS_PHONE) written into ${changed.length} files`);
+// Pages: comments and indentation out, everything visible unchanged (slim-html.mjs).
+for (const rel of FILES.filter((f) => f.endsWith(".html"))) {
+  const to = path.join(dist, rel);
+  const source = fs.readFileSync(to, "utf8");
+  const out = slimHtml(source);
+  fs.writeFileSync(to, out);
+  saved += Buffer.byteLength(source) - Buffer.byteLength(out);
+  bytes -= Buffer.byteLength(source) - Buffer.byteLength(out);
 }
 
 // Where the Book links go: config/booking-page.json "bookLinks" (see book-links.mjs).
 {
   const moved = routeDist(dist, JSON.parse(fs.readFileSync(path.join(root, "config/booking-page.json"), "utf8")));
   if (moved) console.log(`book links: ${moved} links now go to /book`);
+}
+
+// One address per page, then the AI guide that lists them (site-urls.mjs,
+// llms-txt.mjs). Both write into dist/, so they come BEFORE the phone stamp:
+// its "no trace of the old number" check only covers files that exist when
+// it runs (validation, November 18: llms.txt and _redirects were written
+// after it).
+const cleanPageCount = applyCleanUrls(dist).length;
+fs.writeFileSync(path.join(dist, "llms.txt"), llmsTxt({
+  dist,
+  catalog: SEED_CATALOG,
+  phone: businessPhone().display, // reads BUSINESS_PHONE itself; the stamp below then checks no old number is left
+  hours: hoursText(),
+}));
+
+// The published phone number: BUSINESS_PHONE in Netlify, swapped into every
+// page, script and generated file here (A2P plan T1). Unset, nothing changes.
+// Runs after everything that writes into dist/. See phone-stamp.mjs.
+{
+  const { phone, changed } = stampPhone(dist);
+  if (changed.length) console.log(`phone: ${phone.display} (BUSINESS_PHONE) written into ${changed.length} files`);
+}
+
+// Everything a crawler reads agrees (site-urls.mjs).
+{
+  const problems = checkDist(dist);
+  if (problems.length) {
+    console.error("build-dist: the published pages disagree about their addresses or headings:\n  " + problems.join("\n  "));
+    process.exit(1);
+  }
+  console.log(`addresses: ${cleanPageCount} pages at clean addresses, llms.txt written`);
 }
 
 /* ---- images: only what the page can reach ---- */
@@ -145,6 +204,9 @@ const referenced = new Set([
   "icon-192.png",
   "icon-512.png",
   "icon-maskable-512.png",
+  // The logo at the top of the booking emails (send-confirmation.mjs SHELL):
+  // no page names it, so the scan below would leave it out.
+  "email-logo.png",
 ]);
 for (const f of textFiles) {
   const text = fs.readFileSync(path.join(root, f), "utf8");
@@ -162,6 +224,16 @@ for (const f of textFiles) {
  * megabytes on a page where the widest a card is ever painted is around 560
  * points.
  */
+{
+  const gallery = JSON.parse(fs.readFileSync(path.join(root, "data/gallery.json"), "utf8"));
+  const unchecked = unreviewedPairs(gallery);
+  if (unchecked.length && !isPreviewBuild()) {
+    console.error(`build-dist: photos not checked yet in data/gallery.json: ${unchecked.join(", ")}.\n` +
+      `  A person checks each pair against the list in data/gallery.json _howToAdd (A to G), then sets "reviewed": true or removes it.\n` +
+      `  To build a preview anyway: PREVIEW_BUILD=1 npm run build.`);
+    process.exit(1);
+  }
+}
 try {
   const gallery = JSON.parse(fs.readFileSync(path.join(root, "data/gallery.json"), "utf8"));
   for (const p of gallery.pairs ?? []) {
