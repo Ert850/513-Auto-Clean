@@ -286,24 +286,41 @@ export async function setEventDescription({ calendarId, eventId, description }) 
  * (_mastercal.mjs). The calendar id is required: unlike the calls above,
  * an empty one never falls back to the bookings calendar. Never throws:
  * {ok, status, data, reason}, status 0 when there was no token or Google
- * couldn't be reached.
+ * couldn't be reached. `signal` ends the call, sign-in included, when it
+ * aborts (reason "timed out"), so a caller's time limit holds even when
+ * Google never answers.
  */
-export async function gcalRequest(method, calendarId, path = "", { query, body } = {}) {
+export async function gcalRequest(method, calendarId, path = "", { query, body, signal } = {}) {
   if (!calendarId) return { ok: false, status: 0, data: null, reason: "no_calendar" };
-  const token = await accessToken().catch(() => null);
-  if (!token) return { ok: false, status: 0, data: null, reason: "auth_failed" };
-  const qs = query ? `?${new URLSearchParams(query)}` : "";
+  const timedOut = { ok: false, status: 0, data: null, reason: "timed out" };
+  if (signal?.aborted) return timedOut;
+  const call = async () => {
+    const token = await accessToken().catch(() => null);
+    if (signal?.aborted) return timedOut;
+    if (!token) return { ok: false, status: 0, data: null, reason: "auth_failed" };
+    const qs = query ? `?${new URLSearchParams(query)}` : "";
+    try {
+      const res = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events${path}${qs}`, {
+        method,
+        headers: { Authorization: `Bearer ${token}`, ...(body ? { "Content-Type": "application/json" } : {}) },
+        ...(body ? { body: JSON.stringify(body) } : {}),
+        ...(signal ? { signal } : {}),
+      });
+      const text = await res.text();
+      let data = null;
+      try { data = text ? JSON.parse(text) : null; } catch { data = null; }
+      return { ok: res.ok, status: res.status, data, reason: res.ok ? "" : `http_${res.status}` };
+    } catch (e) {
+      if (signal?.aborted) return timedOut;
+      return { ok: false, status: 0, data: null, reason: `network: ${String(e?.message || e).slice(0, 120)}` };
+    }
+  };
+  if (!signal) return call();
+  let onAbort;
+  const stop = new Promise((resolve) => { onAbort = () => resolve(timedOut); signal.addEventListener("abort", onAbort, { once: true }); });
   try {
-    const res = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events${path}${qs}`, {
-      method,
-      headers: { Authorization: `Bearer ${token}`, ...(body ? { "Content-Type": "application/json" } : {}) },
-      ...(body ? { body: JSON.stringify(body) } : {}),
-    });
-    const text = await res.text();
-    let data = null;
-    try { data = text ? JSON.parse(text) : null; } catch { data = null; }
-    return { ok: res.ok, status: res.status, data, reason: res.ok ? "" : `http_${res.status}` };
-  } catch (e) {
-    return { ok: false, status: 0, data: null, reason: `network: ${String(e?.message || e).slice(0, 120)}` };
+    return await Promise.race([call(), stop]);
+  } finally {
+    signal.removeEventListener("abort", onAbort);
   }
 }

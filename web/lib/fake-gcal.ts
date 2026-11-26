@@ -4,10 +4,16 @@
  * and restore() puts it back.
  *
  * Enough of the Calendar API to be honest about what the code relies on:
- * events.list (time window, singleEvents, privateExtendedProperty, pages),
- * events.get (a deleted event reads as status "cancelled", as Google keeps
- * it), insert with a chosen id (409 when the id is taken, deleted or not),
- * update, patch (nested objects merge), delete.
+ * events.list (time window, singleEvents, privateExtendedProperty, pages,
+ * the calendar's own name as `summary`), events.get (a deleted event reads as
+ * status "cancelled", as Google keeps it), insert with a chosen id (409 when
+ * the id is taken, deleted or not), update, patch (nested objects merge),
+ * delete, and `created` on every event. A request's AbortSignal ends it the
+ * way fetch does (an AbortError).
+ *
+ * What Google doesn't document is left to each test to choose, never built
+ * in: an id Google no longer returns but won't reuse (`purge`: get 404,
+ * insert 409) answers an update with `purgedPutStatus`, set per test.
  */
 export interface FakeEvent {
   id: string;
@@ -19,7 +25,10 @@ export interface FakeEvent {
   end?: { dateTime?: string; date?: string; timeZone?: string };
   transparency?: string;
   colorId?: string;
+  created?: string;
   extendedProperties?: { private?: Record<string, string> };
+  /** Anything else on an event (GHL's own fields, guests): kept as given. */
+  [other: string]: unknown;
 }
 
 interface Cal {
@@ -29,6 +38,13 @@ interface Cal {
   failGet?: boolean;
   failWrite?: boolean;
   hang?: boolean;
+  /** Every answer this late (ms); `delayGetMs` for single-event look-ups only. */
+  delayMs?: number;
+  delayGetMs?: number;
+  /** Ids that read as not found but can't be inserted again (purge). */
+  purged?: Set<string>;
+  /** What an update of a purged id answers: the test decides (Google doesn't say). */
+  purgedPutStatus?: number;
 }
 
 export interface Call { method: string; url: string; calendarId: string | null; body: unknown }
@@ -50,6 +66,14 @@ export function fakeGoogle({ pageSize = 250 } = {}) {
     return cals.get(id)!;
   };
 
+  const abortError = () => new DOMException("This operation was aborted", "AbortError");
+  /** Waits, or never answers, ending early as fetch does when the request's signal aborts. */
+  const wait = (ms: number, signal?: AbortSignal | null) => new Promise<void>((resolve, reject) => {
+    if (signal?.aborted) return reject(abortError());
+    const t = Number.isFinite(ms) ? setTimeout(resolve, ms) : null;
+    signal?.addEventListener("abort", () => { if (t) clearTimeout(t); reject(abortError()); }, { once: true });
+  });
+
   const handle = async (url: string, init?: RequestInit): Promise<Response> => {
     const u = new URL(url);
     const method = (init?.method || "GET").toUpperCase();
@@ -58,14 +82,17 @@ export function fakeGoogle({ pageSize = 250 } = {}) {
     const calendarId = m ? decodeURIComponent(m[1]!) : null;
     calls.push({ method, url, calendarId, body });
 
+    if (init?.signal?.aborted) throw abortError();
     if (u.host === "oauth2.googleapis.com") return res(200, { access_token: "t", expires_in: 3600 });
     if (u.host === "api.resend.com") { emails.push(body); return res(200, { id: "mail" }); }
     if (!m || u.host !== "www.googleapis.com") return res(404, {});
 
     const c = cals.get(calendarId!);
     if (!c) return res(404, { error: { code: 404, message: "Not Found" } });
-    if (c.hang) return new Promise<Response>(() => {});
     const evId = m[2] ? decodeURIComponent(m[2]) : null;
+    if (c.hang) { await wait(Infinity, init?.signal); return res(500, {}); }
+    const delay = (method === "GET" && evId ? c.delayGetMs : 0) || c.delayMs || 0;
+    if (delay) await wait(delay, init?.signal);
 
     if (method === "GET" && !evId) {
       if (c.failList) return res(500, { error: { code: 500 } });
@@ -90,21 +117,31 @@ export function fakeGoogle({ pageSize = 250 } = {}) {
     }
     if (method === "GET") {
       if (c.failGet) return res(500, { error: { code: 500 } });
+      if (c.purged?.has(evId!)) return res(404, { error: { code: 404 } });
       const e = c.events.get(evId!);
       return e ? res(200, structuredClone(e)) : res(404, { error: { code: 404 } });
     }
     if (c.failWrite) return res(503, { error: { code: 503 } });
     if (method === "POST") {
       const id = body.id || `ev${++n}`;
-      if (c.events.has(id)) return res(409, { error: { code: 409, message: "The requested identifier already exists." } });
-      const e = { ...body, id, status: body.status || "confirmed" };
+      if (c.events.has(id) || c.purged?.has(id)) return res(409, { error: { code: 409, message: "The requested identifier already exists." } });
+      const e = { ...body, id, status: body.status || "confirmed", created: new Date().toISOString() };
       c.events.set(id, e);
+      return res(200, e);
+    }
+    if (c.purged?.has(evId!)) {
+      if (method !== "PUT") return res(404, { error: { code: 404 } });
+      const status = c.purgedPutStatus ?? 404;
+      if (status !== 200) return res(status, { error: { code: status } });
+      c.purged.delete(evId!);
+      const e = { ...body, id: evId!, status: body.status || "confirmed", created: new Date().toISOString() };
+      c.events.set(evId!, e);
       return res(200, e);
     }
     const have = c.events.get(evId!);
     if (!have) return res(404, { error: { code: 404 } });
     if (method === "PUT") {
-      const e = { ...body, id: evId!, status: body.status || "confirmed" };
+      const e = { ...body, id: evId!, status: body.status || "confirmed", ...(have.created ? { created: have.created } : {}) };
       c.events.set(evId!, e);
       return res(200, e);
     }
@@ -135,6 +172,7 @@ export function fakeGoogle({ pageSize = 250 } = {}) {
       const id = rest.id || `orig${++n}`;
       const ev: FakeEvent = {
         status: "confirmed",
+        created: new Date().toISOString(),
         ...rest,
         id,
         start: { dateTime: new Date(startMs).toISOString(), timeZone: "America/New_York" },
@@ -142,6 +180,12 @@ export function fakeGoogle({ pageSize = 250 } = {}) {
       };
       cal(calendarId).events.set(id, ev);
       return ev;
+    },
+    /** An event gone so long ago that Google no longer returns it, though its id stays taken. */
+    purge(calendarId: string, id: string) {
+      const c = cal(calendarId);
+      c.events.delete(id);
+      (c.purged ??= new Set()).add(id);
     },
     live(calendarId: string) {
       return [...(cals.get(calendarId)?.events.values() ?? [])].filter((e) => e.status !== "cancelled");

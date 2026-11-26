@@ -325,9 +325,7 @@ export function askedFor(prefer) {
 // extras: where they came from and which A/B test versions they saw. Tests are
 // counted from these emails (docs/AB-TESTING.md), and a booking that never
 // reached the calendar has no event to read them from (validation cycle 2).
-// masterFail: the copy on 513 All Jobs (_mastercal.mjs) failed. Its own line,
-// not the subject: the booking itself is fine.
-export function ownerEmail({ contact, when, priced, kind, cart, detailer, asked, notes, consent = {}, calendarFail = "", unchecked = "", extras = {}, dropped = [], masterFail = "" }) {
+export function ownerEmail({ contact, when, priced, kind, cart, detailer, asked, notes, consent = {}, calendarFail = "", unchecked = "", extras = {}, dropped = [] }) {
   const a = cart?.address ?? {};
   const where = [a.line1, a.city, a.region, a.zip].filter(Boolean).join(", ");
   const soon = kind === "booking" && cart?.slot && cart.slot - Date.now() < SHORT_NOTICE_MS;
@@ -350,9 +348,6 @@ export function ownerEmail({ contact, when, priced, kind, cart, detailer, asked,
         : kind === "inquiry" ? "New request" : soon ? "Short-notice request, not confirmed until you accept it" : "New booking",
       (calendarFail
         ? `<p style="margin:0 0 14px;padding:10px 12px;background:#fdecea;border-left:3px solid #c62828;color:#7f1d1d"><strong>NOT ON THE CALENDAR</strong>${/^this time is already taken/.test(calendarFail) ? `: ${esc(calendarFail)}.` : `(${esc(calendarFail)}). The time is still open to other customers: add it by hand now.`}</p>`
-        : "") +
-      (masterFail
-        ? `<p style="margin:0 0 14px;padding:10px 12px;background:#fdf3e3;border-left:3px solid #f0a93f"><strong>NOT ON 513 ALL JOBS</strong> (${esc(masterFail)}). The job is on the detailer's calendar and the booking is fine. The scheduled check copies it across; if it is still missing later, add it by hand.</p>`
         : "") +
       (dropped.length
         ? `<p style="margin:0 0 14px;padding:10px 12px;background:#fdf3e3;border-left:3px solid #f0a93f"><strong>CHECK THE PRICE:</strong> vehicle ${dropped.join(" and ")} had nothing chosen, so ${dropped.length > 1 ? "they were" : "it was"} left out of this booking. Their screen may have shown a lower multi-vehicle price; the total here is the real one. Confirm it with them.</p>`
@@ -611,6 +606,31 @@ async function writeCalendar({ contact, cart, priced, extras, payInFull, key, ki
   return events.length > 1 ? { ...first, days: events.length } : first;
 }
 
+/**
+ * THE COPY ON 513 ALL JOBS, for GoHighLevel (_mastercal.mjs): only while
+ * ALL_JOBS_CALENDAR_ID is set, only once the detailer's own events are
+ * written, and only after both emails have gone, so it can't delay, block or
+ * lose an email or change the reply. One quick try, all days at once, capped
+ * at writeTimeoutMs; a failure is logged ([master-cal]) and the scheduled
+ * check (jobs-mirror.mjs) copies the job on its next run. Never throws.
+ */
+async function copyToMaster({ calendar, written, detailer }) {
+  if (!calendar.ok || !written.length || !masterCalendarId()) return;
+  try {
+    const { crew } = parseDetailers(process.env.DETAILERS);
+    // Every Google call in it ends when this signal does, sign-in included.
+    await copyBookingToMaster({
+      written,
+      calendarId: detailer ? detailer.bookingsCalendarId : "",
+      // parseDetailers always lists the owner.
+      detailerName: detailer ? detailer.name : crew.find((x) => x.owner).name,
+      signal: AbortSignal.timeout(MASTER_CALENDAR.writeTimeoutMs),
+    });
+  } catch (e) {
+    mwarn("copy-failed", { key: written[0]?.key || "", reason: String(e?.message || e).slice(0, 120) });
+  }
+}
+
 export async function send(apiKey, from, to, { subject, html }, replyTo) {
   let res;
   try {
@@ -754,40 +774,20 @@ export async function handler(event) {
   if (calendar.taken) {
     return json(409, { error: "slot_taken", taken: true });
   }
-  // THE COPY ON 513 ALL JOBS, for GoHighLevel (_mastercal.mjs), only while
-  // ALL_JOBS_CALENDAR_ID is set and only after the detailer's own events
-  // were written. Never fatal and never long: a failure or a slow Google
-  // costs at most writeTimeoutMs, is told to Elijah on its own line, and the
-  // scheduled check (jobs-mirror.mjs) copies the job later. The customer's
-  // email and the reply never mention it.
-  let masterFail = "";
-  if (calendar.ok && written.length && masterCalendarId()) {
-    const { crew } = parseDetailers(process.env.DETAILERS);
-    const m = await inTime(copyBookingToMaster({
-      written,
-      calendarId: detailer ? detailer.bookingsCalendarId : "",
-      // parseDetailers always lists the owner.
-      detailerName: detailer ? detailer.name : crew.find((x) => x.owner).name,
-      crewNames: crew.map((x) => x.name),
-    }), MASTER_CALENDAR.writeTimeoutMs).catch((e) => {
-      mwarn("copy-failed", { key: written[0]?.key || "", reason: String(e?.message || e).slice(0, 120) });
-      return { ok: false, reason: String(e?.message || e).slice(0, 120) };
-    });
-    if (!m.ok) masterFail = String(m.reason || "write failed");
-  }
   if (!apiKey) {
+    await copyToMaster({ calendar, written, detailer });
     return json(200, { sent: false, reason: "unconfigured", calendar: calendarOut });
   }
   ctx.calendarOk = noTime || calendar.ok === true;
   ctx.calendarFail = noTime || calendar.ok ? "" : String(calendar.reason || "write failed");
   ctx.dropped = checked.booking.droppedVehicles || [];
   ctx.unchecked = calendar.unchecked || "";
-  if (masterFail) ctx.masterFail = masterFail;
 
   // Elijah's copy first. If only one of the two can get through, it has to be
   // the one that means the job happens.
   const toOwner = await send(apiKey, from, owner, ownerEmail(ctx), contact.email);
   const toCustomer = contact.email ? await send(apiKey, from, contact.email, customerEmail(ctx)) : false;
+  await copyToMaster({ calendar, written, detailer });
 
   return json(200, { sent: toOwner || toCustomer, owner: toOwner, customer: toCustomer, calendar: calendarOut });
 }

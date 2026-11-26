@@ -3407,21 +3407,29 @@ function checkMasterCalendar(input) {
   };
 }
 var MASTER_CALENDAR = checkMasterCalendar(master_calendar_default);
-var NOT_A_JOB = /^(open|best|dns)\b/i;
+var JOBS_SYNC_SKIP_TITLE = /^(open|best|dns|busy|blocked?|unavailable|availability|hold|personal)\b/i;
+var JOBS_SYNC_OFFICE = /505\s+Sandheger/i;
+var JOBS_SYNC_DETAILER = /^(?:SHORT NOTICE[^:]*:\s*)?([A-Z][a-z]+):/;
+function notAJob(e) {
+  const title = String(e.summary ?? "");
+  const loc = String(e.location ?? "");
+  const desc = String(e.description ?? "");
+  if (e.status === "cancelled") return "deleted";
+  if (e.transparency === "transparent") return "free";
+  if (JOBS_SYNC_SKIP_TITLE.test(title.trim())) return "title";
+  if (JOBS_SYNC_OFFICE.test(loc) || JOBS_SYNC_OFFICE.test(desc)) return "office";
+  if (!e.start?.dateTime && !/\$\d/.test(title + desc)) return "all-day";
+  return "";
+}
+var isJob = (e) => notAJob(e) === "";
 var CANCELLED_PREFIX = "CANCELLED: ";
 var SHORT_NOTICE = /^(SHORT NOTICE[^:]*:\s*)/;
-var escRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-function masterTitle(title, detailer, crewNames = []) {
+var titleDetailer = (title, fallback) => JOBS_SYNC_DETAILER.exec(String(title ?? "").trim())?.[1] || fallback;
+function masterTitle(title, detailer) {
   const t = String(title ?? "").trim();
+  if (JOBS_SYNC_DETAILER.test(t)) return t.slice(0, 250);
   const pre = SHORT_NOTICE.exec(t)?.[1] ?? "";
-  let rest = t.slice(pre.length);
-  for (const n of [detailer, ...crewNames]) {
-    const p = new RegExp(`^${escRe(n)}:\\s*`);
-    if (n && p.test(rest)) {
-      rest = rest.replace(p, "");
-      break;
-    }
-  }
+  const rest = t.slice(pre.length);
   return `${pre}${detailer}: ${rest || "Job"}`.slice(0, 250);
 }
 function masterDescription(h) {
@@ -3444,15 +3452,16 @@ var keyOf = (e) => e.extendedProperties?.private?.["bookingKey"] || `manual:${e.
 function masterCopy(i) {
   const s = i.settings ?? MASTER_CALENDAR;
   const o = i.original;
+  const who = titleDetailer(o.summary ?? "", i.detailer);
   return {
-    summary: masterTitle(o.summary ?? "", i.detailer, i.crewNames),
-    description: masterDescription({ status: "Booked", detailer: i.detailer, key: i.key, source: i.label, original: o.description ?? "" }),
+    summary: masterTitle(o.summary ?? "", who),
+    description: masterDescription({ status: "Booked", detailer: who, key: i.key, source: i.label, original: o.description ?? "" }),
     location: o.location ?? "",
     start: pickTime(o.start),
     end: pickTime(o.end),
     // As the original: a job is Busy, so GHL blocks its time.
     transparency: o.transparency === "transparent" ? "transparent" : "opaque",
-    colorId: colorFor(i.detailer, s),
+    colorId: colorFor(who, s),
     extendedProperties: { private: { bookingKey: i.key, sourceId: sourceIdOf(i.calendarId, String(o.id ?? "")) } }
   };
 }
@@ -3473,13 +3482,28 @@ ${desc}`,
   };
 }
 var isCancelledCopy = (e) => String(e.summary ?? "").startsWith(CANCELLED_PREFIX) && /^Status: Cancelled$/m.test(String(e.description ?? ""));
+function copyPatch(have, want) {
+  const kind = (t) => t?.date ? "date" : "dateTime";
+  if (kind(have.start) !== kind(want.start) || kind(have.end) !== kind(want.end)) return null;
+  return want;
+}
 var instant = (t) => t?.date ? `d:${t.date}` : t?.dateTime ? `t:${Date.parse(t.dateTime)}` : "";
 function sameCopy(have, want) {
   const hp = have.extendedProperties?.private ?? {};
   const wp = want.extendedProperties?.private ?? {};
   return (have.summary ?? "") === (want.summary ?? "") && (have.description ?? "") === (want.description ?? "") && (have.location ?? "") === (want.location ?? "") && instant(have.start) === instant(want.start) && instant(have.end) === instant(want.end) && (have.transparency || "opaque") === (want.transparency || "opaque") && (have.colorId ?? "") === (want.colorId ?? "") && hp["bookingKey"] === wp["bookingKey"] && hp["sourceId"] === wp["sourceId"];
 }
-function planMirror(sources, master, crewNames, s = MASTER_CALENDAR) {
+function keyHolder(originals, copy) {
+  const follows = splitSourceId(copy?.extendedProperties?.private?.["sourceId"])?.eventId;
+  const same = originals.find((e) => follows && e.id === follows);
+  if (same) return same;
+  const made = (e) => {
+    const t = Date.parse(String(e.created ?? ""));
+    return Number.isFinite(t) ? t : Infinity;
+  };
+  return [...originals].sort((a, b) => made(a) - made(b) || String(a.id).localeCompare(String(b.id)))[0];
+}
+function planMirror(sources, master, s = MASTER_CALENDAR) {
   const plan = { creates: [], updates: [], missing: [], foreign: [], duplicates: [], skipped: 0 };
   const copies = /* @__PURE__ */ new Map();
   for (const e of master) {
@@ -3495,22 +3519,28 @@ function planMirror(sources, master, crewNames, s = MASTER_CALENDAR) {
     }
     copies.set(p["bookingKey"], e);
   }
-  const seen = /* @__PURE__ */ new Set();
+  const jobs = [];
   for (const src of sources) {
     for (const e of src.events) {
       if (e.status === "cancelled" || !e.id) continue;
-      if (NOT_A_JOB.test(String(e.summary ?? "").trim())) {
+      if (!isJob(e)) {
         plan.skipped++;
         continue;
       }
-      let key = keyOf(e);
-      if (seen.has(key)) key = `manual:${e.id}`;
-      seen.add(key);
-      const want = masterCopy({ original: e, key, calendarId: src.calendarId, label: src.label, detailer: src.detailer, crewNames, settings: s });
-      const have = copies.get(key);
-      if (!have) plan.creates.push({ key, body: want });
-      else if (!sameCopy(have, want)) plan.updates.push({ id: String(have.id), key, body: want, restore: isCancelledCopy(have) });
+      jobs.push({ src, e });
     }
+  }
+  const byKey = /* @__PURE__ */ new Map();
+  for (const { e } of jobs) byKey.set(keyOf(e), [...byKey.get(keyOf(e)) ?? [], e]);
+  const seen = /* @__PURE__ */ new Set();
+  for (const { src, e } of jobs) {
+    const shared = byKey.get(keyOf(e));
+    const key = shared.length > 1 && keyHolder(shared, copies.get(keyOf(e))) !== e ? `manual:${e.id}` : keyOf(e);
+    seen.add(key);
+    const want = masterCopy({ original: e, key, calendarId: src.calendarId, label: src.label, detailer: src.detailer, settings: s });
+    const have = copies.get(key);
+    if (!have) plan.creates.push({ key, body: want });
+    else if (!sameCopy(have, want)) plan.updates.push({ id: String(have.id), key, have, body: want, restore: isCancelledCopy(have) });
   }
   for (const [key, copy] of copies) {
     if (seen.has(key)) continue;
@@ -3886,12 +3916,14 @@ export {
   DRAFT_KEEP_DAYS,
   GIFT_CARDS,
   HOURS,
+  JOBS_SYNC_DETAILER,
+  JOBS_SYNC_OFFICE,
+  JOBS_SYNC_SKIP_TITLE,
   LEGAL,
   LONG_JOB_STARTS,
   MASTER_CALENDAR,
   MAX_BOOKING_CENTS,
   MAX_ONE_WAY_MINUTES,
-  NOT_A_JOB,
   REPO_PHONE,
   SCHEDULING,
   SEED_CATALOG,
@@ -3911,6 +3943,7 @@ export {
   colorFor,
   componentsOf,
   copyFor,
+  copyPatch,
   coverTable,
   coverage,
   dollarsToCents,
@@ -3923,6 +3956,7 @@ export {
   giftOffer,
   hoursText,
   isCancelledCopy,
+  isJob,
   isLive,
   keyOf,
   legalFingerprint,
@@ -3937,6 +3971,7 @@ export {
   mergeBusy,
   mileageFeeCents,
   multiDayEvents,
+  notAJob,
   packagesFor,
   parseArrival,
   parseDetailers,
@@ -3954,6 +3989,7 @@ export {
   splitSourceId,
   swapPhone,
   tierPriceFor,
+  titleDetailer,
   unavailableReason,
   upgradeLegacy,
   validateWire,
