@@ -98,7 +98,7 @@ Save, then Trigger deploy.
 
 ### Adding a third person, or removing one
 
-Add or delete their `{ ... }` entry in `DETAILERS` (mind the commas between entries) and redeploy. Nothing else changes.
+Add or delete their `{ ... }` entry in `DETAILERS` (mind the commas between entries) and redeploy. Nothing else changes, except their colour on 513 All Jobs: a line under `colors` in `config/master-calendar.json` (`docs/MASTER-CALENDAR-SETUP.md`).
 
 ---
 

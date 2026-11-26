@@ -57,6 +57,12 @@
 [functions."gift-deliver"]
   schedule = "0 13-23 * * *"
 
+# The master calendar, 513 All Jobs, made to match the detailers' bookings
+# calendars every 10 minutes (docs/MASTER-CALENDAR-SETUP.md). Published site
+# only, like every schedule; it does nothing while ALL_JOBS_CALENDAR_ID is unset.
+[functions."jobs-mirror"]
+  schedule = "*/10 * * * *"
+
 # A fresh build on the sale's first day and the day after it ends, at about
 # 00:15 Cincinnati time (05:15 UTC), so the page's HTML matches the checkout.
 [functions."gift-rebuild"]

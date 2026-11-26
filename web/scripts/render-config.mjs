@@ -114,6 +114,17 @@ const { parseDetailers } = await import("../../netlify/functions/_pricing.mjs");
     process.exit(1);
   }
 }
+
+// The master calendar (ALL_JOBS_CALENDAR_ID, docs/MASTER-CALENDAR-SETUP.md) is
+// only ever written. As one of the calendars the site reads, every copy would
+// block time a second time and the copier would mirror its own copies.
+{
+  const { masterClash } = await import("../../netlify/functions/_mastercal.mjs");
+  if (masterClash()) {
+    console.error("render-config: ALL_JOBS_CALENDAR_ID is also a calendar the site reads (GOOGLE_*_CALENDAR_ID, GOOGLE_BUSY_ONLY_CALENDAR_IDS or DETAILERS). Give 513 All Jobs its own calendar.");
+    process.exit(1);
+  }
+}
 const outWithTests = out + "\nwindow.AC_EXPERIMENTS = " + JSON.stringify(experiments) + ";\n";
 
 fs.writeFileSync(OUT, outWithTests);

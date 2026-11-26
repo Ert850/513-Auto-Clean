@@ -20,6 +20,8 @@ const FUNCS = [
   "travel", "create-payment", "paypal-order", "personal-busy", "reviews", "send-confirmation", "booking-followup",
   // Without GIFT_CODE_SECRET it answers 503 before reaching Stripe; giftcards-backend.test.ts runs it against a stand-in.
   "gift-send",
+  // Off without ALL_JOBS_CALENDAR_ID; master-calendar.test.ts runs it against a stand-in.
+  "jobs-mirror",
 ] as const;
 
 const ENV: Record<string, string> = {

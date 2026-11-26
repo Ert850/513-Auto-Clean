@@ -2,6 +2,8 @@
 
 Draft, November 14, 2026. Nothing is built. Elijah and Imperion pick a concept first.
 
+**Update, November 26:** concept (d) is built, with the website doing the copying (an instant copy at booking time plus a scheduled reconciler every 10 minutes), not the Apps Script mirror. Setup and rules: `docs/MASTER-CALENDAR-SETUP.md`.
+
 **The ask.** Imperion will connect GoHighLevel (GHL) themselves, later. Their worry is syncing several calendars, so they'd like one Google calendar. Elijah's priorities:
 1. each detailer sees and cancels (deletes) their own jobs from their phone;
 2. per-detailer hours, early and late fees, best times and priority;

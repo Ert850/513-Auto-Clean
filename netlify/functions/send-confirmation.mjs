@@ -1,4 +1,4 @@
-import { priceFromWire, validateWire, findPackage, findAddon, vehicleSize, isLive, ADVICE_HOLD_MIN, ARRIVAL_WINDOW_MIN, businessPhone, multiDayEvents, LONG_JOB_STARTS, CORRECTION_RULES, wireNeeds, SCHEDULING } from "./_pricing.mjs";
+import { priceFromWire, validateWire, findPackage, findAddon, vehicleSize, isLive, ADVICE_HOLD_MIN, ARRIVAL_WINDOW_MIN, businessPhone, multiDayEvents, LONG_JOB_STARTS, CORRECTION_RULES, wireNeeds, SCHEDULING, parseDetailers } from "./_pricing.mjs";
 
 /** Inside this, a booking is a request until a detailer accepts it (config/scheduling.json). */
 const SHORT_NOTICE_MS = SCHEDULING.shortNoticeHours * 3_600_000;
@@ -6,6 +6,7 @@ const SHORT_NOTICE_MS = SCHEDULING.shortNoticeHours * 3_600_000;
 const DRIVE_FALLBACK_MIN = SCHEDULING.driveFallbackMinutes;
 import { blockFeeFor, detailerFor, homeFor, inTime, slotStatus, timeFeeWaived } from "./_detailers.mjs";
 import { createBookingEvent, findBookingEvent, gcalAuthMode, gcalConfigured } from "./_gcal.mjs";
+import { MASTER_CALENDAR, copyBookingToMaster, masterCalendarId, mwarn } from "./_mastercal.mjs";
 import { addressLine, measureRoundTrip, measuredOneWayMinutes } from "./_routes.mjs";
 import { limited } from "./_ratelimit.mjs";
 import { verifyTurnstile } from "./_turnstile.mjs";
@@ -324,7 +325,9 @@ export function askedFor(prefer) {
 // extras: where they came from and which A/B test versions they saw. Tests are
 // counted from these emails (docs/AB-TESTING.md), and a booking that never
 // reached the calendar has no event to read them from (validation cycle 2).
-export function ownerEmail({ contact, when, priced, kind, cart, detailer, asked, notes, consent = {}, calendarFail = "", unchecked = "", extras = {}, dropped = [] }) {
+// masterFail: the copy on 513 All Jobs (_mastercal.mjs) failed. Its own line,
+// not the subject: the booking itself is fine.
+export function ownerEmail({ contact, when, priced, kind, cart, detailer, asked, notes, consent = {}, calendarFail = "", unchecked = "", extras = {}, dropped = [], masterFail = "" }) {
   const a = cart?.address ?? {};
   const where = [a.line1, a.city, a.region, a.zip].filter(Boolean).join(", ");
   const soon = kind === "booking" && cart?.slot && cart.slot - Date.now() < SHORT_NOTICE_MS;
@@ -347,6 +350,9 @@ export function ownerEmail({ contact, when, priced, kind, cart, detailer, asked,
         : kind === "inquiry" ? "New request" : soon ? "Short-notice request, not confirmed until you accept it" : "New booking",
       (calendarFail
         ? `<p style="margin:0 0 14px;padding:10px 12px;background:#fdecea;border-left:3px solid #c62828;color:#7f1d1d"><strong>NOT ON THE CALENDAR</strong>${/^this time is already taken/.test(calendarFail) ? `: ${esc(calendarFail)}.` : `(${esc(calendarFail)}). The time is still open to other customers: add it by hand now.`}</p>`
+        : "") +
+      (masterFail
+        ? `<p style="margin:0 0 14px;padding:10px 12px;background:#fdf3e3;border-left:3px solid #f0a93f"><strong>NOT ON 513 ALL JOBS</strong> (${esc(masterFail)}). The job is on the detailer's calendar and the booking is fine. The scheduled check copies it across; if it is still missing later, add it by hand.</p>`
         : "") +
       (dropped.length
         ? `<p style="margin:0 0 14px;padding:10px 12px;background:#fdf3e3;border-left:3px solid #f0a93f"><strong>CHECK THE PRICE:</strong> vehicle ${dropped.join(" and ")} had nothing chosen, so ${dropped.length > 1 ? "they were" : "it was"} left out of this booking. Their screen may have shown a lower multi-vehicle price; the total here is the real one. Confirm it with them.</p>`
@@ -540,7 +546,9 @@ export function stillFreeJob({ cart, priced, kind, measuredMin }) {
   };
 }
 
-async function writeCalendar({ contact, cart, priced, extras, payInFull, key, kind, detailer, measuredMin, standardHours = false }) {
+// `written` collects each event as it was written (with its id and key), for
+// the copy on 513 All Jobs; it never reaches the reply.
+async function writeCalendar({ contact, cart, priced, extras, payInFull, key, kind, detailer, measuredMin, standardHours = false, written = [] }) {
   if (!gcalConfigured()) return { ok: false, reason: "unconfigured" };
   if (!cart.slot) return { ok: false, reason: "no_slot" };
 
@@ -592,11 +600,13 @@ async function writeCalendar({ contact, cart, priced, extras, payInFull, key, ki
   const events = bookingEvents({ contact, cart: { ...cart, arrivalLateMin: late }, priced, extras, payInFull, kind, detailer, nowMs: Date.now(), measuredMin });
   const first = await createBookingEvent({ ...events[0], key, phone, calendarId });
   if (!first.ok) return first;
+  written.push({ ...events[0], key, id: first.id });
   if (unchecked) first.unchecked = unchecked;
   // Days 2 and on: their own key, so day 1 stays the one a follow-up finds.
   for (let i = 1; i < events.length; i++) {
     const r = await createBookingEvent({ ...events[i], key: key ? `${key}:day${i + 1}` : key, phone, calendarId });
     if (!r.ok) return { ...first, ok: false, reason: `day${i + 1}_${r.reason}` };
+    written.push({ ...events[i], key: key ? `${key}:day${i + 1}` : key, id: r.id });
   }
   return events.length > 1 ? { ...first, days: events.length } : first;
 }
@@ -715,6 +725,7 @@ export async function handler(event) {
   // "tell us when suits" told Elijah "NOT ON THE CALENDAR, add it by hand"
   // because only "inquiry" was treated as having no time (validation pass 4).
   const noTime = !cart.slot;
+  const written = [];
   const calendar =
     noTime
       ? { ok: false, reason: "no_time" }
@@ -725,6 +736,7 @@ export async function handler(event) {
           measuredMin: measured,
           // The form offered standard hours because it could not read the calendar.
           standardHours: payload?.standardHours === true,
+          written,
         }).catch((err) => {
           console.error("calendar write", err);
           return { ok: false, reason: "threw" };
@@ -742,6 +754,27 @@ export async function handler(event) {
   if (calendar.taken) {
     return json(409, { error: "slot_taken", taken: true });
   }
+  // THE COPY ON 513 ALL JOBS, for GoHighLevel (_mastercal.mjs), only while
+  // ALL_JOBS_CALENDAR_ID is set and only after the detailer's own events
+  // were written. Never fatal and never long: a failure or a slow Google
+  // costs at most writeTimeoutMs, is told to Elijah on its own line, and the
+  // scheduled check (jobs-mirror.mjs) copies the job later. The customer's
+  // email and the reply never mention it.
+  let masterFail = "";
+  if (calendar.ok && written.length && masterCalendarId()) {
+    const { crew } = parseDetailers(process.env.DETAILERS);
+    const m = await inTime(copyBookingToMaster({
+      written,
+      calendarId: detailer ? detailer.bookingsCalendarId : "",
+      // parseDetailers always lists the owner.
+      detailerName: detailer ? detailer.name : crew.find((x) => x.owner).name,
+      crewNames: crew.map((x) => x.name),
+    }), MASTER_CALENDAR.writeTimeoutMs).catch((e) => {
+      mwarn("copy-failed", { key: written[0]?.key || "", reason: String(e?.message || e).slice(0, 120) });
+      return { ok: false, reason: String(e?.message || e).slice(0, 120) };
+    });
+    if (!m.ok) masterFail = String(m.reason || "write failed");
+  }
   if (!apiKey) {
     return json(200, { sent: false, reason: "unconfigured", calendar: calendarOut });
   }
@@ -749,6 +782,7 @@ export async function handler(event) {
   ctx.calendarFail = noTime || calendar.ok ? "" : String(calendar.reason || "write failed");
   ctx.dropped = checked.booking.droppedVehicles || [];
   ctx.unchecked = calendar.unchecked || "";
+  if (masterFail) ctx.masterFail = masterFail;
 
   // Elijah's copy first. If only one of the two can get through, it has to be
   // the one that means the job happens.
