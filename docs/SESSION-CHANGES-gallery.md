@@ -101,3 +101,15 @@ Emmett: no new pairs until Elijah's better photos replace them. The 5 candidates
 - **Why not on every input:** typing fires one per keystroke; each would send a wrong key and run into the server's "too many tries". Any keydown ends the wait, so a typed key still uses Look up.
 - **Test (done in Chrome with the request stubbed):** a key filled 0.7 s after the scan sends one lookup with the scanned code; typed keys send none; after 5 s a late fill sends none. On a phone: scan a certificate's QR code, let the password manager fill the key, and the card shows without tapping Look up.
 
+## Home page cleanup after the verification work (November 27, review agent)
+
+- **What:** the copy of the whole Contact section on the home page (added November 13 for the number verification) is off: `config/contact-form.json` `"onHomePage": false`, markers kept, `a2p.test.ts` checks it, and turning it on brings the section back byte for byte. The home page is back to hero, four buttons, trust bar and reviews, photos, packages, booking. On a phone the photos start at 1766 px instead of 3471.
+- **Also fixed:** in "Ready to book?", the "Explore our detailing packages" bullet split into two columns (`.bc-points li` is a flex row, so the link and the text were separate items; the text is now one span). "We'll get back to you with pricing and a time that works" dated from the June quote form and contradicted "See your exact price before you commit"; it now says you pick a package and time online and see the price as you go. Straight apostrophes there are now curly. The email tile broke "gmail.co / m" at 375 px; it now breaks before the @ (`<wbr>`).
+- **Root cause:** verification additions were never on a switch, so when the site stopped being part of the verification nothing said what to undo. Same rule as CLAUDE.md "temporary changes behind a setting".
+- **Not done, needs the owner:** what the "Let's get your car booked" section is for now that nothing links to it (it repeats call, text and email); the hours line under the four buttons and where the scroll arrow points; the four buttons' Exterior photo and the coating button (Elijah, `config/home-services.json`); `/book` versus booking in place; the terms line on the question form; the phone bar's Book icon.
+- **Test:** home page at 1440 and 375: no Contact form between the reviews and the photos, the bullet reads as one line, the email wraps at the @.
+
+## Privacy policy, November 27 version (pending Emmett's yes)
+
+- The Google Calendar row names the job records sheet (JobsSync) and says only we and the listed providers can see the details; a new row covers our customer management system and the agency that runs it. Needed before Imperion and GoHighLevel get the calendars and the sheet (`IMPERION-CALENDAR-ACCESS-PLAN.md`).
+

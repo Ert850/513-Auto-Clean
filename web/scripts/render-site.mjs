@@ -503,9 +503,10 @@ for (const f of PAGES) fs.writeFileSync(path.join(root, f), pages[f]);
   const hi = home.indexOf(hs);
   const hj = home.indexOf(he);
   if (hi < 0 || hj < 0) throw new Error("render-site: CONTACT:SECTION markers not found in index.html");
-  home = home.slice(0, hi + hs.length) + section + "\n" + home.slice(hj);
+  // Off since November 27 (config onHomePage): the markers stay, empty, so one word brings it back.
+  home = home.slice(0, hi + hs.length) + (cfg.onHomePage ? section + "\n" : "") + home.slice(hj);
   fs.writeFileSync(path.join(root, "index.html"), home);
-  console.log(`contact form: ${cfg.mode} mode`);
+  console.log(`contact form: ${cfg.mode} mode, ${cfg.onHomePage ? "also" : "not"} on the home page`);
 }
 
 /* ---------------- the booking page (/book), from config/booking-page.json ---------------- */
@@ -620,7 +621,8 @@ ${cards.join("\n")}
   const words = new RegExp(`(7 days a week, |7 days/week · )${T} to ${T}`, "g");
   const HOURS_STAMPS = [
     // [file, pattern, replacement, matches expected (the footer counts too)]
-    ["index.html", words, `$1${hoursText()}`, 4], // the hero, the service buttons, the copied Contact section, the footer
+    // the hero, the service buttons, the footer, and the copied Contact section when it's on (config/contact-form.json onHomePage)
+    ["index.html", words, `$1${hoursText()}`, loadContactForm().onHomePage ? 4 : 3],
     ["contact.html", words, `$1${hoursText()}`, 2],
     ["index.html", /("opens": ")[\d:]+(", "closes": ")[\d:]+(")/g, `$1${HOURS.opens}$2${HOURS.closes}$3`, 1],
   ];

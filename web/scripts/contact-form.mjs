@@ -38,6 +38,9 @@ export function loadContactForm(file = path.join(root, "config/contact-form.json
       }
     }
   }
+  if (typeof cfg.onHomePage !== "boolean") {
+    throw new Error(`config/contact-form.json: onHomePage must be true or false`);
+  }
   for (const k of CONSENT_NEEDS) {
     if (typeof cfg.consent?.[k] !== "string" || !cfg.consent[k].trim()) {
       throw new Error(`config/contact-form.json: consent.${k} is missing`);

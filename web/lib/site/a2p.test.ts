@@ -114,6 +114,18 @@ describe("T1: the phone number", () => {
 
 describe("T2: the Contact form", () => {
   const cfg = loadContactForm();
+
+  it("the home page carries the Contact section only when onHomePage is on (off since November 27)", () => {
+    const home = read("index.html");
+    const inner = /<!-- CONTACT:SECTION:START -->\n([\s\S]*?)<!-- CONTACT:SECTION:END -->/.exec(home);
+    expect(inner, "the markers stay, so one word brings the section back").not.toBeNull();
+    if (cfg.onHomePage) {
+      expect(inner![1]).toContain('<section class="inquiry" id="inquiry">');
+    } else {
+      expect(inner![1]).toBe("");
+      expect(home).not.toContain('id="inquiryForm"');
+    }
+  });
   const as = (mode: string) => ({ ...cfg, mode });
 
   it("question mode is the form exactly as it was on November 12, plus the standard boxes and the November 26 fine print", () => {
