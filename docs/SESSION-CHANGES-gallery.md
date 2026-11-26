@@ -42,3 +42,15 @@ Emmett: no new pairs until Elijah's better photos replace them. The 5 candidates
 **Where the newer photos are:** the NAS's Cloud Sync was also linked to Elijah's business Google account on September 20; our Drive connector sees only his personal one, where "05" stops at September 20. He shares the photo and pairs folders from the business Drive with the personal account, then the pairs are cut the same way.
 
 - **To test:** `cd web && TZ=America/New_York npx vitest run` (914 pass); a production build passes. On the test site: the home Interior button shows the CR-V interior and Spills and Stains the Sonic pair; the home carousel shows the 6 earlier pairs; the stain draft page has no photo carousel.
+
+## November 26: GPS taken out of seven source photos (Emmett's yes)
+
+- **Found by** the SEO master page session: `images/detail-closeup.jpg`, `escape-dashboard-after.jpg`, `minivan-cargo-after.jpg`, `rear-seats-after.jpg`, `sedan-rear-seats-after.jpg`, `suv-cargo-before.jpg` and `truck-interior-after.jpg` carried GPS coordinates (15 tags each) in the public repo since June. The images the site serves were already clean.
+- **Root cause:** phone photos were committed as they came off the phone, and nothing checked their metadata. The build's re-encoding hid it on the site, not in the repo.
+- **Fix:** the GPS block removed from each file's EXIF without re-encoding (pixels checked identical by hash; orientation kept). `web/lib/site/photo-gps.test.ts` scans every tracked JPEG, PNG and WebP and fails on GPS (proved against an original file).
+- **Still open:** the originals are in git history. Purging them rewrites history and needs Emmett's yes (with runbook step 4).
+- **Test:** `cd web && TZ=America/New_York npx vitest run lib/site/photo-gps.test.ts`.
+
+## November 26: FAQ add-on price line
+
+- `faq.html` said pet hair, steam and ozone are "billed at $50/hr". The $50 was stamped from `addonRateCents`, the hourly rate for extra hands-on time beyond the listed work, not the add-ons' price: they are fixed prices, and steam is $80 or $115 (root cause: the stamp tied the sentence to the wrong setting). The stamp entry is removed with the number. Now "as add-ons for tougher jobs, each priced on the Services page", in the answer and its structured data.
