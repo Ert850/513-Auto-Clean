@@ -253,7 +253,7 @@ export { CAPABILITIES, DRAFT_KEEP_DAYS, copyFor, isLive, liveProcessors } from "
 export { LONG_JOB_STARTS, multiDayEvents } from "./availability/multiDay.js";
 export { checkRange, slotStillFree } from "./availability/stillFree.js";
 export { SCHEDULING } from "./availability/scheduling.js";
-export { MASTER_CALENDAR, checkMasterCalendar, masterCopy, masterTitle, masterDescription, cancelledPatch, isCancelledCopy, sameCopy, planMirror, keyOf, splitSourceId, sourceIdOf, colorFor, NOT_A_JOB, CANCELLED_PREFIX } from "./availability/masterCalendar.js";
+export { MASTER_CALENDAR, checkMasterCalendar, masterCopy, masterTitle, masterDescription, cancelledPatch, isCancelledCopy, sameCopy, planMirror, keyOf, splitSourceId, sourceIdOf, colorFor, notAJob, isJob, titleDetailer, copyPatch, JOBS_SYNC_SKIP_TITLE, JOBS_SYNC_OFFICE, JOBS_SYNC_DETAILER, CANCELLED_PREFIX } from "./availability/masterCalendar.js";
 export { HOURS, REPO_PHONE, businessPhone, hoursText, parsePhone, phoneTrace, swapPhone } from "./site/business.js";
 export { estimateOneWayMinutes } from "./travel/zipRanges.js";
 

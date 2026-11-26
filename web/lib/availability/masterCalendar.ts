@@ -70,28 +70,57 @@ export function checkMasterCalendar(input: unknown): MasterCalendarSettings {
 
 export const MASTER_CALENDAR: MasterCalendarSettings = checkMasterCalendar(raw);
 
-/** Hours, best times and blocked time, never jobs: never copied (the site reads them the same way). */
-export const NOT_A_JOB = /^(open|best|dns)\b/i;
+/**
+ * What JobsSync counts as a job is what gets copied (tools/jobs-sync/JobsSync.gs,
+ * jobRow and CONFIG). These are its own patterns, and jobs-sync-contract.test.ts
+ * fails if the two drift apart. One difference on purpose: JobsSync also skips
+ * "Day N of M" events so each job is counted once, but they are copied, one
+ * copy per working day, like the originals.
+ */
+export const JOBS_SYNC_SKIP_TITLE = /^(open|best|dns|busy|blocked?|unavailable|availability|hold|personal)\b/i;
+export const JOBS_SYNC_OFFICE = /505\s+Sandheger/i;
+/** JobsSync's DETAILER: the detailer named at the start of a title, after any SHORT NOTICE prefix. */
+export const JOBS_SYNC_DETAILER = /^(?:SHORT NOTICE[^:]*:\s*)?([A-Z][a-z]+):/;
+
+/**
+ * Why an event on a bookings calendar is not a job, or "" when it is one:
+ * deleted, Free (fee blocks and the like), hours or a personal block by its
+ * title (OPEN, BEST, DNS, Busy, Blocked, Hold, Personal...), the office
+ * address, or all day with no $ amount. The same rules, in the same order,
+ * as JobsSync's jobRow.
+ */
+export function notAJob(e: GEvent): string {
+  const title = String(e.summary ?? "");
+  const loc = String(e.location ?? "");
+  const desc = String(e.description ?? "");
+  if (e.status === "cancelled") return "deleted";
+  if (e.transparency === "transparent") return "free";
+  if (JOBS_SYNC_SKIP_TITLE.test(title.trim())) return "title";
+  if (JOBS_SYNC_OFFICE.test(loc) || JOBS_SYNC_OFFICE.test(desc)) return "office";
+  if (!e.start?.dateTime && !/\$\d/.test(title + desc)) return "all-day";
+  return "";
+}
+export const isJob = (e: GEvent): boolean => notAJob(e) === "";
 
 export const CANCELLED_PREFIX = "CANCELLED: ";
 const SHORT_NOTICE = /^(SHORT NOTICE[^:]*:\s*)/;
-const escRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+/** Who did the job, as JobsSync reads it: a name at the start of the title wins over the calendar's detailer. */
+export const titleDetailer = (title: string, fallback: string): string =>
+  JOBS_SYNC_DETAILER.exec(String(title ?? "").trim())?.[1] || fallback;
 
 /**
  * The copy's title: the original's, with the detailer always named first,
  * after any SHORT NOTICE prefix, so JobsSync's DETAILER and CONTINUATION_DAY
- * patterns read the copy as they read the original. A name already there is
- * replaced by the calendar's detailer: a job moved to another detailer's
- * calendar is theirs now.
+ * patterns read the copy as they read the original. A title that already
+ * names someone ("Kris: ..." typed on Elijah's calendar) is kept as it is:
+ * that name wins, as it does in JobsSync.
  */
-export function masterTitle(title: string, detailer: string, crewNames: string[] = []): string {
+export function masterTitle(title: string, detailer: string): string {
   const t = String(title ?? "").trim();
+  if (JOBS_SYNC_DETAILER.test(t)) return t.slice(0, 250);
   const pre = SHORT_NOTICE.exec(t)?.[1] ?? "";
-  let rest = t.slice(pre.length);
-  for (const n of [detailer, ...crewNames]) {
-    const p = new RegExp(`^${escRe(n)}:\\s*`);
-    if (n && p.test(rest)) { rest = rest.replace(p, ""); break; }
-  }
+  const rest = t.slice(pre.length);
   return `${pre}${detailer}: ${rest || "Job"}`.slice(0, 250);
 }
 
@@ -120,6 +149,8 @@ export interface GEvent {
   end?: GTime;
   transparency?: string;
   colorId?: string;
+  /** When Google made the event (read-only, RFC 3339). */
+  created?: string;
   extendedProperties?: { private?: Record<string, string> };
 }
 
@@ -145,27 +176,33 @@ export function splitSourceId(v: string | undefined): { calendarId: string; even
 /** An original's booking key: the website's own, or manual:<event id> for a job typed in by hand. */
 export const keyOf = (e: GEvent): string => e.extendedProperties?.private?.["bookingKey"] || `manual:${e.id}`;
 
-/** The copy of one original, as it should be on the master calendar. */
+/**
+ * The copy of one original, as it should be on the master calendar. Every
+ * field here is one the mirror owns: it puts them back as the original says,
+ * whoever changed them on the master (by hand, or GHL). Fields it doesn't
+ * write (guests, GHL's own) are left alone.
+ */
 export function masterCopy(i: {
   original: GEvent;
   key: string;
   calendarId: string;
   label: string;
+  /** The calendar's detailer. A name at the start of the title wins (titleDetailer). */
   detailer: string;
-  crewNames?: string[];
   settings?: MasterCalendarSettings;
 }): GEvent {
   const s = i.settings ?? MASTER_CALENDAR;
   const o = i.original;
+  const who = titleDetailer(o.summary ?? "", i.detailer);
   return {
-    summary: masterTitle(o.summary ?? "", i.detailer, i.crewNames),
-    description: masterDescription({ status: "Booked", detailer: i.detailer, key: i.key, source: i.label, original: o.description ?? "" }),
+    summary: masterTitle(o.summary ?? "", who),
+    description: masterDescription({ status: "Booked", detailer: who, key: i.key, source: i.label, original: o.description ?? "" }),
     location: o.location ?? "",
     start: pickTime(o.start),
     end: pickTime(o.end),
     // As the original: a job is Busy, so GHL blocks its time.
     transparency: o.transparency === "transparent" ? "transparent" : "opaque",
-    colorId: colorFor(i.detailer, s),
+    colorId: colorFor(who, s),
     extendedProperties: { private: { bookingKey: i.key, sourceId: sourceIdOf(i.calendarId, String(o.id ?? "")) } },
   };
 }
@@ -191,6 +228,18 @@ export function cancelledPatch(copy: GEvent, s: MasterCalendarSettings = MASTER_
 export const isCancelledCopy = (e: GEvent): boolean =>
   String(e.summary ?? "").startsWith(CANCELLED_PREFIX) && /^Status: Cancelled$/m.test(String(e.description ?? ""));
 
+/**
+ * The change that puts a copy right, as a PATCH: only the fields the mirror
+ * owns, so anything else on the event (GHL's own fields, guests) survives.
+ * Null when a PATCH can't do it: an all-day event turned into a timed one or
+ * back (start.date and start.dateTime can't both be set), which takes a PUT.
+ */
+export function copyPatch(have: GEvent, want: GEvent): GEvent | null {
+  const kind = (t: GTime | undefined) => (t?.date ? "date" : "dateTime");
+  if (kind(have.start) !== kind(want.start) || kind(have.end) !== kind(want.end)) return null;
+  return want;
+}
+
 const instant = (t: GTime | undefined) => (t?.date ? `d:${t.date}` : t?.dateTime ? `t:${Date.parse(t.dateTime)}` : "");
 
 /** Is the copy on the master calendar already what it should be? */
@@ -210,16 +259,31 @@ export function sameCopy(have: GEvent, want: GEvent): boolean {
 export interface MirrorPlan {
   /** Copies to write, new or put back. */
   creates: { key: string; body: GEvent }[];
-  /** Copies that differ from their original; `restore` when the copy was marked cancelled. */
-  updates: { id: string; key: string; body: GEvent; restore: boolean }[];
+  /** Copies that differ from their original (`have` is the copy as read); `restore` when it was marked cancelled. */
+  updates: { id: string; key: string; have: GEvent; body: GEvent; restore: boolean }[];
   /** Copies whose original wasn't read this run: each is looked up before anything is marked. */
   missing: { id: string; key: string; copy: GEvent }[];
   /** Events on the master with no sourceId (made in GHL, or by hand): left alone. */
   foreign: string[];
   /** A second copy of the same booking key: left alone, and logged. */
   duplicates: string[];
-  /** Originals skipped as hours (OPEN, BEST, DNS). */
+  /** Originals skipped as not jobs (notAJob: Free, hours, personal blocks, the office...). */
   skipped: number;
+}
+
+/**
+ * Two originals with one booking key (an event duplicated by hand keeps the
+ * key): which one keeps it. The one the existing copy already follows
+ * (its sourceId's event id), else the one Google made first (`created`),
+ * then the lower id, so the answer never depends on the order the list came
+ * back in. The others are their own jobs, manual:<event id>.
+ */
+function keyHolder(originals: GEvent[], copy: GEvent | undefined): GEvent {
+  const follows = splitSourceId(copy?.extendedProperties?.private?.["sourceId"])?.eventId;
+  const same = originals.find((e) => follows && e.id === follows);
+  if (same) return same;
+  const made = (e: GEvent) => { const t = Date.parse(String(e.created ?? "")); return Number.isFinite(t) ? t : Infinity; };
+  return [...originals].sort((a, b) => made(a) - made(b) || String(a.id).localeCompare(String(b.id)))[0]!;
 }
 
 /**
@@ -227,7 +291,7 @@ export interface MirrorPlan {
  * that matches it; a copy whose original is missing is listed for a direct
  * look-up, never marked from the list alone.
  */
-export function planMirror(sources: SourceRead[], master: GEvent[], crewNames: string[], s: MasterCalendarSettings = MASTER_CALENDAR): MirrorPlan {
+export function planMirror(sources: SourceRead[], master: GEvent[], s: MasterCalendarSettings = MASTER_CALENDAR): MirrorPlan {
   const plan: MirrorPlan = { creates: [], updates: [], missing: [], foreign: [], duplicates: [], skipped: 0 };
   const copies = new Map<string, GEvent>();
   for (const e of master) {
@@ -238,20 +302,26 @@ export function planMirror(sources: SourceRead[], master: GEvent[], crewNames: s
     copies.set(p["bookingKey"], e);
   }
 
-  const seen = new Set<string>();
+  const jobs: { src: SourceRead; e: GEvent }[] = [];
   for (const src of sources) {
     for (const e of src.events) {
       if (e.status === "cancelled" || !e.id) continue;
-      if (NOT_A_JOB.test(String(e.summary ?? "").trim())) { plan.skipped++; continue; }
-      // Two originals with one key (an event duplicated by hand keeps it): the later one is its own job.
-      let key = keyOf(e);
-      if (seen.has(key)) key = `manual:${e.id}`;
-      seen.add(key);
-      const want = masterCopy({ original: e, key, calendarId: src.calendarId, label: src.label, detailer: src.detailer, crewNames, settings: s });
-      const have = copies.get(key);
-      if (!have) plan.creates.push({ key, body: want });
-      else if (!sameCopy(have, want)) plan.updates.push({ id: String(have.id), key, body: want, restore: isCancelledCopy(have) });
+      if (!isJob(e)) { plan.skipped++; continue; }
+      jobs.push({ src, e });
     }
+  }
+  const byKey = new Map<string, GEvent[]>();
+  for (const { e } of jobs) byKey.set(keyOf(e), [...(byKey.get(keyOf(e)) ?? []), e]);
+
+  const seen = new Set<string>();
+  for (const { src, e } of jobs) {
+    const shared = byKey.get(keyOf(e))!;
+    const key = shared.length > 1 && keyHolder(shared, copies.get(keyOf(e))) !== e ? `manual:${e.id}` : keyOf(e);
+    seen.add(key);
+    const want = masterCopy({ original: e, key, calendarId: src.calendarId, label: src.label, detailer: src.detailer, settings: s });
+    const have = copies.get(key);
+    if (!have) plan.creates.push({ key, body: want });
+    else if (!sameCopy(have, want)) plan.updates.push({ id: String(have.id), key, have, body: want, restore: isCancelledCopy(have) });
   }
   for (const [key, copy] of copies) {
     if (seen.has(key)) continue;

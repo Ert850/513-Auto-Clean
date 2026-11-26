@@ -12,11 +12,11 @@ import { MASTER_CALENDAR, checkMasterCalendar, masterTitle } from "./availabilit
 import { localDayStart, localTimeOnDay } from "./time/zone.js";
 import { priceFromWire, type WireCart } from "./server-entry.js";
 // @ts-expect-error: plain ESM Netlify function, no types
-import { bookingEvents, handler, ownerEmail } from "../../netlify/functions/send-confirmation.mjs";
+import { bookingEvents, handler } from "../../netlify/functions/send-confirmation.mjs";
 // @ts-expect-error: plain ESM Netlify function, no types
 import { reconcile, handler as mirrorHandler } from "../../netlify/functions/jobs-mirror.mjs";
 // @ts-expect-error: plain ESM Netlify function, no types
-import { copyBookingToMaster, masterClash, masterEventId, siteCalendars } from "../../netlify/functions/_mastercal.mjs";
+import { copyBookingToMaster, lookupOriginal, masterClash, masterEventId, siteCalendars } from "../../netlify/functions/_mastercal.mjs";
 import { resetRateLimits } from "../../netlify/functions/_ratelimit.mjs";
 
 const TZ = "America/New_York";
@@ -125,31 +125,35 @@ describe("the settings, config/master-calendar.json", () => {
 describe("the copy's title, read as JobsSync reads titles", () => {
   it("names the detailer first, Elijah too, after any SHORT NOTICE prefix", () => {
     expect(masterTitle("Full Interior, Jane Doe", "Elijah")).toBe("Elijah: Full Interior, Jane Doe");
-    expect(masterTitle("Kris: Full Interior, Jane Doe", "Kris", ["Kris", "Elijah"])).toBe("Kris: Full Interior, Jane Doe");
+    expect(masterTitle("Kris: Full Interior, Jane Doe", "Kris")).toBe("Kris: Full Interior, Jane Doe");
     const short = masterTitle("SHORT NOTICE, accept or decline: Full Interior, Jane Doe", "Elijah");
     expect(short).toBe("SHORT NOTICE, accept or decline: Elijah: Full Interior, Jane Doe");
     expect(short.match(DETAILER)?.[1]).toBe("Elijah");
     const day2 = masterTitle("Day 2 of 2, Paint Correction, Jane Doe", "Elijah");
     expect(CONTINUATION_DAY.test(day2)).toBe(true);
     expect(day2.match(DETAILER)?.[1]).toBe("Elijah");
-    // Moved to Elijah's calendar: his job now.
-    expect(masterTitle("Kris: Full Interior, Jane Doe", "Elijah", ["Kris", "Elijah"])).toBe("Elijah: Full Interior, Jane Doe");
+    // A name already in the title wins over the calendar's detailer, as in JobsSync.
+    expect(masterTitle("Kris: Full Interior, Jane Doe", "Elijah")).toBe("Kris: Full Interior, Jane Doe");
+    expect(masterTitle("SHORT NOTICE, accept or decline: Kris: Full Interior, Jane Doe", "Elijah")).toBe("SHORT NOTICE, accept or decline: Kris: Full Interior, Jane Doe");
   });
 });
 
 /* ------------------------------------------------------------------ */
 
 describe("the copy at booking time (send-confirmation)", () => {
-  async function run(master: string | undefined) {
+  async function run(master: string | undefined, setup: (g: ReturnType<typeof fakeGoogle>) => void = () => {}) {
     const g = google();
+    setup(g);
     setEnv("ALL_JOBS_CALENDAR_ID", master);
+    const t0 = Date.now();
     try {
       const r = await book();
-      return { r, g, calls: g.calls.filter((c) => !c.url.startsWith("https://oauth2.")) };
+      return { r, g, ms: Date.now() - t0, calls: g.calls.filter((c) => !c.url.startsWith("https://oauth2.")) };
     } finally {
       g.restore();
     }
   }
+  const notMaster = (calls: { calendarId: string | null }[]) => calls.filter((c) => c.calendarId !== MASTER);
 
   it("off (unset, empty or blank): the same calls, the same reply, nothing near the master", async () => {
     const unset = await run(undefined);
@@ -169,45 +173,68 @@ describe("the copy at booking time (send-confirmation)", () => {
     expect(masterLines().filter((l) => !l.includes('"off"'))).toEqual([]);
   });
 
-  it("on: the booking's own calls and reply are exactly as when off", async () => {
+  it("on, failing or hanging: the reply, the calendar writes and both emails are exactly as when off, and the copy comes after both emails", async () => {
     const off = await run(undefined);
-    const on = await run(MASTER);
-    // Leaving out the master's calls and the one read of the source calendar's name.
-    const rest = on.calls.filter((c) => c.calendarId !== MASTER && !c.url.includes("fields=summary"));
-    expect(rest).toEqual(off.calls);
-    expect(on.r).toEqual(off.r);
-    expect(on.r.body).not.toMatch(/master|all jobs/i);
-  });
+    const cases = {
+      on: await run(MASTER),
+      failing: await run(MASTER, (g) => { g.cal(MASTER).failWrite = true; }),
+      hanging: await run(MASTER, (g) => { g.cal(MASTER).hang = true; }),
+    };
+    for (const [name, c] of Object.entries(cases)) {
+      expect(c.r, name).toEqual(off.r);
+      // Every call but the master's, Resend's bodies (both emails) included, in the same order.
+      expect(notMaster(c.calls), name).toEqual(off.calls);
+      expect(c.g.emails, name).toEqual(off.g.emails);
+      expect(c.g.live(KRIS_JOBS).map((e) => ({ ...e, id: "", created: "" })), name).toEqual(off.g.live(KRIS_JOBS).map((e) => ({ ...e, id: "", created: "" })));
+      // The master's one call is the last one, after the second email.
+      const i = c.calls.findIndex((x) => x.calendarId === MASTER);
+      expect(i, name).toBe(c.calls.length - 1);
+      expect(c.calls.slice(0, i).filter((x) => x.url.includes("api.resend.com")), name).toHaveLength(2);
+      expect(c.calls[i]!.method, name).toBe("POST");
+      expect(c.r.body, name).not.toMatch(/master|all jobs/i);
+      for (const e of c.g.emails) expect(e.html, name).not.toMatch(/all jobs|NOT ON 513/i);
+    }
+    expect(cases.on.g.live(MASTER)).toHaveLength(1);
+    // A master that never answers costs at most writeTimeoutMs.
+    expect(cases.hanging.ms).toBeLessThan(MASTER_CALENDAR.writeTimeoutMs + 1500);
+  }, 20_000);
 
-  it("ownerEmail with no master failure is the email it was", () => {
-    const ctx = { contact: { name: "Ada", phone: "5135551212", email: "" }, when: "Tue", priced: { totalCents: 1000, lines: [] }, kind: "booking", cart: { slot: SLOT, address: {} }, detailer: null };
-    expect(ownerEmail({ ...ctx, masterFail: "" })).toEqual(ownerEmail(ctx));
-  });
+  it("writes the copy straight away: detailer named, header then the original word for word, its colour, the same key; the reconciler then writes the calendar's name", async () => {
+    const g = google();
+    setEnv("ALL_JOBS_CALENDAR_ID", MASTER);
+    try {
+      await book();
+      const [orig] = g.live(KRIS_JOBS);
+      const [copy] = g.live(MASTER);
+      expect(g.live(MASTER)).toHaveLength(1);
+      // One POST, nothing looked up first.
+      expect(g.calls.filter((c) => c.calendarId === MASTER).map((c) => c.method)).toEqual(["POST"]);
+      expect(copy!.id).toBe(masterEventId("key-1"));
+      expect(copy!.summary).toBe(orig!.summary);
+      expect(copy!.summary).toMatch(/^Kris: /);
+      expect(copy!.description).toBe(
+        `Status: Booked\nDetailer: Kris\nBooking key: key-1\nSource calendar: ${KRIS_JOBS}\n---\n${orig!.description}`,
+      );
+      expect(copy!.description).toMatch(TOTAL);
+      expect(copy!.location).toBe(orig!.location);
+      expect(copy!.location).toMatch(/45220$/);
+      expect(Date.parse(copy!.start!.dateTime!)).toBe(SLOT);
+      expect(copy!.end).toEqual(orig!.end);
+      expect(copy!.transparency).toBe("opaque");
+      expect(copy!.colorId).toBe("10");
+      expect(copy!.extendedProperties?.private).toEqual({ bookingKey: "key-1", sourceId: `${KRIS_JOBS}|${orig!.id}` });
+      // Only the key and the source: the original's private phone is not copied.
+      expect(JSON.stringify(copy!.extendedProperties)).not.toContain("5135551212");
+      // Logged by key, never by name, phone or email.
+      expect(masterLines().some((l) => l.includes('"copy"') && l.includes("key-1"))).toBe(true);
+      expect(logs.join("\n")).not.toMatch(/5135551212|ada@example\.com|Ada Test/);
 
-  it("writes the copy: detailer named, header then the original word for word, its colour, the same key", async () => {
-    const { g } = await run(MASTER);
-    const [orig] = g.live(KRIS_JOBS);
-    const [copy] = g.live(MASTER);
-    expect(g.live(MASTER)).toHaveLength(1);
-    expect(copy!.id).toBe(masterEventId("key-1"));
-    expect(copy!.summary).toBe(orig!.summary);
-    expect(copy!.summary).toMatch(/^Kris: /);
-    expect(copy!.description).toBe(
-      `Status: Booked\nDetailer: Kris\nBooking key: key-1\nSource calendar: 513 Kris Bookings\n---\n${orig!.description}`,
-    );
-    expect(copy!.description).toMatch(TOTAL);
-    expect(copy!.location).toBe(orig!.location);
-    expect(copy!.location).toMatch(/45220$/);
-    expect(Date.parse(copy!.start!.dateTime!)).toBe(SLOT);
-    expect(copy!.end).toEqual(orig!.end);
-    expect(copy!.transparency).toBe("opaque");
-    expect(copy!.colorId).toBe("10");
-    expect(copy!.extendedProperties?.private).toEqual({ bookingKey: "key-1", sourceId: `${KRIS_JOBS}|${orig!.id}` });
-    // Only the key and the source: the original's private phone is not copied.
-    expect(JSON.stringify(copy!.extendedProperties)).not.toContain("5135551212");
-    // Logged by key, never by name, phone or email.
-    expect(masterLines().some((l) => l.includes('"copy"') && l.includes("key-1"))).toBe(true);
-    expect(logs.join("\n")).not.toMatch(/5135551212|ada@example\.com/);
+      expect(await reconcile({ nowMs: Date.now() })).toMatchObject({ created: 0, updated: 1, failed: 0 });
+      expect(g.live(MASTER)[0]!.description).toBe(
+        `Status: Booked\nDetailer: Kris\nBooking key: key-1\nSource calendar: 513 Kris Bookings\n---\n${orig!.description}`,
+      );
+      expect(g.live(MASTER)).toHaveLength(1);
+    } finally { g.restore(); }
   });
 
   it("an owner's job is titled Elijah: and takes his colour", async () => {
@@ -222,10 +249,10 @@ describe("the copy at booking time (send-confirmation)", () => {
     expect(copy!.summary).toBe(`Elijah: ${orig!.summary}`);
     expect(copy!.summary!.match(DETAILER)?.[1]).toBe("Elijah");
     expect(copy!.colorId).toBe("7");
-    expect(copy!.description).toMatch(/^Status: Booked\nDetailer: Elijah\nBooking key: key-1\nSource calendar: 513 Auto Clean\n---\n/);
+    expect(copy!.description).toMatch(new RegExp(`^Status: Booked\nDetailer: Elijah\nBooking key: key-1\nSource calendar: ${OWNER_JOBS.replace(/\./g, "\\.")}\n---\n`));
   });
 
-  it("a retry never makes a second copy, and the reconciler finds nothing to change", async () => {
+  it("a retry never makes a second copy, and after the reconciler's one label fix there is nothing to change", async () => {
     const g = google();
     setEnv("ALL_JOBS_CALENDAR_ID", MASTER);
     try {
@@ -233,64 +260,44 @@ describe("the copy at booking time (send-confirmation)", () => {
       const again = await book();
       expect(JSON.parse(again.body).duplicate).toBe(true);
       expect(g.live(MASTER)).toHaveLength(1);
-      // The same copy written twice (the reconciler raced it, say): still one.
+      expect(await reconcile({ nowMs: Date.now() })).toMatchObject({ created: 0, updated: 1, cancelled: 0, failed: 0 });
       const before = g.writes().length;
-      const out = await reconcile({ nowMs: Date.now() });
-      expect(out).toMatchObject({ created: 0, updated: 0, cancelled: 0, failed: 0 });
+      expect(await reconcile({ nowMs: Date.now() })).toMatchObject({ created: 0, updated: 0, cancelled: 0, failed: 0 });
       expect(g.writes().length).toBe(before);
       expect(g.live(MASTER)).toHaveLength(1);
     } finally { g.restore(); }
   });
 
-  it("the same copy written twice directly is one copy", async () => {
+  it("the same copy written twice directly is one copy (409 is 'already there')", async () => {
     const g = google();
     setEnv("ALL_JOBS_CALENDAR_ID", MASTER);
     try {
       const written = [{ summary: "Kris: Basic Interior, Ada", description: "d", location: "x, 45220", startMs: SLOT, endMs: SLOT + 3_600_000, key: "k9", id: "o9" }];
-      const a = await copyBookingToMaster({ written, calendarId: KRIS_JOBS, detailerName: "Kris", crewNames: ["Kris", "Elijah"] });
-      const b = await copyBookingToMaster({ written, calendarId: KRIS_JOBS, detailerName: "Kris", crewNames: ["Kris", "Elijah"] });
+      const a = await copyBookingToMaster({ written, calendarId: KRIS_JOBS, detailerName: "Kris" });
+      const b = await copyBookingToMaster({ written, calendarId: KRIS_JOBS, detailerName: "Kris" });
       expect(a.ok && b.ok).toBe(true);
       expect(g.live(MASTER)).toHaveLength(1);
       expect(masterLines().some((l) => l.includes('"copy-exists"'))).toBe(true);
     } finally { g.restore(); }
   });
 
-  it("a master that fails: the booking still goes through, Elijah's email says so on its own line, the customer's never does", async () => {
+  it("a master that fails: logged only, by key; the reconciler copies the job on its next run", async () => {
     const g = google();
     g.cal(MASTER).failWrite = true;
     setEnv("ALL_JOBS_CALENDAR_ID", MASTER);
-    let r;
-    try { r = await book(); } finally { g.restore(); }
-    expect(r!.statusCode).toBe(200);
-    const body = JSON.parse(r!.body);
-    expect(body.calendar.ok).toBe(true);
-    expect(body.owner && body.customer).toBe(true);
-    expect(r!.body).not.toMatch(/master|all jobs/i);
-    expect(g.live(KRIS_JOBS)).toHaveLength(1);
-    const owner = mailTo(g, "owner@example.com")!;
-    expect(owner.html).toContain("NOT ON 513 ALL JOBS");
-    expect(owner.html).toContain("http_503");
-    expect(owner.subject).toMatch(/^BOOKING, /);
-    expect(owner.html).not.toContain("NOT ON THE CALENDAR");
-    const customer = mailTo(g, "ada@example.com")!;
-    expect(customer.subject).toMatch(/^Confirmed|^We have your booking/);
-    expect(customer.html).not.toMatch(/all jobs|master/i);
-    expect(masterLines().some((l) => l.includes('"copy-failed"'))).toBe(true);
+    try {
+      const r = await book();
+      expect(r.statusCode).toBe(200);
+      expect(g.live(MASTER)).toHaveLength(0);
+      expect(masterLines().some((l) => l.includes('"copy-failed"') && l.includes("key-1") && l.includes("http_503"))).toBe(true);
+      expect(logs.join("\n")).not.toMatch(/5135551212|ada@example\.com|Ada Test/);
+      g.cal(MASTER).failWrite = false;
+      expect(await reconcile({ nowMs: Date.now() })).toMatchObject({ created: 1, failed: 0 });
+      expect(g.live(MASTER)[0]!.id).toBe(masterEventId("key-1"));
+    } finally { g.restore(); }
   });
 
-  it("a master that hangs costs at most writeTimeoutMs, and is reported", async () => {
-    const g = google();
-    g.cal(MASTER).hang = true;
-    setEnv("ALL_JOBS_CALENDAR_ID", MASTER);
-    const t0 = Date.now();
-    let r;
-    try { r = await book(); } finally { g.restore(); }
-    expect(Date.now() - t0).toBeLessThan(MASTER_CALENDAR.writeTimeoutMs + 2000);
-    expect(r!.statusCode).toBe(200);
-    expect(mailTo(g, "owner@example.com")!.html).toMatch(/NOT ON 513 ALL JOBS<\/strong> \(timed out/);
-  }, 15_000);
-
-  it("a job over several days: one copy per day, day 2 skipped by JobsSync's pattern, its own key", async () => {
+  it("a job over several days: one copy per day, all at once, day 2 skipped by JobsSync's pattern, its own key", async () => {
     const g = google();
     setEnv("ALL_JOBS_CALENDAR_ID", MASTER);
     try {
@@ -308,7 +315,11 @@ describe("the copy at booking time (send-confirmation)", () => {
       }) as { summary: string; description: string; location: string; startMs: number; endMs: number }[];
       expect(events.length).toBeGreaterThan(1);
       const written = events.map((e, i) => ({ ...e, key: i ? `km:day${i + 1}` : "km", id: `o${i}` }));
-      const r = await copyBookingToMaster({ written, calendarId: KRIS_JOBS, detailerName: "Kris", crewNames: ["Kris", "Elijah"] });
+      // Each answer takes a while: all days together take about one.
+      g.cal(MASTER).delayMs = 300;
+      const t0 = Date.now();
+      const r = await copyBookingToMaster({ written, calendarId: KRIS_JOBS, detailerName: "Kris" });
+      expect(Date.now() - t0).toBeLessThan(300 * events.length);
       expect(r.ok).toBe(true);
       const copies = g.live(MASTER).sort((a, b) => Date.parse(a.start!.dateTime!) - Date.parse(b.start!.dateTime!));
       expect(copies).toHaveLength(events.length);
@@ -317,6 +328,8 @@ describe("the copy at booking time (send-confirmation)", () => {
       expect(copies[1]!.summary).toMatch(/^Kris: Day 2 of /);
       expect(CONTINUATION_DAY.test(copies[1]!.summary!)).toBe(true);
       expect(copies[1]!.description).not.toMatch(TOTAL);
+      // No WHO line on day 2: the original carries none.
+      expect(copies[1]!.description).not.toMatch(/^WHO /m);
       expect(copies[1]!.extendedProperties?.private?.["bookingKey"]).toBe("km:day2");
     } finally { g.restore(); }
   });
@@ -343,15 +356,22 @@ describe("the reconciler (jobs-mirror)", () => {
     } finally { g.restore(); }
   });
 
-  it("copies a job typed in by hand (manual:<id>), skips OPEN, BEST and DNS, and keeps to the window", async () => {
+  it("copies a job typed in by hand (manual:<id>), skips what JobsSync skips, copies day 2 of a job, and keeps to the window", async () => {
     const g = setup();
     try {
       const job = g.add(OWNER_JOBS, { summary: "Full Exterior, Bob", description: "typed on a phone", location: "2 Oak St, Mason, OH 45040", startMs: T, endMs: T + 2 * 3_600_000 });
       const kris = g.add(KRIS_JOBS, { summary: "Kris: Basic Interior, Cy", startMs: T + DAY, endMs: T + DAY + 3_600_000 });
-      for (const s of ["OPEN", "OPEN +20%", "BEST", "DNS", "dns dentist"]) g.add(OWNER_JOBS, { summary: s, startMs: T, endMs: T + 3_600_000 });
+      for (const s of ["OPEN", "OPEN +20%", "BEST", "DNS", "dns dentist", "Busy", "Blocked", "Personal: dentist", "Hold for Bob", "Unavailable"]) g.add(OWNER_JOBS, { summary: s, startMs: T, endMs: T + 3_600_000 });
+      g.add(OWNER_JOBS, { summary: "Fee block", transparency: "transparent", startMs: T, endMs: T + 3_600_000 });
+      g.add(OWNER_JOBS, { summary: "Pick up supplies", location: "505 Sandheger Ct", startMs: T, endMs: T + 3_600_000 });
+      const allDay = g.add(OWNER_JOBS, { summary: "Vacation", startMs: T, endMs: T + DAY });
+      allDay.start = { date: new Date(T).toISOString().slice(0, 10) };
+      allDay.end = { date: new Date(T + DAY).toISOString().slice(0, 10) };
+      const day2 = g.add(OWNER_JOBS, { summary: "Day 2 of 2, Paint Correction, Bob", startMs: T + 2 * DAY, endMs: T + 2 * DAY + 3_600_000 });
       g.add(OWNER_JOBS, { summary: "Far off, Dee", startMs: Date.now() + 200 * DAY, endMs: Date.now() + 200 * DAY + 3_600_000 });
       const out = await reconcile({ nowMs: Date.now() });
-      expect(out).toMatchObject({ created: 2, skipped: 5, failed: 0 });
+      expect(out).toMatchObject({ created: 3, skipped: 13, failed: 0 });
+      expect(g.cals.get(MASTER)!.events.get(masterEventId(`manual:${day2.id}`))!.summary).toBe("Elijah: Day 2 of 2, Paint Correction, Bob");
       const copy = g.cals.get(MASTER)!.events.get(masterEventId(`manual:${job.id}`))!;
       expect(copy.summary).toBe("Elijah: Full Exterior, Bob");
       expect(copy.description).toBe(`Status: Booked\nDetailer: Elijah\nBooking key: manual:${job.id}\nSource calendar: 513 Auto Clean\n---\ntyped on a phone`);
@@ -481,7 +501,7 @@ describe("the reconciler (jobs-mirror)", () => {
     } finally { g.restore(); }
   });
 
-  it("any read that fails, a list or a look-up, means nothing is written that run", async () => {
+  it("a list that fails means nothing is written that run; a look-up that fails means nothing is cancelled", async () => {
     const g = setup();
     try {
       const job = g.add(OWNER_JOBS, { summary: "Job", startMs: T, endMs: T + 3_600_000 });
@@ -498,14 +518,18 @@ describe("the reconciler (jobs-mirror)", () => {
       expect(await reconcile({ nowMs: Date.now() })).toMatchObject({ aborted: true, read: "master" });
       g.cals.get(MASTER)!.failList = false;
 
-      g.cals.get(OWNER_JOBS)!.failGet = true;
-      expect(await reconcile({ nowMs: Date.now() })).toMatchObject({ aborted: true });
-      g.cals.get(OWNER_JOBS)!.failGet = false;
-
       expect(g.writes().length).toBe(before);
-      expect(masterLines().filter((l) => l.includes('"abort"'))).toHaveLength(3);
-      // Once everything reads, the run does it all.
-      expect(await reconcile({ nowMs: Date.now() })).toMatchObject({ created: 1, cancelled: 1 });
+      expect(masterLines().filter((l) => l.includes('"abort"'))).toHaveLength(2);
+
+      // A look-up that fails: the new job is still copied (the lists were whole), but nothing is marked cancelled.
+      g.cals.get(OWNER_JOBS)!.failGet = true;
+      expect(await reconcile({ nowMs: Date.now() })).toMatchObject({ created: 1, cancelled: 0 });
+      g.cals.get(OWNER_JOBS)!.failGet = false;
+      expect(masterLines().some((l) => l.includes('"abort-cancels"'))).toBe(true);
+      expect(masterLines().some((l) => l.includes('"cancels-skipped"'))).toBe(true);
+      expect(g.live(MASTER).every((e) => !e.summary!.startsWith("CANCELLED"))).toBe(true);
+      // Once everything reads, the run does the rest.
+      expect(await reconcile({ nowMs: Date.now() })).toMatchObject({ created: 0, cancelled: 1 });
     } finally { g.restore(); }
   });
 
@@ -548,6 +572,151 @@ describe("the reconciler (jobs-mirror)", () => {
       expect(await reconcile({ nowMs: Date.now() })).toMatchObject({ created: 5 });
       expect(g.live(MASTER)).toHaveLength(5);
       expect(g.calls.some((c) => c.calendarId === OWNER_JOBS && c.url.includes("pageToken=4"))).toBe(true);
+    } finally { g.restore(); }
+  });
+
+  it("a name already in the title wins over the calendar's detailer (as in JobsSync)", async () => {
+    const g = setup();
+    try {
+      const job = g.add(OWNER_JOBS, { summary: "Kris: Full Interior, Cy", startMs: T, endMs: T + 3_600_000 });
+      await reconcile({ nowMs: Date.now() });
+      const copy = g.cals.get(MASTER)!.events.get(masterEventId(`manual:${job.id}`))!;
+      expect(copy.summary).toBe("Kris: Full Interior, Cy");
+      expect(copy.description).toMatch(/^Status: Booked\nDetailer: Kris\n/);
+      expect(copy.description).toMatch(/\nSource calendar: 513 Auto Clean\n/);
+      expect(copy.colorId).toBe("10");
+    } finally { g.restore(); }
+  });
+
+  it("two originals with one booking key: the same one keeps the key whatever order Google lists them in", async () => {
+    for (const order of ["first", "second"] as const) {
+      const g = setup();
+      try {
+        const early = { summary: "Basic Interior, Ada", extendedProperties: { private: { bookingKey: "bk_dup" } }, created: "2026-11-01T10:00:00.000Z" };
+        const late = { summary: "Basic Interior, Ada (copy)", extendedProperties: { private: { bookingKey: "bk_dup" } }, created: "2026-11-02T10:00:00.000Z" };
+        // The list is sorted by start: whichever starts first comes back first.
+        const [a, b] = order === "first"
+          ? [g.add(OWNER_JOBS, { ...early, id: "zz-early", startMs: T, endMs: T + 3_600_000 }), g.add(OWNER_JOBS, { ...late, id: "aa-late", startMs: T + 3_600_000, endMs: T + 7_200_000 })]
+          : [g.add(OWNER_JOBS, { ...early, id: "zz-early", startMs: T + 3_600_000, endMs: T + 7_200_000 }), g.add(OWNER_JOBS, { ...late, id: "aa-late", startMs: T, endMs: T + 3_600_000 })];
+        await reconcile({ nowMs: Date.now() });
+        const keyed = g.cals.get(MASTER)!.events.get(masterEventId("bk_dup"))!;
+        expect(keyed.extendedProperties?.private?.["sourceId"], order).toBe(`${OWNER_JOBS}|${a.id}`);
+        expect(g.cals.get(MASTER)!.events.get(masterEventId(`manual:${b.id}`)), order).toBeTruthy();
+        // The copy's own original keeps the key even when a duplicate made earlier turns up later.
+        g.add(OWNER_JOBS, { ...early, id: "mm-older", created: "2026-10-01T10:00:00.000Z", startMs: T - 3_600_000, endMs: T });
+        const out = await reconcile({ nowMs: Date.now() });
+        expect(out, order).toMatchObject({ created: 1, updated: 0, cancelled: 0 });
+        expect(g.cals.get(MASTER)!.events.get(masterEventId("bk_dup"))!.extendedProperties?.private?.["sourceId"], order).toBe(`${OWNER_JOBS}|${a.id}`);
+        expect(g.live(MASTER), order).toHaveLength(3);
+      } finally { g.restore(); }
+    }
+  });
+
+  it("a copy whose bookings calendar wasn't read this run (a detailer taken out of DETAILERS) is never looked up or marked: one warning with a count", async () => {
+    const g = setup();
+    const GONE = "former-detailer@group.calendar.google.com";
+    try {
+      for (const i of [1, 2]) {
+        g.add(MASTER, { id: `c${i}`, summary: `Sam: Job ${i}`, startMs: T + i * 3_600_000, endMs: T + (i + 1) * 3_600_000, extendedProperties: { private: { bookingKey: `manual:s${i}`, sourceId: `${GONE}|s${i}` } } });
+      }
+      const out = await reconcile({ nowMs: Date.now() });
+      expect(out).toMatchObject({ unread: 2, cancelled: 0, failed: 0 });
+      expect(g.calls.some((c) => c.calendarId === GONE)).toBe(false);
+      expect(g.writes()).toEqual([]);
+      expect(masterLines().filter((l) => l.includes('"unread-source"'))).toEqual([expect.stringContaining('"count":2')]);
+    } finally { g.restore(); }
+  });
+
+  it("a 404 means gone only on a calendar read this run", async () => {
+    const g = setup();
+    try {
+      expect(await lookupOriginal(OWNER_JOBS, "nope", { readThisRun: true })).toEqual({ state: "gone" });
+      expect((await lookupOriginal(OWNER_JOBS, "nope")).state).toBe("error");
+      expect((await lookupOriginal("not-shared@group.calendar.google.com", "x")).state).toBe("error");
+    } finally { g.restore(); }
+  });
+
+  it("out of time: look-ups stop, nothing is cancelled that run, and the run ends by runBudgetMs", async () => {
+    const g = setup();
+    try {
+      const jobs = [0, 1, 2, 3, 4, 5].map((i) => g.add(OWNER_JOBS, { summary: `Job ${i}`, startMs: T + i * DAY, endMs: T + i * DAY + 3_600_000 }));
+      await reconcile({ nowMs: Date.now() });
+      for (const j of jobs) g.cals.get(OWNER_JOBS)!.events.get(j.id)!.status = "cancelled";
+      g.add(OWNER_JOBS, { summary: "New job", startMs: T + 10 * DAY, endMs: T + 10 * DAY + 3_600_000 });
+      g.cal(OWNER_JOBS).delayGetMs = 300;
+      const settings = { ...MASTER_CALENDAR, runBudgetMs: 1000 };
+      const t0 = Date.now();
+      const out = await reconcile({ nowMs: Date.now(), startMs: t0, settings });
+      expect(Date.now() - t0).toBeLessThan(settings.runBudgetMs + 300);
+      // The new job was copied first; then the look-ups ran out of time.
+      expect(out).toMatchObject({ created: 1, cancelled: 0, stopped: true });
+      expect(g.live(MASTER).every((e) => !e.summary!.startsWith("CANCELLED"))).toBe(true);
+      expect(masterLines().some((l) => l.includes('"cancels-skipped"'))).toBe(true);
+      // A calendar that never answers: the run still ends by runBudgetMs, and writes nothing.
+      g.cal(OWNER_JOBS).delayGetMs = 0;
+      g.cal(KRIS_JOBS).hang = true;
+      const before = g.writes().length;
+      const t1 = Date.now();
+      expect(await reconcile({ nowMs: Date.now(), startMs: t1, settings })).toMatchObject({ aborted: true, reason: "timed out" });
+      expect(Date.now() - t1).toBeLessThan(settings.runBudgetMs + 300);
+      expect(g.writes().length).toBe(before);
+      // With time enough, the cancels go through.
+      g.cal(KRIS_JOBS).hang = false;
+      expect(await reconcile({ nowMs: Date.now() })).toMatchObject({ cancelled: 6 });
+    } finally { g.restore(); }
+  }, 15_000);
+
+  it("a copy's id that a look-up no longer finds but Google won't reuse (409): put back; if that fails, counted and logged as failed", async () => {
+    for (const putStatus of [200, 404]) {
+      const g = setup();
+      try {
+        const job = g.add(OWNER_JOBS, { summary: "Job", startMs: T, endMs: T + 3_600_000 });
+        await reconcile({ nowMs: Date.now() });
+        const id = masterEventId(`manual:${job.id}`);
+        g.purge(MASTER, id);
+        g.cal(MASTER).purgedPutStatus = putStatus;
+        const out = await reconcile({ nowMs: Date.now() });
+        const methods = g.calls.filter((c) => c.calendarId === MASTER && c.url.includes(id)).slice(-2).map((c) => c.method);
+        expect(methods, String(putStatus)).toEqual(["GET", "PUT"]);
+        if (putStatus === 200) {
+          expect(out).toMatchObject({ putBack: 1, failed: 0 });
+          expect(g.live(MASTER)).toHaveLength(1);
+        } else {
+          expect(out).toMatchObject({ putBack: 0, created: 0, failed: 1 });
+          expect(masterLines().some((l) => l.includes('"create-failed"') && l.includes("409") && l.includes("http_404"))).toBe(true);
+        }
+      } finally { g.restore(); }
+    }
+  });
+
+  it("GHL's own changes to a copy: kept when the mirror's fields match; a changed field the mirror owns is patched back, the rest left alone", async () => {
+    const g = setup();
+    try {
+      const job = g.add(OWNER_JOBS, { summary: "Full Exterior, Bob", startMs: T, endMs: T + 3_600_000 });
+      await reconcile({ nowMs: Date.now() });
+      const id = masterEventId(`manual:${job.id}`);
+      const copy = g.cals.get(MASTER)!.events.get(id)!;
+      copy["attendees"] = [{ email: "ghl-contact@example.com" }];
+      copy.extendedProperties!.private!["ghlAppointmentId"] = "ghl-1";
+      const n = g.writes().length;
+      expect(await reconcile({ nowMs: Date.now() })).toMatchObject({ updated: 0 });
+      expect(g.writes().length).toBe(n);
+      // GHL renames it: the mirror owns the title, so it goes back, by a PATCH.
+      copy.summary = "Bob's appointment";
+      expect(await reconcile({ nowMs: Date.now() })).toMatchObject({ updated: 1 });
+      expect(g.writes().slice(n).map((c) => c.method)).toEqual(["PATCH"]);
+      const after = g.cals.get(MASTER)!.events.get(id)!;
+      expect(after.summary).toBe("Elijah: Full Exterior, Bob");
+      expect(after["attendees"]).toEqual([{ email: "ghl-contact@example.com" }]);
+      expect(after.extendedProperties?.private?.["ghlAppointmentId"]).toBe("ghl-1");
+      // An all-day original turned timed (or back) can't be patched: a PUT.
+      const orig = g.cals.get(OWNER_JOBS)!.events.get(job.id)!;
+      orig.summary = "Full Exterior, Bob, $150";
+      orig.start = { date: new Date(T).toISOString().slice(0, 10) };
+      orig.end = { date: new Date(T + DAY).toISOString().slice(0, 10) };
+      const m = g.writes().length;
+      expect(await reconcile({ nowMs: Date.now() })).toMatchObject({ updated: 1 });
+      expect(g.writes().slice(m).map((c) => c.method)).toEqual(["PUT"]);
     } finally { g.restore(); }
   });
 
@@ -612,7 +781,9 @@ describe("the master is never read for open time, and never by JobsSync", () => 
       const r = await book();
       expect(r.statusCode).toBe(200);
       expect(g.live(KRIS_JOBS)).toHaveLength(1);
-      expect(mailTo(g, "owner@example.com")!.html).toContain("NOT ON 513 ALL JOBS");
+      expect(g.live(MASTER)).toHaveLength(0);
+      expect(mailTo(g, "owner@example.com")!.html).not.toMatch(/all jobs/i);
+      expect(masterLines().some((l) => l.includes('"clash"'))).toBe(true);
     } finally { g.restore(); }
   });
 });
