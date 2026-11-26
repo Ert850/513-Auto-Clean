@@ -20,6 +20,8 @@ const db = {
   failSent: 0, failRetrieve: 0,
   // The next keyed write is made, but its answer is lost (a timeout after Stripe wrote it).
   loseAnswer: false,
+  // The write marking Elijah told fails.
+  failOwnerMark: false,
 };
 
 vi.mock("stripe", () => ({
@@ -64,6 +66,7 @@ vi.mock("stripe", () => ({
           if (db.hold) await db.hold;
         }
         if (p.metadata.gift_deliver === "sent" && db.failSent > 0) { db.failSent--; throw Object.assign(new Error("timeout"), { type: "StripeConnectionError" }); }
+        if (p.metadata.gift_mail_send_owner && db.failOwnerMark) { db.failOwnerMark = false; throw Object.assign(new Error("timeout"), { type: "StripeConnectionError" }); }
         db.calls.push({ what: "pi.update", params: p, opts });
         const pi = db.pis.get(id)!;
         Object.assign(pi.metadata, p.metadata);
@@ -108,7 +111,7 @@ const realFetch = globalThis.fetch;
 beforeEach(() => {
   resetRateLimits();
   db.sessions.clear(); db.pis.clear(); db.calls.length = 0; db.failNegation = false; db.refuseMethod = "";
-  db.idem.clear(); db.hold = null; db.failSent = 0; db.failRetrieve = 0; db.loseAnswer = false;
+  db.idem.clear(); db.hold = null; db.failSent = 0; db.failRetrieve = 0; db.loseAnswer = false; db.failOwnerMark = false;
   mail = []; mailOk = true;
   for (const [k, v] of Object.entries(ENV)) vi.stubEnv(k, v);
   vi.useFakeTimers({ now: IN_SALE, toFake: ["Date"] });
@@ -730,7 +733,8 @@ describe("gift-send: sending the card after paying (one-click buying, November 2
     expect(JSON.parse(r.body)).toEqual({ ok: true, to: "sam@example.com", sendOn: "" });
     expect(db.pis.get(s.payment_intent)!.metadata).toMatchObject({ gift_to_name: "Sam", gift_to_email: "sam@example.com", gift_from_name: "Alex", gift_message: "Enjoy", gift_deliver: "sent", gift_mail_to: "1", gift_send_req: "gs_request0001" });
     expect(db.pis.get(s.payment_intent)!.metadata.gift_log).toContain("emailed to them");
-    expect(mail.map((m) => m.to)).toEqual(["sam@example.com"]);
+    // Sam's card, then Elijah's note that it was sent (owner, November 26).
+    expect(mail.map((m) => m.to)).toEqual(["sam@example.com", "owner@example.com"]);
     expect(bodies[0]!.subject).toBe("Alex sent you a $50 gift card from 513 Auto Clean");
     expect(bodies[0]!.html).toContain(G.codeFor(s.id, SECRET));
     const page = JSON.parse((await card.handler({ httpMethod: "POST", headers: {}, body: JSON.stringify({ s: s.id }) })).body);
@@ -741,14 +745,15 @@ describe("gift-send: sending the card after paying (one-click buying, November 2
     pi.created = Math.floor(IN_SALE / 1000) - 3600;
     const out = await deliver.deliverDue(new (await import("stripe")).default("x") as never, SECRET, IN_SALE + 3_600_000, async () => true);
     expect(out.sent).toBe(0);
-    expect(mail.map((m) => m.to)).toEqual(["sam@example.com"]);
+    expect(mail.map((m) => m.to)).toEqual(["sam@example.com", "owner@example.com"]);
   });
 
   it("works before the webhook has run, and the webhook then emails the buyer and Elijah without sending it twice", async () => {
     const s = await oneClick();
     expect((await sendIt(s.id)).statusCode).toBe(200);
     await hook(completed(s.id));
-    expect(mail.map((m) => m.to).sort()).toEqual(["buyer@example.com", "owner@example.com", "sam@example.com"]);
+    // Elijah twice: the send, then the sale.
+    expect(mail.map((m) => m.to).sort()).toEqual(["buyer@example.com", "owner@example.com", "owner@example.com", "sam@example.com"]);
     expect(bodies.find((b) => b.to === "buyer@example.com")!.html).toContain("emailed it to Sam");
   });
 
@@ -759,7 +764,8 @@ describe("gift-send: sending the card after paying (one-click buying, November 2
     const r = await sendIt(s.id, { sendOn: "2026-12-24" });
     expect(JSON.parse(r.body)).toEqual({ ok: true, to: "sam@example.com", sendOn: "2026-12-24" });
     expect(db.pis.get(s.payment_intent)!.metadata).toMatchObject({ gift_deliver: "pending", gift_send_on: "2026-12-24" });
-    expect(mail).toHaveLength(0);
+    // Nothing to Sam yet; Elijah hears it's set for that day.
+    expect(mail.map((m) => m.to)).toEqual(["owner@example.com"]);
     // The card's page says when, to the buyer and to Sam alike.
     const page = JSON.parse((await card.handler({ httpMethod: "POST", headers: {}, body: JSON.stringify({ s: s.id }) })).body);
     expect(page).toMatchObject({ sendOn: "2026-12-24", canSend: false });
@@ -889,6 +895,66 @@ describe("gift-send: sending the card after paying (one-click buying, November 2
     for (const bad of [0, 1.5, -3, 10_000, undefined]) expect(giftCardProblems({ ...GIFT_CARDS, sendWindowHours: bad }).join(), String(bad)).toMatch(/sendWindowHours/);
   });
 
+  describe("Elijah hears about a send from the card's page (owner, November 26)", () => {
+    const toOwner = () => bodies.filter((b) => b.to === "owner@example.com" && b.subject.includes("sent to someone"));
+
+    it("once on a send-now: who it's for, from whom, now, the card and its code ending, and /gift-admin", async () => {
+      const s = await oneClick();
+      await hook(completed(s.id));
+      expect((await sendIt(s.id)).statusCode).toBe(200);
+      const code = G.codeFor(s.id, SECRET);
+      expect(toOwner()).toHaveLength(1);
+      const o = toOwner()[0]!;
+      expect(o.subject).toBe(`Gift card sent to someone: $50, code ending ${code.slice(-4)}`);
+      for (const w of ["Sam, sam@example.com", "Alex", "Now (emailed)", `$50, code ending ${code.slice(-4)}`, "/gift-admin"]) expect(o.html).toContain(w);
+      expect(o.html).not.toContain("buyer@example.com");
+      expect(db.pis.get(s.payment_intent)!.metadata.gift_mail_send_owner).toBe("1");
+      // A repeated request, a twin, the webhook again: never a second one.
+      await sendIt(s.id);
+      await hook(completed(s.id));
+      expect(toOwner()).toHaveLength(1);
+    });
+
+    it("once on a scheduled send, with the day", async () => {
+      const s = await oneClick();
+      expect((await sendIt(s.id, { sendOn: "2026-12-24" })).statusCode).toBe(200);
+      await sendIt(s.id, { sendOn: "2026-12-24" });
+      expect(toOwner()).toHaveLength(1);
+      expect(toOwner()[0]!.html).toContain("Thursday, December 24 (scheduled)");
+      // The hourly run sending it on the day doesn't tell him again.
+      await deliver.deliverDue(new (await import("stripe")).default("x") as never, SECRET, Date.parse("2026-12-24T15:00:00Z"), async () => true);
+      expect(toOwner()).toHaveLength(1);
+    });
+
+    it("an owner email that fails never fails or undoes the send, and is logged", async () => {
+      const s = await oneClick();
+      globalThis.fetch = (async (_u: string, init?: { body?: string }) => {
+        const b = JSON.parse(String(init?.body));
+        bodies.push({ to: b.to[0], subject: b.subject, html: b.html });
+        return new Response("{}", { status: b.to[0] === "owner@example.com" ? 422 : 200 });
+      }) as typeof fetch;
+      const errors = vi.spyOn(console, "error").mockImplementation(() => {});
+      const r = await sendIt(s.id);
+      const logged = errors.mock.calls.map((c) => c.join(" ")).join("\n");
+      errors.mockRestore();
+      expect(r.statusCode).toBe(200);
+      expect(JSON.parse(r.body)).toEqual({ ok: true, to: "sam@example.com", sendOn: "" });
+      expect(db.pis.get(s.payment_intent)!.metadata).toMatchObject({ gift_deliver: "sent", gift_mail_to: "1", gift_to_email: "sam@example.com" });
+      expect(db.pis.get(s.payment_intent)!.metadata.gift_mail_send_owner).toBeUndefined();
+      expect(bodies.filter((b) => b.to === "sam@example.com")).toHaveLength(1);
+      expect(logged).toContain("owner email");
+      // A Stripe failure marking it told doesn't break the send either.
+      const t = await oneClick();
+      globalThis.fetch = (async () => new Response("{}", { status: 200 })) as typeof fetch;
+      db.failOwnerMark = true;
+      const quiet = vi.spyOn(console, "error").mockImplementation(() => {});
+      const r2 = await sendIt(t.id, { requestKey: "gs_request0007" });
+      quiet.mockRestore();
+      expect(JSON.parse(r2.body)).toEqual({ ok: true, to: "sam@example.com", sendOn: "" });
+      expect(db.pis.get(t.payment_intent)!.metadata.gift_deliver).toBe("sent");
+    });
+  });
+
   describe("the claim is once per card even under races (review, November 26)", () => {
     const tick = () => new Promise((r) => setTimeout(r, 0));
     // Hold Stripe's first keyed write open, so a second request lands while the first is mid-claim.
@@ -908,8 +974,10 @@ describe("gift-send: sending the card after paying (one-click buying, November 2
       const [a, b] = await Promise.all([status(sendIt(s.id)), status(sendIt(s.id, { to: { email: "other@example.com" }, requestKey: "gs_request0002" }))]);
       expect([a, b].filter((x) => x.ok)).toHaveLength(1);
       expect([a, b].filter((x) => x.error === "already_sent")).toHaveLength(1);
-      expect(mail).toHaveLength(1);
-      expect(db.pis.get(s.payment_intent)!.metadata.gift_to_email).toBe(mail[0]!.to);
+      const toThem = mail.filter((m) => m.to !== "owner@example.com");
+      expect(toThem).toHaveLength(1);
+      expect(db.pis.get(s.payment_intent)!.metadata.gift_to_email).toBe(toThem[0]!.to);
+      expect(mail.filter((m) => m.to === "owner@example.com")).toHaveLength(1);
     });
 
     it("a second send that arrives while the first is still writing is told to wait, then refused", async () => {
@@ -921,7 +989,7 @@ describe("gift-send: sending the card after paying (one-click buying, November 2
       expect(await status(sendIt(s.id, { to: { email: "other@example.com" }, requestKey: "gs_request0002" }))).toEqual({ code: 409, error: "busy" });
       expect((await release()).statusCode).toBe(200);
       expect(await status(sendIt(s.id, { to: { email: "other@example.com" }, requestKey: "gs_request0002" }))).toEqual({ code: 409, error: "already_sent" });
-      expect(mail.map((m) => m.to)).toEqual(["sam@example.com"]);
+      expect(mail.map((m) => m.to)).toEqual(["sam@example.com", "owner@example.com"]);
     });
 
     it("the same request twice at once (a double tap): one email, and the twin says it's the same send", async () => {

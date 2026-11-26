@@ -2,7 +2,7 @@ import Stripe from "stripe";
 import { randomBytes } from "node:crypto";
 import { cincinnatiDay } from "./_pricing.mjs";
 import { GIFT_KIND, appendLog, cardFromMeta, codeFor, ensureIssued, giftSecret, requestHost, sendRefusal, siteUrl } from "./_giftcards.mjs";
-import { recipientEmail, sendMail } from "./_giftmail.mjs";
+import { ownerAddress, ownerSendEmail, recipientEmail, sendMail } from "./_giftmail.mjs";
 import { giftDetails } from "./gift-checkout.mjs";
 import { SESSION_ID } from "./gift-card.mjs";
 import { runHoursWords } from "./gift-deliver.mjs";
@@ -58,6 +58,21 @@ function done(meta, nowMs, repeated = false) {
   const out = { ok: true, to: meta.gift_to_email, sendOn: later ? meta.gift_send_on : "" };
   if (meta.gift_deliver !== "sent" && !later) Object.assign(out, { retrying: true, hours: runHoursWords(nowMs) });
   return repeated ? { ...out, repeated: true } : out;
+}
+
+/**
+ * Tells Elijah, once per card (gift_mail_send_owner), by the request that won
+ * the claim only. Its failure is logged and never fails or undoes the send.
+ */
+async function tellOwner(stripe, piId, meta, code, state, mail) {
+  if (meta.gift_mail_send_owner === "1") return;
+  try {
+    const msg = ownerSendEmail({ card: { ...cardFromMeta(meta), sendOn: meta.gift_send_on || "" }, code, toEmail: meta.gift_to_email, state });
+    if ((await mail(ownerAddress(), msg)) !== "ok") { console.error("gift-send: the owner email didn't send"); return; }
+    await stripe.paymentIntents.update(piId, { metadata: { gift_mail_send_owner: "1" } });
+  } catch (err) {
+    console.error("gift-send: owner email", err?.type, String(err?.message || err).slice(0, 200));
+  }
 }
 
 /** Stripe's answers to a second write under the claim's key. */
@@ -130,13 +145,17 @@ export async function handler(event) {
       // The key was spent by a claim Stripe refused, and nothing was written: nothing to send yet.
       throw err;
     }
-    if (deliver === "pending") return json(200, done({ ...meta, ...claim }, now));
-
     const after = { ...meta, ...claim };
     const code = codeFor(session.id, secret);
-    const link = `${siteUrl(process.env, requestHost(event))}/gift-certificate#s=${encodeURIComponent(session.id)}`;
     const from = process.env.RESEND_FROM || "513 Auto Clean <onboarding@resend.dev>";
-    const result = await sendMail(apiKey, from, gift.toEmail, recipientEmail({ card: { ...cardFromMeta(after), sendOn: "" }, code, link }));
+    const mail = (to, msg) => sendMail(apiKey, from, to, msg);
+    if (deliver === "pending") {
+      await tellOwner(stripe, pi.id, after, code, "pending", mail);
+      return json(200, done(after, now));
+    }
+
+    const link = `${siteUrl(process.env, requestHost(event))}/gift-certificate#s=${encodeURIComponent(session.id)}`;
+    const result = await mail(gift.toEmail, recipientEmail({ card: { ...cardFromMeta(after), sendOn: "" }, code, link }));
     if (result === "ok") {
       const sent = { gift_deliver: "sent", gift_mail_to: "1", gift_log: appendLog(after.gift_log, `${today} emailed to them`) };
       // Tried twice: left at "now", the card would be emailed again once the hold ends.
@@ -148,12 +167,14 @@ export async function handler(event) {
           console.error("gift-send: emailed, but couldn't mark it sent", i + 1, err?.type, String(err?.message || "").slice(0, 200));
         }
       }
+      await tellOwner(stripe, pi.id, after, code, "sent", mail);
       // It went either way: say so.
       return json(200, done({ ...after, ...sent }, now));
     }
     // Not sent: handed to the hourly run, as the webhook does (three tries, then Elijah is told).
     const later = { gift_deliver: "pending", gift_send_on: today };
     await stripe.paymentIntents.update(pi.id, { metadata: later });
+    await tellOwner(stripe, pi.id, after, code, "retrying", mail);
     return json(200, done({ ...after, ...later }, now));
   } catch (err) {
     if (err?.statusCode === 404 || err?.code === "resource_missing") return json(404, { error: "not_found" });
