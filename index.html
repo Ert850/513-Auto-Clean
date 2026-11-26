@@ -46,7 +46,7 @@
       href="images/hero-exterior-960.webp"
       imagesrcset="images/hero-exterior-640.webp 640w, images/hero-exterior-960.webp 960w, images/hero-exterior-1280.webp 1280w, images/hero-exterior-1600.webp 1600w"
       imagesizes="100vw" />
-<link rel="stylesheet" href="styles.css?v=b457a83850" />
+<link rel="stylesheet" href="styles.css?v=337c463661" />
 <!-- CHROME:HEAD:START -->
 <!-- Public configuration and third party loaders live in js/, not inline,
      so the Content-Security-Policy can forbid inline scripts outright.
@@ -774,7 +774,7 @@
       <div class="form-card reveal" data-d="1" id="inquiryCard">
         <h3>Ask us a question</h3>
         <p class="fc-sub">Tell us what you&rsquo;re dealing with and we&rsquo;ll point you the right way.</p>
-        <form id="inquiryForm" class="js-w3form" action="https://api.web3forms.com/submit" method="POST" novalidate>
+        <form id="inquiryForm" class="js-w3form inq-compact" action="https://api.web3forms.com/submit" method="POST" novalidate>
           <input type="hidden" name="access_key" value="8a502fe3-2a53-4904-98e9-b18dabb1f579" />
           <input type="hidden" name="subject" value="QUESTION from 513autoclean.com" />
           <input type="hidden" name="from_name" value="513 Auto Clean Website" />
@@ -827,6 +827,12 @@
                 <label class="pref"><input type="radio" name="preferred_contact" value="Email" /> <span>Email</span></label>
               </div>
             </fieldset>
+          </div>
+
+          <div class="inq-ticks">
+            <label class="inq-tick"><input type="checkbox" name="SMS consent" value="yes" data-yesno /> <span>I consent to receive SMS notifications, alerts &amp; occasional marketing communication from 513 Auto Clean. Message frequency varies. Message &amp; data rates may apply. Text HELP to (513) 279-2915 for assistance. You can reply STOP to unsubscribe at any time.</span></label>
+            <label class="inq-tick"><input type="checkbox" name="Marketing" value="yes" data-yesno /> <span>I want to receive news, feature updates, discounts &amp; offers from 513 Auto Clean.</span></label>
+            <p class="inq-terms">By continuing you agree to our <a href="terms.html">Terms &amp; Conditions</a> and <a href="privacy.html">Privacy Policy</a>.</p>
           </div>
 
           <div class="form-foot">
