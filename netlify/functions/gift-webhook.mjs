@@ -1,6 +1,6 @@
 import Stripe from "stripe";
 import { cincinnatiDay } from "./_pricing.mjs";
-import { GIFT_KIND, appendLog, cardFromMeta, codeFor, dollars, ensureIssued, giftSecret, requestHost, siteUrl } from "./_giftcards.mjs";
+import { GIFT_KIND, appendLog, cardFromMeta, claimedByPage, codeFor, dollars, ensureIssued, giftSecret, requestHost, sendDeadline, sendRefusal, siteUrl } from "./_giftcards.mjs";
 import { buyerEmail, ownerEmail, recipientEmail, sendMail } from "./_giftmail.mjs";
 
 /**
@@ -63,7 +63,8 @@ export async function issue(stripe, sessionId, secret, nowMs = Date.now(), note 
   if (meta.gift_status === "void" || meta.gift_status === "disputed") return "not sent: " + meta.gift_status;
   // The person it's for first, so the buyer's email says what really happened (pass 3).
   let deliver = meta.gift_deliver;
-  if (deliver === "now") {
+  // Being sent by the card's page this minute (gift-send.mjs): left to it, so it doesn't go twice.
+  if (deliver === "now" && !claimedByPage(meta, nowMs)) {
     if (await sendOnce("gift_mail_to", toEmail, recipientEmail({ card, code, link }))) {
       deliver = marks.gift_deliver = "sent";
     } else {
@@ -74,7 +75,9 @@ export async function issue(stripe, sessionId, secret, nowMs = Date.now(), note 
       deliver = "now";
     }
   }
-  await sendOnce("gift_mail_buyer", buyer, buyerEmail({ card, code, link, payCents, toEmail, deliver }));
+  // With no one to send it to yet, the buyer's email says it can be sent from the card's page.
+  const sendBy = !toEmail && sendRefusal(session, meta, nowMs) === null ? sendDeadline(session) : null;
+  await sendOnce("gift_mail_buyer", buyer, buyerEmail({ card, code, link, payCents, toEmail, deliver, sendBy }));
   const ownerOk = await sendOnce("gift_mail_owner", owner(), ownerEmail({
     card, code, payCents, buyer, toEmail, problem: [note, ...problems].filter(Boolean).join(" ") || (buyer ? "" : "Stripe gave no buyer email: send the card yourself."),
   }));

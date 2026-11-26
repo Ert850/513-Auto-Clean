@@ -277,5 +277,5 @@ export {
 };
 export { BOOK_LINK_PARAMS, BOOK_INTENTS, arrivalQuery, parseArrival } from "./booking/bookLinks.js";
 export { zipGeo } from "./travel/zipGeo.js";
-export { cincinnatiDay, CHECKOUT_METHODS, coverTable, coverage, coversLine, dollarsToCents, expiresOn, giftCardProblems, giftOffer, GIFT_CARDS, maxTaxRateBp, saleEndedNext, saleOn, salePriceCents, SIZE_WORDS } from "./catalog/giftCards.js";
+export { cincinnatiDay, CHECKOUT_METHODS, coverTable, coverage, dollarsToCents, expiresOn, giftCardProblems, giftOffer, GIFT_CARDS, maxTaxRateBp, saleEndedNext, saleOn, salePriceCents, SIZE_WORDS } from "./catalog/giftCards.js";
 export { VEHICLE_SIZES } from "./catalog/seed.js";

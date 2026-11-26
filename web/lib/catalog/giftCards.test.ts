@@ -2,7 +2,7 @@
 import { describe, expect, it } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
-import { coverTable, coverage, coversLine, giftCardProblems, maxTaxRateBp, salePriceCents, type GiftCardConfig } from "./giftCards.js";
+import { coverTable, coverage, giftCardProblems, maxTaxRateBp, salePriceCents, type GiftCardConfig } from "./giftCards.js";
 import { SEED_CATALOG, VEHICLE_SIZES } from "./seed.js";
 import { SEED_TAX_TABLE, computeTax } from "../pricing/tax.js";
 
@@ -40,29 +40,6 @@ describe("gift cards", () => {
     }
   });
 
-  it("a tier's 'Covers' line never promises more than the card buys", () => {
-    const rows = coverTable();
-    for (const t of cfg.tiers) {
-      const value = t.value * 100;
-      const line = coversLine(value, rows);
-      const named = rows.find((r) => line.includes(` ${r.name} for `));
-      if (!named) { expect(line).toBe("Toward any detail or add-on"); continue; }
-      const sizes = line.includes("any vehicle") ? VEHICLE_SIZES.map((s) => s.id)
-        : line.includes("SUV or truck") ? ["small", "medium"] : ["small"];
-      for (const s of sizes) expect(named.cents[s], `${line} (${s})`).toBeLessThanOrEqual(value);
-      // And the line names the dearest package a car gets.
-      expect(Math.max(...rows.map((r) => r.cents.small!).filter((c) => c <= value))).toBe(named.cents.small);
-    }
-  });
-
-  it("words the sizes and the article", () => {
-    const rows = [{ id: "x", name: "Express Exterior", cents: { small: 8000, medium: 9000, large: 11000 } }];
-    expect(coversLine(8500, rows)).toBe("Covers an Express Exterior for a car, tax included");
-    expect(coversLine(9500, rows)).toBe("Covers an Express Exterior for a car, SUV or truck, tax included");
-    expect(coversLine(11000, rows)).toBe("Covers an Express Exterior for any vehicle, tax included");
-    expect(coversLine(5000, rows)).toBe("Toward any detail or add-on");
-  });
-
   it("the calculator lists what's covered, dearest first, and how far the next one is", () => {
     const rows = [
       { id: "a", name: "A", cents: { small: 10000 } },
@@ -85,9 +62,10 @@ describe("gift cards", () => {
       checkout: {} as never,
       refundDays: 30,
       scheduleDays: 60,
+      sendWindowHours: 0,
       expiryYears: 1,
     }).join("\n");
-    for (const msg of ["mode must be", "percentOff", "starts is after", "go up in value", "one featured", "custom.min", "checkout.enabled", "checkout.methods", "expiryYears"]) {
+    for (const msg of ["mode must be", "percentOff", "starts is after", "go up in value", "one featured", "custom.min", "checkout.enabled", "checkout.methods", "expiryYears", "sendWindowHours"]) {
       expect(bad).toContain(msg);
     }
   });

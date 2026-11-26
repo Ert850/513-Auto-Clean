@@ -4,9 +4,9 @@
  *
  * Every number here comes from a setting: the card values and the sale from
  * config/gift-cards.json, the package prices and size upcharges from the
- * catalog, and the tax from the highest rate in the tax table. The tier cards'
- * "Covers ..." lines and the page's calculator both read this module, so a
- * price change moves both, and a line can never promise more than a card buys.
+ * catalog, and the tax from the highest rate in the tax table. The page's
+ * calculator reads this module, so a price change moves it, and it can never
+ * promise more than a card buys.
  *
  * A gift card is a payment, applied after tax. It is never a promo code:
  * promo codes lower the taxable base in quote.ts, and a card must not
@@ -40,6 +40,8 @@ export interface GiftCardConfig {
   refundDays: number;
   /** How many days ahead a card can be scheduled to be emailed. */
   scheduleDays: number;
+  /** Hours after buying in which the card's page can email it to someone, once (gift-send.mjs). */
+  sendWindowHours: number;
 }
 
 /** What a buyer calls each size (VEHICLE_SIZES ids). */
@@ -94,24 +96,6 @@ export function coverage(valueCents: number, sizeId: string, rows: CoverRow[] = 
   return { covered, next: above ? { name: above.name, shortCents: above.cents - valueCents } : null };
 }
 
-const article = (name: string) => (/^[AEIOU]/i.test(name) ? "an" : "a");
-
-/**
- * One line for a tier card: the dearest package the card covers for a car,
- * and every size it also covers it for. "Covers a Basic Interior for a car,
- * SUV or truck, tax included."
- */
-export function coversLine(valueCents: number, rows: CoverRow[] = coverTable()): string {
-  const best = coverage(valueCents, VEHICLE_SIZES[0]!.id, rows).covered[0];
-  if (!best) return "Toward any detail or add-on";
-  const row = rows.find((r) => r.name === best.name)!;
-  const sizes = VEHICLE_SIZES.filter((s) => (row.cents[s.id] ?? Infinity) <= valueCents).map((s) => SIZE_WORDS[s.id]!);
-  // Sizes only ever grow in price, so the covered ones are the smallest few:
-  // "a car", "a car, SUV or truck", or all of them.
-  const who = sizes.length === VEHICLE_SIZES.length ? "any vehicle" : `a ${sizes.join(", ")}`;
-  return `Covers ${article(best.name)} ${best.name} for ${who}, tax included`;
-}
-
 /**
  * The payment methods a gift card may be paid with, each checked against its
  * provider's rules for gift cards (November 23, 2026): card (with Apple Pay
@@ -164,6 +148,7 @@ export function giftCardProblems(cfg: GiftCardConfig): string[] {
   if (!Number.isInteger(cfg.expiryYears) || cfg.expiryYears < MIN_EXPIRY_YEARS || cfg.expiryYears > 50) out.push(`expiryYears must be a whole number of years, at least ${MIN_EXPIRY_YEARS} (federal law)`);
   if (!Number.isInteger(cfg.refundDays) || cfg.refundDays < 0 || cfg.refundDays > 365) out.push("refundDays must be a whole number of days, 0 to 365");
   if (!Number.isInteger(cfg.scheduleDays) || cfg.scheduleDays < 1 || cfg.scheduleDays > 365) out.push("scheduleDays must be a whole number of days, 1 to 365");
+  if (!Number.isInteger(cfg.sendWindowHours) || cfg.sendWindowHours < 1 || cfg.sendWindowHours > 24 * 30) out.push("sendWindowHours must be a whole number of hours, 1 to 720");
   return out;
 }
 

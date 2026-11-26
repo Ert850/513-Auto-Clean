@@ -56,7 +56,10 @@ export function giftDetails(p, nowMs) {
   if (toEmail && !EMAIL.test(toEmail)) return { error: "bad_email" };
   const today = cincinnatiDay(nowMs);
   const last = cincinnatiDay(nowMs + GIFT_CARDS.scheduleDays * 86_400_000);
-  if (sendOn && (!DAY.test(sendOn) || sendOn < today || sendOn > last)) return { error: "bad_date" };
+  // A real calendar day: "2026-13-01" passes the pattern and sorts inside the range (November 26).
+  const at = DAY.test(sendOn) ? Date.parse(sendOn + "T12:00:00Z") : NaN;
+  const real = Number.isFinite(at) && new Date(at).toISOString().slice(0, 10) === sendOn;
+  if (sendOn && (!real || sendOn < today || sendOn > last)) return { error: "bad_date" };
   // A date in the future means "send it to them then": there has to be a "them".
   if (sendOn && sendOn > today && !toEmail) return { error: "date_needs_email" };
   return { toName, toEmail: toEmail.toLowerCase(), fromName, message, sendOn: sendOn && sendOn > today ? sendOn : "" };

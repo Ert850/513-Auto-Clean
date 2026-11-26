@@ -74,17 +74,40 @@ ${to}${msg}
  * same thing (validation passes 2 and 3). The address is printed, so a buyer
  * can spot a typo.
  */
-export function whenLine(card, deliver, toEmail) {
+/**
+ * "3 PM on Sunday, November 29": the last moment the card's page can send it,
+ * on Cincinnati's clock, rounded down to the hour so it never promises later
+ * than it is.
+ */
+export function sendByWords(ms) {
+  const d = new Date(ms);
+  const hour = d.toLocaleTimeString("en-US", { hour: "numeric", timeZone: "America/New_York" });
+  const day = d.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", timeZone: "America/New_York" });
+  return `${hour} on ${day}`;
+}
+
+/**
+ * `sendLink` and `sendBy` (ms): the card's page and the last moment it can
+ * still email the card to someone (sendDeadline, while sendRefusal is null).
+ * Buying is one click, so a card usually has no one yet: the buyer gives it,
+ * or has us send it from that page (November 26).
+ */
+export function whenLine(card, deliver, toEmail, sendLink = "", sendBy = null) {
   const who = toEmail ? `${card.toName ? esc(card.toName) + " " : ""}(${esc(toEmail)})` : "";
-  if (!toEmail || deliver === "none") return "Forward this email, or print the card to give it in person.";
+  if (!toEmail || deliver === "none") {
+    const send = sendLink && sendBy
+      ? ` Or we can email it to them for you, right away or on the day you choose: <a href="${esc(sendLink)}" style="color:#c41414;font-weight:700">open your card</a> and choose &ldquo;Send it to someone&rdquo; by ${sendByWords(sendBy)}.`
+      : "";
+    return `Forward this email, or print the card to give it in person.${send}`;
+  }
   if (deliver === "pending" && card.sendOn) return `We'll email it to ${who} on ${longDay(card.sendOn)}. You can also forward this email or print the card.`;
   if (deliver === "sent") return `We've emailed it to ${who}.`;
   if (deliver === "failed" || deliver === "cancelled") return `We couldn't email it to ${who}. Please forward this email, or print the card.`;
   return `We're emailing it to ${who}. If it doesn't arrive, forward this email.`;
 }
 
-export function buyerEmail({ card, code, link, payCents, toEmail, deliver }) {
-  const when = whenLine(card, deliver, toEmail);
+export function buyerEmail({ card, code, link, payCents, toEmail, deliver, sendBy = null }) {
+  const when = whenLine(card, deliver, toEmail, link, sendBy);
   const paid = payCents < card.valueCents ? ` You paid ${dollars(payCents)} (${card.percentOff}% off).` : ` You paid ${dollars(payCents)}.`;
   return {
     subject: `Your ${dollars(card.valueCents)} 513 Auto Clean gift card`,
@@ -116,8 +139,8 @@ export function ownerEmail({ card, code, payCents, buyer, toEmail, problem }) {
     ["Card", `${dollars(card.valueCents)}, code ending ${code.slice(-4)}`],
     ["Paid", `${dollars(payCents)}${card.percentOff ? ` (${card.percentOff}% off)` : ""}`],
     ["Buyer", buyer || "(no email)"],
-    ["For", [card.toName, toEmail].filter(Boolean).join(", ") || "(the buyer)"],
-    ["Send to them", card.sendOn ? longDay(card.sendOn) : toEmail ? "now" : "(not sent: the buyer gives it)"],
+    ["For", [card.toName, toEmail].filter(Boolean).join(", ") || "(not said)"],
+    ["Send to them", card.sendOn ? longDay(card.sendOn) : toEmail ? "now" : "Not sent to anyone yet (the buyer can send it from the card's page, or give it themselves)"],
   ].map(([k, v]) => `<tr><td style="padding:4px 12px 4px 0;color:#5a6069">${k}</td><td style="padding:4px 0">${esc(v)}</td></tr>`).join("");
   const warn = problem ? `<p style="margin:0 0 12px;color:#b41212;font-weight:700">${esc(problem)}</p>` : "";
   return {

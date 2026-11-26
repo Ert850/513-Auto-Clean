@@ -2,8 +2,9 @@
 import { describe, expect, it } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
+import vm from "node:vm";
 // @ts-expect-error plain ESM build scripts
-import { cardFace, viewAt, giftCalc, giftHead, giftPages, giftTerms, giftTiers, giftTopLink, loadGiftCards, priceRow } from "../../scripts/gift-cards.mjs";
+import { buyLabel, buyLine, cardFace, tierName, viewAt, giftCalc, giftHead, giftPages, giftTerms, giftTiers, giftTopLink, loadGiftCards } from "../../scripts/gift-cards.mjs";
 // @ts-expect-error plain ESM build scripts
 import { CHROME_PAGES, valuesFor } from "../../scripts/chrome.mjs";
 
@@ -19,18 +20,26 @@ const regular = at("2026-12-01T17:00:00Z", { ...SALE, mode: "regular" });
 const as = (mode: string) => ({ ...cfg, mode });
 
 describe("gift card page", () => {
-  it("during the sale: the price you pay, the value struck through and the saving, all from the setting", () => {
-    expect(priceRow(5000, during)).toBe('<p class="gc-price"><span class="gc-pay">You pay</span> <strong>$40</strong> <s><span class="sr-only">instead of </span>$50</s> <span class="gc-save">Save $10</span></p>');
-    expect(priceRow(3700, during)).toContain("<strong>$29.60</strong>");
-    expect(cardFace(5000, during)).toContain('<span class="gc-off">20% off</span>');
+  it("during the sale: the value on the card, the price in the button with the value struck through, all from the setting (approved mock, November 26)", () => {
+    const tiers = giftTiers(during);
+    expect(tiers).toContain('<h2 class="sr-only">$250 gift card, you pay $200</h2>');
+    expect(tiers).toContain('<button type="button" class="btn btn-ghost btn-block" data-gc-buy="250" aria-label="Buy a $250 gift card for $200"><span class="gc-buy-line" aria-hidden="true"><span class="gc-buy-for">Buy for</span> <s class="gc-buy-was">$250</s> <span class="gc-buy-now">$200</span></span></button>');
+    expect(buyLine(3700, 2960)).toContain('<span class="gc-buy-now">$29.60</span>');
+    expect(buyLabel(25000, 20000, false)).toBe("Buy a $250 gift card for $200");
+    expect(buyLabel(25000, 20000, true)).toBe("Buy a $250 card for $200");
+    expect(tierName(25000, 20000)).toBe("$250 gift card, you pay $200");
+    // No sale pill, no price row and no "Covers" line on a tile any more: "Gift card" sits where the pill was.
+    expect(cardFace(5000)).not.toMatch(/gc-off|% off/);
+    expect(cardFace(5000)).toContain('<span class="gc-face-label">Gift card</span>');
+    expect(tiers).not.toMatch(/gc-price|gc-covers|gc-off|You pay|Save \$/);
     expect(giftHead(during)).toContain('<span class="gc-sale-only">Every card is 20% off through December 25. </span>');
   });
 
   it("before the sale: full prices, and the sale's dates said (validation pass 1: no sale prices before it starts)", () => {
-    expect(priceRow(5000, before)).toBe('<p class="gc-price"><strong>$50</strong></p>');
-    expect(cardFace(5000, before)).toContain('<span class="gc-off" hidden>');
     expect(giftHead(before)).toContain('<span class="gc-sale-soon">Every card will be 20% off from November 27 to December 25. </span>');
-    expect(giftTiers(before)).toContain(">Buy for $50</button>");
+    expect(giftTiers(before)).toContain(' aria-label="Buy a $50 gift card"><span class="gc-buy-line" aria-hidden="true"><span class="gc-buy-for">Buy for</span> <span class="gc-buy-now">$50</span></span></button>');
+    expect(giftTiers(before)).toContain('<h2 class="sr-only">$50 gift card</h2>');
+    expect(giftTiers(before)).not.toContain("gc-buy-was");
     expect(giftCalc(before)).toContain(">Buy a $250 card</button>");
     expect(giftCalc(before)).toContain('data-gc-built-sale="0"');
     expect(giftTopLink(before)).toContain('<span class="tb-gift-sale" hidden>');
@@ -39,7 +48,7 @@ describe("gift card page", () => {
   it("after the sale, and in regular mode: nothing reads as a sale", () => {
     for (const v of [after, regular]) {
       const shown = [giftHead(v), giftTiers(v), giftCalc(v), giftTopLink(v)].join("").replace(/<(span)[^>]* hidden>[\s\S]*?<\/\1>/g, "");
-      expect(shown).not.toMatch(/<s>|Save \$|% off|through December/);
+      expect(shown).not.toMatch(/<s[ >]|Save \$|% off|through December|you pay/);
     }
     expect(giftHead(regular)).not.toContain("Holiday");
   });
@@ -66,7 +75,8 @@ describe("gift card page", () => {
     const ended = at("2026-12-27T17:00:00Z", withNext);
     expect(ended.endedNext).toBe(true);
     expect(giftHead(ended)).toContain('<span class="gc-sale-ended">Our holiday sale has ended, and you can still buy gift cards at full price. Our next sale runs from November 27 to December 25, 2027. </span>');
-    expect(giftTiers(ended)).toContain(">Buy for $50</button>");
+    expect(giftTiers(ended)).toContain('<span class="gc-buy-now">$50</span></span></button>');
+    expect(giftTiers(ended)).not.toContain("gc-buy-was");
     // During the sale, and once next year's dates have come, the line is hidden.
     expect(giftHead(at("2026-12-01T17:00:00Z", withNext))).toContain('<span class="gc-sale-ended" hidden>');
     expect(at("2027-11-27T17:00:00Z", withNext).endedNext).toBe(false);
@@ -122,5 +132,60 @@ describe("gift card page", () => {
   it("class names stay clear of ad-blocker words (CLAUDE.md)", () => {
     const names = [...read("gift-cards.html").matchAll(/class="([^"]+)"/g), ...giftTopLink(cfg).matchAll(/class="([^"]+)"/g)].flatMap((m) => m[1]!.split(/\s+/));
     for (const n of names) expect(n).not.toMatch(/^(ad-|ad_|ads|advert)|banner|promo|sponsor|popup/);
+  });
+
+  /**
+   * js/giftcards.js re-prices the tiles in the browser when the sale has
+   * started or ended since the build. Run it on a page built the other way and
+   * check the tiles come out exactly as the build would write them for today.
+   */
+  it("the browser re-prices a tile into the build's own markup (js/giftcards.js = gift-cards.mjs)", async () => {
+    // @ts-expect-error plain ESM build output
+    const real = await import("../../../netlify/functions/_pricing.mjs");
+    const src = read("js/giftcards.js");
+    for (const saleNow of [true, false]) {
+      const view = saleNow ? during : regular;
+      const el = (attrs: Record<string, string> = {}) => {
+        const a = { ...attrs };
+        const e: Record<string, unknown> = {
+          hidden: false, innerHTML: "", textContent: "", value: "250", children: [],
+          getAttribute: (k: string) => (k in a ? a[k] : null),
+          setAttribute: (k: string, v: string) => { a[k] = String(v); },
+          removeAttribute: (k: string) => { delete a[k]; },
+          addEventListener: () => {}, focus: () => {},
+          classList: { toggle: () => {}, add: () => {}, remove: () => {} },
+          querySelector: () => null, querySelectorAll: () => [],
+          attrs: a,
+        };
+        return e;
+      };
+      const tiles = cfg.tiers.map((t: { value: number }) => {
+        const h2 = el(), btn = el({ "data-gc-buy": String(t.value) });
+        const tile = el({ "data-gc-value": String(t.value) });
+        tile.querySelector = (q: string) => (q === "h2" ? h2 : q === "[data-gc-buy]" ? btn : null);
+        return { value: t.value * 100, h2, btn, tile };
+      });
+      const calc = el({ "data-gc-min": String(cfg.custom.min), "data-gc-max": String(cfg.custom.max), "data-gc-built-sale": saleNow ? "0" : "1" });
+      const parts: Record<string, unknown> = { "#gcAmt": el(), ".gc-err": el(), ".gc-out": el(), ".gc-calc-price": el(), '[data-gc-buy="custom"]': el(), 'input[name="gcSize"]:checked': null };
+      calc.querySelector = (q: string) => parts[q] ?? null;
+      const document = {
+        querySelector: (q: string) => (q === ".gc-calc" ? calc : null),
+        querySelectorAll: (q: string) => (q === ".gc-tier[data-gc-value]" ? tiles.map((t: { tile: unknown }) => t.tile) : []),
+        getElementById: () => null,
+        createElement: () => el(),
+        addEventListener: () => {},
+      };
+      const P = { ...real, GIFT_CARDS: { mode: view.mode, sale: view.sale, scheduleDays: cfg.scheduleDays }, saleOn: () => saleNow, saleEndedNext: () => false, cincinnatiDay: () => "2026-12-01" };
+      vm.runInNewContext(src, { window: { ACPricing: P, addEventListener: () => {} }, document, setTimeout, clearTimeout, Intl });
+      const built = giftTiers(view);
+      for (const t of tiles) {
+        const pay = saleNow ? Math.round((t.value * (100 - view.sale.percentOff)) / 100) : t.value;
+        expect(t.btn.innerHTML).toBe(buyLine(t.value, pay));
+        expect((t.btn.attrs as Record<string, string>)["aria-label"]).toBe(buyLabel(t.value, pay, false));
+        expect(t.h2.textContent).toBe(tierName(t.value, pay));
+        expect(built).toContain(`aria-label="${buyLabel(t.value, pay, false)}">${t.btn.innerHTML}</button>`);
+        expect(built).toContain(`<h2 class="sr-only">${t.h2.textContent}</h2>`);
+      }
+    }
   });
 });

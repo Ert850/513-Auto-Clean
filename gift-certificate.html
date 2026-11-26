@@ -18,7 +18,7 @@
 <link rel="manifest" href="manifest.webmanifest" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link rel="stylesheet" href="styles.css?v=2ba34d25ee" />
+<link rel="stylesheet" href="styles.css?v=b457a83850" />
 <!-- CHROME:HEAD:START -->
 <!-- Public configuration and third party loaders live in js/, not inline,
      so the Content-Security-Policy can forbid inline scripts outright.
@@ -125,7 +125,7 @@
      never linked from the site. -->
 <section class="gc-certpage" id="gift-card">
   <div class="wrap">
-    <p class="gc-thanks" id="gcThanks" hidden><b>Thank you.</b> Your gift card is ready, and a copy is on its way to your inbox.</p>
+    <p class="gc-thanks" id="gcThanks" hidden><b>Thank you.</b> Your gift card is ready, and a copy is on its way to your inbox.<span id="gcThanksSend" hidden> Want us to email it to someone? <a href="#gcSend">Send it</a>.</span></p>
     <div class="section-head">
       <span class="eyebrow">513 Auto Clean</span>
       <h1>Your gift card</h1>
@@ -133,8 +133,42 @@
     <div class="gc-cert" id="gcCert" aria-live="polite" data-clarity-mask="true">
       <p class="gc-cert-msg">Loading your gift card&hellip;</p>
     </div>
+    <!-- Who the card is for, asked after paying (buying is one click). Shown
+         only while /api/gift-card says it can still be sent (canSend): once,
+         to one person, within the setting's hours after buying. js/giftcert.js
+         sends it to /api/gift-send. -->
+    <div class="gc-send" id="gcSend" role="region" aria-labelledby="gcSendH" data-clarity-mask="true" hidden>
+      <h2 id="gcSendH">Send it to someone</h2>
+      <p class="gc-send-sub" id="gcSendSub">Optional. We email the card to them, right away or on the day you choose. Or print it or share the link yourself.</p>
+      <form class="gc-sendform" id="gcSendForm" novalidate>
+        <div class="field">
+          <label for="gcToName">Their name <i>(optional)</i></label>
+          <input id="gcToName" maxlength="60" autocomplete="off" />
+        </div>
+        <div class="field">
+          <label for="gcToEmail">Their email</label>
+          <input id="gcToEmail" type="email" inputmode="email" maxlength="254" autocomplete="off" required />
+        </div>
+        <fieldset class="gc-when">
+          <legend>When should we email it to them?</legend>
+          <label><input type="radio" name="gcWhen" value="now" checked /> Right away</label>
+          <label><input type="radio" name="gcWhen" value="date" /> On a date</label>
+          <input id="gcSendOn" type="date" aria-label="Date to email it" hidden />
+        </fieldset>
+        <div class="field">
+          <label for="gcFromName">From <i>(optional)</i></label>
+          <input id="gcFromName" maxlength="60" autocomplete="name" placeholder="Your name" />
+        </div>
+        <div class="field">
+          <label for="gcMessage">Message <i>(optional)</i></label>
+          <textarea id="gcMessage" maxlength="300" rows="3" placeholder="Happy holidays!"></textarea>
+        </div>
+        <p class="gc-buy-err" id="gcSendErr" role="alert" hidden></p>
+        <button type="submit" class="btn btn-primary btn-block" id="gcSendGo">Email the card</button>
+      </form>
+    </div>
     <div class="gc-cert-actions" id="gcCertActions" hidden>
-      <button type="button" class="btn btn-primary" data-gc-print>Print or save as PDF</button>
+      <button type="button" class="btn btn-primary" id="gcPrint" data-gc-print>Print or save as PDF</button>
       <button type="button" class="btn btn-ghost" data-gc-share>Share the card</button>
       <a class="btn btn-ghost" href="book.html">Book a detail</a>
     </div>
@@ -223,11 +257,11 @@
 <link rel="stylesheet" href="book.css?v=ddd553527c" />
 <!-- Deferred, so they run in this order: the pricing bundle before the
      booking form and before any page script that prices (travel.js). -->
-<script src="js/pricing.bundle.js?v=5ffc06c533" defer></script>
+<script src="js/pricing.bundle.js?v=af6a0dd164" defer></script>
 <script src="js/funnel.js?v=fc849a0733" defer></script>
 <script src="script.js?v=0f81ec6fa1" defer></script>
 <!-- CHROME:SCRIPTS:END -->
 <script src="js/qrcode.js?v=d3d6cf683d" defer></script>
-<script src="js/giftcert.js?v=3ce23ba003" defer></script>
+<script src="js/giftcert.js?v=70673a7c52" defer></script>
 </body>
 </html>

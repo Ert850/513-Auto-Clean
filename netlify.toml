@@ -203,6 +203,11 @@
   status = 200
 
 [[redirects]]
+  from = "/api/gift-send"
+  to = "/.netlify/functions/gift-send"
+  status = 200
+
+[[redirects]]
   from = "/api/cart-capture"
   to = "/.netlify/functions/cart-capture"
   status = 200

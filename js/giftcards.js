@@ -9,9 +9,10 @@
  * prices by saleOn(), the test gift-checkout.mjs charges by, so what the page
  * shows is what Stripe charges.
  *
- * Buying: the picked value and the gift details go to /api/gift-checkout,
- * which sets the price itself and answers with Stripe's page. Never a price
- * from here.
+ * Buying is one click: the picked value goes to /api/gift-checkout, which
+ * sets the price itself and answers with Stripe's page, opened in this tab.
+ * Never a price from here. Who the card is for is asked after paying, on the
+ * card's own page (gift-certificate.html, js/giftcert.js).
  */
 (function () {
   'use strict';
@@ -45,24 +46,37 @@
     return on ? on.value : 'small';
   }
 
-  // Same markup and words as gift-cards.mjs priceRow, buyLabel and coverList.
-  function priceHtml(cents) {
+  // Same markup and words as gift-cards.mjs calcPriceRow: no struck value, it's in the box above.
+  function calcPriceHtml(cents) {
     var p = pay(cents);
-    if (p === cents) return '<strong>' + dollars(p) + '</strong>';
-    return '<span class="gc-pay">You pay</span> <strong>' + dollars(p) + '</strong> <s><span class="sr-only">instead of </span>' + dollars(cents) +
-      '</s> <span class="gc-save">Save ' + dollars(cents - p) + '</span>';
+    return '<span class="gc-pay">You pay</span> <strong>' + dollars(p) + '</strong>' + (p < cents ? ' <span class="gc-save">Save ' + dollars(cents - p) + '</span>' : '');
   }
+  // Same markup and words as gift-cards.mjs buyLabel, buyLine, tierName, coverList and pickRow.
   function buyLabel(cents, custom) {
     var p = pay(cents);
     if (custom) return p < cents ? 'Buy a ' + dollars(cents) + ' card for ' + dollars(p) : 'Buy a ' + dollars(cents) + ' card';
-    return 'Buy for ' + dollars(p);
+    return p < cents ? 'Buy a ' + dollars(cents) + ' gift card for ' + dollars(p) : 'Buy a ' + dollars(cents) + ' gift card';
+  }
+  function buyLine(cents) {
+    var p = pay(cents);
+    return '<span class="gc-buy-line" aria-hidden="true"><span class="gc-buy-for">Buy for</span> ' +
+      (p < cents ? '<s class="gc-buy-was">' + dollars(cents) + '</s> ' : '') + '<span class="gc-buy-now">' + dollars(p) + '</span></span>';
+  }
+  function tierName(cents) {
+    var p = pay(cents);
+    return p < cents ? dollars(cents) + ' gift card, you pay ' + dollars(p) : dollars(cents) + ' gift card';
+  }
+  function pickRow(target, inner, what, cents) {
+    if (target < min * 100 || target > max * 100) return '<span class="gc-row">' + inner + '</span>';
+    return '<button type="button" class="gc-row gc-pick" data-gc-set="' + (target / 100).toFixed(2) + '"' + (target === cents ? ' aria-current="true"' : '') +
+      ' aria-label="Make it a ' + dollars(target) + ' card, ' + esc(what) + '">' + inner + '</button>';
   }
   function listHtml(cents) {
     var c = P.coverage(cents, size(), rows);
-    var items = c.covered.map(function (r) { return '<li><b>' + esc(r.name) + '</b><em>' + dollars(r.cents) + '</em></li>'; }).join('');
+    var art = function (n) { return /^[AEIOU]/i.test(n) ? 'an ' : 'a '; };
+    var items = c.covered.map(function (r) { return '<li>' + pickRow(r.cents, '<b>' + esc(r.name) + '</b><em>' + dollars(r.cents) + '</em>', art(r.name) + r.name, cents) + '</li>'; }).join('');
     if (!c.covered.length) items = '<li class="gc-none">Not a full detail yet: it goes toward one, or an add-on</li>';
-    var more = c.next ? '<p class="gc-next">' + dollars(c.next.shortCents) + ' more covers ' +
-      (/^[AEIOU]/i.test(c.next.name) ? 'an ' : 'a ') + esc(c.next.name) + '</p>' : '';
+    var more = c.next ? '<p class="gc-next">' + pickRow(cents + c.next.shortCents, dollars(c.next.shortCents) + ' more covers ' + art(c.next.name) + esc(c.next.name), art(c.next.name) + c.next.name, cents) + '</p>' : '';
     return '<ul class="gc-list">' + items + '</ul>' + more;
   }
 
@@ -73,7 +87,7 @@
 
   var built = calc.getAttribute('data-gc-built-sale') === '1';
   var soon = cfg.mode === 'sale' && !sale && P.cincinnatiDay(Date.now()) < cfg.sale.starts;
-  document.querySelectorAll('.gc-off, .gc-sale-only').forEach(function (e) { e.hidden = !sale; });
+  document.querySelectorAll('.gc-sale-only').forEach(function (e) { e.hidden = !sale; });
   document.querySelectorAll('.gc-sale-soon').forEach(function (e) { e.hidden = !soon; });
   document.querySelectorAll('.gc-holiday').forEach(function (e) { e.hidden = !sale && !soon; });
   var ended = P.saleEndedNext ? P.saleEndedNext(cfg, Date.now()) : false;
@@ -81,10 +95,10 @@
   if (sale !== built) {
     document.querySelectorAll('.gc-tier[data-gc-value]').forEach(function (t) {
       var cents = Number(t.getAttribute('data-gc-value')) * 100;
-      var row = t.querySelector('.gc-price');
-      if (row) row.innerHTML = priceHtml(cents);
+      var h = t.querySelector('h2');
+      if (h) h.textContent = tierName(cents);
       var b = t.querySelector('[data-gc-buy]');
-      if (b) b.textContent = buyLabel(cents, false);
+      if (b) { b.innerHTML = buyLine(cents); b.setAttribute('aria-label', buyLabel(cents, false)); }
     });
   }
 
@@ -104,7 +118,7 @@
     calc.classList.toggle('gc-bad', cents === null);
     if (customBuy) customBuy.setAttribute('aria-disabled', cents === null ? 'true' : 'false');
     if (cents === null) return;
-    price.innerHTML = priceHtml(cents);
+    price.innerHTML = calcPriceHtml(cents);
     out.innerHTML = listHtml(cents);
     if (customBuy) customBuy.textContent = buyLabel(cents, true);
     announce(cents);
@@ -122,35 +136,59 @@
     }, 700);
   }
   input.addEventListener('input', update);
+  // A covered row (or the "more covers" line) makes the card that amount; focus
+  // stays on the same row once the list is redrawn, or goes to the box.
+  out.addEventListener('click', function (e) {
+    var b = e.target.closest && e.target.closest('[data-gc-set]');
+    if (!b) return;
+    var v = b.getAttribute('data-gc-set');
+    input.value = v;
+    update();
+    var same = out.querySelector('[data-gc-set="' + v + '"]');
+    (same || input).focus();
+  });
   calc.addEventListener('change', function (e) { if (e.target.name === 'gcSize') update(); });
   if (sale !== built) update();
 
-  /* ---------------- buying ---------------- */
+  /* ---------------- buying ----------------
+     One click, straight to Stripe in this tab. The clicked button says it's
+     opening, and anything that goes wrong is said on one line beside it. */
 
-  var dlg = document.getElementById('gcBuy');
-  var form = document.getElementById('gcBuyForm');
-  if (!dlg || !form || typeof dlg.showModal !== 'function') return;
-  var $ = function (id) { return document.getElementById(id); };
-  var picked = null;
   var requestKey = null;
-  var busy = false;
+  var busy = null;
+  var saved = null;
+  var errLine = document.createElement('p');
+  errLine.className = 'gc-buy-err';
+  errLine.setAttribute('role', 'alert');
+  errLine.hidden = true;
 
-  function today(offsetDays) {
-    var d = new Date(Date.now() + (offsetDays || 0) * 86400000);
-    var p = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(d);
-    var get = function (t) { return p.find(function (x) { return x.type === t; }).value; };
-    return get('year') + '-' + get('month') + '-' + get('day');
-  }
   function key() {
     var a = new Uint8Array(12);
     crypto.getRandomValues(a);
     return 'gc_' + Array.prototype.map.call(a, function (b) { return ('0' + b.toString(16)).slice(-2); }).join('');
   }
-  function showErr(text) {
-    var e = $('gcBuyErr');
-    e.textContent = text || '';
-    e.hidden = !text;
-    if (text && e.scrollIntoView) e.scrollIntoView({ block: 'nearest' });
+  function showErr(b, text) {
+    if (text && b) b.parentNode.insertBefore(errLine, b.nextSibling);
+    errLine.textContent = text || '';
+    errLine.hidden = !text;
+  }
+  // The button's own words and label come back as they were.
+  function setBusy(b) {
+    saved = { html: b.innerHTML, label: b.getAttribute('aria-label') };
+    busy = b;
+    b.textContent = 'Opening the payment page…';
+    b.removeAttribute('aria-label');
+    b.setAttribute('aria-busy', 'true');
+  }
+  function unbusy() {
+    var b = busy;
+    if (!b) return;
+    busy = null;
+    b.innerHTML = saved.html;
+    if (saved.label) b.setAttribute('aria-label', saved.label);
+    b.removeAttribute('aria-busy');
+    // Typed into while it was opening: say today's amount.
+    if (b === customBuy) update();
   }
   // The sale is decided by the clock, and midnight can pass while the page is
   // open: if it has turned since the page loaded, show today's prices first
@@ -160,80 +198,42 @@
     location.reload();
     return true;
   }
-  function syncWhen() {
-    var hasEmail = $('gcToEmail').value.trim() !== '';
-    $('gcWhen').hidden = !hasEmail;
-    var onDate = hasEmail && form.querySelector('input[name="gcWhen"]:checked').value === 'date';
-    $('gcSendOn').hidden = !onDate;
-  }
+  var words = {
+    bad_amount: 'Pick an amount from the cards, or one in the calculator.',
+    slow_down: 'Too many tries. Please wait a minute.',
+  };
 
   document.addEventListener('click', function (e) {
     var b = e.target.closest && e.target.closest('[data-gc-buy]');
-    if (b && !b.disabled && b.getAttribute('aria-disabled') !== 'true') {
-      var cents = b.getAttribute('data-gc-buy') === 'custom' ? amountCents() : Number(b.getAttribute('data-gc-buy')) * 100;
-      if (!cents || saleTurned()) return;
-      // Sent as dollars to the cent; the checkout prices it again itself.
-      picked = cents / 100;
-      requestKey = key();
-      $('gcBuyH').textContent = dollars(cents) + ' gift card';
-      $('gcBuySum').textContent = 'You pay ' + dollars(pay(cents)) + (pay(cents) < cents ? ' (' + pct + '% off). ' : '. ') + 'Good for ' + cfg.expiryYears + ' years, no fees.';
-      var d = $('gcSendOn');
-      d.min = today(0); d.max = today(cfg.scheduleDays);
-      if (!d.value) d.value = today(1);
-      var refund = $('gcRefund');
-      if (refund) refund.textContent = cfg.refundDays > 0 ? ' Unused cards can be refunded within ' + cfg.refundDays + ' days.' : '';
-      showErr('');
-      syncWhen();
-      dlg.showModal();
-      return;
-    }
-    if (e.target.closest && e.target.closest('[data-gc-close]')) dlg.close();
-  });
-  // Back from Stripe's page restores this one as it was: a fresh request then.
-  window.addEventListener('pageshow', function (e) { if (e.persisted) { requestKey = key(); busy = false; } });
-  form.addEventListener('input', syncWhen);
-  form.addEventListener('change', syncWhen);
-
-  form.addEventListener('submit', function (e) {
-    e.preventDefault();
-    if (busy || !picked || saleTurned()) return;
-    var email = $('gcToEmail').value.trim();
-    var onDate = email && form.querySelector('input[name="gcWhen"]:checked').value === 'date';
-    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) { showErr('Check their email address, or leave it empty to give the card yourself.'); return; }
-    var sendOn = onDate ? $('gcSendOn').value : '';
-    if (onDate && (!sendOn || sendOn < today(0) || sendOn > today(cfg.scheduleDays))) { showErr('Pick a day between today and ' + cfg.scheduleDays + ' days from now.'); return; }
-    busy = true;
-    $('gcBuyGo').textContent = 'Opening the payment page…';
-    showErr('');
+    if (!b || b.disabled || b.getAttribute('aria-disabled') === 'true') return;
+    // One at a time: a double tap opens one payment page.
+    if (busy) return;
+    var cents = b.getAttribute('data-gc-buy') === 'custom' ? amountCents() : Number(b.getAttribute('data-gc-buy')) * 100;
+    if (!cents || saleTurned()) return;
+    requestKey = key();
+    showErr(null, '');
+    setBusy(b);
     fetch('/api/gift-checkout', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        value: picked,
-        to: { name: $('gcToName').value, email: email },
-        from: { name: $('gcFromName').value },
-        message: $('gcMessage').value,
-        sendOn: sendOn,
-        requestKey: requestKey,
-      }),
+      // Sent as dollars to the cent; the checkout prices it again itself.
+      body: JSON.stringify({ value: cents / 100, requestKey: requestKey }),
     })
       .then(function (r) { return r.json().catch(function () { return {}; }); })
       .then(function (j) {
-        // Closed while it was opening: they changed their mind, so stay here.
-        if (j.url) { if (dlg.open) location.href = j.url; return; }
-        var words = {
-          bad_email: 'Check their email address, or leave it empty to give the card yourself.',
-          bad_date: 'Pick a day between today and ' + cfg.scheduleDays + ' days from now.',
-          date_needs_email: 'To send it on a date, add their email.',
-          bad_details: 'A name or the message is too long.',
-          bad_amount: 'Pick an amount from the cards, or one in the calculator.',
-          slow_down: 'Too many tries. Please wait a minute.',
-        };
-        throw new Error(words[j.error] || j.message || 'The payment page didn’t open. Nothing was charged. Please try again.');
+        // Leaving for Stripe: the button keeps saying so until the page goes.
+        if (j.url) {
+          try { location.assign(j.url); return; } catch (e) { /* a refused address: said below, and the button comes back */ }
+        }
+        var x = new Error(words[j.error] || j.message || 'The payment page didn’t open. Nothing was charged. Please try again.');
+        x.ours = true;
+        throw x;
       })
       .catch(function (x) {
-        showErr(x && x.message && !/fetch|network/i.test(x.message) ? x.message : 'No connection. Nothing was charged. Please try again.');
-      })
-      .then(function () { busy = false; $('gcBuyGo').textContent = 'Continue to payment'; });
+        unbusy();
+        showErr(b, x && x.ours ? x.message : 'No connection. Nothing was charged. Please try again.');
+      });
   });
+  // Back from Stripe's page restores this one as it was: the button usable again, a fresh request.
+  window.addEventListener('pageshow', function (e) { if (e.persisted) { requestKey = key(); unbusy(); } });
 })();

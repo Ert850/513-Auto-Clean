@@ -1,6 +1,6 @@
 import Stripe from "stripe";
 import { cincinnatiDay } from "./_pricing.mjs";
-import { GIFT_KIND, appendLog, cardFromMeta, codeFor, codeHash, dollars, giftSecret, isExpired, requestHost, sameSecret, siteUrl } from "./_giftcards.mjs";
+import { GIFT_KIND, appendLog, cardFromMeta, codeFor, codeHash, dollars, giftSecret, isExpired, requestHost, sameSecret, sendDeadline, sendRefusal, siteUrl } from "./_giftcards.mjs";
 import { buyerEmail, recipientEmail, sendMail } from "./_giftmail.mjs";
 import { limited } from "./_ratelimit.mjs";
 
@@ -127,7 +127,7 @@ export async function handler(event) {
       const shown = { ...card, sendOn: deliver === "pending" ? card.sendOn : "" };
       const msg = toRecipient
         ? recipientEmail({ card: shown, code, link })
-        : buyerEmail({ card: shown, code, link, payCents: Number(pi.metadata.gift_pay_cents) || pi.amount, toEmail: pi.metadata.gift_to_email || "", deliver });
+        : buyerEmail({ card: shown, code, link, payCents: Number(pi.metadata.gift_pay_cents) || pi.amount, toEmail: pi.metadata.gift_to_email || "", deliver, sendBy: sendRefusal(session, pi.metadata, Date.now()) === null ? sendDeadline(session) : null });
       const from = process.env.RESEND_FROM || "513 Auto Clean <onboarding@resend.dev>";
       if ((await sendMail(apiKey, from, to, msg)) !== "ok") return json(502, { error: "email_failed" });
       const metadata = { gift_log: appendLog(card.log, `${day} resent to the ${toRecipient ? "recipient" : "buyer"}`), ...req };

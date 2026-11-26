@@ -2691,6 +2691,7 @@ var gift_cards_default = {
     "checkout.enabled: true sends the buy buttons to Stripe (netlify/functions/gift-checkout.mjs). It needs STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET and GIFT_CODE_SECRET in Netlify; without them the checkout refuses and takes nothing. false shows the buttons disabled. A production build fails while mode is not off and checkout is off. Once a card has been sold, leave it true: it keeps the gift card terms and the privacy policy's Stripe entry on the site while cards are out.",
     "refundDays: an unused card can be refunded (what was paid) within this many days of buying it. The terms say it from here.",
     "scheduleDays: how far ahead a buyer can pick the day the card is emailed to the person it's for.",
+    "sendWindowHours: for how many hours after buying the card's page offers 'Send it to someone' (netlify/functions/gift-send.mjs). The card is emailed to one person, once: after that, or after this window, it can only be printed or shared by link, and Elijah can resend it from /gift-admin. A short window means a card link forwarded weeks later can't be used to email it to someone else.",
     "expiryYears: a card is good for this many years from the day it's bought, and the date is printed on it. Federal law (the CARD Act) sets 5 years as the shortest; the build refuses less. A card keeps the date it was sold with.",
     "checkout.methods: how a buyer can pay on Stripe's page. Allowed: card (includes Apple Pay and Google Pay), link, amazon_pay; each must also be switched on in the Stripe dashboard. If Stripe refuses one, the checkout falls back to card and link so a sale is never lost. Not allowed, by the providers' own rules for gift cards: Afterpay, Cash App Pay, Klarna; PayPal through Stripe is Europe only. Affirm is allowed by its rules but Elijah chose to skip it (November 24).",
     "A mistake in this file fails the build."
@@ -2706,6 +2707,7 @@ var gift_cards_default = {
   custom: { min: 25, max: 500 },
   refundDays: 30,
   scheduleDays: 60,
+  sendWindowHours: 72,
   expiryYears: 5,
   checkout: { enabled: true, methods: ["card", "link", "amazon_pay"] }
 };
@@ -2738,15 +2740,6 @@ function coverage(valueCents, sizeId, rows = coverTable()) {
   const covered2 = priced.filter((r) => r.cents <= valueCents).sort((a, b) => b.cents - a.cents);
   const above = priced.filter((r) => r.cents > valueCents && Number.isFinite(r.cents)).sort((a, b) => a.cents - b.cents)[0];
   return { covered: covered2, next: above ? { name: above.name, shortCents: above.cents - valueCents } : null };
-}
-var article = (name) => /^[AEIOU]/i.test(name) ? "an" : "a";
-function coversLine(valueCents, rows = coverTable()) {
-  const best = coverage(valueCents, VEHICLE_SIZES[0].id, rows).covered[0];
-  if (!best) return "Toward any detail or add-on";
-  const row = rows.find((r) => r.name === best.name);
-  const sizes = VEHICLE_SIZES.filter((s) => (row.cents[s.id] ?? Infinity) <= valueCents).map((s) => SIZE_WORDS[s.id]);
-  const who = sizes.length === VEHICLE_SIZES.length ? "any vehicle" : `a ${sizes.join(", ")}`;
-  return `Covers ${article(best.name)} ${best.name} for ${who}, tax included`;
 }
 var CHECKOUT_METHODS = ["card", "link", "amazon_pay"];
 var MIN_EXPIRY_YEARS = 5;
@@ -2785,6 +2778,7 @@ function giftCardProblems(cfg) {
   if (!Number.isInteger(cfg.expiryYears) || cfg.expiryYears < MIN_EXPIRY_YEARS || cfg.expiryYears > 50) out.push(`expiryYears must be a whole number of years, at least ${MIN_EXPIRY_YEARS} (federal law)`);
   if (!Number.isInteger(cfg.refundDays) || cfg.refundDays < 0 || cfg.refundDays > 365) out.push("refundDays must be a whole number of days, 0 to 365");
   if (!Number.isInteger(cfg.scheduleDays) || cfg.scheduleDays < 1 || cfg.scheduleDays > 365) out.push("scheduleDays must be a whole number of days, 1 to 365");
+  if (!Number.isInteger(cfg.sendWindowHours) || cfg.sendWindowHours < 1 || cfg.sendWindowHours > 24 * 30) out.push("sendWindowHours must be a whole number of hours, 1 to 720");
   return out;
 }
 var GIFT_CARDS = gift_cards_default;
@@ -3748,7 +3742,6 @@ export {
   copyFor,
   coverTable,
   coverage,
-  coversLine,
   dollarsToCents,
   driveTooFar,
   estimateOneWayMinutes,

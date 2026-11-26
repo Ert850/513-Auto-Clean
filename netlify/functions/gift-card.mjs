@@ -1,5 +1,5 @@
 import Stripe from "stripe";
-import { GIFT_KIND, cardFromMeta, codeFor, ensureIssued, giftSecret, isExpired } from "./_giftcards.mjs";
+import { GIFT_KIND, cardFromMeta, codeFor, ensureIssued, giftSecret, isExpired, sendRefusal } from "./_giftcards.mjs";
 import { GIFT_CARDS, cincinnatiDay, expiresOn } from "./_pricing.mjs";
 import { limited } from "./_ratelimit.mjs";
 
@@ -69,6 +69,9 @@ export async function handler(event) {
       expired: isExpired({ expires }, today),
       // Only while it's still to be sent: the person it's for opens this page too.
       sendOn: meta.gift_deliver === "pending" ? card.sendOn : "",
+      // Whether the page offers "Send it to someone" (gift-send.mjs): a yes or
+      // no only, never who it went to or why not.
+      canSend: !!process.env.RESEND_API_KEY && !!meta.gift_code_hash && sendRefusal(session, meta, Date.now()) === null,
     });
   } catch (err) {
     if (err?.statusCode === 404 || err?.code === "resource_missing") return json(404, { error: "not_found" });

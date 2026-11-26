@@ -1922,19 +1922,21 @@ main > .bookpage:first-child { padding-block: clamp(16px, 2.2vw, 30px); }
 .gc-face-mark { box-sizing: border-box; width: 20px; height: 26px; padding: 2px 3px; object-fit: cover; object-position: center 47%; background: #f5f6f3; border-radius: 5px; }
 .gc-face-value { font-family: var(--font-display); font-weight: 800; font-size: 2.6rem; line-height: 1; letter-spacing: -.03em; margin-top: .55rem; }
 .gc-face-label { font-size: .72rem; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--text-inv-soft); margin-top: .2rem; }
-.gc-off {
-  position: absolute; top: .85rem; right: .85rem; background: var(--red); color: #fff;
-  font-weight: 800; font-size: .82rem; letter-spacing: .04em; text-transform: uppercase;
-  padding: .32rem .62rem; border-radius: 999px; box-shadow: 0 4px 14px rgba(196,20,20,.45);
-}
-.gc-tier .gc-face + h2 + .gc-price { margin-top: .95rem; }
+/* A tile: the value as big as the card allows, "Gift card" in the top corner, the price in the button
+   (approved mock, docs/GIFT-TILE-OPTIONS-2.png). Container units, so it fits from 320 px up. */
+.gc-tier .gc-face { container-type: inline-size; }
+.gc-tier .gc-face-label { position: absolute; top: calc(.9rem + 5px); right: 1rem; margin: 0; }
+.gc-tier .gc-face-value { font-size: clamp(2.8rem, 27cqi, 5rem); margin-top: .7rem; }
+.gc-tier .gc-face + h2 + .svc-foot { margin-top: 1rem; container-type: inline-size; }
+.gc-tier [data-gc-buy] { padding: .8rem 1rem; }
+.gc-buy-line { display: inline-flex; align-items: baseline; gap: .5rem; }
+.gc-buy-for { font-size: clamp(1rem, 6cqi, 1.2rem); font-weight: 600; }
+.gc-buy-was { font-size: clamp(1.05rem, 6.6cqi, 1.3rem); font-weight: 600; color: var(--text-soft); text-decoration: line-through; text-decoration-color: var(--red); text-decoration-thickness: 2px; }
+.gc-buy-now { font-family: var(--font-display); font-size: clamp(1.6rem, 11cqi, 2.15rem); font-weight: 800; letter-spacing: -.02em; line-height: 1; }
 .gc-price { display: flex; flex-wrap: wrap; align-items: baseline; gap: .15rem .55rem; margin: .45rem 0 .55rem; }
 .gc-pay { font-size: .88rem; font-weight: 600; color: var(--text-soft); }
 .gc-price strong { font-family: var(--font-display); font-size: 2rem; font-weight: 800; line-height: 1; color: var(--text); }
-/* The value, struck through in the brand red so the discount reads at a glance. */
-.gc-price s { font-size: 1.15rem; font-weight: 700; color: var(--text-soft); text-decoration: line-through; text-decoration-color: var(--red); text-decoration-thickness: 2.5px; }
 .gc-save { font-size: .9rem; font-weight: 800; color: var(--text); }
-.gc-covers { font-size: .95rem; color: var(--text-soft); margin: 0 0 1.1rem; }
 .gc-calc { background: var(--paper-2); border: 1px solid var(--line); border-radius: var(--r-lg); padding: 1.4rem 1.3rem 1.2rem; box-shadow: var(--shadow-sm); }
 .gc-calc h2 { font-size: 1.35rem; margin: 0 0 .9rem; }
 .gc-calc .field { margin-bottom: .3rem; }
@@ -1951,11 +1953,21 @@ main > .bookpage:first-child { padding-block: clamp(16px, 2.2vw, 30px); }
 .gc-size input:checked + span { background: var(--ink); color: #fff; border-color: var(--ink); }
 .gc-size input:focus-visible + span { outline: 2px solid var(--red); outline-offset: 2px; }
 .gc-list { list-style: none; margin: 0; padding: 0; }
-.gc-list li { display: flex; justify-content: space-between; gap: .8rem; padding: .5rem 0; border-top: 1px solid var(--line); font-size: .93rem; }
+.gc-list li { border-top: 1px solid var(--line); font-size: .93rem; }
+/* A row is a button that sets the card to its price (Emmett, November 26). The hover fill reaches past the text so it reads as a row. */
+.gc-row { display: flex; justify-content: space-between; align-items: baseline; gap: .8rem; padding: .5rem 0; }
+.gc-pick { width: calc(100% + .9rem); margin: 0 -.45rem; padding: .5rem .45rem; background: none; border: 0; border-radius: 8px; font: inherit; color: inherit; text-align: left; cursor: pointer; }
+@media (hover: hover) { .gc-pick:hover { background: rgba(11,14,19,.05); } }
+.gc-pick:focus-visible { outline: 2px solid var(--red); outline-offset: -2px; }
+.gc-pick[aria-current="true"] { background: rgba(11,14,19,.07); }
 .gc-list b { font-weight: 600; min-width: 0; }
 .gc-list em { font-style: normal; font-weight: 600; white-space: nowrap; }
-.gc-list .gc-none { color: var(--text-soft); }
-.gc-next { font-size: .88rem; color: var(--text-soft); margin: .1rem 0 0; padding-top: .5rem; border-top: 1px solid var(--line); }
+.gc-list .gc-none { color: var(--text-soft); padding: .5rem 0; }
+.gc-next { font-size: .88rem; color: var(--text-soft); margin: .1rem 0 0; border-top: 1px solid var(--line); }
+.gc-next .gc-pick { color: var(--text-soft); text-decoration: underline; text-decoration-color: var(--line); text-underline-offset: 3px; }
+@media (hover: hover) { .gc-next .gc-pick:hover { color: var(--text); } }
+/* Save in the calculator is red (Emmett, November 26): the one place a good answer is red, besides the travel map's top band. */
+.gc-calc-price .gc-save { color: var(--red); }
 .gc-calc > .btn { margin: 1rem 0 .7rem; }
 .gc-bad :is(.gc-calc-price, .gc-out, [data-gc-buy]) { opacity: .35; }
 .gc-small { font-size: .78rem; color: var(--text-soft); margin: 0; line-height: 1.5; }
@@ -1964,6 +1976,8 @@ main > .bookpage:first-child { padding-block: clamp(16px, 2.2vw, 30px); }
 .gc-after { margin-top: .4rem; }
 .gc-terms { list-style: none; margin: 0; padding: 0; display: grid; gap: .45rem 1.4rem; font-size: .92rem; color: var(--text-soft); }
 .gc-terms li { display: flex; align-items: baseline; gap: .5rem; }
+/* A line with a link keeps its words in one <span>: as flex items, the text, the link and ")" split into columns at 375 px (November 26). */
+.gc-terms a { color: var(--red-deep); font-weight: 600; }
 .gc-terms li::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--text-soft); flex: none; transform: translateY(-2px); }
 .gc-soon { margin: .8rem 0 0; font-weight: 600; }
 .gc-steps { list-style: none; margin: 1.6rem 0 0; padding: 0; display: grid; gap: .8rem; counter-reset: gcstep; }
@@ -1974,34 +1988,12 @@ main > .bookpage:first-child { padding-block: clamp(16px, 2.2vw, 30px); }
 .gc-steps span { font-size: .92rem; color: var(--text-soft); }
 .gc-ask { margin: 1.2rem 0 0; font-size: .95rem; }
 .gc-ask a { color: var(--red-deep); font-weight: 700; }
-/* Buying: who it's for, then Stripe (js/giftcards.js). */
-.gc-dialog { margin: auto; overflow: auto; overscroll-behavior: contain; width: min(30rem, calc(100vw - 2rem)); max-height: calc(100dvh - 2rem); border: 0; border-radius: var(--r-lg); padding: 0; box-shadow: var(--shadow-lg); color: var(--text); background: var(--paper-2); }
-.gc-dialog::backdrop { background: rgba(11,14,19,.55); }
-.gc-buyform { padding: 1.4rem 1.3rem 1.2rem; }
-.gc-buy-top { display: flex; align-items: flex-start; justify-content: space-between; gap: .8rem; }
-.gc-buyform h2 { font-size: 1.35rem; margin: 0 0 .25rem; }
-.gc-x { flex: none; width: 2.2rem; height: 2.2rem; border: 1px solid var(--line); border-radius: 50%; background: var(--paper); font-size: 1.3rem; line-height: 1; cursor: pointer; color: var(--text); }
-.gc-hint { font-size: .82rem; color: var(--text-soft); margin: .35rem 0 0; }
-.gc-buy-note a { color: var(--red-deep); font-weight: 700; }
-.gc-buy-sum { color: var(--text-soft); margin: 0 0 1rem; }
-.gc-buyform .field { margin-bottom: .85rem; }
-.gc-buyform .field label i { font-style: normal; font-weight: 500; color: var(--text-soft); }
-.gc-when { border: 0; padding: 0; margin: -.2rem 0 .9rem; display: grid; gap: .45rem; }
-.gc-when legend { font-weight: 600; font-size: .88rem; margin-bottom: .45rem; padding: 0; }
-.gc-when label { display: flex; align-items: center; gap: .5rem; font-size: .95rem; cursor: pointer; }
-.gc-when input[type="radio"] { width: auto; margin: 0; accent-color: var(--ink); }
-.gc-when input[type="date"] { font: inherit; padding: .6rem .7rem; border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--paper); }
-.gc-buy-note { font-size: .85rem; color: var(--text-soft); margin: .2rem 0 .8rem; }
-.gc-buy-err { color: var(--red-deep); font-weight: 600; margin: 0 0 .8rem; }
-.gc-buy-actions { display: grid; gap: .5rem; position: sticky; bottom: 0; margin: 0 -1.3rem -1.2rem; padding: .8rem 1.3rem 1.2rem; background: var(--paper-2); border-top: 1px solid var(--line); }
-/* The form scrolls on a laptop window too: its scrollbar stays visible (CLAUDE.md, scrollable boxes),
-   and Continue stays pinned at the bottom (validation pass 2: it sat below 790 px). */
-.gc-dialog::-webkit-scrollbar { width: 10px; }
-.gc-dialog::-webkit-scrollbar-thumb { background: #c9ccd2; border-radius: 10px; border: 2px solid var(--paper-2); }
-@supports (-moz-appearance: none) { .gc-dialog { scrollbar-width: thin; scrollbar-color: #c9ccd2 transparent; } }
-.gc-buyform .field { margin-bottom: .7rem; }
+/* Buying is one click (js/giftcards.js): anything that goes wrong is said on one line under the button clicked. */
+.gc-buy-err { color: var(--red-deep); font-weight: 600; font-size: .92rem; margin: .55rem 0 0; }
+.gc-calc > .gc-buy-err { margin: -.2rem 0 .7rem; }
 /* One card (gift-certificate.html, js/giftcert.js). */
 .gc-thanks { background: var(--paper-2); border: 1px solid var(--line); border-left: 3px solid var(--ink); border-radius: var(--r-sm); padding: .8rem 1rem; margin: 0 0 1.4rem; }
+.gc-thanks a { color: var(--red-deep); font-weight: 700; }
 .gc-cert { max-width: 34rem; }
 .gc-face-big { min-height: 13rem; padding: 1.3rem 1.4rem 1.2rem; border-radius: var(--r-lg); }
 .gc-face-big .gc-face-value { font-size: 3.6rem; }
@@ -2021,13 +2013,28 @@ main > .bookpage:first-child { padding-block: clamp(16px, 2.2vw, 30px); }
 .gc-cert-qr-text span { color: var(--text-soft); font-size: .92rem; }
 .gc-cert-note { color: var(--text-soft); margin: .6rem 0 0; }
 .gc-cert-actions { display: flex; flex-wrap: wrap; gap: .6rem; margin: 1.3rem 0 0; }
+/* "Send it to someone": who the card is for, asked on its page after paying (js/giftcert.js, /api/gift-send). */
+.gc-send { max-width: 34rem; margin: 1.3rem 0 0; background: var(--paper-2); border: 1px solid var(--line); border-radius: var(--r-lg); padding: 1.3rem 1.3rem 1.2rem; box-shadow: var(--shadow-sm); }
+.gc-send h2 { font-size: 1.3rem; margin: 0 0 .3rem; }
+.gc-send-sub { font-size: .9rem; color: var(--text-soft); margin: 0 0 1rem; }
+.gc-sendform .field { margin-bottom: .8rem; }
+.gc-sendform .field label i { font-style: normal; font-weight: 500; color: var(--text-soft); }
+.gc-when { border: 0; padding: 0; margin: 0 0 .9rem; display: grid; gap: .45rem; }
+.gc-when legend { font-weight: 600; font-size: .88rem; margin-bottom: .45rem; padding: 0; }
+.gc-when label { display: flex; align-items: center; gap: .5rem; font-size: .95rem; cursor: pointer; }
+.gc-when input[type="radio"] { width: auto; margin: 0; accent-color: var(--ink); }
+.gc-when input[type="date"] { font: inherit; padding: .6rem .7rem; border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--paper); }
+.gc-sendform .gc-buy-err { margin: 0 0 .7rem; }
+.gc-send-done { font-weight: 700; margin: 0; }
+.gc-send-fix { font-weight: 500; color: var(--text-soft); }
+.gc-send-fix a { color: var(--red-deep); font-weight: 700; }
 .gc-cert-how { margin-top: 1.8rem; max-width: 40rem; }
 .gc-cert-how h2 { font-size: 1.25rem; margin: 0 0 .6rem; }
 .gc-cert-how ul { margin: 0; padding-left: 1.1rem; color: var(--text-soft); }
 .gc-cert-how li { margin-bottom: .45rem; }
 .gc-cert-how a { color: var(--red-deep); font-weight: 700; }
 @media print {
-  .topbar, .header, .footer, .mobile-bar, .mobile-menu, .skip-link, .gc-thanks, .gc-cert-actions, #bookFunnel { display: none !important; }
+  .topbar, .header, .footer, .mobile-bar, .mobile-menu, .skip-link, .gc-thanks, .gc-cert-actions, .gc-send, #bookFunnel { display: none !important; }
   .gc-certpage { padding: 0 !important; }
   .gc-face { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   .gc-cert-qr { break-inside: avoid; }

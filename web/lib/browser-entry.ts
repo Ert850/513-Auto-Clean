@@ -18,7 +18,7 @@ import {
 import { cincinnatiDay, coverage, coverTable, dollarsToCents, GIFT_CARDS as GIFT_ALL, saleEndedNext, saleOn } from "./catalog/giftCards.js";
 
 /** Only what the page needs: not the file's notes (pre-merge pass). */
-const GIFT_CARDS = { mode: GIFT_ALL.mode, sale: GIFT_ALL.sale, scheduleDays: GIFT_ALL.scheduleDays, refundDays: GIFT_ALL.refundDays, expiryYears: GIFT_ALL.expiryYears };
+const GIFT_CARDS = { mode: GIFT_ALL.mode, sale: GIFT_ALL.sale, scheduleDays: GIFT_ALL.scheduleDays };
 import {
   ADDONS,
   addonBlockedReason,

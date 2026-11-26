@@ -5,6 +5,11 @@
  * never see it: the session is what opens the card.
  *
  * Every word from the card goes in as text, never as HTML.
+ *
+ * "Send it to someone": buying is one click, so who the card is for is asked
+ * here, after paying. Shown only while the server says it can still be sent
+ * (canSend: once, to one person, within the setting's hours), and sent to
+ * /api/gift-send, which checks all of that again.
  */
 (function () {
   'use strict';
@@ -71,9 +76,22 @@
     return wrap;
   }
 
+  var shown = null;
+  var shownFace = null;
+  // "For Sam, from Alex" and the message on the card's face: drawn again after a send, without a reload.
+  function drawTo(c, face) {
+    face.querySelectorAll('.gc-face-to, .gc-face-msg').forEach(function (e) { e.remove(); });
+    if (c.toName || c.fromName) {
+      face.appendChild(el('span', 'gc-face-to', (c.toName ? 'For ' + c.toName : '') + (c.toName && c.fromName ? ', from ' : c.fromName ? 'From ' : '') + (c.fromName || '')));
+    }
+    if (c.message) face.appendChild(el('span', 'gc-face-msg', '“' + c.message + '”'));
+  }
+
   function draw(c) {
     box.textContent = '';
     var face = el('div', 'gc-face gc-face-big');
+    shown = c;
+    shownFace = face;
     var brand = el('span', 'gc-face-brand');
     var mark = el('img', 'gc-face-mark');
     mark.src = 'images/logo-mark.png'; mark.alt = ''; mark.width = 20; mark.height = 26;
@@ -84,10 +102,7 @@
     face.appendChild(el('span', 'gc-face-label', 'Gift card'));
     face.appendChild(el('span', 'gc-face-code', c.code));
     if (c.expires) face.appendChild(el('span', 'gc-face-exp', 'Good through ' + longDate(c.expires)));
-    if (c.toName || c.fromName) {
-      face.appendChild(el('span', 'gc-face-to', (c.toName ? 'For ' + c.toName : '') + (c.toName && c.fromName ? ', from ' : c.fromName ? 'From ' : '') + (c.fromName || '')));
-    }
-    if (c.message) face.appendChild(el('span', 'gc-face-msg', '“' + c.message + '”'));
+    drawTo(c, face);
     box.appendChild(face);
 
     var state = null;
@@ -103,7 +118,156 @@
     if (c.sendOn) box.appendChild(el('p', 'gc-cert-note', 'We’ll email it to ' + (c.toName || 'them') + ' on ' + longDay(c.sendOn) + '.'));
     actions.hidden = false;
     how.hidden = false;
+    if (c.canSend) openSend();
     if (isNew && thanks) thanks.hidden = false;
+  }
+
+  /* ---------------- send it to someone ---------------- */
+
+  var send = document.getElementById('gcSend');
+  var form = document.getElementById('gcSendForm');
+  var $ = function (id) { return document.getElementById(id); };
+  var requestKey = null;
+  var sending = false;
+  var P = window.ACPricing;
+  // How far ahead a day can be picked: the setting, through the pricing bundle (the server checks it too).
+  var aheadDays = P && P.GIFT_CARDS ? P.GIFT_CARDS.scheduleDays : 0;
+
+  function today(offsetDays) {
+    var d = new Date(Date.now() + (offsetDays || 0) * 86400000);
+    var p = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(d);
+    var get = function (t) { return p.find(function (x) { return x.type === t; }).value; };
+    return get('year') + '-' + get('month') + '-' + get('day');
+  }
+  function key() {
+    var a = new Uint8Array(12);
+    crypto.getRandomValues(a);
+    return 'gs_' + Array.prototype.map.call(a, function (b) { return ('0' + b.toString(16)).slice(-2); }).join('');
+  }
+  function sendErr(text) {
+    var e = $('gcSendErr');
+    e.textContent = text || '';
+    e.hidden = !text;
+  }
+  function onDate() {
+    return form.querySelector('input[name="gcWhen"]:checked').value === 'date';
+  }
+  function syncWhen() { $('gcSendOn').hidden = !onDate(); }
+  function dayWords() {
+    return aheadDays ? 'Pick a day between today and ' + aheadDays + ' days from now.' : 'Pick a day from today on.';
+  }
+
+  function openSend() {
+    if (!send || !form) return;
+    var d = $('gcSendOn');
+    d.min = today(0);
+    if (aheadDays) d.max = today(aheadDays);
+    if (!d.value) d.value = today(1);
+    requestKey = key();
+    syncWhen();
+    send.hidden = false;
+    var link = $('gcThanksSend');
+    if (link) link.hidden = false;
+    // One red button on the screen: Print steps back while the form's Email the card is there.
+    var print = $('gcPrint');
+    if (print) print.className = print.className.replace('btn-primary', 'btn-ghost');
+  }
+
+  // Replaces the form once it's done: who it went to, and when, with a way to
+  // fix a typo (Contact us: Elijah resends from /gift-admin). The card's face
+  // says who it's for at once, and Print is the red button again.
+  function sent(j) {
+    var to = j.to || $('gcToEmail').value.trim();
+    var words = j.sendOn ? 'We’ll email it to ' + to + ' on ' + longDay(j.sendOn) + '.'
+      : j.retrying ? 'It’s on its way to ' + to + '. If it can’t go right now, we try again each hour' + (j.hours ? ' from ' + j.hours + ', Cincinnati time' : '') + '.'
+      : 'Sent to ' + to + '.';
+    if (shown && shownFace) {
+      shown.toName = $('gcToName').value.trim();
+      shown.fromName = $('gcFromName').value.trim();
+      shown.message = $('gcMessage').value.trim();
+      drawTo(shown, shownFace);
+    }
+    $('gcSendSub').remove();
+    var done = el('p', 'gc-send-done', words + ' ');
+    var fix = el('span', 'gc-send-fix', 'Wrong address? ');
+    var a = el('a', '', 'Contact us');
+    a.href = 'contact.html';
+    fix.appendChild(a);
+    fix.appendChild(document.createTextNode('.'));
+    done.appendChild(fix);
+    form.replaceWith(done);
+    var link = $('gcThanksSend');
+    if (link) link.hidden = true;
+    var print = $('gcPrint');
+    if (print) print.className = print.className.replace('btn-ghost', 'btn-primary');
+  }
+
+  if (form) {
+    form.addEventListener('change', syncWhen);
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      if (sending || !s) return;
+      var email = $('gcToEmail').value.trim();
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) { sendErr(email ? 'Check their email address.' : 'Add their email address.'); $('gcToEmail').focus(); return; }
+      var sendOn = onDate() ? $('gcSendOn').value : '';
+      if (onDate() && (!sendOn || sendOn < today(0) || (aheadDays && sendOn > today(aheadDays)))) { sendErr(dayWords()); $('gcSendOn').focus(); return; }
+      sending = true;
+      sendErr('');
+      var go = $('gcSendGo');
+      go.textContent = 'Sending…';
+      go.setAttribute('aria-busy', 'true');
+      attempt(email, sendOn, go, 0);
+    });
+  }
+
+  // "busy": the same request is still being written on the server (a double
+  // tap). Asked again in a moment with the same key, which answers with what
+  // that first one did, never a second email.
+  function attempt(email, sendOn, go, n) {
+    fetch('/api/gift-send', {
+      method: 'POST',
+      cache: 'no-store',
+      headers: { 'Content-Type': 'application/json' },
+      // In the body, never the address: the session opens the card.
+      body: JSON.stringify({
+        s: s,
+        to: { name: $('gcToName').value, email: email },
+        from: { name: $('gcFromName').value },
+        message: $('gcMessage').value,
+        sendOn: sendOn,
+        requestKey: requestKey,
+      }),
+    })
+      .then(function (r) { return r.json().catch(function () { return {}; }); })
+      .then(function (j) {
+        if (j.ok) { sent(j); return; }
+        if (j.error === 'busy' && n < 5) { setTimeout(function () { attempt(email, sendOn, go, n + 1); }, 1500); return 'again'; }
+        var words = {
+          bad_email: 'Check their email address.',
+          need_email: 'Add their email address.',
+          bad_date: dayWords(),
+          date_needs_email: 'Add their email address.',
+          bad_details: 'A name or the message is too long.',
+          already_sent: 'This card has already been sent. Print it or share the link instead.',
+          too_late: 'This card can’t be emailed from here any more. Print it or share the link instead.',
+          expired: 'This card has expired.',
+          not_active: 'This card can’t be sent. Please contact us.',
+          not_paid: 'Your payment is still going through. Please try again in a minute.',
+          slow_down: 'Too many tries. Please wait a minute.',
+        };
+        // Trying again sends the same request: it can't make a second email.
+        var x = new Error(words[j.error] || 'We couldn’t confirm it just now. Please try again.');
+        x.ours = true;
+        throw x;
+      })
+      .catch(function (x) {
+        sendErr(x && x.ours ? x.message : 'No connection. Please try again.');
+      })
+      .then(function (again) {
+        if (again === 'again') return;
+        sending = false;
+        if (document.body.contains(go)) { go.textContent = 'Email the card'; go.removeAttribute('aria-busy'); }
+      });
   }
 
   var tries = 0;
