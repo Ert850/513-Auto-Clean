@@ -3,7 +3,7 @@
  * Same shell, escaping and sender as the booking emails (send-confirmation.mjs).
  * No em-dashes, and every amount from the card itself.
  */
-import { SHELL, esc } from "./send-confirmation.mjs";
+import { SHELL, esc, redact } from "./send-confirmation.mjs";
 import { dollars, longDate } from "./_giftcards.mjs";
 
 const pause = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -26,12 +26,12 @@ export async function sendMail(apiKey, from, to, { subject, html }, tries = 3) {
         body: JSON.stringify({ from, to: [to], subject, html }),
       });
     } catch (e) {
-      console.error("resend network", String(e).slice(0, 200));
+      console.error("resend network", redact(String(e)).slice(0, 200));
       return "busy";
     }
     if (res.ok) return "ok";
     if (res.status === 429 && i < tries - 1) { await pause(1100 * (i + 1)); continue; }
-    console.error("resend", res.status, (await res.text()).slice(0, 300));
+    console.error("resend", res.status, redact(await res.text()).slice(0, 300));
     return res.status === 429 || res.status >= 500 ? "busy" : "refused";
   }
   return "busy";

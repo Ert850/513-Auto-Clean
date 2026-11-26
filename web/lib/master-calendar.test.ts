@@ -12,7 +12,7 @@ import { MASTER_CALENDAR, checkMasterCalendar, masterTitle } from "./availabilit
 import { localDayStart, localTimeOnDay } from "./time/zone.js";
 import { priceFromWire, type WireCart } from "./server-entry.js";
 // @ts-expect-error: plain ESM Netlify function, no types
-import { bookingEvents, handler } from "../../netlify/functions/send-confirmation.mjs";
+import { bookingEvents, handler, redact } from "../../netlify/functions/send-confirmation.mjs";
 // @ts-expect-error: plain ESM Netlify function, no types
 import { reconcile, handler as mirrorHandler } from "../../netlify/functions/jobs-mirror.mjs";
 // @ts-expect-error: plain ESM Netlify function, no types
@@ -332,6 +332,42 @@ describe("the copy at booking time (send-confirmation)", () => {
       expect(copies[1]!.description).not.toMatch(/^WHO /m);
       expect(copies[1]!.extendedProperties?.private?.["bookingKey"]).toBe("km:day2");
     } finally { g.restore(); }
+  });
+});
+
+describe("the booking's own log lines (send-confirmation)", () => {
+  const bookingLines = () => logs.filter((l) => l.startsWith("[booking]"));
+
+  it("one [booking] line per booking: key, detailer, days, calendar, both emails, and no customer data", async () => {
+    const g = google();
+    try {
+      await book();
+      await book(payload({ idempotencyKey: "key-2", cart: { ...payload().cart, slot: undefined } }));
+    } finally { g.restore(); }
+    expect(bookingLines()).toEqual([
+      "[booking] ok key=key-1 detailer=Kris days=1 calendar=written owner=sent customer=sent",
+      "[booking] ok key=key-2 detailer=Kris days=0 calendar=request owner=sent customer=sent",
+    ]);
+    expect(logs.join("\n")).not.toMatch(/5135551212|ada@example\.com|Ada Test|Main St/);
+  });
+
+  it("a customer email Resend refuses: the line says check, and Resend's answer is logged without the address or phone", async () => {
+    const g = google();
+    g.refuseMailTo.add("ada@example.com");
+    let r;
+    try { r = await book(); } finally { g.restore(); }
+    expect(JSON.parse(r!.body)).toMatchObject({ owner: true, customer: false });
+    expect(bookingLines()).toEqual(["[booking] check key=key-1 detailer=Kris days=1 calendar=written owner=sent customer=failed"]);
+    const resend = logs.filter((l) => l.startsWith("resend 422"));
+    expect(resend).toHaveLength(1);
+    expect(resend[0]).toContain("[email]");
+    expect(logs.join("\n")).not.toMatch(/ada@example\.com|owner@example\.com|555 1212|5135551212/);
+  });
+
+  it("redact takes out email addresses and phone numbers, and nothing else", () => {
+    expect(redact('{"message":"Invalid `to` field: ada.test+x@example.co.uk, call (513) 555-1212 or +1 513 555 1212","statusCode":422}'))
+      .toBe('{"message":"Invalid `to` field: [email], call [phone] or [phone]","statusCode":422}');
+    expect(redact("http 429 rate limited, retry in 2 seconds")).toBe("http 429 rate limited, retry in 2 seconds");
   });
 });
 
