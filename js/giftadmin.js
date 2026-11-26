@@ -113,6 +113,29 @@
     if (keyIn.value) { current = null; call({ action: 'lookup' }); return; }
     msg.textContent = 'Card scanned. Enter your key and tap Look up.';
     keyIn.focus();
+    lookUpWhenFilled(c);
+  }
+
+  /* The phone's password manager often fills the key a moment after the page
+     opens, so a scan found no key and needed a second Look up tap (November 25).
+     Watch the box for a few seconds and look the card up once it's filled.
+     Typing stops the wait: a lookup per keystroke would send a wrong key and
+     run into the server's "too many tries". */
+  function lookUpWhenFilled(c) {
+    var left = 20;
+    var t = setInterval(check, 250);
+    keyIn.addEventListener('change', check);
+    keyIn.addEventListener('keydown', stop);
+    function stop() {
+      clearInterval(t);
+      keyIn.removeEventListener('change', check);
+      keyIn.removeEventListener('keydown', stop);
+    }
+    function check() {
+      if (!keyIn.value) { if (--left <= 0) stop(); return; }
+      stop();
+      if (codeIn.value === c && !current) call({ action: 'lookup' });
+    }
   }
   fromScan();
   window.addEventListener('hashchange', fromScan);

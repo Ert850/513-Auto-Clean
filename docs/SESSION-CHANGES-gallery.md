@@ -87,3 +87,17 @@ Emmett: no new pairs until Elijah's better photos replace them. The 5 candidates
 - **Test:** on GitHub, a commit's author shows the private address; `git log --format=%ae origin/main | sort -u` lists no personal address.
 - **Not covered:** GitHub's pull request copies (`refs/pull/*`) keep the old commits until GitHub Support clears them (same request as the GPS photos). Emmett's GitHub profile also shows the UC address as its public email, and only Emmett can change that.
 - **Decided (Emmett, November 26, after the push):** no GitHub Support request, for the photos or the email. He is fine with his address on his profile and commits; the repo-local `noreply` setting stays as a default only.
+
+## Contact form fine print matches the form again (November 26, PR #14)
+
+- **What:** "No spam, ever. We only use your info to answer your question" became "We use your info to answer your question the way you pick, and send anything else, like texts or offers, only if you tick those boxes." The unused quote wording got the same change. Source: `config/contact-form.json`; the home page's copy of the section follows at build.
+- **Root cause:** the texts and offers boxes were added to every Contact wording on November 26, and the fine print under the button wasn't re-read against them. "Only if you tick" can't say texts alone: Text is the default answer to "Best way to reach you", so someone who asks for a text reply gets one without ticking.
+- **Test:** `/contact` and the home page's question form show the new line under Send My Question; `a2p.test.ts` T2 (fixture updated).
+
+## Gift card lookup after a scan no longer needs a second tap (November 26, PR #14)
+
+- **What:** after a QR scan with no key in the box, `js/giftadmin.js` watches the key box for 5 seconds and looks the card up once it fills.
+- **Root cause:** the scan handler checked the key once, on page load, and the phone's password manager fills it a moment later.
+- **Why not on every input:** typing fires one per keystroke; each would send a wrong key and run into the server's "too many tries". Any keydown ends the wait, so a typed key still uses Look up.
+- **Test (done in Chrome with the request stubbed):** a key filled 0.7 s after the scan sends one lookup with the scanned code; typed keys send none; after 5 s a late fill sends none. On a phone: scan a certificate's QR code, let the password manager fill the key, and the card shows without tapping Look up.
+

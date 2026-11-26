@@ -116,7 +116,7 @@ describe("T2: the Contact form", () => {
   const cfg = loadContactForm();
   const as = (mode: string) => ({ ...cfg, mode });
 
-  it("question mode is the form exactly as it was on November 12, plus the standard boxes", () => {
+  it("question mode is the form exactly as it was on November 12, plus the standard boxes and the November 26 fine print", () => {
     expect(contactHead(as("question"))).toBe(read("web/lib/site/fixtures/contact-question-head.html"));
     // The boxes and their compact spacing are on every mode since November 26 (Emmett); the rest is byte for byte.
     const card = contactCard(as("question"));
@@ -171,7 +171,7 @@ describe("T2: the Contact form", () => {
     }
     expect(card).toContain('value="QUOTE REQUEST from 513autoclean.com"');
     expect(card).toMatch(/<button type="submit"[^>]*>\s*Request Quote/);
-    expect(card).toContain("No spam, ever. We only use your info to send your quote.");
+    expect(card).toContain("No spam, ever. We use your info to send your quote the way you pick, and send anything else, like texts or offers, only if you tick those boxes.");
     expect(contactHead(as("quote"))).toContain("<h1>Request a quote</h1>");
   });
 
