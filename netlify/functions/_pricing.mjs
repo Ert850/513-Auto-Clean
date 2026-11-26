@@ -2073,7 +2073,7 @@ var LEGAL = {
   // not exist, and the record of what was agreed names the terms' date.
   // 2026-11-11 (later): A/B tests (config/experiments.json) remember which
   // version a visitor saw and send it with a booking. Same day, nothing live.
-  privacyEffective: "2026-11-25"
+  privacyEffective: "2026-11-26"
   // 2026-11-25: Amazon Pay named while it is offered for gift cards.
   // 2026-11-23: Stripe for gift cards, and what a gift card purchase collects (giftCardSales).
   // 2026-11-14: opt-in data "will not be shared with any third parties or affiliates" (no carve-out), and a text messaging provider in the list.
@@ -3018,14 +3018,23 @@ var PROCESSORS = [
   { name: "Google Maps (Routes)", does: "measures the drive to your address so we can price travel. This happens from our server, with your address, not from your browser.", capability: "measuredTravel" },
   // Bookings are written to it too (send-confirmation.mjs, _gcal.mjs), on a
   // calendar shared as free/busy only, so the public sees busy times and
-  // never a booking's details (session audit, November 11).
-  { name: "Google Calendar", does: "holds our availability and our schedule. When you book, the job goes onto our booking calendar with your name, phone, email, address and notes, so we know where to be. That calendar is private: anyone else sees only that the time is taken. Your browser reads only our open times.", capability: "liveCalendar" },
+  // never a booking's details (session audit, November 11). JobsSync copies a
+  // line per job into Elijah's job records sheet (tools/jobs-sync): the title,
+  // which starts with the customer's name, the service, ZIP and price. The
+  // calendars and that sheet are shared with the agency below (November 26).
+  { name: "Google Calendar", does: "holds our availability and our schedule. When you book, the job goes onto our booking calendar with your name, phone, email, address and notes, so we know where to be, and a line for it (your name, the service, your ZIP code and the price) goes into the spreadsheet where we keep our job records (Google Sheets). Only we and the providers on this list can see them; anyone else sees only that the time is taken. Your browser reads only our open times.", capability: "liveCalendar" },
   { name: "Stripe", does: "takes card payments and keeps your card on file. Card details go straight to Stripe over an encrypted connection; we never see or store the card number.", capability: "cardOnFile" },
   { name: "PayPal", does: "takes PayPal and Venmo payments.", capability: "digitalWallets" },
   { name: "Stripe (gift cards)", does: "takes payment for gift cards on its own secure page, and keeps the record of each card: its value, what is left on it, and the names, email address and message given for it. Card details go straight to Stripe; we never see or store the card number." + (GIFT_CARDS.checkout.methods.includes("amazon_pay") ? " If you pay with Amazon Pay, Amazon handles that payment under its own privacy notice." : "") + " The gift card emails are sent by Resend.", capability: "giftCardSales" },
   // Named generically on purpose (Emmett, November 14): the provider may change
   // (GoHighLevel's LeadConnector today), and the policy should not need a rewrite.
   { name: "Our text messaging provider", does: "delivers the text messages we send you. It receives your mobile number and each message, only to deliver it, and may not use them for anything else." },
+  // Named generically for the same reason (Emmett, November 26): GoHighLevel
+  // and the agency that runs it (Imperion) see 513 All Jobs, the bookings and
+  // availability calendars and the job records sheet. Calendar events carry no
+  // texting consent (send-confirmation.mjs eventDescription), so the opt-in
+  // sentence in section 4 stays true.
+  { name: "Our customer management system, and the agency that runs it for us", does: "can see our schedule of booked jobs and our job records, with your name, phone, email, address, vehicle and notes, so they can help us run bookings and keep track of our jobs. They may use it only to do that work for us, and not for anything else." },
   { name: "Resend", does: "sends our booking confirmation emails, and the emails we receive about bookings and unfinished checkouts.", capability: "automatedEmail" },
   // Named separately from the hosting row on purpose. "Netlify hosts the
   // website" does not tell a reader that a script is running in their

@@ -50,7 +50,7 @@ export const LEGAL = {
   // not exist, and the record of what was agreed names the terms' date.
   // 2026-11-11 (later): A/B tests (config/experiments.json) remember which
   // version a visitor saw and send it with a booking. Same day, nothing live.
-  privacyEffective: "2026-11-25",
+  privacyEffective: "2026-11-26",
   // 2026-11-25: Amazon Pay named while it is offered for gift cards.
   // 2026-11-23: Stripe for gift cards, and what a gift card purchase collects (giftCardSales).
   // 2026-11-14: opt-in data "will not be shared with any third parties or affiliates" (no carve-out), and a text messaging provider in the list.

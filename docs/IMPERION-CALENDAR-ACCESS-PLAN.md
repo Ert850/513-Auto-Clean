@@ -2,6 +2,11 @@
 
 Draft, November 26, 2026. Nothing here is done yet. The decisions are marked **Decide**.
 
+**Update, November 26 evening:**
+- Imperion sent the Google account to share with (kept out of this public repo; Emmett has it). It's also the account GoHighLevel will connect with unless they say otherwise.
+- They also asked for **Elijah's tracking sheet**, the job records sheet that JobsSync fills from the bookings calendars (Elijah installed JobsSync). It holds one line per job: the title (customer's name first), service, ZIP, totals, lead source and detailer, plus Elijah's own override columns and any other tabs in that file.
+- Step 0's wording is written (on `eNov14`, privacy version 2026-11-26): the Google Calendar row now names the sheet and says only we and the listed providers can see the details, and a new row covers "our customer management system, and the agency that runs it for us". Calendar events carry no texting consent, so the opt-in sentence stays true. It goes live with Emmett's yes and a PR.
+
 **Goal:** Imperion can review the calendars behind the website, and the GoHighLevel (GHL) calendar view shows every booked job, by linking **513 All Jobs**: one calendar, the detailer's name first in each title, a colour per detailer. Setup and safety rules are in `docs/MASTER-CALENDAR-SETUP.md`. The questions Imperion still has to answer are in `docs/IMPERION-PACKAGE.pdf`.
 
 "The GHL page" here means the calendar view inside the 513 sub-account in GHL. If it means a page Imperion builds for customers, the plan changes: GHL must never show or sell times while the website is the only thing that books (step 4).
@@ -25,6 +30,7 @@ All are in the business Google account (Elijah's). Sharing is done by that accou
 | 513 Auto Clean (Elijah's bookings) | The real jobs; JobsSync reads them into the Accounting sheet | **See all event details**, for the review only, if they ask | Never |
 | 513 Kris Bookings | Kris's real jobs | Same as above | Never |
 | 513 Availability, 513 Kris Availability | Open hours (`OPEN`, Busy), fee blocks (`OPEN +20%`, Free), `BEST`, `DNS` | **See all event details**, for the review only | **Never, above all not as a conflict calendar:** GHL would block exactly the open hours |
+| Elijah's job records sheet (JobsSync) | One line per job, totals, Elijah's overrides and any other tabs in the file | **Viewer**, for monitoring (they asked). Elijah shares it from Google Sheets; check the file's other tabs first | n/a |
 | 513 TEST All Jobs, 513 TEST Bookings, 513 TEST Kris Bookings | Test bookings from Deploy Previews | Never | Never |
 | The personal calendar (`PERSONAL_CALENDAR_ICS`) | Private | Never | Never |
 
