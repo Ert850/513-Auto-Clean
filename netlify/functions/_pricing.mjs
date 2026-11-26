@@ -3503,7 +3503,7 @@ function keyHolder(originals, copy) {
   };
   return [...originals].sort((a, b) => made(a) - made(b) || String(a.id).localeCompare(String(b.id)))[0];
 }
-function planMirror(sources, master, s = MASTER_CALENDAR) {
+function planMirror(sources, master, s = MASTER_CALENDAR, idFor) {
   const plan = { creates: [], updates: [], missing: [], foreign: [], duplicates: [], skipped: 0 };
   const copies = /* @__PURE__ */ new Map();
   for (const e of master) {
@@ -3513,13 +3513,19 @@ function planMirror(sources, master, s = MASTER_CALENDAR) {
       plan.foreign.push(String(e.id));
       continue;
     }
-    if (copies.has(p["bookingKey"])) {
-      plan.duplicates.push(String(e.id));
+    const key = p["bookingKey"];
+    const held = copies.get(key);
+    if (held) {
+      if (idFor && e.id === idFor(key) && held.id !== idFor(key)) {
+        plan.duplicates.push(String(held.id));
+        copies.set(key, e);
+      } else plan.duplicates.push(String(e.id));
       continue;
     }
-    copies.set(p["bookingKey"], e);
+    copies.set(key, e);
   }
   const jobs = [];
+  const ids = /* @__PURE__ */ new Set();
   for (const src of sources) {
     for (const e of src.events) {
       if (e.status === "cancelled" || !e.id) continue;
@@ -3527,6 +3533,11 @@ function planMirror(sources, master, s = MASTER_CALENDAR) {
         plan.skipped++;
         continue;
       }
+      if (ids.has(e.id)) {
+        plan.skipped++;
+        continue;
+      }
+      ids.add(e.id);
       jobs.push({ src, e });
     }
   }

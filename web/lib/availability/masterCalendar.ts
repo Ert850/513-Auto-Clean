@@ -291,22 +291,42 @@ function keyHolder(originals: GEvent[], copy: GEvent | undefined): GEvent {
  * that matches it; a copy whose original is missing is listed for a direct
  * look-up, never marked from the list alone.
  */
-export function planMirror(sources: SourceRead[], master: GEvent[], s: MasterCalendarSettings = MASTER_CALENDAR): MirrorPlan {
+export function planMirror(
+  sources: SourceRead[],
+  master: GEvent[],
+  s: MasterCalendarSettings = MASTER_CALENDAR,
+  idFor?: (key: string) => string,
+): MirrorPlan {
   const plan: MirrorPlan = { creates: [], updates: [], missing: [], foreign: [], duplicates: [], skipped: 0 };
   const copies = new Map<string, GEvent>();
   for (const e of master) {
     if (e.status === "cancelled") continue;
     const p = e.extendedProperties?.private ?? {};
     if (!p["sourceId"] || !p["bookingKey"]) { plan.foreign.push(String(e.id)); continue; }
-    if (copies.has(p["bookingKey"])) { plan.duplicates.push(String(e.id)); continue; }
-    copies.set(p["bookingKey"], e);
+    const key = p["bookingKey"];
+    const held = copies.get(key);
+    if (held) {
+      // Two copies of one key: the one at the key's own id (idFor) is the copy,
+      // whatever order Google lists them in, so a stray can't keep a cancelled
+      // time blocked (verification pass 4).
+      if (idFor && e.id === idFor(key) && held.id !== idFor(key)) { plan.duplicates.push(String(held.id)); copies.set(key, e); }
+      else plan.duplicates.push(String(e.id));
+      continue;
+    }
+    copies.set(key, e);
   }
 
   const jobs: { src: SourceRead; e: GEvent }[] = [];
+  const ids = new Set<string>();
   for (const src of sources) {
     for (const e of src.events) {
       if (e.status === "cancelled" || !e.id) continue;
       if (!isJob(e)) { plan.skipped++; continue; }
+      // One event on two calendars that are both read (a calendar invited as
+      // a guest): the first calendar in DETAILERS order keeps it, so the copy
+      // doesn't swap detailers every run (verification pass 4).
+      if (ids.has(e.id)) { plan.skipped++; continue; }
+      ids.add(e.id);
       jobs.push({ src, e });
     }
   }

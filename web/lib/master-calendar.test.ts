@@ -8,7 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
 import { fakeGoogle } from "./fake-gcal.js";
-import { MASTER_CALENDAR, checkMasterCalendar, masterTitle } from "./availability/masterCalendar.js";
+import { MASTER_CALENDAR, checkMasterCalendar, masterTitle, planMirror, sourceIdOf } from "./availability/masterCalendar.js";
 import { localDayStart, localTimeOnDay } from "./time/zone.js";
 import { priceFromWire, type WireCart } from "./server-entry.js";
 // @ts-expect-error: plain ESM Netlify function, no types
@@ -821,5 +821,39 @@ describe("the master is never read for open time, and never by JobsSync", () => 
       expect(mailTo(g, "owner@example.com")!.html).not.toMatch(/all jobs/i);
       expect(masterLines().some((l) => l.includes('"clash"'))).toBe(true);
     } finally { g.restore(); }
+  });
+});
+
+describe("planMirror: duplicates and shared events (verification pass 4)", () => {
+  const orig = (id: string, key?: string) => ({
+    id, status: "confirmed", summary: "Full Interior, Test Person",
+    start: { dateTime: "2026-12-01T10:00:00-05:00" }, end: { dateTime: "2026-12-01T13:00:00-05:00" },
+    ...(key ? { extendedProperties: { private: { bookingKey: key } } } : {}),
+  });
+  const copy = (id: string, key: string, src: string) => ({
+    id, status: "confirmed", summary: "Elijah: Full Interior, Test Person",
+    extendedProperties: { private: { bookingKey: key, sourceId: sourceIdOf("cal-a", src) } },
+  });
+
+  it("of two copies of one key, the one at the key's own id is kept, in either list order", () => {
+    const own = masterEventId("bk_1");
+    const src = [{ calendarId: "cal-a", label: "A", detailer: "Elijah", events: [orig("o1", "bk_1")] }];
+    for (const master of [[copy("stray", "bk_1", "o1"), copy(own, "bk_1", "o1")], [copy(own, "bk_1", "o1"), copy("stray", "bk_1", "o1")]]) {
+      const plan = planMirror(src as never, master as never, MASTER_CALENDAR, masterEventId);
+      expect(plan.duplicates).toEqual(["stray"]);
+      expect([...plan.updates.map((u) => u.id)].every((id) => id === own)).toBe(true);
+    }
+  });
+
+  it("one event on two read calendars is copied once, for the first detailer, every run", () => {
+    const shared = orig("same-id");
+    const sources = [
+      { calendarId: "cal-a", label: "A", detailer: "Elijah", events: [shared] },
+      { calendarId: "cal-b", label: "B", detailer: "Kris", events: [shared] },
+    ];
+    const plan = planMirror(sources as never, [], MASTER_CALENDAR, masterEventId);
+    expect(plan.creates).toHaveLength(1);
+    expect(plan.creates[0]!.key).toBe("manual:same-id");
+    expect(JSON.stringify(plan.creates[0]!.body)).toContain("Elijah");
   });
 });
