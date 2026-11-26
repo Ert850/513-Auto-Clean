@@ -33,7 +33,7 @@ Already checked on November 26 (nothing to do):
 
 ## B. The merge
 
-Follow `docs/AFTER-TOLL-FREE-APPROVAL.md` step 3: the photo pairs approved or dropped (the live build fails while any is `"reviewed": false`), the final validation pass, the test site checks, then PR #13 is marked ready and squash-merged with Emmett's yes.
+Follow `docs/AFTER-TOLL-FREE-APPROVAL.md` step 3: the photo pairs are done (the 5 candidates were held back for Elijah's better photos; the live build passes), the final validation pass, the test site checks, then PR #13 is marked ready and squash-merged with Emmett's yes.
 
 ## C. Right after the deploy
 

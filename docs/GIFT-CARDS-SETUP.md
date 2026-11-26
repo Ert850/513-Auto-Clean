@@ -51,7 +51,7 @@ Without `STRIPE_WEBHOOK_SECRET` or `GIFT_CODE_SECRET`, the checkout refuses to o
    - the certificate page with the code, "Thank you ... Want us to email it to someone? Send it.", and a "Send it to someone" form under the card;
    - an email to you that says you can print or forward it, or open your card and choose "Send it to someone", and one to `OWNER_EMAIL` saying "Not sent to anyone yet";
    - in Stripe's test dashboard, the payment's metadata shows `gift_status: active` and `gift_deliver: none`.
-4. In "Send it to someone", put a name and your own second email, "Right away", and press "Email the card". Expect "Sent to ..." in place of the form, one email at the second address, and on reload the card says who it's for and the form is gone. In Stripe the payment now has `gift_to_email`, `gift_deliver: sent` and `gift_mail_to: 1`.
+4. In "Send it to someone", put a name and your own second email, "Right away", and press "Email the card". Expect "Sent to ..." in place of the form, one email at the second address, and on reload the card says who it's for and the form is gone. In Stripe the payment now has `gift_to_email`, `gift_deliver: sent` and `gift_mail_to: 1`. `OWNER_EMAIL` (you, on the test site) gets "Gift card sent to someone: $50, code ending …", once.
 5. Buy a second card, and this time choose "On a date" with tomorrow: "We'll email it to ... on ...", no email to them today. Scheduled sending runs only on the live site, at 8 AM Cincinnati time.
 6. Press Back on Stripe's page instead of paying: the gift card page is usable again and a Buy button opens a new payment page.
 7. On `/gift-admin`, with `GIFT_ADMIN_KEY`, look up the code, take $10 off, then check the history.

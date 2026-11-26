@@ -143,6 +143,8 @@ export async function handler(event) {
       if (m.gift_send_req === p.requestKey) return json(200, done(m, now, true));
       if (m.gift_send_req || m.gift_to_email) return json(409, { error: "already_sent" });
       // The key was spent by a claim Stripe refused, and nothing was written: nothing to send yet.
+      // Stripe replays a saved 5xx under the same key for 24 hours, so a card whose first claim hit
+      // a Stripe outage answers 502 here until then; Elijah can still resend it from /gift-admin.
       throw err;
     }
     const after = { ...meta, ...claim };
