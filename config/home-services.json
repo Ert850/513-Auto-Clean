@@ -12,8 +12,8 @@
   "buttons": [
     {
       "label": "Interior",
-      "image": "images/ba-captain-chair-after-760.webp",
-      "alt": "A minivan captain's chair after a Full Interior",
+      "image": "images/ba-suv-third-row-stains-after-760.webp",
+      "alt": "A light cloth seat cleaned in a Full Interior",
       "book": {
         "intent": "interior"
       },
@@ -31,10 +31,10 @@
     {
       "label": "Spills and Stains",
       "split": [
-        "images/ba-third-row-seat-stains-before-760.webp",
-        "images/ba-third-row-seat-stains-after-760.webp"
+        "images/ba-civic-seat-stains-before-760.webp",
+        "images/ba-civic-seat-stains-after-760.webp"
       ],
-      "alt": "A stained third-row seat before treatment, and after",
+      "alt": "A stained driver's seat before treatment, and after",
       "book": {
         "intent": "interior"
       },

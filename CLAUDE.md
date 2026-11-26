@@ -257,6 +257,7 @@ Read this before changing anything. Every rule below came from a real bug or an 
 - **The hero has one solid button (Book Now).** View Services and Contact Us are `btn-ghost on-dark`; on phones they share a row. Don't bring back `btn-light` there.
 
 ## Results carousel (built November 10)
+- **A before/after pair is added only when it passes the checklist in `data/gallery.json` `_howToAdd` (A to G); a problem is never left as a question to confirm later** (November 26). Elijah's first five (commit 4e0279f) were trusted because they sat in Drive "03 Website": three paired two different spots (a driver's floor against a passenger's, twice, and one captain's chair against the other), one set a portrait before against a landscape after, one had a before that was already clean, all were cut 3:4 for the 4:3 card, and the bag, papers and mismatched frames were written down as "to confirm" while the pairs went first in the carousel. Pick from the job's own folder (Drive 05), prove the same spot by the car's fixed parts, judge the cut the site shows; `funnel.smoke.test.mjs` fails on a pair whose before and after differ in size or leave the card's frame.
 - **No `.reveal` on anything inside a sideways track.** A card parked off to the side never intersects the viewport, so it stays invisible and fades up late when it slides in. Put `.reveal` on the carousel.
 - **No hover pause on the carousel** (the owner found it non-intuitive: the sweep kept freezing as the mouse crossed the photos). Clicks, drags, the chevrons, the dots and keyboard focus on a handle take over.
 - **The play button is the state.** Anything that pauses the carousel shows Play on it; anything that restarts it (idle timer, scrolling back into view) shows Pause again. Never keep a hidden "held" flag that the button doesn't show.
@@ -287,8 +288,8 @@ Read this before changing anything. Every rule below came from a real bug or an 
   - Don't change it back to one hue. Any other ordered scale: one hue, light to dark, checked with the dataviz validator (`validate_palette.js --ordinal`).
 - **A legend key is drawn exactly like the mark it explains.** Travel fee colors live only in `BANDS` in `js/travel.js`; map dots are solid (`fillOpacity: 1`) and every key or dot in the page uses `.tmap-key i, .sg-dot, .fee-dot` (18px, 2px white ring = Leaflet radius 8, weight 2).
 
-- **The time picker's "Standard price" is green (owner, November 11)**, a second exception to "a good answer is ink". Times themselves are white rows like the recommended-time cards, with no ticks and no green fill. A fee is gold. The price is said once per stretch of the same price (`stretchStarts` in `week.ts`), not on every row.
 - **The gift card calculator's "Save $50" is red (Emmett, November 26)**, a third exception to "a good answer is ink" (`.gc-calc-price .gc-save`). Only there: the tier buttons show the discount by striking the value through.
+- **The time picker's "Standard price" is green (owner, November 11)**, a second exception to "a good answer is ink". Times themselves are white rows like the recommended-time cards, with no ticks and no green fill. A fee is gold. The price is said once per stretch of the same price (`stretchStarts` in `week.ts`), not on every row.
 
 ## Booking form time picker (rebuilt November 11)
 - **No `<section>` inside the booking form.** `styles.css` gives every `section` 40 to 72 px of padding, so wrapping the phone list's part-of-day groups in `<section>` opened 40 and 80 px gaps. Use a `div` (with `role="group"` where it groups).
