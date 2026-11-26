@@ -738,116 +738,6 @@
 
 <!-- ============ REQUEST A QUOTE (copied from contact.html by the build) ============ -->
 <!-- CONTACT:SECTION:START -->
-<section class="inquiry" id="inquiry">
-  <div class="wrap">
-    <div class="inq-grid">
-      <aside class="inq-side reveal">
-        <!-- The page heading lives in the side column on wide screens, beside the
-             form, instead of a full-width band above it. -->
-        <div class="section-head inq-head">
-          <span class="eyebrow">Contact Us</span>
-          <h2>Got a question first?</h2>
-          <p>Not ready to book, or not sure which package fits? Ask us anything about your vehicle&rsquo;s condition, what&rsquo;s realistic to fix, pricing, or timing. A real person answers, usually same day.</p>
-        </div>
-        <div class="inq-side-head">
-          <h3>Prefer to talk?</h3>
-          <p class="inq-side-sub">Call, or copy the number.</p>
-        </div>
-        <div class="phone-chip">
-          <a class="phone-num" href="tel:+15132792915">(513)&nbsp;279-2915</a>
-          <button type="button" class="phone-copy" data-copy="(513) 279-2915" aria-label="Copy phone number to clipboard">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-            <span class="copy-label">Copy</span>
-          </button>
-        </div>
-        <a class="inq-email" href="mailto:513autoclean@gmail.com" aria-label="Email us at 513autoclean@gmail.com">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 7l-10 6L2 7"/></svg>
-          513autoclean@gmail.com
-        </a>
-        <ul class="inq-points">
-          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 6L9 17l-5-5"/></svg> Straight answers, no sales pressure</li>
-          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 6L9 17l-5-5"/></svg> We&rsquo;ll tell you if a cheaper package is enough</li>
-          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 6L9 17l-5-5"/></svg> 7 days a week, 6 AM to midnight</li>
-        </ul>
-      </aside>
-
-      <div class="form-card reveal" data-d="1" id="inquiryCard">
-        <h3>Ask us a question</h3>
-        <p class="fc-sub">Tell us what you&rsquo;re dealing with and we&rsquo;ll point you the right way.</p>
-        <form id="inquiryForm" class="js-w3form inq-compact" action="https://api.web3forms.com/submit" method="POST" novalidate>
-          <input type="hidden" name="access_key" value="8a502fe3-2a53-4904-98e9-b18dabb1f579" />
-          <input type="hidden" name="subject" value="QUESTION from 513autoclean.com" />
-          <input type="hidden" name="from_name" value="513 Auto Clean Website" />
-          <input type="checkbox" name="botcheck" style="display:none" tabindex="-1" autocomplete="off" />
-
-          <!-- Wide screens: the two free-text boxes side by side, then two rows of
-               three. Same fields and order of importance, about half the height. -->
-          <div class="field-row pair-wide">
-            <div class="field">
-              <label for="q-message">What&rsquo;s your question? <span class="req">*</span></label>
-              <textarea id="q-message" name="message" rows="4" required
-                placeholder="e.g. My back seats have old coffee stains and my dog sheds badly. Is a Full Interior enough, or do I need add-ons?"></textarea>
-            </div>
-            <div class="field">
-              <label for="q-condition">Your vehicle&rsquo;s condition</label>
-              <textarea id="q-condition" name="condition" rows="2"
-                placeholder="Pet hair, spills, smoke, kids, work truck, sat outside all winter&hellip;"></textarea>
-            </div>
-          </div>
-
-          <div class="field-row three">
-            <div class="field">
-              <label for="q-name">Name <span class="req">*</span></label>
-              <input type="text" id="q-name" name="name" placeholder="Your name" required autocomplete="name" />
-            </div>
-            <div class="field">
-              <label for="q-phone">Phone <span class="req">*</span></label>
-              <input type="tel" id="q-phone" name="phone" placeholder="(513) 555-0123" required autocomplete="tel" inputmode="tel" />
-            </div>
-            <div class="field">
-              <label for="q-email">Email</label>
-              <input type="email" id="q-email" name="email" placeholder="you@email.com" autocomplete="email" inputmode="email" />
-            </div>
-          </div>
-
-          <div class="field-row three">
-            <div class="field">
-              <label for="q-vehicle">Vehicle</label>
-              <input type="text" id="q-vehicle" name="vehicle" placeholder="e.g. 2018 Honda CR-V" />
-            </div>
-            <div class="field">
-              <label for="q-zip">Your city / ZIP</label>
-              <input type="text" id="q-zip" name="zip" placeholder="e.g. Clifton / 45220" autocomplete="postal-code" />
-            </div>
-            <fieldset class="field contact-pref">
-              <legend>Best way to reach you</legend>
-              <div class="pref-opts">
-                <label class="pref"><input type="radio" name="preferred_contact" value="Text" checked /> <span>Text</span></label>
-                <label class="pref"><input type="radio" name="preferred_contact" value="Call" /> <span>Call</span></label>
-                <label class="pref"><input type="radio" name="preferred_contact" value="Email" /> <span>Email</span></label>
-              </div>
-            </fieldset>
-          </div>
-
-          <div class="inq-ticks">
-            <label class="inq-tick"><input type="checkbox" name="SMS consent" value="yes" data-yesno /> <span>I consent to receive SMS notifications, alerts &amp; occasional marketing communication from 513 Auto Clean. Message frequency varies. Message &amp; data rates may apply. Text HELP to (513) 279-2915 for assistance. You can reply STOP to unsubscribe at any time.</span></label>
-            <label class="inq-tick"><input type="checkbox" name="Marketing" value="yes" data-yesno /> <span>I want to receive news, feature updates, discounts &amp; offers from 513 Auto Clean.</span></label>
-            <p class="inq-terms">By continuing you agree to our <a href="terms.html">Terms &amp; Conditions</a> and <a href="privacy.html">Privacy Policy</a>.</p>
-          </div>
-
-          <div class="form-foot">
-            <button type="submit" class="btn btn-primary btn-lg btn-block">
-              Send My Question
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4z"/></svg>
-            </button>
-            <p class="fineprint">No spam, ever. We use your info to answer your question the way you pick, and send anything else, like texts or offers, only if you tick those boxes. See our <a href="privacy.html">Privacy Policy</a>.</p>
-          </div>
-          <div class="form-msg" role="status" aria-live="polite"></div>
-        </form>
-      </div>
-    </div>
-  </div>
-</section>
 <!-- CONTACT:SECTION:END -->
 
 <!-- ============ GALLERY ============ -->
@@ -1092,8 +982,8 @@
     <div class="contact-grid">
       <div class="contact-info">
         <span class="eyebrow reveal">Book Now</span>
-        <h2 class="reveal" data-d="1">Let's get your car booked.</h2>
-        <p class="reveal" data-d="1">Tell us your vehicle and what you're after, and we'll get back to you with pricing and a time that works. Prefer to talk? Call or text us directly.</p>
+        <h2 class="reveal" data-d="1">Let&rsquo;s get your car booked.</h2>
+        <p class="reveal" data-d="1">Pick your package and a time online, and see your exact price as you go. Prefer to talk? Call or text us directly.</p>
 
         <div class="contact-quick">
           <a class="cq reveal" data-d="1" href="tel:+15132792915">
@@ -1106,7 +996,7 @@
           </a>
           <a class="cq reveal" data-d="3" href="mailto:513autoclean@gmail.com">
             <span class="cq-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 7l-10 6L2 7"/></svg></span>
-            <span><span class="cq-label">Email</span><span class="cq-val">513autoclean@gmail.com</span></span>
+            <span><span class="cq-label">Email</span><span class="cq-val">513autoclean<wbr>@gmail.com</span></span>
           </a>
         </div>
         <div class="contact-hours reveal" data-d="3">
@@ -1121,7 +1011,7 @@
         <p class="bc-sub">Pick your package, add any extras, and tell us when suits. Takes about two minutes, and you&rsquo;ll see your price as you go.</p>
         <ul class="bc-points">
           <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 6L9 17l-5-5"/></svg> See your exact price before you commit</li>
-          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 6L9 17l-5-5"/></svg> <a href="services.html">Explore our detailing packages</a> and find the right service for your vehicle</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 6L9 17l-5-5"/></svg> <span><a href="services.html">Explore our detailing packages</a> and find the right service for your vehicle</span></li>
           <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 6L9 17l-5-5"/></svg> Pay on site once your detail is complete</li>
         </ul>
         <a class="btn btn-primary btn-lg btn-block" href="book.html">
@@ -1215,7 +1105,7 @@
 <link rel="stylesheet" href="book.css?v=ddd553527c" />
 <!-- Deferred, so they run in this order: the pricing bundle before the
      booking form and before any page script that prices (travel.js). -->
-<script src="js/pricing.bundle.js?v=23b069f9b4" defer></script>
+<script src="js/pricing.bundle.js?v=3b63fd06f4" defer></script>
 <script src="js/funnel.js?v=fc849a0733" defer></script>
 <script src="script.js?v=0f81ec6fa1" defer></script>
 <!-- CHROME:SCRIPTS:END -->
