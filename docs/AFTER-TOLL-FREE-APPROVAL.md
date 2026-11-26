@@ -40,13 +40,7 @@ Both are one word in a config file, and a test proves each switch restores the o
 ## 3. Merge eNov14 (Emmett's separate yes; the PR is merged by Emmett)
 
 From `STATUS-2026-11-15.md`, "Before eNov14 can merge". eNov14 is about 55 commits ahead of `main`, open as draft PR [#13](https://github.com/Ert850/513-Auto-Clean/pull/13).
-- [ ] **The gallery pairs (November 26, `SESSION-CHANGES-gallery.md`):** Elijah's 5 pairs from commit 4e0279f are gone (none met the bar); 5 pairs re-cut from the job folders replace them: `suv-third-row-stains`, `civic-seat-stains`, `wheel-brake-dust`, `rear-floor-grit`, `wheel-road-grime`. The owner checks each against the list in `data/gallery.json` `_howToAdd` (A to G) on `docs/GALLERY-PAIRS-V2.png`, then sets `"reviewed": true` or drops it.
-  - They carry `"reviewed": false`, so **the production build fails until each is set to `true` or removed**. The live site keeps its last deploy meanwhile.
-  - **Where each is used** (dropping one means changing these too, or the build fails):
-    - `suv-third-row-stains`: the home "Interior" button (`config/home-services.json`), the Delhi hero, the interior page's proof, the stain page's proof;
-    - `civic-seat-stains`: the home "Spills and Stains" button, the Delhi hero, the stain page's hero;
-    - `rear-floor-grit`: the Delhi hero, the Indian Hill hero;
-    - `wheel-brake-dust`, `wheel-road-grime`: the home Results carousel only.
+- [x] **The gallery pairs (November 26):** the 5 candidate pairs are held back (Emmett: not until Elijah's better photos replace them). They're out of `data/gallery.json` and their images are deleted (still in git history at e9336d3, review sheet `docs/GALLERY-PAIRS-V2.png`). Their places use the earlier checked pairs again: the home Interior button `crv-interior`, Spills and Stains `sonic-interior`, the Delhi and Indian Hill heroes and the interior page's proof from `pethair`, `sonic-interior`, `crv-interior`, `jeep-cargo`, `console`. The stain page (a draft) has no carousel until a checked stain pair exists. The production build passes. Elijah's photos are a follow-up after the merge: he shares the folder from his business Google account (`SESSION-CHANGES-gallery.md`).
 - [ ] `git fetch`. If `main` moved (it shouldn't have), merge `origin/main` into eNov14; never rebase it, which would need a force-push. The squash merge makes the history shape irrelevant. The build passes and every test passes (`cd web && TZ=America/New_York npx vitest run`).
 - [ ] A final validation and dropped-task agent over the whole PR diff.
 - [ ] The preview at https://deploy-preview-13--513-auto-clean.netlify.app:

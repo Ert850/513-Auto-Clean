@@ -12,8 +12,8 @@
   "buttons": [
     {
       "label": "Interior",
-      "image": "images/ba-suv-third-row-stains-after-760.webp",
-      "alt": "A light cloth seat cleaned in a Full Interior",
+      "image": "images/ba-crv-interior-after-760.webp",
+      "alt": "A clean, freshly detailed car interior",
       "book": {
         "intent": "interior"
       },
@@ -31,8 +31,8 @@
     {
       "label": "Spills and Stains",
       "split": [
-        "images/ba-civic-seat-stains-before-760.webp",
-        "images/ba-civic-seat-stains-after-760.webp"
+        "images/ba-sonic-interior-before-760.webp",
+        "images/ba-sonic-interior-after-760.webp"
       ],
       "alt": "A stained driver's seat before treatment, and after",
       "book": {

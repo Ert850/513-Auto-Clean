@@ -34,3 +34,9 @@
   - interior page proof: `suv-third-row-stains`, `crv-interior`, `sonic-interior`.
 - **`console` re-cut** to 4:3 (420 and 760, centre crop of its own masters, which is what the card already showed), so the new check passes. Its 3:4 masters are unchanged.
 - **To test:** `cd web && TZ=America/New_York npx vitest run` (893 pass); a preview build passes; a production build still fails until each new pair is `reviewed: true` or removed (by design). On the preview: the home carousel's first five cards, the Interior and Spills and Stains buttons, the Delhi, Indian Hill, interior and stain pages' photos.
+
+## November 26, before the merge: candidates held back
+
+Emmett: no new pairs until Elijah's better photos replace them. The 5 candidates are removed from `data/gallery.json` and `images/` (recoverable from e9336d3; sheet `docs/GALLERY-PAIRS-V2.png`), and their usages point at the earlier checked pairs again (as before 4e0279f on the home buttons). The checklist (`_howToAdd` A to G) and the frame test stay. The stain draft page has no hero carousel until a checked stain pair exists; `locations.test.ts` allows that only for a noindex draft.
+
+**Where the newer photos are:** the NAS's Cloud Sync was also linked to Elijah's business Google account on September 20; our Drive connector sees only his personal one, where "05" stops at September 20. He shares the photo and pairs folders from the business Drive with the personal account, then the pairs are cut the same way.

@@ -129,6 +129,13 @@ describe("city and service pages read like the rest of the site (Emmett, Novembe
     // Emmett, November 15 (option A): the home page's wipe, one card in view.
     // The cards are in the HTML for search and the largest paint; the first never waits.
     for (const p of pages) {
+      // A draft with no checked pair of its own service has no carousel yet (the stain
+      // page, November 26: the candidate stain pairs were held back for Elijah's
+      // better photos). Never a published page, and never an unrelated pair instead.
+      if (!read(p).includes('class="loc-hero-pic loc-hero-ba"')) {
+        expect(read(p), p).toContain('name="robots" content="noindex"');
+        continue;
+      }
       const hero = read(p).split('class="loc-hero-pic loc-hero-ba"')[1]!.split("</section>")[0]!;
       const cards = hero.split('<figure class="ba-slider"').slice(1);
       expect(cards.length, p).toBeGreaterThan(0);
