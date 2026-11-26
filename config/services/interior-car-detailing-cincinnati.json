@@ -1,15 +1,22 @@
 {
-  "_read_me": "Service page (draft). Prices, contents and times come from the catalog; only the words are here. Photos: proofPairs are gallery slugs (pending Elijah's photo review). Publish needs 2+ before/after pairs of this service.",
+  "_read_me": "Service page (draft): the MASTER page for docs/SEO-PAGE-STANDARD.md; the other service pages copy its shape, never its words. Prices, contents and times come from the catalog ({price:..}, {time:..}, {addon:..}); only the words are here. Reviews are picked by author and date from data/reviews.json. Publish needs 2+ before/after pairs of this service, 2+ reviews about it and 5+ questions.",
   "status": "draft",
   "slug": "interior-car-detailing-cincinnati",
   "name": "Interior Car Detailing",
-  "explains": { "tab": "interior", "link": "About interior detailing" },
+  "explains": {
+    "tab": "interior",
+    "link": "About interior detailing"
+  },
   "serviceType": "Interior car detailing",
   "title": "Interior Car Detailing in Cincinnati | 513 Auto Clean",
-  "meta": "Mobile interior detailing in Cincinnati: Basic, Full and Full Interior + Steam, from {price:basic-interior}. We come to your driveway. Pay when it's done.",
+  "meta": "Interior car detailing at your Cincinnati home or work: Basic, Full and Full Interior + Steam, from {price:basic-interior}. See your total first. Pay when it's done.",
   "eyebrow": "Interior detailing",
-  "h1": "Interior car detailing in Cincinnati, done in your driveway",
-  "sub": "Seats, carpet, mats and every crack and crevice, cleaned at your house by our UC student-owned crew. Pick a level below and see your price before you book.",
+  "h1": "Book interior detailing in Cincinnati. We come to your driveway.",
+  "sub": "Seats, carpet, mats and every crevice deep cleaned at your home or work, while you get on with your day. You see your full total, travel and tax included, before you book.",
+  "offer": {
+    "package": "full-steam-interior",
+    "label": "Most popular"
+  },
   "book": {
     "intent": "interior"
   },
@@ -22,6 +29,21 @@
     "full-steam-interior"
   ],
   "levelsH2": "Pick your level",
+  "reviewsH2": "What interior customers say",
+  "reviews": [
+    {
+      "author": "Bill Musolf",
+      "date": "2026-06-10"
+    },
+    {
+      "author": "Sarah Elam",
+      "date": "2026-07-10"
+    },
+    {
+      "author": "Daniel Deno",
+      "date": "2026-01-10"
+    }
+  ],
   "proofPairs": [
     "crv-interior",
     "sonic-interior"
@@ -43,8 +65,24 @@
   ],
   "faq": [
     {
+      "q": "How much does interior car detailing cost in Cincinnati?",
+      "a": "For a small car, Basic Interior starts at {price:basic-interior}, Full Interior at {price:full-interior} and Full Interior + Steam at {price:full-steam-interior}. SUVs, trucks and vans cost a little more, and travel and sales tax are added. The booking form shows your full total before you book."
+    },
+    {
       "q": "How long does an interior detail take?",
-      "a": "It depends on the package, the size of the car and how much is in it. The booking form shows the time for your car before you book."
+      "a": "On a small car, Basic Interior takes {time:basic-interior}, Full Interior {time:full-interior} and Full Interior + Steam {time:full-steam-interior}. Bigger vehicles, heavy pet hair or stains add time, and the booking form shows the time for your car."
+    },
+    {
+      "q": "What's the difference between Basic and Full Interior?",
+      "a": "Basic Interior is a solid vacuum and wipe-down for a car that's mostly clean. Full Interior adds a shampoo scrub of the upholstery, leather conditioning, glass, door jambs and a brush detail of every crack and crevice. Full Interior + Steam also steam treats the upholstery and trim."
+    },
+    {
+      "q": "Do you clean pet hair?",
+      "a": "Yes. Full Interior vacuums up everyday hair. Hair woven deep into the carpet and seats needs the Pet Hair Removal add-on ({addon:pet-hair}), which goes after it in every crevice."
+    },
+    {
+      "q": "Will stains and smells come out?",
+      "a": "We treat them, and most improve a lot, but some set-in stains and smells never fully come out. We tell you what to expect before we start. For a smell that lingers, the Ozone Odor Reset runs once the source is cleaned."
     },
     {
       "q": "Do you need my water or power?",
@@ -53,6 +91,10 @@
     {
       "q": "Do I need to be home?",
       "a": "No, as long as we can get into the car. You can leave us the keys and go about your day."
+    },
+    {
+      "q": "When do I pay?",
+      "a": "When it's done. You look the car over first, then pay on site."
     }
   ],
   "proofServices": [

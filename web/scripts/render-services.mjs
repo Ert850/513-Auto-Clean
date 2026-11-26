@@ -13,7 +13,9 @@
  *
  * What fails the build: a missing field, a title over 60 or description over
  * 155 characters (as rendered), an unknown package or add-on, fewer than 3
- * steps or 3 questions, and a published page with fewer than 2 photo pairs.
+ * steps or 3 questions, a review that isn't in data/reviews.json, and a
+ * published page with fewer than 2 photo pairs, 2 reviews or 5 questions.
+ * What a good page is, and how to grade one: docs/SEO-PAGE-STANDARD.md.
  */
 import { carouselHero } from "./split-hero.mjs";
 import fs from "node:fs";
@@ -34,9 +36,14 @@ const live = (p) => p.status !== "draft";
 const problems = [];
 const need = (cond, p, msg) => { if (!cond) problems.push(`${p.file}: ${msg}`); };
 
-// {price:<package>} and {addon:<id>} in the words, filled from the catalog.
+// {price:<package>}, {time:<package>} and {addon:<id>} in the words, filled from the catalog.
 function priced(text, where) {
-  return String(text).replace(/\{(price|addon):([a-z0-9-]+)\}/g, (m, kind, id) => {
+  return String(text).replace(/\{(price|time|addon):([a-z0-9-]+)\}/g, (m, kind, id) => {
+    if (kind === "time") {
+      const min = findPackage(id)?.durationMin;
+      if (typeof min !== "number") throw new Error(`render-services: ${where}: no package "${id}"`);
+      return hrs(min);
+    }
     const cents = kind === "price" ? findPackage(id)?.priceCents : findAddon(id)?.tiers?.[0]?.priceCents;
     if (typeof cents !== "number") throw new Error(`render-services: ${where}: no ${kind} "${id}"`);
     return money(cents);
@@ -51,7 +58,10 @@ for (const p of pages) {
   p.faq = (p.faq ?? []).map((q) => ({ q: priced(q.q, p.file), a: priced(q.a, p.file) }));
 }
 const proofOf = (p) => (p.proofPairs ?? gallery.filter((g) => (g.services ?? []).some((s) => (p.proofServices ?? []).includes(s))).map((g) => g.slug))
-  .map((slug) => gallery.find((g) => g.slug === slug)).filter(Boolean).slice(0, p.proofMax ?? 4);
+  .map((slug) => gallery.find((g) => g.slug === slug)).filter(Boolean).slice(0, p.proofMax ?? 3);
+// The page's own reviews (SEO-PAGE-STANDARD.md): picked by author and date in
+// the config, the words always data/reviews.json's, never retyped.
+const reviewOf = (r) => reviews.reviews.find((x) => x.author === r.author && x.date === r.date);
 
 for (const p of pages) {
   need(/^[a-z0-9-]+$/.test(p.slug ?? ""), p, "slug must be lowercase letters, digits and dashes");
@@ -69,6 +79,10 @@ for (const p of pages) {
   const ofService = (slug) => (gallery.find((g) => g.slug === slug)?.services ?? []).some((s) => (p.proofServices ?? []).includes(s));
   for (const slug of [...(p.proofPairs ?? []), ...(p.hero?.pair ? [p.hero.pair] : [])]) need(ofService(slug), p, `"${slug}" isn't tagged with ${(p.proofServices ?? []).join(" or ")} in data/gallery.json`);
   if (live(p)) need(proofOf(p).length >= 2, p, "a published page needs at least 2 before/after pairs of this service");
+  for (const r of p.reviews ?? []) need(reviewOf(r)?.text && reviewOf(r).feature !== false, p, `reviews: no shown review by ${r.author} on ${r.date} in data/reviews.json`);
+  if (p.offer) need(findPackage(p.offer.package), p, `offer: no package "${p.offer.package}"`);
+  if (live(p)) need((p.reviews ?? []).length >= 2, p, "a published page needs at least 2 reviews about this service");
+  if (live(p)) need((p.faq ?? []).length >= 5, p, "a published page needs at least 5 questions");
 }
 if (problems.length) throw new Error("render-services:\n  " + problems.join("\n  "));
 
@@ -82,7 +96,7 @@ for (const p of pages) {
   // pair, then the service's other pairs (they had their own row until the
   // carousel, November 15).
   const first = p.hero?.pair ? gallery.find((g) => g.slug === p.hero.pair) : null;
-  const shown = [...(first ? [first] : []), ...proofOf(p).filter((g) => g !== first)];
+  const shown = [...(first ? [first] : []), ...proofOf(p).filter((g) => g !== first)].slice(0, p.proofMax ?? 3);
   const hero = shown.length ? carouselHero(shown) : "";
 
   const levels = (p.packages ?? []).length ? `
@@ -120,6 +134,25 @@ ${p.packages.map((id) => {
   const sizes = ["medium", "large"].map((id) => vehicleSize(id)).filter(Boolean)
     .map((s) => `${s.label} (${s.examples}) +${money(s.upchargeCents)}`).join(", ");
 
+  // The offer above the fold: one package, its name, price and time from the catalog.
+  const ok = p.offer ? findPackage(p.offer.package) : null;
+  const offer = ok ? `        <p class="svp-offer"><b>${esc(p.offer.label ?? "Most booked")}:</b> ${esc(ok.name)}, from ${money(ok.priceCents)}, ${hrs(ok.durationMin)}</p>\n` : "";
+  const revs = (p.reviews ?? []).length ? `
+<section class="loc-reviews">
+  <div class="wrap">
+    <h2>${esc(p.reviewsH2 ?? "What customers say")}</h2>
+${p.reviews.map((r) => { const x = reviewOf(r); return `    <blockquote class="loc-review"><p>${esc(x.text)}</p><cite><a href="${esc(reviews.source)}" rel="noopener">${esc(x.author.split(" ")[0])}</a> on Google</cite></blockquote>`; }).join("\n")}
+    <p class="svp-where"><a href="about.html#reviews">Read more reviews</a></p>
+  </div>
+</section>
+` : "";
+  // Links into the hub (SEO-PAGE-STANDARD.md): published pages only.
+  const hub = [
+    ["services.html#addons", "Every add-on and its price"],
+    ["service-area.html", "Range & Travel: is your address covered?"],
+    ["faq.html", "More answers on the FAQ page"],
+    ...pages.filter((o) => o !== p && live(o)).map((o) => [pageFile(o), o.name]),
+  ];
   const jsonld = {
     "@context": "https://schema.org",
     "@graph": [
@@ -137,6 +170,8 @@ ${p.packages.map((id) => {
 
   const fill = {
     FILE: p.file, TITLE: esc(p.title), META: esc(p.meta), CANONICAL: url,
+    OG_IMAGE: `${SITE}/images/${shown.length ? `ba-${shown[0].slug}-after-760.jpg` : "hero-exterior.jpg"}`,
+    OFFER: offer, REVIEWS: revs,
     ROBOTS: live(p) ? "" : '<meta name="robots" content="noindex" />\n',
     JSONLD: JSON.stringify(jsonld, null, 2),
     NAME: esc(p.name), EYEBROW: esc(p.eyebrow ?? p.name), H1: esc(p.h1), SUB: esc(p.sub),
@@ -153,6 +188,7 @@ ${p.packages.map((id) => {
     FAQ_H2: esc(p.faqH2 ?? "Common questions"),
     FAQ: p.faq.map((q) => `    <details class="loc-q"><summary>${esc(q.q)}</summary><p>${esc(q.a)}</p></details>`).join("\n"),
     WHERE: `    <p class="svp-where">We come to you anywhere in our <a href="service-area.html">service area</a>${cities.length ? `, including ${cities.map((c) => `<a href="${pageFile(c)}">${esc(c.name)}</a>`).join(", ")}` : ""}.</p>`,
+    LINKS: `    <ul class="svp-links">\n${hub.map(([h, t]) => `      <li><a href="${h}">${esc(t)}</a></li>`).join("\n")}\n    </ul>`,
   };
   let html = tpl.replace(/\{\{(\w+)\}\}/g, (m, k) => { if (!(k in fill)) throw new Error(`render-services: no value for {{${k}}}`); return fill[k]; });
   const out = path.join(root, pageFile(p));

@@ -13,7 +13,7 @@
 <meta property="og:title" content="{{TITLE}}" />
 <meta property="og:description" content="{{META}}" />
 <meta property="og:url" content="{{CANONICAL}}" />
-<meta property="og:image" content="https://513autoclean.com/images/hero-exterior.jpg" />
+<meta property="og:image" content="{{OG_IMAGE}}" />
 <meta property="og:site_name" content="513 Auto Clean" />
 <link rel="apple-touch-icon" href="images/apple-touch-icon.png" />
 <link rel="manifest" href="manifest.webmanifest" />
@@ -44,7 +44,7 @@
         <span class="eyebrow">{{EYEBROW}}</span>
         <h1>{{H1}}</h1>
         <p class="loc-sub">{{SUB}}</p>
-        <div class="loc-cta">
+{{OFFER}}        <div class="loc-cta">
           <a class="btn btn-primary btn-lg" href="book.html"{{CTA_ATTRS}}>Book Now <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
         </div>
         <ul class="loc-trust">
@@ -56,7 +56,7 @@
     </div>
   </div>
 </section>
-{{LEVELS}}
+{{LEVELS}}{{REVIEWS}}
 <section class="loc-local">
   <div class="wrap loc-grid">
     <div class="loc-copy">
@@ -81,6 +81,7 @@
     <h2>{{FAQ_H2}}</h2>
 {{FAQ}}
 {{WHERE}}
+{{LINKS}}
     <p class="loc-final"><a class="btn btn-primary btn-lg" href="book.html"{{CTA_ATTRS}}>Book Now</a> <a class="btn btn-ghost btn-lg" href="services.html">See all packages and prices</a></p>
   </div>
 </section>

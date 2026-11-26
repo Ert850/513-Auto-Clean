@@ -1892,6 +1892,10 @@ main > .bookpage:first-child { padding-block: clamp(16px, 2.2vw, 30px); }
 .svp-sizes { font-size: .86rem; color: var(--text-soft); margin: .8rem 0 0; line-height: 1.5; }
 .svp-where { margin: 1.2rem 0 0; }
 .svp-where a { color: var(--red-deep); font-weight: 700; }
+/* The page's one offer, under the subtitle (docs/SEO-PAGE-STANDARD.md): words from the catalog. */
+.svp-offer { margin: .9rem 0 0; font-size: 1rem; line-height: 1.5; }
+.svp-links { list-style: none; padding: 0; margin: .8rem 0 0; display: flex; flex-wrap: wrap; gap: .4rem 1.4rem; }
+.svp-links a { color: var(--red-deep); font-weight: 700; }
 
 /* ============ GIFT CARDS (gift-cards.html, config/gift-cards.json) ============
    Price display after Baymard's discount findings (November 23): the price you
