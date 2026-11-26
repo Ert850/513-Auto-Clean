@@ -54,6 +54,7 @@ From `STATUS-2026-11-15.md`, "Before eNov14 can merge". eNov14 is about 55 commi
   - check phones and desktop agree at 1440, 820 and 375.
 - [ ] Mark PR #13 ready for review. It's merged only with Emmett's separate yes, as a **squash merge**, so the commit carrying Emmett's email (f9a0f6b, only on eNov14) never enters `main`'s history (step 4).
 - [ ] **What ships with the merge** (tell Elijah, step 7):
+  - **gift cards go live, on** (Emmett, November 26): the live Stripe and Netlify settings first, `docs/GO-LIVE-GIFT-CARDS-2026-11-26.md` part A, then its part C right after the deploy;
   - the Confirm-freeze fix (bc0a266);
   - the booking-form fixes;
   - hover only on mouse devices;
