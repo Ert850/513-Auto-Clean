@@ -2,6 +2,18 @@
 
 Work that's agreed but deliberately not started before Friday. Newest first. Anything that waits for toll-free approval is in `AFTER-TOLL-FREE-APPROVAL.md`.
 
+## Found by the dropped-task pass (November 26): asked or flagged, never recorded
+
+- **Done November 26 (PR #14), Contact form fine print:** was no longer true. `config/contact-form.json` `question.fineprint` says "We only use your info to answer your question", but the form now has the optional texts and offers boxes. Reword it from the boxes' own meaning (for example: we use it to answer your question, and for texts or offers only if you tick those boxes). Customer wording and a change to `main`: Emmett's OK on the words, then a PR.
+- **Imperion's November 26 voice note, the parts not written down anywhere:** (1) they want one booking calendar (see `ONE-CALENDAR-SPEC.md` and `IMPERION-CALENDAR-ACCESS-PLAN.md`); (2) an SEO hub of 30 to 40 pages, one per service, add-on and area, each with its own reviews (compare `PLAN-eNov14.md` B2 to B4 and the SEO branch); (3) "tell us when it's live", and they send a full SEO, GEO and AEO report. The site is live; telling them and sending `IMPERION-PACKAGE.pdf` is Emmett's step.
+- **Possible sales tax bug** (Elijah, November 23: tax is "sometimes not fully properly calculated"). Needs one example booking from him (the email or the calendar event) before anything can be checked.
+- **`GIFT_REBUILD_HOOK`** (optional, `GO-LIVE-GIFT-CARDS-2026-11-26.md`): not set in Production. Without it the page corrects its prices in the browser after the sale; with it the page's own HTML does, from December 26. Set it before then if wanted (Emmett's yes, Netlify).
+- **Done November 26 (PR #14), `/gift-admin` after a QR scan:** usually needed a second "Look up" tap, because the password manager fills the admin key after the page's own lookup (`js/giftadmin.js`). Small: retry the lookup once when the key field fills.
+- **Gift cards: redeeming and refunding have never run against live Stripe.** The test-site run confirmed the purchase and its emails only; the webhook 200, a deduction on `/gift-admin`, a refund showing Cancelled and a real phone scan were not finished. The optional real purchase (go-live C3, C4) covers it.
+- **Stripe payment method domains** (registering 513autoclean.com, which turns on the green badge) was mentioned in chat only. Emmett's yes, Stripe dashboard.
+- **Local cleanup, Emmett's Mac:** `brew uninstall git-filter-repo`; whisper.cpp was left installed for the voice notes.
+- **Untracked in the eNov14 worktree:** `docs/GIFT-CARDS-QUESTIONS-FOR-ELIJAH.md` and `.pdf` (Elijah's open gift card questions: the Wallet decision and the accountant questions) and `docs/GALLERY-PAIRS-TO-REVIEW.png` (3.7 MB). Commit or delete: Emmett's call (public repo).
+
 ## From the long-session audit (November 16): asked earlier, never recorded
 
 - **Booking links sent from the CRM (Emmett, November 10):** "through CRM send a prebuilt booking link", which opens the booking already filled in and, once booked, sends the emails and texts and writes the calendar.
@@ -52,6 +64,7 @@ Work that's agreed but deliberately not started before Friday. Newest first. Any
 - **Why not now:** removing it means rewriting history, so every commit hash changes, a force-push is needed, and open PRs and other branches break. `main` is frozen for verification, and force-pushing is against the owner rules without his explicit yes.
 - **When:** after toll-free verification is approved and eNov14 is merged, with Emmett's yes for each step.
 - **How:** superseded by `docs/AFTER-TOLL-FREE-APPROVAL.md` step 4 (squash-merge PR #13, delete `eNov14`, ask GitHub Support to purge). `main` is never force-pushed.
+- **Done November 26, another way:** history rewritten and every branch force-pushed with Emmett's yes. No GitHub Support request (Emmett).
 
 ## Monday: the 513 Auto Clean logo in the booking emails (Elijah, November 14)
 

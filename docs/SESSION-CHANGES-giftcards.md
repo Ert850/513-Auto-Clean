@@ -198,3 +198,8 @@ What he decided, and what changed:
 - **What to test on the test site:** send a card to your second address: Elijah's address gets "Gift card sent to someone" with the name, email, from and "Now (emailed)". Schedule one for tomorrow: his email shows the date. Reload the card page: the form is gone, and he got exactly one email per card.
 - **Checks:** 919 tests pass (3 new: once on a send-now, once on a scheduled send and not again on repeats, a failing owner email or mark doesn't break the send; 5 existing gift-send tests now count his email). Preview build passes.
 
+
+## November 26: Stripe Adaptive Pricing stays on (Emmett)
+
+- Stripe's Adaptive Pricing shows a buyer outside the US the gift card price in their own currency (the live checkout offered EUR or USD from Spain). Emmett kept it on after the go-live. The card's value and the amount 513 receives stay in US dollars; Stripe charges the buyer the conversion.
+- Side effect seen on the live checkout: a buyer who picks another currency doesn't see Amazon Pay, which is US dollars only. US buyers are unaffected.

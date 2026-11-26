@@ -21,7 +21,7 @@
       "cardSub": "Tell us what you&rsquo;re dealing with and we&rsquo;ll point you the right way.",
       "subject": "QUESTION from 513autoclean.com",
       "button": "Send My Question",
-      "fineprint": "No spam, ever. We only use your info to answer your question. See our <a href=\"privacy.html\">Privacy Policy</a>."
+      "fineprint": "No spam, ever. We use your info to answer your question the way you pick, and send anything else, like texts or offers, only if you tick those boxes. See our <a href=\"privacy.html\">Privacy Policy</a>."
     },
     "quote": {
       "heading": "Request a quote",
@@ -30,7 +30,7 @@
       "cardSub": "Tell us what you&rsquo;re dealing with and we&rsquo;ll point you the right way.",
       "subject": "QUOTE REQUEST from 513autoclean.com",
       "button": "Request Quote",
-      "fineprint": "No spam, ever. We only use your info to send your quote.",
+      "fineprint": "No spam, ever. We use your info to send your quote the way you pick, and send anything else, like texts or offers, only if you tick those boxes.",
       "success": "Thanks, your quote request is in. I'll get back to you shortly, usually the same day."
     }
   }

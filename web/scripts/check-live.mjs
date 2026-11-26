@@ -34,6 +34,9 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { assetHash } from "./asset-hash.mjs";
+import { phoneHashSalt } from "./phone-stamp.mjs";
+import { urlSalt } from "./site-urls.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const argv = process.argv.slice(2);
@@ -87,7 +90,19 @@ if (home.status !== 200) {
 } else {
   pass("the site answers", `HTTP 200`);
 
-  const local = stamps(fs.readFileSync(path.join(root, "index.html"), "utf8"));
+  // What each stamp should be on THIS site, worked out the way the build does
+  // (asset-hash.mjs). The live build folds its published number into every
+  // stamp, so reading the repo's own index.html (stamped with the repo's
+  // number) called every deploy with BUSINESS_PHONE set "stale" (November 26).
+  const livePhone = /href="tel:([^"]+)"/.exec(home.text)?.[1];
+  const salt = phoneHashSalt(livePhone) + urlSalt(root);
+  const local = Object.fromEntries(
+    Object.keys(stamps(fs.readFileSync(path.join(root, "index.html"), "utf8")))
+      // js/config.js is written at build time from Netlify's own settings
+      // (render-config.mjs), so no local copy can predict its stamp.
+      .filter((f) => f !== "js/config.js" && fs.existsSync(path.join(root, f)))
+      .map((f) => [f, assetHash(root, f, salt)]),
+  );
   const live = stamps(home.text);
   const behind = Object.keys(local).filter((f) => live[f] && live[f] !== local[f]);
   const missing = Object.keys(local).filter((f) => !live[f]);
@@ -208,6 +223,10 @@ if (pay.status === 400 && pay.body?.error === "mandate_required") {
   pass("create-payment: deployed, and refuses a card with no authorization");
 } else if (pay.status === 503 && pay.body?.error === "unconfigured") {
   warn("create-payment: STRIPE_SECRET_KEY not reaching the function", "no card can be taken");
+} else if (pay.status === 503 && pay.body?.error === "off") {
+  // Card on file is switched off in capabilities.ts, so the function refuses
+  // before any Stripe call (November 23, P7): deployed and doing its job.
+  warn("create-payment: deployed, card payments switched off", "capabilities.ts: no card is taken at booking");
 } else {
   fail("create-payment: unexpected", `HTTP ${pay.status} ${pay.text.slice(0, 160)}`);
 }

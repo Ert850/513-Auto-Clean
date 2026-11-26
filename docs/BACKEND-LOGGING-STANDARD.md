@@ -20,7 +20,7 @@ Contents:
 8. JobsSync and the Accounting sheet
 9. Analytics and A/B tests
 10. The visitor's browser console
-11. The master calendar, 513 All Jobs (new, November 26, off until its setting is set)
+11. The master calendar, 513 All Jobs (live since November 26)
 12. What Imperion can rely on, and the gaps found
 13. Open questions for Imperion
 
@@ -271,7 +271,7 @@ Only visible to someone with the browser's developer tools open on the booking f
 
 ---
 
-## 11. The master calendar, 513 All Jobs (new, November 26, off until its setting is set)
+## 11. The master calendar, 513 All Jobs (live since November 26)
 
 Built on branch `master-calendar` from the spec (`docs/ONE-CALENDAR-SPEC.md`, concept (d)), with the website doing the copying. It does nothing until Netlify has `ALL_JOBS_CALENDAR_ID`. Setup and every rule: `docs/MASTER-CALENDAR-SETUP.md`. Settings: `config/master-calendar.json`.
 
