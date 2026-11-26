@@ -55,4 +55,23 @@ Branch `claude/seo-master-page-7e23ad`, not pushed. It merges into eNov14 later,
 
 ## 4. Question list: `docs/QUESTIONS-FOR-ELIJAH-SEO.md` and `.pdf` (new)
 
-Customer questions grouped by the page they belong to; the ones the site already answers are marked. Elijah's answers feed each page's FAQ (standard item C5).
+- **What it is:** 337 customer questions, numbered for replies by number and grouped by the page they belong to.
+  - The groups: general and booking, pricing, each interior and exterior package, 18 add-ons, gift cards, and 11 area groups.
+  - 150 are marked ✅ with where the site already answers them.
+  - It ends with 15 facts for Elijah to confirm (A to O), such as water and power, and insurance.
+- **It replaces** the November 15 `FAQ-QUESTIONS-FOR-ELIJAH.md`. His answers feed each page's FAQ (standard item C5).
+- **The PDF** is the same file, printed with headless Chrome.
+
+## 5. Found on live or draft pages while checking (not changed)
+
+- **`faq.html` types a business number:** the pet hair answer says the add-ons are "billed at $50/hr". That breaks the no-typed-numbers rule, and the catalog's add-ons are fixed prices, not hourly.
+- **`faq.html`'s heading** "Can you remove pet hair, stains, and odors?" reads as a removal promise; the answer under it is careful.
+- **Water and power are said three ways:**
+  - FAQ: "rarely an issue";
+  - Terms: give them if you have them, or we bring our own;
+  - the interior draft and `BUSINESS-CONTEXT.md`: we bring everything.
+  This is fact check A in the question list.
+- **The stain draft's step 2** says every stain is extracted. Only the deep tier includes extraction.
+- **`service-area.html`** says "we will travel up to 12 hours each way". That looks doubtful (fact check G).
+- **`config/areas.json` has no Northern Kentucky or Southeast Indiana group,** so a city page there can't pass the ZIP check yet (fact check F).
+- **The gift cards page** says Apple Pay or Google Pay; the setting lists card, Link and Amazon Pay. Wallets likely come through card; confirm (fact check O).
