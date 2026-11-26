@@ -1,6 +1,6 @@
 # Booking process flow: from a detailer's calendar to GoHighLevel
 
-For Imperion, who are connecting GoHighLevel (GHL). Written November 26, 2026, against branch `eNov14` (commit `a2a5869`), in plain language for someone who doesn't read code. File names are given so a developer can check each step. Its companion, `docs/BACKEND-LOGGING-STANDARD.md`, says what each step records. `docs/BOOKING-PIPELINE.md` (November 9) covers the booking form's screens and taps; this document starts where the customer has picked a time.
+For Imperion, who are connecting GoHighLevel (GHL). Written November 26, 2026, against branch `eNov14` (commit `a2a5869`), and brought up to date the same day for branch `master-calendar` (the master calendar, 513 All Jobs, as built), in plain language for someone who doesn't read code. File names are given so a developer can check each step. Its companion, `docs/BACKEND-LOGGING-STANDARD.md`, says what each step records. `docs/BOOKING-PIPELINE.md` (November 9) covers the booking form's screens and taps; this document starts where the customer has picked a time.
 
 Contents:
 
@@ -38,7 +38,7 @@ Contents:
 | **Resend** | The service that sends the site's own emails |
 | **Web3Forms** | The service the browser uses to email Elijah a second copy of each booking, and the Contact form |
 | **JobsSync** | Elijah's Apps Script that copies jobs from the bookings calendars into his Accounting sheet, hourly |
-| **513 All Jobs** | The new private master calendar: one copy of every job, for GHL |
+| **513 All Jobs** | The new private master calendar: one copy of every job, for GHL. Deploy Previews write to a separate **513 TEST All Jobs** |
 | **Linked / conflict calendar** | GHL's terms: the linked calendar is where GHL's bookings sync; a conflict calendar only blocks GHL's times when its events are Busy |
 
 ---
@@ -134,8 +134,9 @@ sequenceDiagram
   participant B as Browser
   participant S as send-confirmation
   participant G as Bookings calendar
-  participant M as 513 All Jobs (new)
   participant E as Email
+  participant M as 513 All Jobs (new)
+  participant J as jobs-mirror
 
   B->>S: Ids, time, address, contact, booking key
   Note over S: Reprice, measure drive, read block fee
@@ -148,18 +149,19 @@ sequenceDiagram
     S-->>B: 409, nothing written or sent
   end
   S->>G: Write the job (Busy, key, arrival + work)
-  S->>M: Copy of the job
   S->>E: Owner email, then customer email (Resend)
+  S->>M: Copy of the job (one quick try, capped)
   S-->>B: Result
   B->>E: Second copy to Elijah (Web3Forms)
   Note over B: Done screen
-  loop Every 10 minutes: jobs-mirror
-    M->>G: Compare, copy changes
+  loop Every 10 minutes, published site only
+    J->>G: Read every bookings calendar
+    J->>M: Copy, update, mark cancelled
   end
-  Note over M: GoHighLevel reads 513 All Jobs only
+  Note over M: GoHighLevel links 513 All Jobs only
 ```
 
-*Browser: the booking form, `js/funnel.js`. send-confirmation: the Netlify function `netlify/functions/send-confirmation.mjs`. Bookings calendar: the detailer's own (513 Auto Clean or 513 Kris Bookings). 513 All Jobs: new, November 26, off until its setting is set. Email: Resend from the server, Web3Forms from the browser.*
+*Browser: the booking form, `js/funnel.js`. send-confirmation: the Netlify function `netlify/functions/send-confirmation.mjs`. Bookings calendar: the detailer's own (513 Auto Clean or 513 Kris Bookings). Email: Resend from the server, Web3Forms from the browser. 513 All Jobs: new, November 26, off until its setting is set. jobs-mirror: the scheduled function `netlify/functions/jobs-mirror.mjs`, which reads the bookings calendars and writes the master.*
 
 Step by step, in words:
 
@@ -170,11 +172,11 @@ Step by step, in words:
    - **Taken:** nothing is written, no email goes, and the form reopens the time step with the times still open. Except when turning the customer away would be wrong (they have paid; their browser showed standard hours; the retry check itself failed): then nothing is written either, and Elijah's email says `NOT ON THE CALENDAR: this time is already taken (why)`.
    - **Unread:** the job is written, flagged `CHECK THE TIME` to Elijah, and the customer is told we will confirm.
 5. **The job is written** to the detailer's bookings calendar (`writeCalendar()`, `createBookingEvent()`), Busy, with the booking key hidden on it. It ends at the planned arrival plus the work, so the next job that day is spaced from when this one really ends (`arrivalLateMin`). A job longer than one day is one event per working day; only day 1 carries the total. Its format is in `docs/BACKEND-LOGGING-STANDARD.md`, section 3.
-6. **The copy on 513 All Jobs** (new, November 26, off until Netlify has `ALL_JOBS_CALENDAR_ID`): written by the same booking key, titled with the detailer's name first, with a `Status:`, `Detailer:`, `Booking key:`, `Source calendar:` header above the original description. A copy that fails to write never fails the booking; the 10-minute `jobs-mirror` run fills it in.
-7. **Emails** (Resend): Elijah's first, then the customer's. The customer is told **Confirmed** only when the event was written, the time was checked just before, and the start is outside `shortNoticeHours`.
+6. **Emails** (Resend): Elijah's first, then the customer's. The customer is told **Confirmed** only when the event was written, the time was checked just before, and the start is outside `shortNoticeHours`.
+7. **The copy on 513 All Jobs** (new, November 26, off until Netlify has `ALL_JOBS_CALENDAR_ID`), only after both emails have gone: one quick write per working day, all at once, by the booking key, capped at `writeTimeoutMs` (`config/master-calendar.json`). Titled with the detailer's name first, with a `Status:`, `Detailer:`, `Booking key:`, `Source calendar:` header above the original description. It can't change the reply, the event or either email: a copy that fails is logged (`[master-cal]`), and the next 10-minute `jobs-mirror` run fills it in. The server then writes its one `[booking]` log line (`docs/BACKEND-LOGGING-STANDARD.md`, section 2).
 8. **The browser's own copy** (Web3Forms) goes to Elijah after every booking, marked `CHECK THE CALENDAR` when the server did not confirm it saved the booking. Then the Done screen.
 9. **Follow-up answers** ("Help us get ready": tap, outlet, parking, notes) are added to the event by `booking-followup.mjs`, which must be given the same booking key and phone.
-10. **GHL** reads 513 All Jobs (once connected). Nothing else from the website reaches GHL today: the contact and pipeline feed in `docs/GHL-SETUP.md` is not built.
+10. **GHL** reads 513 All Jobs (once connected; the production calendar, never 513 TEST All Jobs). Nothing else from the website reaches GHL today: the contact and pipeline feed in `docs/GHL-SETUP.md` is not built.
 
 **A checkout left unfinished** is a separate branch, not part of a booking: when someone who typed a name and a phone or email closes the form without booking, `cart-capture.mjs` emails Elijah what they had picked (subject `Unfinished booking: <name>`). It goes to his inbox, **not to GHL**.
 
@@ -195,19 +197,20 @@ flowchart TD
 
   CHANGE --> SITE["Website availability<br/>sees it on the next calendar read:<br/>a deleted job's time is sellable again"]
   CHANGE --> JS["JobsSync, hourly<br/>Accounting sheet row:<br/>Cancelled / new date / new row /<br/>back to Upcoming or Done"]
-  CHANGE --> MIR["jobs-mirror, every 10 minutes (new)<br/>513 All Jobs copy:<br/>CANCELLED, Free, grey / moved /<br/>new copy, key manual:id / Booked again"]
+  CHANGE --> MIR["jobs-mirror, every 10 minutes (new)<br/>reads the bookings calendars,<br/>writes the 513 All Jobs copy:<br/>CANCELLED, Free, grey / moved /<br/>new copy, key manual:id / Booked again"]
   MIR --> GHL["GoHighLevel<br/>sees the copy change"]
   CHANGE -. "nothing automatic" .-> CUST["The customer<br/>is not told: the detailer<br/>calls or texts them"]
 ```
 
 | Change | Website availability | JobsSync (Accounting sheet) | 513 All Jobs (new) | GHL |
 |---|---|---|---|---|
-| **Delete the event** (cancel) | The time is free again on the next read | Row set to `Cancelled` on its next hourly run, kept for the record, out of the totals. Only when every calendar was read, a direct look-up confirms the event is gone, and no more than `maxCancelsPerRun` look deleted at once | Copy marked `CANCELLED: …`, Free, grey, `Status: Cancelled` (or deleted, if `cancelMode` is "delete" in `config/master-calendar.json`), with the same three safeguards (at most 10 cancels per run) | Sees a Free, cancelled copy (or none) |
+| **Delete the event** (cancel) | The time is free again on the next read | Row set to `Cancelled` on its next hourly run, kept for the record, out of the totals. Only when every calendar was read, a direct look-up confirms the event is gone, and no more than `maxCancelsPerRun` look deleted at once | Copy marked `CANCELLED: …`, Free, grey, `Status: Cancelled` (or deleted, if `cancelMode` is "delete" in `config/master-calendar.json`), with the same three safeguards (`maxCancelsPerRun` in `config/master-calendar.json`), and only when every look-up that run finished | Sees a Free, cancelled copy (or none) |
 | **Move it to another time** | The old time frees, the new one blocks | Same row (matched by event ID), new date | Copy moved | Sees the move |
-| **Move it to the other detailer's bookings calendar** | As above, on the other detailer's times | Same row; Calendar column changes. The Detailer column follows the name in the title, so retitle it too | Copy follows (same event ID), detailer and colour change | Sees the new detailer |
+| **Move it to the other detailer's bookings calendar** | As above, on the other detailer's times | Same row; Calendar column changes. The Detailer column follows the name in the title, so retitle it too | Copy follows (same event ID). The detailer and colour follow the same rule as JobsSync: a name at the start of the title wins, else the calendar's detailer, so retitle it here too | Sees the new detailer |
 | **Type a job by hand** on a bookings calendar | Blocks the time (it is Busy) | New row; service from keywords; a total only if a `$` amount is typed | New copy, key `manual:<event id>` | Sees it |
 | **Restore a deleted event** from Trash | Blocks the time again | Row back to `Upcoming` or `Done` | Copy back to `Booked` | Sees it booked |
-| **Edit a copy on 513 All Jobs** (by hand or by GHL) | Nothing: the master is never read | Nothing: never read | Put back as the original says on the next run | Its change is undone |
+| **Edit a copy on 513 All Jobs** (by hand or by GHL) | Nothing: the master is never read | Nothing: never read | The fields the mirror owns (title, description, location, times, Busy/Free, colour) are put back as the original says on the next run; anything else (guests, GHL's own fields) is left | A change to those fields is undone (whether it should flow back is a phase 2 question) |
+| **Mark it Free, or retitle it Busy, Hold, Personal...** | Free: no longer blocks the time | No longer counted (not a job) | Not copied if new; an existing copy is left as it was (`kept` in the log) | Sees the old copy |
 | **Rename the event "cancelled" instead of deleting it** | **Still blocks the time** (still Busy) | Row set to `Cancelled` (`cancelTitle`) | Treated as an edit, not a cancel | Sees a Busy job with a cancelled title |
 
 Things to know:
@@ -215,15 +218,19 @@ Things to know:
 - **Delete, don't rename.** Only a deleted event frees the time on the website and cancels the copy.
 - **A multi-day job is several events.** Moving or deleting day 1 does not move day 2; each day is changed on its own.
 - **A job typed on an availability calendar** blocks the detailer's time on the website, but JobsSync and the master calendar read only bookings calendars, so it never reaches the sheet or GHL. Hand-typed jobs belong on the bookings calendar.
+- **Only jobs reach 513 All Jobs:** the same events JobsSync counts. Free events, titles starting OPEN, BEST, DNS, Busy, Blocked, Unavailable, Availability, Hold or Personal, the office address, and all-day events with no `$` amount are never copied. A long job's day 2 and later are copied (one copy per day), without a `WHO` line: only day 1 carries the customer and the total.
+- **The mirror's window** is `daysBack` days ago to `daysAhead` days ahead (`config/master-calendar.json`). Changes outside it are not followed.
+- **It runs on the published site only.** A Deploy Preview's bookings are copied to 513 TEST All Jobs at booking time and nothing reconciles them.
+- **A booking the server can give to no known detailer** (`detailerFor()` in `_detailers.mjs` finds none who can do the job) goes on Elijah's calendar, and its copy is Elijah's.
 - **Elijah's personal calendar** blocks his times only, and is never copied anywhere.
-- **GHL must link 513 All Jobs only.** It must never use an availability calendar as a conflict calendar: an OPEN block is Busy, and GHL treats Busy as booked, so it would read open working time as taken.
-- **An appointment GHL creates on 513 All Jobs** is invisible to the website (the master is never read), so the same time could be sold twice. Until that is designed, customers don't book through GHL.
+- **GHL must link the production 513 All Jobs only**, never 513 TEST All Jobs. It must never use an availability calendar as a conflict calendar: an OPEN block is Busy, and GHL treats Busy as booked, so it would read open working time as taken.
+- **An appointment GHL creates on 513 All Jobs** is left alone by the mirror (logged `not-ours`), but it is invisible to the website (the master is never read), so the same time could be sold twice. Until that is designed, customers don't book through GHL.
 
 ---
 
 ## 5. (d) What happens when a step fails
 
-The rule throughout: **a failure never loses a booking it had already won, and is always told to Elijah.** The customer is told Confirmed only when the job is on the calendar.
+The rule throughout: **a failure never loses a booking it had already won.** Every failure that leaves a booking off the detailer's calendar, or its time or price in doubt, reaches Elijah by email (his Resend email, or the browser's Web3Forms copy when that fails). Some failures reach only a log or nobody (the "Who is told" column says which). The customer is told Confirmed only when the job is on the calendar.
 
 ```mermaid
 flowchart TD
@@ -255,16 +262,20 @@ flowchart TD
 | | Someone else has the time | 409, nothing written, no email; back to Time | Analytics `time_taken_at_confirm` (consenting visitors only) |
 | Server, write the event | Sign-in refused, calendar not shared, Google down | No event; booking continues | Owner email `NOT ON THE CALENDAR (reason)`; customer told we will confirm; log `gcal token`, `gcal oauth refresh` or `gcal insert` |
 | | Day 2 or later of a multi-day job fails | Day 1 stays; the later days are missing, and a retry won't add them | Owner email `NOT ON THE CALENDAR (day2_…)` |
-| Server, master copy (new) | The copy can't be written | The booking is unaffected; `jobs-mirror` fills it in within 10 minutes | To be set by the new build |
+| Server, master copy (new) | The copy can't be written, or Google is slow | Tried only after both emails, capped at `writeTimeoutMs`; the reply, the event and both emails are unaffected. `jobs-mirror` copies it on its next run | Log only: `[master-cal]` `copy-failed` |
 | Server, owner email | Resend refuses or is down | The customer email is still tried; the Web3Forms copy still goes | Log `resend` or `resend network` |
-| Server, customer email | Resend refuses (a bad address) | Nothing retries it | Log `resend` only; Elijah is not told |
+| Server, customer email | Resend refuses (a bad address) | Nothing retries it | Log `resend` (address redacted) and `[booking] check … customer=failed`. Elijah's email can't say: it is sent first, on purpose |
 | Server, no `RESEND_API_KEY` | No emails at all | The Web3Forms copy still goes, marked CHECK THE CALENDAR if the event wasn't written | Web3Forms email |
 | Browser, Web3Forms | Web3Forms fails | Done screen if the server saved the booking; otherwise the error asks them to call or text | Elijah already has the server's email, if it was saved |
 | Follow-up answers | Event not found, or the patch fails | The answers still reach Elijah by Web3Forms | Log `gcal find` or `gcal patch` |
 | JobsSync | A calendar can't be read | Rows updated from what was read; no rows marked Cancelled that run | Apps Script Executions warning only |
 | | More than `maxCancelsPerRun` events look deleted | None marked | Executions warning only |
-| `jobs-mirror` (new) | Any calendar read fails | The run changes nothing | To be set by the new build |
-| | Too many cancels at once | No more than 10 in a run | To be set by the new build |
+| `jobs-mirror` (new) | A bookings calendar or the master can't be listed | The run changes nothing | Log `[master-cal]` `abort` |
+| | A look-up of a missing original fails | New and changed copies still go; nothing is marked cancelled this run | Log `abort-cancels` |
+| | More than `maxCancelsPerRun` jobs look deleted at once | None are marked | Elijah, one email: `CHECK: <n> jobs look deleted` (once for those jobs) |
+| | Out of time (`runBudgetMs`) | Every unanswered Google call is ended; nothing is cancelled that run; the next run carries on | Log `cancels-skipped`, `budget` |
+| | A copy's bookings calendar wasn't read (a detailer taken out of `DETAILERS`) | The copy is left as it is, never marked cancelled | Log `unread-source` with a count |
+| | One write fails | Counted; the next run tries again | Log `create-failed`, `update-failed`, `cancel-failed`... |
 
 Where these show up, and for how long, is in `docs/BACKEND-LOGGING-STANDARD.md`.
 

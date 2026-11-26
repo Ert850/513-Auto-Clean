@@ -1,12 +1,12 @@
 # Backend logging standard: what the 513 Auto Clean backend records
 
-For Imperion, who are connecting GoHighLevel (GHL). Written November 26, 2026, against branch `eNov14` (commit `a2a5869`). Every statement below was read from the code at that commit; file names are given so each one can be checked. Its companion is `docs/BOOKING-PROCESS-FLOW.md` (how a booking moves); `docs/BOOKING-PIPELINE.md` (November 9) covers the booking form's screens and is not repeated here.
+For Imperion, who are connecting GoHighLevel (GHL). Written November 26, 2026, against branch `eNov14` (commit `a2a5869`), and brought up to date the same day for branch `master-calendar`, which adds the master calendar (section 11) and the booking log lines below. Every statement was read from the code; file names are given so each one can be checked. Its companion is `docs/BOOKING-PROCESS-FLOW.md` (how a booking moves); `docs/BOOKING-PIPELINE.md` (November 9) covers the booking form's screens and is not repeated here.
 
 **The short version.**
 
 1. **The record of truth for a job is its Google Calendar event** on the detailer's bookings calendar. Everything else (emails, the Accounting sheet, the new master calendar, GHL) is a copy of it or an alert about it.
 2. **Elijah's owner email is the alert channel.** Every way a booking can fail to reach the calendar puts a word in that email's subject (`NOT ON THE CALENDAR`, `CHECK THE TIME`, `CHECK THE PRICE`), and a second, independent email (Web3Forms) says `CHECK THE CALENDAR` when the site could not confirm it saved the booking.
-3. **Netlify function logs record failures, not successes**, under the short prefixes quoted below, and Netlify keeps them for a day (a week on some plans). They are for debugging a failure someone has already noticed, not for counting or auditing bookings.
+3. **Netlify function logs record failures**, under the short prefixes quoted below, **plus one `[booking]` line per booking** and the master calendar's `[master-cal]` lines. Netlify keeps them for a day (a week on some plans), so they are for debugging and for tying a failure to a booking key, not for counting or auditing bookings.
 
 Contents:
 
@@ -30,10 +30,10 @@ Contents:
 
 | System | What is recorded | Where | Who can see it | How long it is kept | What a failure looks like |
 |---|---|---|---|---|---|
-| Netlify function logs | Failures only, one line each, with a short prefix (section 2). Three success lines exist | Netlify, the site's Functions page, per function | Members of the Netlify team | At least 24 hours of function activity; 7 days on some plans (Netlify's docs) | A line such as `gcal insert 403 ...` or `resend 422 ...` |
+| Netlify function logs | Failures, one line each, with a short prefix (section 2); one `[booking]` line per booking; `[master-cal]` lines for the master calendar | Netlify, the site's Functions page, per function | Members of the Netlify team | At least 24 hours of function activity; 7 days on some plans (Netlify's docs) | A line such as `gcal insert 403 ...`, `resend 422 ...` or `[booking] check ...` |
 | Google Calendar booking event | The job: title, location, description blocks, start and end, the booking key (hidden) | The detailer's bookings calendar (Elijah: 513 Auto Clean; Kris: 513 Kris Bookings) | The calendar's owner account and the detailer it is shared with. The public sees free/busy only | Until deleted. A deleted event sits in Google Calendar's Trash for 30 days | No event, and the owner email subject starts `NOT ON THE CALENDAR` |
 | Owner email (Resend) | Every booking, request and "help me decide", with any failure in the subject | Elijah's inbox (`OWNER_EMAIL`), and Resend's dashboard | Elijah; Resend account users | Gmail: until deleted. Resend: 30 days (Resend's pricing page) | Not received; `resend <status>` in the Netlify log |
-| Customer email (Resend) | Confirmation, held time, or request received | The customer's inbox, and Resend's dashboard | The customer; Resend account users | As above | Not received; `resend <status>` in the log. Elijah is not told (gap G4) |
+| Customer email (Resend) | Confirmation, held time, or request received | The customer's inbox, and Resend's dashboard | The customer; Resend account users | As above | Not received; `resend <status>` and `[booking] check … customer=failed` in the log. Elijah's email can't say (it is sent first, on purpose; gap G4) |
 | Booking email (Web3Forms) | A second copy of every booking, from the browser | Elijah's inbox | Elijah | Gmail: until deleted. Web3Forms keeps a short history on its free plan | The customer sees "Something went wrong sending that" if this AND the site's own save both failed |
 | Stripe | Gift card payments, each card's value, balance, status and a short history; webhook deliveries | Stripe dashboard | Stripe account users | Payments: indefinitely. Events: 30 days in full through the API | A webhook delivery with a non-2xx answer; an owner email starting `CHECK:` |
 | Contact form (Web3Forms) | The question, name, phone, email, consent answers, arrival source | Elijah's inbox | Elijah | As Web3Forms above | The visitor sees an error naming the business phone |
@@ -41,7 +41,7 @@ Contents:
 | JobsSync | One row per job: date, status, service, ZIP, area, totals, lead source, detailer | The Accounting sheet, tabs "Jobs (auto)" and "Jobs by Area" | Whoever the sheet is shared with | Rows are never deleted; cancelled jobs stay as `Cancelled` | `console.warn` lines in Apps Script's Executions; no email (gap G9) |
 | Analytics (GA4, Clarity) | Page views and booking form events, only after the visitor accepts analytics | Google Analytics and Microsoft Clarity | Property users | Google's and Microsoft's own retention settings | Nothing: measurement never breaks the page |
 | A/B test version | Which version each booker saw | The owner email ("A/B tests" row) and the calendar event (`A/B TESTS` block) | As the email and the event | As the email and the event | Missing row: the visitor was in no running test |
-| Master calendar, 513 All Jobs (new) | A copy of every job, with a parseable header | A private Google calendar (`ALL_JOBS_CALENDAR_ID`) | Elijah and GHL's Google account | Copies are kept; cancelled ones stay, marked, unless `cancelMode` is "delete" | A missing or stale copy; the 10-minute run puts it right |
+| Master calendar, 513 All Jobs (new) | A copy of every job, with a parseable header | A private Google calendar (`ALL_JOBS_CALENDAR_ID`) | Elijah and GHL's Google account | Copies are kept; cancelled ones stay, marked, unless `cancelMode` is "delete" | A missing or stale copy and a `[master-cal]` warning; the 10-minute run puts it right. Only "too many cancels at once" emails Elijah |
 
 ---
 
@@ -53,17 +53,35 @@ Contents:
 
 **Who.** Anyone on the Netlify team for the site.
 
-**Format.** Every line the code writes is `console.error("<prefix>", <detail>)` (or `console.log` for the three success lines). The prefix is a fixed string; the detail is a status code and the first 200 to 500 characters of the other service's answer. There is no booking key, request id or JSON structure in any line except `gift-deliver`'s summary. Netlify adds its own start, end and duration lines around each run.
+**Format.** Most lines are `console.error("<prefix>", <detail>)` (or `console.log` for the success lines). The prefix is a fixed string; the detail is a status code and the first 200 to 500 characters of the other service's answer. Resend's answer is logged with email addresses and phone numbers replaced by `[email]` and `[phone]` (`redact()` in `send-confirmation.mjs`). Two kinds of line carry a booking key: `[booking]` (below) and the master calendar's `[master-cal] {json}` (section 11). Netlify adds its own start, end and duration lines around each run.
+
+**The `[booking]` line.** `send-confirmation.mjs` writes one per booking that gets past the calendar step (not for a repeat, and not when the time was taken):
+
+```
+[booking] ok key=bk_… detailer=Kris days=1 calendar=written owner=sent customer=sent
+[booking] check key=bk_… detailer=owner days=0 calendar=failed:http_403 owner=sent customer=none
+```
+
+| Field | Values |
+|---|---|
+| first word | `ok` when the calendar has it (or it is a request with no time), Elijah's email went, and the customer's did not fail; else `check` |
+| `key` | the booking key (`-` when the browser sent none) |
+| `detailer` | the detailer's name, or `owner` for Elijah's own calendar |
+| `days` | how many events were written (0 for a request or a failed write) |
+| `calendar` | `written`, `written-unchecked` (the CHECK THE TIME case), `request` (no time chosen), or `failed:<reason>` (the reasons in section 3) |
+| `owner`, `customer` | `sent`, `failed`, `none` (no customer email given) or `unconfigured` (no `RESEND_API_KEY`) |
+
+It never carries a name, phone, email or address.
 
 ### Every log line in the code
 
 | Function (file in `netlify/functions/`) | What it does | Prefixes it writes (exact) | Logs a success? |
 |---|---|---|---|
-| `send-confirmation.mjs` | Reprices the booking, re-checks the time, writes the calendar event, sends both emails | `BUSINESS_PHONE` (a bad phone setting), `resend network`, `resend` (status and Resend's answer), `calendar write` (the whole error object, when writing threw), `still free: only with the form's drive` (console.log, the slot time) | No. A booking that works leaves no line |
+| `send-confirmation.mjs` | Reprices the booking, re-checks the time, writes the calendar event, sends both emails, then the master copy | `BUSINESS_PHONE` (a bad phone setting), `resend network`, `resend` (status and Resend's answer, addresses and phones redacted), `calendar write` (the whole error object, when writing threw), `still free: only with the form's drive` (console.log, the slot time), `[booking]` (above), `[master-cal]` (`copy`, `copy-exists`, `copy-failed`, `clash`; section 11) | **Yes:** one `[booking]` line per booking |
 | `_gcal.mjs` (shared) | Google sign-in, writing, finding and patching events | `gcal oauth refresh` (the OAuth refresh token was refused), `gcal token` (the service account was refused), `gcal insert` (writing an event failed, with Google's message), `gcal find` (looking up a booking key failed), `gcal patch` (adding follow-up answers failed) | No |
 | `_detailers.mjs` (shared) | Reads the fee calendar and re-checks a time | `fee calendar` (the OPEN block fee could not be read; the fee shown stands), `still free` (the re-check could not read a calendar; the booking is written as one to check) | No |
 | `booking-followup.mjs` | Adds the "Help us get ready" answers to the booking's event | None of its own; only the `gcal ...` lines above | No |
-| `cart-capture.mjs` | Emails Elijah about a checkout left unfinished | `resend` | No |
+| `cart-capture.mjs` | Emails Elijah about a checkout left unfinished | `resend` (addresses and phones redacted) | No |
 | `personal-busy.mjs` | Elijah's personal (iCloud) calendar as busy times | **None.** A failed feed answers 502 to the browser and is never logged (gap G6) | No |
 | `travel.mjs`, `_routes.mjs` | Measures the drive with Google Routes | **None.** A failure answers `routes_error` and the price falls back | No |
 | `reviews.mjs` | Google reviews for the site | `places` | No |
@@ -76,7 +94,8 @@ Contents:
 | `gift-admin.mjs` | Elijah's gift card tool | `gift-admin` | No (changes go to the card's history in Stripe) |
 | `gift-deliver.mjs` | Scheduled, hourly (`netlify.toml`, `schedule = "0 13-23 * * *"`): sends dated cards | `gift-deliver catch-up`, `gift-deliver catch-up search`, `gift-deliver` | **Yes:** one line per run, `gift-deliver {"sent":…,"failed":…,"busy":…,"gaveUp":…,"waiting":…,"stopped":…,"caught":…}` |
 | `gift-rebuild.mjs` | Scheduled, daily (`schedule = "15 5 * * *"`): rebuilds the site on sale dates | `gift-rebuild` (the build hook's status, or the error) | **Yes:** `gift-rebuild <status>` on the days it runs a build |
-| `_giftmail.mjs` (shared) | Gift card emails through Resend | `resend network`, `resend` | No |
+| `_giftmail.mjs` (shared) | Gift card emails through Resend | `resend network`, `resend` (addresses and phones redacted) | No |
+| `jobs-mirror.mjs` | Scheduled, every 10 minutes (`netlify.toml`, `schedule = "*/10 * * * *"`), published site only: keeps 513 All Jobs in step | `[master-cal] {json}`, one line per action (section 11) | **Yes:** one `[master-cal] {"action":"run",…}` line per run with the counts (or `{"action":"off"}` while the setting is unset) |
 
 Two prefixes are shared: `resend` and `resend network` are written by `send-confirmation.mjs`, `cart-capture.mjs` and `_giftmail.mjs`. Netlify shows logs per function, so the function name tells them apart.
 
@@ -222,7 +241,7 @@ The owner email also carries Who, When, Where, Detailer, SMS consent, Marketing 
 
 - **Reads:** the bookings calendars in its `CALENDARS` list (513 Auto Clean, 513 Kris Bookings), January 1, 2026 to `CONFIG.daysAhead` ahead. Never the availability calendars, never 513 All Jobs.
 - **Writes:** tab "Jobs (auto)", one row per job, matched by event ID: Event ID, Date, Status, Title, Service, ZIP, Area, Total, Pre-tax, Lead source, Detailer, Calendar, Price override, Area override, Last synced. No phone numbers or emails are copied. Tab "Jobs by Area" totals Done rows only.
-- **Skips:** Free events, titles starting OPEN, BEST, DNS (and Busy, Blocked and similar, `skipTitle`), "Day N of M" events, and the office address.
+- **Skips:** Free events, titles starting OPEN, BEST, DNS (and Busy, Blocked and similar, `skipTitle`), "Day N of M" events, the office address, and all-day events with no `$` amount. 513 All Jobs copies exactly the same set, except "Day N of M" events, which it copies (section 11; `jobs-sync-contract.test.ts` keeps the two in step).
 - **Status:** `Upcoming`, `Done` (the end time has passed), `Cancelled` (the event was deleted, or its title says cancelled, no-show or refunded), `Duplicate` (the same `bookingKey` seen twice).
 - **Cancel safeguards:** a row is marked Cancelled only when every calendar was read without an error, a direct look-up confirms the event is gone, and no more than `CONFIG.maxCancelsPerRun` rows look deleted in one run.
 - **Logs:** Apps Script's Executions page, as `console.warn`: `Could not read calendar <id>: <error>`, `No calendar ID for "<name>": ...`, `A calendar could not be read, so no rows were marked Cancelled this run.`, `<n> rows look deleted from the calendars, more than <max>, so none were marked Cancelled. ...`, `Could not check event <key>: ... Its row was left as it is.` Only a missing Calendar API service throws.
@@ -254,12 +273,19 @@ Only visible to someone with the browser's developer tools open on the booking f
 
 ## 11. The master calendar, 513 All Jobs (new, November 26, off until its setting is set)
 
-Being built in parallel with this document; described from its specification (`docs/ONE-CALENDAR-SPEC.md`, concept (d), with the website writing the copy). It does nothing until Netlify has `ALL_JOBS_CALENDAR_ID`.
+Built on branch `master-calendar` from the spec (`docs/ONE-CALENDAR-SPEC.md`, concept (d)), with the website doing the copying. It does nothing until Netlify has `ALL_JOBS_CALENDAR_ID`. Setup and every rule: `docs/MASTER-CALENDAR-SETUP.md`. Settings: `config/master-calendar.json`.
 
-- **Written at booking time** by the website: a copy of every job written to a detailer's bookings calendar, by the same booking key.
-- **Kept in step** by `jobs-mirror`, a Netlify scheduled function every 10 minutes, which compares each detailer's bookings calendar with the master: hand-typed jobs are copied (key `manual:<event id>`), edits and moves are copied over, a deleted original marks the copy `CANCELLED: …`, Free, grey, `Status: Cancelled` (or deletes it when `cancelMode` is "delete" in `config/master-calendar.json`), and a restored original goes back to `Booked`.
+- **Which calendar.** Production links to **513 All Jobs**; Deploy Previews and branch deploys write to **513 TEST All Jobs** (a different `ALL_JOBS_CALENDAR_ID` per deploy context). GHL must link only the production 513 All Jobs.
+- **Written at booking time,** by `send-confirmation.mjs`, after the detailer's event is written **and after both emails have gone**: one write per working day, all at once, each under an id made from its booking key (so a retry, or the reconciler racing it, can never make a second copy: Google answers 409 and that counts as done). No look-ups first; the whole step is capped at `writeTimeoutMs`. It can't change the reply, the event or either email. A failure is logged only (`copy-failed`); the reconciler copies the job on its next run.
+- **Kept in step** by `jobs-mirror`, a Netlify scheduled function every 10 minutes, **on the published site only** (scheduled functions never run on a preview). It reads every bookings calendar in `DETAILERS` and the master over a window from `daysBack` days ago to `daysAhead` days ahead, every page, and:
+  - copies jobs typed in by hand (key `manual:<event id>`), and any booking-time copy that failed;
+  - follows edits, moves and moves to the other detailer's calendar (the event id stays the same);
+  - puts back a copy changed or deleted on the master. It owns the title, description, location, times, Busy/Free, colour and the two hidden fields: a change to any of these on the copy (by hand, or by GHL under two-way sync) is undone, by a PATCH of those fields only. Anything else on the copy (guests, GHL's own fields) is left alone. Whether GHL edits should flow back is a phase 2 question;
+  - marks a copy `CANCELLED: …`, Free, grey, `Status: Cancelled` when a direct look-up finds its original deleted (or deletes it, when `cancelMode` is "delete"), and sets it back to `Booked` when the original is restored;
+  - leaves alone any event on the master it didn't make (no `sourceId`, for example one GHL created), logging `not-ours`.
+- **Only jobs are copied:** exactly what JobsSync counts (section 8): not Free events, not titles starting OPEN, BEST, DNS, Busy, Blocked, Unavailable, Availability, Hold or Personal, not the office address, not all-day events without a `$` amount. `Day N of M` events are copied (JobsSync skips them only to count a job once).
 - **The copy's format, for GHL to parse:**
-  - Title: the detailer first (`Kris: …`, `Elijah: …`), then the original title.
+  - Title: the detailer first (`Kris: …`, `Elijah: …`), then the original title, after any `SHORT NOTICE …:` prefix. A name already at the start of the original's title wins over the calendar's detailer, as in JobsSync: `Kris: …` typed on Elijah's calendar stays Kris's. A booking the server could give to no known detailer (`detailerFor()` in `_detailers.mjs` returns none) is written to Elijah's calendar, so its copy is Elijah's.
   - Description: a header, then the original description word for word, so every block in section 3 is still there:
     ```
     Status: Booked            (or Cancelled)
@@ -269,12 +295,49 @@ Being built in parallel with this document; described from its specification (`d
     ---
     <the original description>
     ```
+    A copy made at booking time names the calendar by its id until the next run writes its name. Days 2 and on of a long job have no `WHO` line (their originals carry none); day 1 has the customer and the total.
   - Private extended properties `bookingKey` and `sourceId` (the original's calendar and event).
-  - Colour per detailer; grey when cancelled.
-- **Safeguards:** nothing happens in a run where any calendar read failed; a deletion is confirmed by a direct look-up; no more than 10 cancels in one run.
-- **Write-only for the site.** The booking form and the server never read the master for availability, and JobsSync never reads it, so a copy can never block or count twice.
-- **For GHL:** link 513 All Jobs only. **Never use an availability calendar as a GHL conflict calendar:** an OPEN block is Busy, and GHL blocks on Busy, so GHL would read open working time as booked.
-- **Logging.** Its log lines are not in the code at `a2a5869`. To meet this standard it should write one `jobs-mirror` summary line per run (created, updated, cancelled, restored, skipped because a read failed), as `gift-deliver` does, and tell Elijah when a run is refused for too many cancels.
+  - Colour per detailer (`colors`); `cancelledColor` when cancelled.
+- **Safeguards** (`jobs-mirror.mjs`):
+  - a list that fails (a bookings calendar or the master) means nothing is written that run;
+  - a copy is marked cancelled only after a direct look-up of its original says deleted, and a 404 counts as deleted only on a calendar read without an error that run;
+  - a look-up that fails means no cancels that run (new and changed copies still go: they come from complete lists);
+  - a copy whose bookings calendar wasn't read that run (a detailer taken out of `DETAILERS`) is never looked up or marked;
+  - more than `maxCancelsPerRun` copies looking deleted in one run: none are marked, and Elijah gets one email, `CHECK: <n> jobs look deleted, 513 All Jobs left as it was`, once for those jobs;
+  - time: every Google call in a run ends at `runBudgetMs` from its start, answered or not, and nothing new starts after it, so a run finishes well inside Netlify's limit for scheduled functions. Copies are written before look-ups; look-ups cut short mean no cancels that run, and the next run carries on.
+- **Write-only for the site.** The booking form and the server never read the master for availability, and JobsSync never reads it, so a copy can never block or count twice. The build fails if `ALL_JOBS_CALENDAR_ID` is a calendar the site reads (`masterClash`).
+- **For GHL:** link the production 513 All Jobs only. **Never use an availability calendar as a GHL conflict calendar:** an OPEN block is Busy, and GHL blocks on Busy, so GHL would read open working time as booked.
+
+### Its log lines
+
+Each is `[master-cal] {"action":"<action>", …}`, with booking keys, event ids and counts only, never a title, name, phone or email. In `send-confirmation`'s log:
+
+| Action | Meaning |
+|---|---|
+| `copy` | The copy was written at booking time |
+| `copy-exists` | Already there (409): a retry, or the reconciler got there first |
+| `copy-failed` | Not written (`reason`: `http_<status>`, `timed out`, `auth_failed`...). The next run copies it |
+| `clash` | `ALL_JOBS_CALENDAR_ID` is also a calendar the site reads: nothing copied (the build refuses this too) |
+
+In `jobs-mirror`'s log:
+
+| Action | Meaning |
+|---|---|
+| `off`, `unconfigured` | The setting is unset, or Google sign-in isn't set up: nothing done |
+| `run` | One per run: `created`, `updated`, `restored`, `putBack`, `cancelled`, `held`, `failed`, `foreign`, `duplicates`, `skipped` (not jobs), `unread`, `stopped` (out of time) |
+| `abort` | A list failed (`read` says which, `reason` why): nothing written this run |
+| `created`, `updated`, `put-back`, `update`, `restore` | A copy written, changed, put back after being deleted on the master, or set back to Booked |
+| `cancel`, `cancel-delete` | A copy marked cancelled, or deleted |
+| `kept` | The original is still there but is no longer a job (turned Free, say): the copy is left as it was |
+| `create-failed`, `update-failed`, `restore-failed`, `cancel-failed` | One write failed (`reason`); counted in `failed`. A copy whose id Google won't reuse is put back with a PUT; if that fails too the reason starts `id taken (409)` |
+| `abort-cancels` | A look-up failed: no cancels this run |
+| `cancels-skipped` | No cancels this run (a look-up failed, or out of time) |
+| `budget` | `runBudgetMs` reached; the next run carries on |
+| `unread-source` | Copies whose bookings calendar wasn't read this run, left as they are (`count`) |
+| `not-ours` | Events on the master without a `sourceId` (GHL's, or typed by hand), left alone (`count`, `ids`) |
+| `duplicate-copy` | Two copies with one booking key on the master, the second left alone |
+| `cancel-cap`, `cancel-cap-emailed`, `cancel-cap-email-failed`, `cancel-cap-tag-failed` | Too many cancels at once: held, Elijah emailed (or the email failed), the held copies tagged so the email comes once |
+| `run-failed` | The run threw (a bug): the reason, nothing else |
 
 ---
 
@@ -285,25 +348,27 @@ Being built in parallel with this document; described from its specification (`d
 - A booked job that the customer was told is **Confirmed** is on the detailer's bookings calendar, Busy, with `TOTAL:` and the blocks above.
 - Every booking that is **not** on the calendar reaches Elijah's inbox with `NOT ON THE CALENDAR` or `CHECK THE CALENDAR` in the subject, through at least one of two independent senders (Resend from the server, Web3Forms from the browser).
 - A retry never makes a second event or a second set of emails (booking key).
-- A deleted event is the cancel signal: JobsSync marks its row Cancelled; the master marks its copy Cancelled.
+- A deleted event is the cancel signal: JobsSync marks its row Cancelled; the master marks its copy Cancelled (within the safeguards in section 11).
+- Every booking that gets past the calendar step leaves one `[booking]` line with its key, so a log line, the calendar event and the master's `Booking key:` line can be tied together.
 
 **Do not rely on:**
 
-- Netlify's logs as a history: failures only, a day to a week.
+- Netlify's logs as a history: kept a day to a week.
+- The master calendar's copy being there the moment a booking is made: it usually is, but a failed booking-time copy is only logged, and the next 10-minute run fills it in.
 - Anything in GHL from the website today, except (once switched on) the master calendar.
 - Analytics for booking counts.
 
 ### Gaps found in the code's logging
 
-Each is a finding; none is fixed here.
+Found at `a2a5869`. G1 and G5 are fixed on branch `master-calendar`, G2 and G4 in part; the rest stand.
 
 | # | Gap | Where | Effect |
 |---|---|---|---|
-| G1 | A successful booking writes no log line | `send-confirmation.mjs` | Netlify's log cannot show how many bookings ran or when; only failures appear |
-| G2 | The booking key is never logged and never shown to a person | `send-confirmation.mjs`, `ownerEmail()`; the key is only a hidden extended property | A failure in the log, an owner email and a calendar event cannot be tied together by one id. The master calendar's `Booking key:` line will be the first place a person can read it |
+| G1 | ~~A successful booking writes no log line~~ **Fixed:** one `[booking]` line per booking (section 2) | `send-confirmation.mjs` | Netlify's log now shows each booking that got past the calendar step, by key |
+| G2 | The booking key is never shown in Elijah's email. **In part:** it is now in the `[booking]` line and on the master copy's `Booking key:` line | `send-confirmation.mjs`, `ownerEmail()` | A person reading only the owner email still can't see the key |
 | G3 | Some calendar outcomes are never logged: `unconfigured`, `no_slot`, `bad_times`, and "already taken" with a reason to keep the customer. Google's refusals and sign-in failures are logged by `_gcal.mjs` (`gcal insert`, `gcal token`, `gcal oauth refresh`), but without the booking | `writeCalendar()` in `send-confirmation.mjs`; it logs only `calendar write`, on a throw | The reason is in the owner email and the browser's reply only; with Resend down, it is nowhere on the server side |
-| G4 | A customer email that fails is logged (`resend <status>`) but Elijah is not told | `handler()` sends the owner email first, so it cannot mention the customer's | A customer may wait for a confirmation that bounced |
-| G5 | Logging the refused Resend answer can write a customer's email address into Netlify's logs (the code's own comment: "The body can name the address that was refused") | `send()` in `send-confirmation.mjs`, `cart-capture.mjs`, `_giftmail.mjs`; `gift-deliver`'s give-up email lists recipients' addresses to Elijah, which is intended | Personal data in logs, kept by Netlify for the retention period |
+| G4 | A customer email that fails is logged but Elijah is not told. **In part:** the `[booking]` line now says `check … customer=failed` with the key. Elijah's email still can't say: it is sent first on purpose (if only one email gets through, it must be his), so the order was kept | `handler()` in `send-confirmation.mjs` | A customer may wait for a confirmation that bounced, unless someone reads the log |
+| G5 | ~~Logging the refused Resend answer can write a customer's email address into Netlify's logs~~ **Fixed:** Resend's answer is logged with addresses and phone numbers replaced (`redact()`), in `send-confirmation.mjs`, `cart-capture.mjs` and `_giftmail.mjs`. `gift-deliver`'s give-up email still lists recipients' addresses to Elijah, which is intended | as listed | None in the logs |
 | G6 | Elijah's personal calendar feed failing is never logged | `personal-busy.mjs`, `readPersonal()` | His personal conflicts silently stop counting; nobody knows |
 | G7 | `cart-capture.mjs` does not catch a network failure reaching Resend | the bare `await fetch` | The unfinished-checkout email is lost with only Netlify's generic error |
 | G8 | A time lost to another booker at Confirm (409) writes no server line | `send-confirmation.mjs`, `calendar.taken` | Only `time_taken_at_confirm` in analytics, for consenting visitors |
@@ -311,6 +376,7 @@ Each is a finding; none is fixed here.
 | G10 | A gift card's history is cut to its newest 500 characters | `appendLog()` in `_giftcards.mjs` (Stripe's metadata limit) | A card used many times loses its oldest entries; Stripe's payment record keeps the money side |
 | G11 | A multi-day job whose day 2 or later fails to write is reported as "NOT ON THE CALENDAR ... The time is still open" although day 1 was written; a retry then finds day 1 and stops, so the missing days are never written | `writeCalendar()` | Elijah must add the later days by hand; the message overstates the problem |
 | G12 | The GHL feed planned in `docs/GHL-SETUP.md` (contacts, the "Website bookings" pipeline) does not exist in code | no file reads `GHL_PRIVATE_TOKEN` | GHL receives nothing from the site until the master calendar is switched on |
+| G13 | A master copy that fails at booking time, and every `jobs-mirror` warning except too many cancels, reach no one but the log | `_mastercal.mjs`, `jobs-mirror.mjs` | By design (the next run is the retry), but a master that keeps failing (unshared, say) shows only as missing copies and `[master-cal]` warnings |
 
 ---
 
@@ -322,5 +388,6 @@ Each is a finding; none is fixed here.
 4. **Will customers ever book through GHL** (its calendar links or chat widget)? An appointment GHL creates on 513 All Jobs is invisible to the website, so that time could be sold twice. (Spec question 4.)
 5. **Is the master's delay acceptable:** instant for website bookings, up to 10 minutes for hand-typed jobs, edits and cancels? (Spec question 5.)
 6. **Which GHL user and Google account will link 513 All Jobs,** so Elijah can share it with "Make changes to events" and nothing else?
-7. **Do you need a log you can read** (for example a daily summary email of bookings and failures, or the `jobs-mirror` run summary), or are the owner emails and the master calendar enough for your monitoring?
+7. **Do you need a log you can read** (for example a daily summary email of bookings and failures, built from the `[booking]` lines or the `jobs-mirror` run summary), or are the owner emails and the master calendar enough for your monitoring?
 8. **Should the unfinished-checkout capture go to GHL** (a contact plus a "did not finish" workflow) instead of, or as well as, Elijah's email? It carries no marketing consent ("One follow-up only"), so any GHL workflow must respect that.
+9. **GHL edits to a copy** (a renamed or moved appointment under two-way sync) are put back by the next 10-minute run, because the bookings calendars are the truth. Should any of them flow back to the detailer's calendar instead (phase 2)?
