@@ -74,7 +74,7 @@ From `QUEUE-AFTER-FRIDAY.md`, "After toll-free approval: remove Emmett's email".
 - **So, recommended:** keep `main` clean rather than rewriting it later:
   - [ ] squash-merge PR #13 (step 3), so `main` gets one new commit without f9a0f6b;
   - [ ] then delete `eNov14` on GitHub (Emmett's yes; it removes the branch, not `main`);
-  - [ ] ask GitHub Support to purge the PR #13 refs and cached views of f9a0f6b (a PR keeps its commits reachable by hash).
+  - [x] ~~ask GitHub Support to purge the PR #13 refs and cached views of f9a0f6b~~ Not doing (Emmett, November 26): history was rewritten instead, and the PR copies are accepted.
 - **If `eNov14` must stay** (or the merge isn't a squash): `git filter-repo --replace-text` on `eNov14` before the merge, and a force-push of `eNov14` only, with Emmett's yes naming that branch. Never force-push `main`.
 - [ ] Before either: `git log -p -S` for the address and any other personal detail (addresses, phone numbers) on every branch, including `eNov6`.
 - [ ] **`context_outline.txt` (on `main` since 77636b4) holds Elijah's personal phone, full legal name and payment handles** (validation cycle 5). Ask Emmett and Elijah whether to remove it from the repo, and from history with the step above. It's on `main`, so removing it is a PR to `main`, after the freeze.
