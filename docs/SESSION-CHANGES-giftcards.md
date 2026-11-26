@@ -133,3 +133,12 @@ What he decided, and what changed:
   3. On a phone, scan the certificate's QR code: the admin page opens with the code filled in.
   4. Check the terms, section 4.
 - **Checks:** 881 tests pass, and the build passes. The QR code decodes to the admin address (checked in Chrome's BarcodeDetector). The admin page fills the code from a scan.
+
+## November 26: first test purchase on the test site
+
+- **Returned to the live domain's 404 after paying.** Root cause: `siteUrl()` picked the Deploy Preview's address from `DEPLOY_PRIME_URL`, which doesn't reach a function at run time, so it fell back to `URL` (513autoclean.com), where the gift card pages don't exist yet. Fix: `siteUrl(env, host)` takes the request's Host header and uses it only when it's one of this site's Deploy Previews (`deploy-preview-N--513-auto-clean.netlify.app`); the checkout, the webhook (Stripe calls the endpoint the card was bought on) and the admin page's resend pass it. The live site is unchanged: its host isn't a preview, so links stay on `URL`. The hourly run is live-only and keeps `URL`.
+- **Also found: the test site had Stripe's live keys.** The test card was declined ("live mode, known test card"), so nothing was charged. Netlify now has the test secret and publishable keys for Deploy Previews and branch deploys; Production keeps the live ones.
+- **An empty form works.** Nothing in the buy form is required: with every box empty the card goes to the buyer (Stripe asks their email), Elijah gets his copy, and the certificate opens. Now a test, with exactly what the page sends.
+- **404 page:** its red "Back to the site" button had red text, and the other buttons red underlined text. Root cause: the page is a `.legal` section, and `.legal a` outranked `.btn-primary`. Now `.legal a:not(.btn)`. This is on the live site today; it ships with the merge.
+- **What to test:** buy a $50 card on Deploy Preview 13 with every box empty: Stripe's page shows Test mode, you come back to the test site's certificate page, and the emails' links open the test site. Open any missing page (`/nope`): three readable buttons.
+- **Checks:** 895 tests pass (2 new), and the preview build passes.

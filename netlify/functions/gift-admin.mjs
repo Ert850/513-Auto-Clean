@@ -1,6 +1,6 @@
 import Stripe from "stripe";
 import { cincinnatiDay } from "./_pricing.mjs";
-import { GIFT_KIND, appendLog, cardFromMeta, codeFor, codeHash, dollars, giftSecret, isExpired, sameSecret, siteUrl } from "./_giftcards.mjs";
+import { GIFT_KIND, appendLog, cardFromMeta, codeFor, codeHash, dollars, giftSecret, isExpired, requestHost, sameSecret, siteUrl } from "./_giftcards.mjs";
 import { buyerEmail, recipientEmail, sendMail } from "./_giftmail.mjs";
 import { limited } from "./_ratelimit.mjs";
 
@@ -118,7 +118,7 @@ export async function handler(event) {
       if (!apiKey) return json(503, { error: "no_email" });
       const session = await stripe.checkout.sessions.retrieve(pi.metadata.gift_session);
       const code = codeFor(session.id, secret);
-      const link = `${siteUrl()}/gift-certificate#s=${encodeURIComponent(session.id)}`;
+      const link = `${siteUrl(process.env, requestHost(event))}/gift-certificate#s=${encodeURIComponent(session.id)}`;
       const toRecipient = p.to === "recipient";
       const to = toRecipient ? pi.metadata.gift_to_email : session.customer_details?.email;
       if (!to) return json(400, { error: "no_address" });

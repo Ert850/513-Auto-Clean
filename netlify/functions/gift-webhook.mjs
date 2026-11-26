@@ -1,6 +1,6 @@
 import Stripe from "stripe";
 import { cincinnatiDay } from "./_pricing.mjs";
-import { GIFT_KIND, appendLog, cardFromMeta, codeFor, dollars, ensureIssued, giftSecret, siteUrl } from "./_giftcards.mjs";
+import { GIFT_KIND, appendLog, cardFromMeta, codeFor, dollars, ensureIssued, giftSecret, requestHost, siteUrl } from "./_giftcards.mjs";
 import { buyerEmail, ownerEmail, recipientEmail, sendMail } from "./_giftmail.mjs";
 
 /**
@@ -30,8 +30,8 @@ function mailer() {
 }
 const owner = () => process.env.OWNER_EMAIL || "elijahthackerllc@gmail.com";
 
-/** Issue the card for a paid session, then send whatever hasn't been sent. */
-export async function issue(stripe, sessionId, secret, nowMs = Date.now(), note = "") {
+/** Issue the card for a paid session, then send whatever hasn't been sent. `base` is the site the emails link to. */
+export async function issue(stripe, sessionId, secret, nowMs = Date.now(), note = "", base = siteUrl()) {
   const session = await stripe.checkout.sessions.retrieve(sessionId, { expand: ["payment_intent"] });
   if (session?.metadata?.kind !== GIFT_KIND) return "not a gift card";
   if (session.payment_status !== "paid") return "not paid yet";
@@ -39,7 +39,7 @@ export async function issue(stripe, sessionId, secret, nowMs = Date.now(), note 
 
   const code = codeFor(session.id, secret);
   const mail = mailer();
-  const link = `${siteUrl()}/gift-certificate#s=${encodeURIComponent(session.id)}`;
+  const link = `${base}/gift-certificate#s=${encodeURIComponent(session.id)}`;
   const payCents = Number(meta.gift_pay_cents) || session.amount_total || 0;
   const buyer = session.customer_details?.email || "";
   const toEmail = meta.gift_to_email || "";
@@ -149,7 +149,8 @@ export async function handler(event) {
     const o = ev.data?.object || {};
     let result = "ignored";
     if (ev.type === "checkout.session.completed" || ev.type === "checkout.session.async_payment_succeeded") {
-      result = await issue(stripe, o.id, secret);
+      // The endpoint Stripe called is the site this card was bought on (a Deploy Preview, in test mode).
+      result = await issue(stripe, o.id, secret, Date.now(), "", siteUrl(process.env, requestHost(event)));
     } else if (ev.type === "charge.refunded") {
       result = await settle(stripe, o.payment_intent, { kind: "refund", full: o.amount_refunded >= o.amount, refundedCents: o.amount_refunded }, ev.id);
     } else if (ev.type === "charge.dispute.created") {

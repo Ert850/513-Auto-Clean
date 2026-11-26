@@ -1,6 +1,6 @@
 import Stripe from "stripe";
 import { GIFT_CARDS, cincinnatiDay, giftOffer } from "./_pricing.mjs";
-import { GIFT_KIND, dollars, giftSecret, plain, siteUrl } from "./_giftcards.mjs";
+import { GIFT_KIND, dollars, giftSecret, plain, requestHost, siteUrl } from "./_giftcards.mjs";
 import { limited } from "./_ratelimit.mjs";
 import { requestKey } from "./_requestkey.mjs";
 
@@ -104,7 +104,7 @@ export async function handler(event) {
     gift_message: gift.message,
     gift_send_on: gift.sendOn,
   };
-  const base = siteUrl();
+  const base = siteUrl(process.env, requestHost(event));
   const name = `${dollars(offer.valueCents)} 513 Auto Clean gift card`;
   const params = {
     mode: "payment",
