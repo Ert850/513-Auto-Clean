@@ -13,9 +13,7 @@
   "book": {
     "intent": "interior"
   },
-  "hero": {
-    "pair": "civic-seat-stains"
-  },
+  "hero": {},
   "packages": [],
   "howH2": "How we treat it",
   "steps": [
