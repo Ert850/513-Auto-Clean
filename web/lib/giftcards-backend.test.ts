@@ -411,7 +411,7 @@ describe("validation pass 1 fixes", () => {
 
 describe("validation pass 2 fixes", () => {
   const completed = (id: string) => ({ type: "checkout.session.completed", data: { object: { id } } });
-  // Exactly what js/giftcards.js sends when every box in the form is left empty.
+  // What the old buy dialog sent with every box empty; the server still accepts it (one-click sends only { value, requestKey }, tested below).
   const emptyForm = { value: 50, to: { name: "", email: "" }, from: { name: "" }, message: "", sendOn: "", requestKey: "gc_emptyform1" };
 
   it("a purchase on a Deploy Preview comes back there and its emails link there; no other host can steer it (November 26)", async () => {

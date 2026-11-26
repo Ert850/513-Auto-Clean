@@ -40,3 +40,5 @@
 Emmett: no new pairs until Elijah's better photos replace them. The 5 candidates are removed from `data/gallery.json` and `images/` (recoverable from e9336d3; sheet `docs/GALLERY-PAIRS-V2.png`), and their usages point at the earlier checked pairs again (as before 4e0279f on the home buttons). The checklist (`_howToAdd` A to G) and the frame test stay. The stain draft page has no hero carousel until a checked stain pair exists; `locations.test.ts` allows that only for a noindex draft.
 
 **Where the newer photos are:** the NAS's Cloud Sync was also linked to Elijah's business Google account on September 20; our Drive connector sees only his personal one, where "05" stops at September 20. He shares the photo and pairs folders from the business Drive with the personal account, then the pairs are cut the same way.
+
+- **To test:** `cd web && TZ=America/New_York npx vitest run` (914 pass); a production build passes. On the test site: the home Interior button shows the CR-V interior and Spills and Stains the Sonic pair; the home carousel shows the 6 earlier pairs; the stain draft page has no photo carousel.
