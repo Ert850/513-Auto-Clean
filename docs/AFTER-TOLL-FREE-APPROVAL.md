@@ -40,6 +40,8 @@ Both are one word in a config file, and a test proves each switch restores the o
 
 ## 3. Merge eNov14 (Emmett's separate yes; the PR is merged by Emmett)
 
+**Done November 26:** PR #13 squash-merged (1c6dbe4) and live. The boxes below are kept as the record; the after-deploy items are ticked where they were checked.
+
 From `STATUS-2026-11-15.md`, "Before eNov14 can merge". eNov14 is about 105 commits ahead of `main` (November 26), open as draft PR [#13](https://github.com/Ert850/513-Auto-Clean/pull/13).
 - [x] **The gallery pairs (November 26):** the 5 candidate pairs are held back (Emmett: not until Elijah's better photos replace them). They're out of `data/gallery.json` and their images are deleted (still in git history at e9336d3, review sheet `docs/GALLERY-PAIRS-V2.png`). Their places use the earlier checked pairs again: the home Interior button `crv-interior`, Spills and Stains `sonic-interior`, the Delhi and Indian Hill heroes and the interior page's proof from `pethair`, `sonic-interior`, `crv-interior`, `jeep-cargo`, `console`. The stain page (a draft) has no carousel until a checked stain pair exists. The production build passes. Elijah's photos are a follow-up after the merge: he shares the folder from his business Google account (`SESSION-CHANGES-gallery.md`).
 - [ ] `git fetch`. If `main` moved (it shouldn't have), merge `origin/main` into eNov14; never rebase it, which would need a force-push. The squash merge makes the history shape irrelevant. The build passes and every test passes (`cd web && TZ=America/New_York npx vitest run`).
@@ -69,6 +71,8 @@ From `STATUS-2026-11-15.md`, "Before eNov14 can merge". eNov14 is about 105 comm
 - [ ] **A week later:** Netlify's usage page for edge-function invocations. The preview's password gate runs on every production request and returns at once.
 
 ## 4. Remove Emmett's email from the public git history (Emmett's separate yes)
+
+**Done another way, November 26:** every branch was rewritten with `git filter-repo` and force-pushed with Emmett's yes (`SESSION-CHANGES-gallery.md`). Deleting `eNov14` and the GitHub Support request are no longer needed (Emmett: no Support request).
 
 From `QUEUE-AFTER-FRIDAY.md`, "After toll-free approval: remove Emmett's email".
 - **Where it is:** the address is only in commit f9a0f6b, which only `eNov14` (and `origin/eNov14`) contains; `main` doesn't have it.

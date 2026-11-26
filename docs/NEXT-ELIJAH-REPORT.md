@@ -12,3 +12,12 @@ Items to include the next time we send Elijah an update. Remove each one once it
 ## Git history rewritten again on November 26 (Emmett's email)
 
 - About 10:50 PM Eastern every branch got new commit IDs again, this time to take Emmett's personal email off the old commits. Files and the site didn't change. The same action applies: any copy from before then is out of date; reset to `origin/<branch>` or clone again before working, and never push from an old copy.
+
+## Waiting on Elijah (recorded November 26)
+
+- **The site is live** (November 26). The gift card admin key comes through the password manager; scanning a card's QR code opens `/gift-admin` with the code filled in.
+- **`/golf` and `/prestige`:** when do the golf booklet and Prestige Living pieces print and reach people, and should GOLF10 and PRESTIGE10 be switched on for those pages? Both codes are off today.
+- **Skool:** a login for the detailing course, added to the shared password manager (not by text), so the new service pages' answers can be checked against it. If Skool sends a code at sign-in, we'll message him right then.
+- **The toll-free number under Imperion's LLC:** Imperion is re-verifying it under its own business. The number may then belong to Imperion, not to 513 Auto Clean, and might not move with the business if he ever changes agency. Worth asking them before it's approved.
+- **Sales tax:** he said tax is sometimes not calculated quite right. One example (the booking email or calendar event) is enough to check it.
+
