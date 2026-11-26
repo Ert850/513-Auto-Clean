@@ -61,10 +61,11 @@ From `STATUS-2026-11-15.md`, "Before eNov14 can merge". eNov14 is about 105 comm
   - **Addresses (Imperion's audit, `IMPERION-AUDIT-2026-11-18.md`):**
     - `curl -sI https://513autoclean.com/about.html` is a 301 to `/about`, and `/about` is 200;
     - `/llms.txt` loads, and `sitemap.xml` lists clean addresses;
-    - resubmit the sitemap in Google Search Console and check "Google-selected canonical" for two pages;
+    - Checked November 26 after the deploy: `/about.html` is a 301 to `/about` (200), `/llms.txt` is 200, `sitemap.xml` has no `.html` address, `/golf` and `/prestige` are still 302s.
+    - resubmit the sitemap in Google Search Console and check "Google-selected canonical" for two pages. **Blocked (November 26):** the business Google account in Chrome has no Search Console property, the site has no verification tag and the domain no Google TXT record. Find out who owns it (Imperion?) or create a URL-prefix property verified through Google Analytics (Emmett's yes);
     - ask Imperion to re-run the Semrush audit;
   - one real-calendar check that a booking writes to the right calendar (Emmett's yes for a real test booking). **Warn Elijah first** (CLAUDE.md): JobsSync can copy its TOTAL into his Accounting sheet before the event is deleted. Delete the event, and the sheet row if one was made.
-- [ ] **The headline test's dates:** write the real start date and the stop date (4 weeks on) into the `hero-headline` `note` in `config/experiments.json` (`AB-TESTING.md`, "Running a test", step 3), and register the `exp_variant_string` custom dimension in GA4 if it isn't yet (step 2). On the deploy, open the home page in a private window a few times: each visit keeps its own headline on reload.
+- [x] **The headline test's dates** (November 26: the note says November 26 to December 24, on `eNov14` until it reaches `main`; GA4's "Test version" dimension has been registered since November 11): write the real start date and the stop date (4 weeks on) into the `hero-headline` `note` in `config/experiments.json` (`AB-TESTING.md`, "Running a test", step 3), and register the `exp_variant_string` custom dimension in GA4 if it isn't yet (step 2). On the deploy, open the home page in a private window a few times: each visit keeps its own headline on reload.
 - [ ] **A week later:** Netlify's usage page for edge-function invocations. The preview's password gate runs on every production request and returns at once.
 
 ## 4. Remove Emmett's email from the public git history (Emmett's separate yes)
@@ -77,7 +78,7 @@ From `QUEUE-AFTER-FRIDAY.md`, "After toll-free approval: remove Emmett's email".
   - [x] ~~ask GitHub Support to purge the PR #13 refs and cached views of f9a0f6b~~ Not doing (Emmett, November 26): history was rewritten instead, and the PR copies are accepted.
 - **If `eNov14` must stay** (or the merge isn't a squash): `git filter-repo --replace-text` on `eNov14` before the merge, and a force-push of `eNov14` only, with Emmett's yes naming that branch. Never force-push `main`.
 - [ ] Before either: `git log -p -S` for the address and any other personal detail (addresses, phone numbers) on every branch, including `eNov6`.
-- [ ] **`context_outline.txt` (on `main` since 77636b4) holds Elijah's personal phone, full legal name and payment handles** (validation cycle 5). Ask Emmett and Elijah whether to remove it from the repo, and from history with the step above. It's on `main`, so removing it is a PR to `main`, after the freeze.
+- [ ] **`context_outline.txt` (on `main` since 77636b4) holds Elijah's personal phone, full legal name and payment handles** (validation cycle 5). Ask Emmett and Elijah whether to remove it from the repo, and from history with the step above. It's on `main`, so removing it is a PR to `main`, after the freeze. **Emmett, November 26: keep it for now.** Don't raise it again unless something changes.
 - [ ] Tell Elijah (and his agent, which pushes to `eNov6`) whether to re-clone. It's needed only if a branch they use was rewritten.
 
 ## 5. Questions parked until after the freeze (ask Emmett)

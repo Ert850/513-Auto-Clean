@@ -34,7 +34,7 @@
         "cincinnati": 33,
         "the-513": 33
       },
-      "note": "Emmett, November 16, 2026: a first, low-stakes test to prove the A/B system end to end (split, stickiness, the version in booking emails and calendar events, GA4 and Clarity). Question: does the place in the headline change bookings per home-page visitor? Words: index.html <h1> (data-exp-words). Mockups: docs/mockups/eNov16-hero-513-mockups.png. Starts when eNov14 is live; run 4 weeks, then set status ended with the winner. Expect a lean, not proof, at our traffic."
+      "note": "Emmett, November 16, 2026: a first, low-stakes test to prove the A/B system end to end (split, stickiness, the version in booking emails and calendar events, GA4 and Clarity). Question: does the place in the headline change bookings per home-page visitor? Words: index.html <h1> (data-exp-words). Mockups: docs/mockups/eNov16-hero-513-mockups.png. Started November 26, 2026, when eNov14 went live (about 7:25 PM Eastern). Stop on December 24, 2026 (4 weeks): then set status ended with the winner. Expect a lean, not proof, at our traffic."
     }
   ]
 }
