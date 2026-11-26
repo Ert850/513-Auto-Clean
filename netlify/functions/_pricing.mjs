@@ -3355,6 +3355,171 @@ function slotStillFree(job, win) {
   return { free: hit !== void 0, lateMin: hit !== void 0 ? late.get(hit) ?? 0 : 0 };
 }
 
+// ../config/master-calendar.json
+var master_calendar_default = {
+  _about: "The copy of every booked job on the master calendar 513 All Jobs, for GoHighLevel (docs/MASTER-CALENDAR-SETUP.md). Off until ALL_JOBS_CALENDAR_ID is set in Netlify; the calendar id lives only there.",
+  colors: {
+    _about: "Google Calendar event colour ids by detailer name: 7 Peacock, 10 Basil, 8 Graphite, 9 Blueberry, 5 Banana, 6 Tangerine, 3 Grape, 4 Flamingo, 2 Sage, 1 Lavender, 11 Tomato.",
+    Elijah: "7",
+    Kris: "10"
+  },
+  defaultColor: "9",
+  cancelledColor: "8",
+  cancelMode: "mark",
+  maxCancelsPerRun: 10,
+  daysBack: 14,
+  daysAhead: 120,
+  writeTimeoutMs: 2500,
+  runBudgetMs: 2e4
+};
+
+// lib/availability/masterCalendar.ts
+var COLOR_ID = /^(?:[1-9]|1[01])$/;
+function checkMasterCalendar(input) {
+  const o = input ?? {};
+  const bad = (field, what) => {
+    throw new Error(`config/master-calendar.json: ${field}: ${what}`);
+  };
+  const whole = (field, min, max) => {
+    const v = o[field];
+    return typeof v === "number" && Number.isInteger(v) && v >= min && v <= max ? v : bad(field, `must be a whole number from ${min} to ${max}`);
+  };
+  const color = (field, v) => typeof v === "string" && COLOR_ID.test(v) ? v : bad(field, 'must be a Google event colour id, "1" to "11"');
+  const colors = {};
+  const rawColors = o["colors"];
+  if (!rawColors || typeof rawColors !== "object" || Array.isArray(rawColors)) bad("colors", "must be an object of detailer name to colour id");
+  for (const [name, v] of Object.entries(rawColors)) {
+    if (name.startsWith("_")) continue;
+    colors[name.trim().toLowerCase()] = color(`colors.${name}`, v);
+  }
+  const mode = o["cancelMode"];
+  if (mode !== "mark" && mode !== "delete") bad("cancelMode", 'must be "mark" or "delete"');
+  return {
+    colors,
+    defaultColor: color("defaultColor", o["defaultColor"]),
+    cancelledColor: color("cancelledColor", o["cancelledColor"]),
+    cancelMode: mode,
+    maxCancelsPerRun: whole("maxCancelsPerRun", 0, 1e3),
+    daysBack: whole("daysBack", 0, 366),
+    daysAhead: whole("daysAhead", 1, 800),
+    writeTimeoutMs: whole("writeTimeoutMs", 500, 1e4),
+    runBudgetMs: whole("runBudgetMs", 1e3, 25e3)
+  };
+}
+var MASTER_CALENDAR = checkMasterCalendar(master_calendar_default);
+var NOT_A_JOB = /^(open|best|dns)\b/i;
+var CANCELLED_PREFIX = "CANCELLED: ";
+var SHORT_NOTICE = /^(SHORT NOTICE[^:]*:\s*)/;
+var escRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+function masterTitle(title, detailer, crewNames = []) {
+  const t = String(title ?? "").trim();
+  const pre = SHORT_NOTICE.exec(t)?.[1] ?? "";
+  let rest = t.slice(pre.length);
+  for (const n of [detailer, ...crewNames]) {
+    const p = new RegExp(`^${escRe(n)}:\\s*`);
+    if (n && p.test(rest)) {
+      rest = rest.replace(p, "");
+      break;
+    }
+  }
+  return `${pre}${detailer}: ${rest || "Job"}`.slice(0, 250);
+}
+function masterDescription(h) {
+  return [
+    `Status: ${h.status}`,
+    `Detailer: ${h.detailer}`,
+    `Booking key: ${h.key}`,
+    `Source calendar: ${h.source}`,
+    "---",
+    String(h.original ?? "")
+  ].join("\n").slice(0, 8e3);
+}
+var colorFor = (detailer, s = MASTER_CALENDAR) => s.colors[String(detailer).trim().toLowerCase()] ?? s.defaultColor;
+var sourceIdOf = (calendarId, eventId) => `${calendarId}|${eventId}`;
+function splitSourceId(v) {
+  const i = String(v ?? "").lastIndexOf("|");
+  return i > 0 ? { calendarId: v.slice(0, i), eventId: v.slice(i + 1) } : null;
+}
+var keyOf = (e) => e.extendedProperties?.private?.["bookingKey"] || `manual:${e.id}`;
+function masterCopy(i) {
+  const s = i.settings ?? MASTER_CALENDAR;
+  const o = i.original;
+  return {
+    summary: masterTitle(o.summary ?? "", i.detailer, i.crewNames),
+    description: masterDescription({ status: "Booked", detailer: i.detailer, key: i.key, source: i.label, original: o.description ?? "" }),
+    location: o.location ?? "",
+    start: pickTime(o.start),
+    end: pickTime(o.end),
+    // As the original: a job is Busy, so GHL blocks its time.
+    transparency: o.transparency === "transparent" ? "transparent" : "opaque",
+    colorId: colorFor(i.detailer, s),
+    extendedProperties: { private: { bookingKey: i.key, sourceId: sourceIdOf(i.calendarId, String(o.id ?? "")) } }
+  };
+}
+function pickTime(t) {
+  if (!t) return {};
+  if (t.date) return { date: t.date };
+  return { ...t.dateTime ? { dateTime: t.dateTime } : {}, ...t.timeZone ? { timeZone: t.timeZone } : {} };
+}
+function cancelledPatch(copy, s = MASTER_CALENDAR) {
+  const summary = String(copy.summary ?? "");
+  const desc = String(copy.description ?? "");
+  return {
+    summary: summary.startsWith(CANCELLED_PREFIX) ? summary : `${CANCELLED_PREFIX}${summary}`.slice(0, 250),
+    description: /^Status: .*$/m.test(desc) ? desc.replace(/^Status: .*$/m, "Status: Cancelled") : `Status: Cancelled
+${desc}`,
+    transparency: "transparent",
+    colorId: s.cancelledColor
+  };
+}
+var isCancelledCopy = (e) => String(e.summary ?? "").startsWith(CANCELLED_PREFIX) && /^Status: Cancelled$/m.test(String(e.description ?? ""));
+var instant = (t) => t?.date ? `d:${t.date}` : t?.dateTime ? `t:${Date.parse(t.dateTime)}` : "";
+function sameCopy(have, want) {
+  const hp = have.extendedProperties?.private ?? {};
+  const wp = want.extendedProperties?.private ?? {};
+  return (have.summary ?? "") === (want.summary ?? "") && (have.description ?? "") === (want.description ?? "") && (have.location ?? "") === (want.location ?? "") && instant(have.start) === instant(want.start) && instant(have.end) === instant(want.end) && (have.transparency || "opaque") === (want.transparency || "opaque") && (have.colorId ?? "") === (want.colorId ?? "") && hp["bookingKey"] === wp["bookingKey"] && hp["sourceId"] === wp["sourceId"];
+}
+function planMirror(sources, master, crewNames, s = MASTER_CALENDAR) {
+  const plan = { creates: [], updates: [], missing: [], foreign: [], duplicates: [], skipped: 0 };
+  const copies = /* @__PURE__ */ new Map();
+  for (const e of master) {
+    if (e.status === "cancelled") continue;
+    const p = e.extendedProperties?.private ?? {};
+    if (!p["sourceId"] || !p["bookingKey"]) {
+      plan.foreign.push(String(e.id));
+      continue;
+    }
+    if (copies.has(p["bookingKey"])) {
+      plan.duplicates.push(String(e.id));
+      continue;
+    }
+    copies.set(p["bookingKey"], e);
+  }
+  const seen = /* @__PURE__ */ new Set();
+  for (const src of sources) {
+    for (const e of src.events) {
+      if (e.status === "cancelled" || !e.id) continue;
+      if (NOT_A_JOB.test(String(e.summary ?? "").trim())) {
+        plan.skipped++;
+        continue;
+      }
+      let key = keyOf(e);
+      if (seen.has(key)) key = `manual:${e.id}`;
+      seen.add(key);
+      const want = masterCopy({ original: e, key, calendarId: src.calendarId, label: src.label, detailer: src.detailer, crewNames, settings: s });
+      const have = copies.get(key);
+      if (!have) plan.creates.push({ key, body: want });
+      else if (!sameCopy(have, want)) plan.updates.push({ id: String(have.id), key, body: want, restore: isCancelledCopy(have) });
+    }
+  }
+  for (const [key, copy] of copies) {
+    if (seen.has(key)) continue;
+    if (isCancelledCopy(copy)) continue;
+    plan.missing.push({ id: String(copy.id), key, copy });
+  }
+  return plan;
+}
+
 // ../config/business.json
 var business_default = {
   _read_me: [
@@ -3710,6 +3875,7 @@ export {
   ARRIVAL_WINDOW_MIN,
   BOOK_INTENTS,
   BOOK_LINK_PARAMS,
+  CANCELLED_PREFIX,
   CAPABILITIES,
   CHECKOUT_METHODS,
   COATING_COVERAGE,
@@ -3722,8 +3888,10 @@ export {
   HOURS,
   LEGAL,
   LONG_JOB_STARTS,
+  MASTER_CALENDAR,
   MAX_BOOKING_CENTS,
   MAX_ONE_WAY_MINUTES,
+  NOT_A_JOB,
   REPO_PHONE,
   SCHEDULING,
   SEED_CATALOG,
@@ -3736,8 +3904,11 @@ export {
   businessPhone,
   canDo,
   cancellationLadder,
+  cancelledPatch,
+  checkMasterCalendar,
   checkRange,
   cincinnatiDay,
+  colorFor,
   componentsOf,
   copyFor,
   coverTable,
@@ -3751,12 +3922,17 @@ export {
   giftCardProblems,
   giftOffer,
   hoursText,
+  isCancelledCopy,
   isLive,
+  keyOf,
   legalFingerprint,
   liveProcessors,
   loadWindow,
   localMinutesOfDay,
   longDate,
+  masterCopy,
+  masterDescription,
+  masterTitle,
   maxTaxRateBp,
   mergeBusy,
   mileageFeeCents,
@@ -3767,11 +3943,15 @@ export {
   parseIcsBusy,
   parsePhone,
   phoneTrace,
+  planMirror,
   priceFromWire,
   saleEndedNext,
   saleOn,
   salePriceCents,
+  sameCopy,
   slotStillFree,
+  sourceIdOf,
+  splitSourceId,
   swapPhone,
   tierPriceFor,
   unavailableReason,

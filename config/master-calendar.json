@@ -1,0 +1,16 @@
+{
+  "_about": "The copy of every booked job on the master calendar 513 All Jobs, for GoHighLevel (docs/MASTER-CALENDAR-SETUP.md). Off until ALL_JOBS_CALENDAR_ID is set in Netlify; the calendar id lives only there.",
+  "colors": {
+    "_about": "Google Calendar event colour ids by detailer name: 7 Peacock, 10 Basil, 8 Graphite, 9 Blueberry, 5 Banana, 6 Tangerine, 3 Grape, 4 Flamingo, 2 Sage, 1 Lavender, 11 Tomato.",
+    "Elijah": "7",
+    "Kris": "10"
+  },
+  "defaultColor": "9",
+  "cancelledColor": "8",
+  "cancelMode": "mark",
+  "maxCancelsPerRun": 10,
+  "daysBack": 14,
+  "daysAhead": 120,
+  "writeTimeoutMs": 2500,
+  "runBudgetMs": 20000
+}
