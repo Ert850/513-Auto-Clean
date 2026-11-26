@@ -1,22 +1,29 @@
 {
   "_howToAdd": [
-    "1. Export two photos at roughly the same angle and crop.",
-    "2. Name them images/ba-<slug>-before.jpg and images/ba-<slug>-after.jpg.",
-    "3. Run the resize step so images/ba-<slug>-<side>-<width>.webp exist, and",
-    "   list those widths in `widths` below. The page never loads the full",
+    "A pair is added only when it passes every check below. A pair that fails one is fixed or left out, never added with a note to confirm later (November 26: Elijah's first five went in with their problems written down as questions, and none passed).",
+    "A. Source: the job's own photos in Drive \"05 Photos by Job Type\" (one folder per job: it gives the service and the date). A pair from \"02 Selects\" or \"03 Website\" is a suggestion, not a check: three of the first five from there paired two different spots.",
+    "B. Same car, same spot, same side. Check the fixed parts (pedals, buckles, seat controls, floor anchors, rails, trim): a driver's floor is not the passenger's, and one captain's chair is not the other. A seat or mat can move between visits; the car's fixed parts can't.",
+    "C. About the same angle, then aligned: crop, rotate and scale the after onto the before so the subject sits at the same place and size, and cut both to the card's frame (.ba-stage aspect-ratio in styles.css, 4:3), at the same pixel size. A shot from another side or height that no crop can match is rejected.",
+    "D. Obvious contrast at card size (about 340 px wide): heavy staining, dirt, sand or grime in the before, clean in the after (Elijah, November 26). A before that is only a bit dusty, or an after still wet or patchy, is below the bar. If you have to hunt for the difference, so will a visitor.",
+    "E. Nothing personal in either crop: no plates (cars in the background too), faces, house numbers, door-jamb labels (they carry the VIN), papers, mail, bags, child seats or other belongings. Crop them out or reject the pair.",
+    "F. True to the job: services tags only what the job folder says was booked (leave it empty when that isn't known); the caption says what was done, with no removal promises (\"100%\", \"removes 90%\") and no em-dashes in the caption or alt text.",
+    "G. Judge the pair as the site shows it (the 760 files side by side), not the originals: the card crops anything that isn't its frame.",
+    "Files:",
+    "1. Masters: images/ba-<slug>-before.jpg and images/ba-<slug>-after.jpg, 1400x1050, saved fresh so no EXIF or GPS goes with them.",
+    "2. Resized: images/ba-<slug>-<side>-<width>.webp for each width in `widths`, plus ba-<slug>-<side>-760.jpg, each under 150 KB. The page never loads the full",
     "   size original: a phone would be pulling a megabyte per card.",
-    "4. Add an entry below with that same <slug>, a caption, and alt text.",
-    "5. Optional: set video to a clip URL. Nothing renders one yet, but the",
+    "3. Add an entry below with that same <slug>, a caption, alt text and `source` (job folder and photo names).",
+    "4. Optional: set video to a clip URL. Nothing renders one yet, but the",
     "   field is here so adding them later is a data change, not a code change.",
-    "6. Optional: tag with a service id so the gallery can filter by package.",
-    "7. Set \"reviewed\": false on a new pair until a person has checked it (plates, faces, house numbers, papers, matching crops); then true, or delete the field. Previews show it; any other build fails while one is false."
+    "5. Optional: tag with a service id so the gallery can filter by package.",
+    "6. Set \"reviewed\": false on a new pair until the owner has checked it against A to G; then true, or delete the field. Previews show it; any other build fails while one is false. The frame in C is also checked by web/lib/funnel.smoke.test.mjs (same size before and after, in the card's aspect ratio)."
   ],
   "pairs": [
     {
-      "slug": "third-row-seat-stains",
+      "slug": "suv-third-row-stains",
       "caption": "Third-row seat stains treated, Full Interior",
-      "altBefore": "Before: stained light third-row seat in a Kia SUV",
-      "altAfter": "After: third-row seat cleaned and stain treated",
+      "altBefore": "Before: light cloth third-row seat cushion soaked with brown and orange stains",
+      "altAfter": "After: the same seat cushion cleaned and stain treated",
       "services": [
         "full-interior",
         "stain"
@@ -27,16 +34,16 @@
         760,
         1120
       ],
-      "source": "Elijah, Drive 03 Website, November 14",
+      "source": "Drive 05, Stain, Spill and Odor job of June 29 (IMG_8811, IMG_8814), aligned November 26",
       "reviewed": false
     },
     {
-      "slug": "soul-cargo",
-      "caption": "Cargo area cleared and deep cleaned, Full Interior",
-      "altBefore": "Before: Kia Soul cargo area with debris",
-      "altAfter": "After: Kia Soul cargo area deep cleaned",
+      "slug": "civic-seat-stains",
+      "caption": "Driver's seat stains treated, light cloth seat",
+      "altBefore": "Before: light cloth driver's seat with dark stains and spots on the cushion",
+      "altAfter": "After: the same driver's seat after stain treatment",
       "services": [
-        "full-interior"
+        "stain"
       ],
       "video": null,
       "widths": [
@@ -44,58 +51,51 @@
         760,
         1120
       ],
-      "source": "Elijah, Drive 03 Website, November 14",
+      "source": "Drive 05, Stain, Spill and Odor job of August 29 (IMG_0667, IMG_0683), aligned November 26",
       "reviewed": false
     },
     {
-      "slug": "civic-front-floor",
-      "caption": "Front floor and mat restored, Full Interior",
-      "altBefore": "Before: Honda Civic front floor and mat with dirt and debris",
-      "altAfter": "After: Honda Civic front floor and mat cleaned",
-      "services": [
-        "full-interior"
-      ],
+      "slug": "wheel-brake-dust",
+      "caption": "Brake-dusted alloy wheel cleaned",
+      "altBefore": "Before: five-spoke alloy wheel with heavy brown brake dust around the rim",
+      "altAfter": "After: the same wheel cleaned",
+      "services": [],
       "video": null,
       "widths": [
         420,
         760,
         1120
       ],
-      "source": "Elijah, Drive 03 Website, November 14",
+      "source": "Drive 05, _Unmatched job of September 16 (IMG_1193, IMG_1195), aligned November 26",
       "reviewed": false
     },
     {
-      "slug": "captain-chair",
-      "caption": "Captain's chair deep cleaned, Full Interior",
-      "altBefore": "Before: minivan captain's chair with grime on the seat",
-      "altAfter": "After: minivan captain's chair deep cleaned",
-      "services": [
-        "full-interior"
+      "slug": "rear-floor-grit",
+      "caption": "Sandy rear floor carpet vacuumed and cleaned",
+      "altBefore": "Before: rear floor carpet covered in sand and grit",
+      "altAfter": "After: the same carpet vacuumed clean",
+      "services": [],
+      "video": null,
+      "widths": [
+        420,
+        760
       ],
+      "source": "Drive 05, _Unmatched job of February 28 (IMG_6809, IMG_6810), aligned November 26",
+      "reviewed": false
+    },
+    {
+      "slug": "wheel-road-grime",
+      "caption": "Grimy alloy wheel cleaned",
+      "altBefore": "Before: five-spoke alloy wheel dulled with road grime and brake dust",
+      "altAfter": "After: the same wheel cleaned",
+      "services": [],
       "video": null,
       "widths": [
         420,
         760,
         1120
       ],
-      "source": "Elijah, Drive 03 Website, November 14",
-      "reviewed": false
-    },
-    {
-      "slug": "forester-front-floor",
-      "caption": "Front floor and mat deep cleaned, Full Interior",
-      "altBefore": "Before: Subaru Forester front floor with salt and dirt",
-      "altAfter": "After: Subaru Forester front floor deep cleaned",
-      "services": [
-        "full-interior"
-      ],
-      "video": null,
-      "widths": [
-        420,
-        760,
-        1120
-      ],
-      "source": "Elijah, Drive 03 Website, November 14",
+      "source": "Drive 05, _Unmatched job of April 11 (IMG_7617, IMG_7618), aligned November 26",
       "reviewed": false
     },
     {

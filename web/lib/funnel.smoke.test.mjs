@@ -1183,6 +1183,46 @@ describe("the page does not send more than it needs", () => {
 });
 
 /**
+ * A before and an after are only a comparison when the slider shows the same
+ * frame twice. Elijah's first five pairs (November 14) were exported 3:4 for a
+ * 4:3 card, so the card cut their middles out and nobody had looked at what a
+ * visitor sees, and one was a portrait before against a landscape after. The
+ * rest of the checklist (same car, same spot, visibly dirty before, nothing
+ * personal) is in data/gallery.json `_howToAdd` and needs a person.
+ */
+describe("every before/after pair is cut to the card's frame", () => {
+  const gallery = JSON.parse(fs.readFileSync(path.join(ROOT, "data/gallery.json"), "utf8"));
+  const stage = /\.ba-stage\s*\{[^}]*aspect-ratio:\s*(\d+)\s*\/\s*(\d+)/.exec(fs.readFileSync(path.join(ROOT, "styles.css"), "utf8"));
+  // Width and height from a WebP header (lossy VP8, lossless VP8L or extended VP8X).
+  const webpSize = (b) => {
+    const kind = b.toString("ascii", 12, 16);
+    if (kind === "VP8 ") return [b.readUInt16LE(26) & 0x3fff, b.readUInt16LE(28) & 0x3fff];
+    if (kind === "VP8L") { const v = b.readUInt32LE(21); return [(v & 0x3fff) + 1, ((v >> 14) & 0x3fff) + 1]; }
+    if (kind === "VP8X") return [b.readUIntLE(24, 3) + 1, b.readUIntLE(27, 3) + 1];
+    throw new Error(`not a WebP I can read (${kind})`);
+  };
+
+  it("finds the card's aspect ratio in styles.css", () => {
+    expect(stage, ".ba-stage lost its aspect-ratio, so this check has nothing to compare with").toBeTruthy();
+  });
+
+  for (const pair of gallery.pairs) {
+    it(`${pair.slug}: before and after are the same size, in the card's ${stage?.[1]}:${stage?.[2]} frame`, () => {
+      for (const w of pair.widths) {
+        const [bw, bh] = webpSize(fs.readFileSync(path.join(ROOT, "images", `ba-${pair.slug}-before-${w}.webp`)));
+        const [aw, ah] = webpSize(fs.readFileSync(path.join(ROOT, "images", `ba-${pair.slug}-after-${w}.webp`)));
+        expect([aw, ah], `the ${w} after is ${aw}x${ah}, the before ${bw}x${bh}: the slider would compare two framings`).toEqual([bw, bh]);
+        expect(bw, `the ${w} file is ${bw} wide`).toBe(w);
+        // Within a pixel of rounding: anything else is cropped by the card
+        // (object-fit: cover), which hides part of what was reviewed.
+        expect(Math.abs(bh - Math.round((w * Number(stage[2])) / Number(stage[1]))),
+          `${bw}x${bh} is not ${stage[1]}:${stage[2]}`).toBeLessThanOrEqual(1);
+      }
+    });
+  }
+});
+
+/**
  * A drawer nobody can see is a drawer nobody should be able to tab into.
  * aria-hidden only hides it from a screen reader; the ten links stayed in the
  * tab order, parked off the right of the screen with no visible focus ring.

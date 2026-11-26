@@ -229,7 +229,7 @@ for (const f of textFiles) {
   const unchecked = unreviewedPairs(gallery);
   if (unchecked.length && !isPreviewBuild()) {
     console.error(`build-dist: photos not checked yet in data/gallery.json: ${unchecked.join(", ")}.\n` +
-      `  A person checks each pair (plates, faces, house numbers, papers, matching crops), then sets "reviewed": true or removes it.\n` +
+      `  A person checks each pair against the list in data/gallery.json _howToAdd (A to G), then sets "reviewed": true or removes it.\n` +
       `  To build a preview anyway: PREVIEW_BUILD=1 npm run build.`);
     process.exit(1);
   }
