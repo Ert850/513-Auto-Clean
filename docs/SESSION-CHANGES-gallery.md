@@ -48,7 +48,7 @@ Emmett: no new pairs until Elijah's better photos replace them. The 5 candidates
 - **Found by** the SEO master page session: `images/detail-closeup.jpg`, `escape-dashboard-after.jpg`, `minivan-cargo-after.jpg`, `rear-seats-after.jpg`, `sedan-rear-seats-after.jpg`, `suv-cargo-before.jpg` and `truck-interior-after.jpg` carried GPS coordinates (15 tags each) in the public repo since June. The images the site serves were already clean.
 - **Root cause:** phone photos were committed as they came off the phone, and nothing checked their metadata. The build's re-encoding hid it on the site, not in the repo.
 - **Fix:** the GPS block removed from each file's EXIF without re-encoding (pixels checked identical by hash; orientation kept). `web/lib/site/photo-gps.test.ts` scans every tracked JPEG, PNG and WebP and fails on GPS (proved against an original file).
-- **Still open:** the originals are in git history. Purging them rewrites history and needs Emmett's yes (with runbook step 4).
+- **History purged the same evening (Emmett's yes):** see "GPS purged from git history" below.
 - **Test:** `cd web && TZ=America/New_York npx vitest run lib/site/photo-gps.test.ts`.
 
 ## November 26: FAQ add-on price line
@@ -62,3 +62,12 @@ Emmett: no new pairs until Elijah's better photos replace them. The 5 candidates
 - **Stripe's `unsupported_publishable_key_tokenization_surface` (November 22) was not us.** A bot (`mine-skeleton/1.0`, a Hong Kong cloud server) sent the 4242 test card number straight to `/v1/tokens` with the live publishable key, which every page carries. Stripe refuses raw card numbers on that key, so nothing happened. Our pages use Stripe's Payment Element and our functions use the secret key; nothing of ours calls `/v1/tokens`.
 - **The test card declined in live mode (November 25, 7:58 PM) was the PR #13 preview** while its `STRIPE_SECRET_KEY` was the live key. Elijah set the preview's own key that evening; Production and Deploy Previews now hold different keys.
 - **To test:** `node web/scripts/check-live.mjs` (0 failed; the notes are PayPal, Turnstile and card payments, all off on purpose).
+
+## November 26: GPS purged from git history (Emmett's yes)
+
+- **What was in history:** 19 photo versions with GPS: the 7 cleaned today, plus 12 older before/after photos (`images/ba-*`) that had been replaced since.
+- **How:** `git filter-repo` on a fresh mirror, with a blob callback that removes only the EXIF GPS block from any JPEG that has it (`exif.pop(0x8825)`, the APP1 segment swapped, no re-encoding). Each changed photo was checked to decode to the same pixels with the same orientation, or the run stopped.
+- **Checked before pushing:** a scan of every image in the 7 rewritten branches found 0 with GPS (313 versions); `main`, `eNov14` and `eNov16` keep identical files, the other 4 branches differ only in the 7 photos; every branch keeps its commit count.
+- **Pushed:** all 7 branches in one atomic push, each with `--force-with-lease` on the commit it replaced. New tips: `main` 74da829, `eNov14` and `eNov16` b9b86c2, `eNov6` 1b651a4, `eNov10PipelineBranch` 505cd7f, `fix/blank-booking-form` 7896fdb, `claude/seo-master-page-7e23ad` 5b0faf6. Netlify redeployed `main` (8:06 PM, same files); `check-live.mjs` passes.
+- **Not done:** GitHub keeps every pull request's commits (`refs/pull/1` to `13`), which only GitHub Support can clear, so the old photos are reachable there by commit ID. Emmett: not now; it goes in the next report to Elijah (`docs/NEXT-ELIJAH-REPORT.md`). Emmett's email in f9a0f6b was not part of this pass.
+- **Every old clone is stale:** fetch, then reset each branch to `origin/<branch>` (or clone again). Pushing from an old clone would bring the GPS photos back. The local-only commits checked (for example "Elijah's clarifications", "Help me choose a time") are already in the new history under new IDs.
