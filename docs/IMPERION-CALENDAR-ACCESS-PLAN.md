@@ -10,6 +10,8 @@ Draft, November 26, 2026. Nothing here is done yet. The decisions are marked **D
 
 `privacy.html` section 5 says customer data is shared "only with the service providers below". GHL appears there only as "our text messaging provider", which gets a mobile number and the message, "only to deliver it". The calendars hold each customer's name, phone, email, address and notes. Sharing them with GHL, and through GHL with Imperion, isn't covered today.
 - [ ] Add a row to `PROCESSORS` in `web/lib/site/capabilities.ts`, named generically like the texting row (the provider could change), for example: "Our customer management system, and the agency that runs it for us: keep our schedule of booked jobs, with your name, phone, email, address and notes, so we can send reminders and follow up. They may not use it for anything else." **Decide** the exact wording with Elijah, and whether Imperion is named.
+- [ ] Reword the Google Calendar row too: it says "That calendar is private: anyone else sees only that the time is taken." That stops being true once 513 All Jobs is shared.
+- **Timing (Emmett, November 26):** Imperion says the website isn't part of the toll-free verification now and we have free rein to update it, so the policy can change before approval.
 - [ ] Bump the date in `web/lib/site/legal.ts`, run `npm run lock:legal`, build and test. This is a change to `main`, so it needs a PR and Emmett's yes. It has to be live before step 2.
 - [ ] Check the texting rule on the same page: "originator opt-in data and consent will not be shared with any third parties". A job's notes carry the customer's texting choice. GHL is the texting provider, so that's probably fine, but it's worth one line to Imperion.
 
