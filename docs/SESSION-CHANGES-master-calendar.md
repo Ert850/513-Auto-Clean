@@ -67,3 +67,10 @@ Not fixed, still documented: a multi-day job whose day 2+ write fails (gap G11).
 ### Still unproven
 - Against real Google: the 409 on a long-deleted id and what a PUT to it answers; PATCH merging `extendedProperties.private`; `AbortSignal` ending a real call mid-flight. All handled both ways in code, but only the fake has run them.
 - A real booking and run on a Deploy Preview / production with the setting on.
+
+## Verification pass 4 follow-ups (November 26)
+
+- **Two copies of one key** (a stray left by a race Google didn't catch): the copy at the key's own id (`masterEventId`) is the one kept and updated, whatever order Google lists them in. Before, list order decided, so a stray could stay Busy "Booked" over a cancelled time. `planMirror` takes the id function from `jobs-mirror.mjs`.
+- **One event on two read calendars** (a bookings calendar invited as a guest): copied once, for the first detailer in DETAILERS order. Before, both got the key `manual:<id>` and the copy swapped detailers every run, a write GHL saw every 10 minutes.
+- **Test:** `cd web && TZ=America/New_York npx vitest run lib/master-calendar.test.ts` ("planMirror: duplicates and shared events").
+- **Left as noted, not fixed:** the booking reply can wait up to `writeTimeoutMs` when Google hangs (inside Netlify's synchronous limit); `redact` also masks dates and long ids in logged provider errors; held copies are looked up again each run.

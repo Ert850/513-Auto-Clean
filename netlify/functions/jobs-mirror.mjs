@@ -1,7 +1,7 @@
 import { MASTER_CALENDAR, cancelledPatch, isJob, masterCopy, parseDetailers, planMirror, sameCopy, splitSourceId } from "./_pricing.mjs";
 import { bookedCalendarId, gcalConfigured } from "./_gcal.mjs";
 import { inTime } from "./_detailers.mjs";
-import { deleteCopy, listWindow, lookupOriginal, masterCalendarId, masterClash, mlog, mwarn, patchCopy, updateCopy, writeCopy } from "./_mastercal.mjs";
+import { deleteCopy, listWindow, lookupOriginal, masterCalendarId, masterClash, masterEventId, mlog, mwarn, patchCopy, updateCopy, writeCopy } from "./_mastercal.mjs";
 import { send } from "./send-confirmation.mjs";
 
 /**
@@ -93,7 +93,7 @@ export async function reconcile({ nowMs = Date.now(), startMs = Date.now(), sett
   const master = await listWindow(masterId, from, to, { signal });
   if (!master.ok) return abort("master", master.reason);
 
-  const plan = planMirror(sources, master.events, settings);
+  const plan = planMirror(sources, master.events, settings, masterEventId);
   const out = { created: 0, updated: 0, restored: 0, putBack: 0, cancelled: 0, held: 0, failed: 0, foreign: plan.foreign.length, duplicates: plan.duplicates.length, skipped: plan.skipped, unread: 0, stopped: false };
   const failed = (action, key, reason) => { out.failed++; mwarn(`${action}-failed`, { key, reason }); };
 
