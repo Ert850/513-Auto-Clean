@@ -158,5 +158,42 @@ export async function ensureIssued(stripe, session, secret, nowMs = Date.now()) 
   return { pi, meta: { ...meta, ...issued } };
 }
 
+/**
+ * Why a card can't be emailed to someone from its page now (gift-send.mjs),
+ * or null when it can: only while it's active and unexpired, within
+ * config/gift-cards.json sendWindowHours of the session (Stripe's `created`),
+ * and once: never when it has someone already (bought with a recipient, or
+ * sent from the page before). The certificate page gets only true or false.
+ */
+export function sendRefusal(session, meta, nowMs, hours = GIFT_CARDS.sendWindowHours) {
+  const card = cardFromMeta(meta);
+  if (meta.gift_to_email || meta.gift_send_req || meta.gift_mail_to === "1") return "already_sent";
+  if (isExpired(card, cincinnatiDay(nowMs))) return "expired";
+  if (card.status !== "active") return "not_active";
+  const by = sendDeadline(session, hours);
+  if (!by || nowMs > by) return "too_late";
+  return null;
+}
+
+/** The moment the card's page stops offering to send it (ms), from the session's creation; null without one. */
+export function sendDeadline(session, hours = GIFT_CARDS.sendWindowHours) {
+  const at = Number(session?.created);
+  return at > 0 ? at * 1000 + hours * 3_600_000 : null;
+}
+
+/**
+ * How long a "now" card claimed by the card's page (gift-send.mjs writes
+ * gift_send_started) is left to that page before the webhook or the hourly
+ * run sends it themselves. The page sends within seconds; if it emailed but
+ * couldn't mark the card sent, this keeps the others from emailing it again.
+ * If it never sent, the hourly run picks it up after this. Not said to
+ * customers.
+ */
+export const SEND_CLAIM_HOLD_MS = 10 * 60_000;
+export const claimedByPage = (meta, nowMs) => {
+  const at = Number(meta?.gift_send_started);
+  return at > 0 && nowMs - at < SEND_CLAIM_HOLD_MS;
+};
+
 /** Strips characters that can disguise text (direction overrides, zero-width marks). */
 export const plain = (s) => String(s).replace(/[\u200b-\u200f\u202a-\u202e\u2066-\u2069\ufeff]/g, "");

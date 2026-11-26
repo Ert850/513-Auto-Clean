@@ -46,14 +46,16 @@ Without `STRIPE_WEBHOOK_SECRET` or `GIFT_CODE_SECRET`, the checkout refuses to o
 ## 3. Test on the test site, in Stripe test mode
 
 1. Open `/gift-cards` on the test site. The prices show 20% off only between the sale's dates in `config/gift-cards.json` (`sale.starts` to `sale.ends`, Cincinnati time); after that they show full price and the next sale's dates.
-2. Buy the $50 card with the test card `4242 4242 4242 4242`, any future date and any CVC. Put your own second email as "Their email".
+2. Click "Buy for $50 $40" on the $50 card. Stripe's page opens straight away in the same tab, with no form first. Pay with the test card `4242 4242 4242 4242`, any future date and any CVC.
 3. Expect:
-   - the certificate page with the code;
-   - an email to you, one to the second address, and one to `OWNER_EMAIL`;
-   - in Stripe's test dashboard, the payment's metadata shows `gift_status: active`.
-4. Try "On a date" with tomorrow's date: no email to them today. Scheduled sending runs only on the live site, at 8 AM Cincinnati time.
-5. On `/gift-admin`, with `GIFT_ADMIN_KEY`, look up the code, take $10 off, then check the history.
-6. Refund the test payment in Stripe: the card shows "Cancelled" on `/gift-admin`.
+   - the certificate page with the code, "Thank you ... Want us to email it to someone? Send it.", and a "Send it to someone" form under the card;
+   - an email to you that says you can print or forward it, or open your card and choose "Send it to someone", and one to `OWNER_EMAIL` saying "Not sent to anyone yet";
+   - in Stripe's test dashboard, the payment's metadata shows `gift_status: active` and `gift_deliver: none`.
+4. In "Send it to someone", put a name and your own second email, "Right away", and press "Email the card". Expect "Sent to ..." in place of the form, one email at the second address, and on reload the card says who it's for and the form is gone. In Stripe the payment now has `gift_to_email`, `gift_deliver: sent` and `gift_mail_to: 1`.
+5. Buy a second card, and this time choose "On a date" with tomorrow: "We'll email it to ... on ...", no email to them today. Scheduled sending runs only on the live site, at 8 AM Cincinnati time.
+6. Press Back on Stripe's page instead of paying: the gift card page is usable again and a Buy button opens a new payment page.
+7. On `/gift-admin`, with `GIFT_ADMIN_KEY`, look up the code, take $10 off, then check the history.
+8. Refund the test payment in Stripe: the card shows "Cancelled" on `/gift-admin`.
 
 ## 4. At the merge
 

@@ -7,6 +7,7 @@
     "checkout.enabled: true sends the buy buttons to Stripe (netlify/functions/gift-checkout.mjs). It needs STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET and GIFT_CODE_SECRET in Netlify; without them the checkout refuses and takes nothing. false shows the buttons disabled. A production build fails while mode is not off and checkout is off. Once a card has been sold, leave it true: it keeps the gift card terms and the privacy policy's Stripe entry on the site while cards are out.",
     "refundDays: an unused card can be refunded (what was paid) within this many days of buying it. The terms say it from here.",
     "scheduleDays: how far ahead a buyer can pick the day the card is emailed to the person it's for.",
+    "sendWindowHours: for how many hours after buying the card's page offers 'Send it to someone' (netlify/functions/gift-send.mjs). The card is emailed to one person, once: after that, or after this window, it can only be printed or shared by link, and Elijah can resend it from /gift-admin. A short window means a card link forwarded weeks later can't be used to email it to someone else.",
     "expiryYears: a card is good for this many years from the day it's bought, and the date is printed on it. Federal law (the CARD Act) sets 5 years as the shortest; the build refuses less. A card keeps the date it was sold with.",
     "checkout.methods: how a buyer can pay on Stripe's page. Allowed: card (includes Apple Pay and Google Pay), link, amazon_pay; each must also be switched on in the Stripe dashboard. If Stripe refuses one, the checkout falls back to card and link so a sale is never lost. Not allowed, by the providers' own rules for gift cards: Afterpay, Cash App Pay, Klarna; PayPal through Stripe is Europe only. Affirm is allowed by its rules but Elijah chose to skip it (November 24).",
     "A mistake in this file fails the build."
@@ -22,6 +23,7 @@
   "custom": { "min": 25, "max": 500 },
   "refundDays": 30,
   "scheduleDays": 60,
+  "sendWindowHours": 72,
   "expiryYears": 5,
   "checkout": { "enabled": true, "methods": ["card", "link", "amazon_pay"] }
 }

@@ -12,7 +12,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { cincinnatiDay, coverage, coverTable, coversLine, giftCardProblems, saleEndedNext, saleOn, salePriceCents, SIZE_WORDS, DEFAULT_RULES, VEHICLE_SIZES } from "../../netlify/functions/_pricing.mjs";
+import { cincinnatiDay, coverage, coverTable, giftCardProblems, saleEndedNext, saleOn, salePriceCents, SIZE_WORDS, DEFAULT_RULES, VEHICLE_SIZES } from "../../netlify/functions/_pricing.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 
@@ -62,36 +62,46 @@ export function viewAt(cfg, nowMs = Date.now()) {
 }
 const pays = (valueCents, v) => salePriceCents(valueCents, { mode: v.saleNow ? "sale" : "regular", sale: v.sale });
 
-/** "You pay $40 $50 Save $10" (the value struck through) during the sale; just "$50" without one. */
-export function priceRow(valueCents, v, cls = "gc-price") {
-  const pay = pays(valueCents, v);
-  if (pay === valueCents) return `<p class="${cls}"><strong>${dollars(pay)}</strong></p>`;
-  return `<p class="${cls}"><span class="gc-pay">You pay</span> <strong>${dollars(pay)}</strong> <s><span class="sr-only">instead of </span>${dollars(valueCents)}</s> <span class="gc-save">Save ${dollars(valueCents - pay)}</span></p>`;
-}
-
 /**
- * The card itself, as the recipient will see it: what they get, big. The
- * sale's percentage rides on its corner (there, hidden, whenever a sale is
- * set, so the page's script can show it on the day). Decorative: the h2 and
- * the price row carry the words for screen readers.
+ * The card itself, as the recipient will see it: what they get, as big as
+ * the tile allows, with "Gift card" in the corner. Decorative: the h2 and the
+ * button carry the words for screen readers.
  */
-export function cardFace(valueCents, v) {
-  const off = v.saleSet ? `<span class="gc-off"${hide(v.saleNow)}>${v.sale.percentOff}% off</span>` : "";
-  return `<div class="gc-face" aria-hidden="true">${off}
+export function cardFace(valueCents) {
+  return `<div class="gc-face" aria-hidden="true">
             <span class="gc-face-brand"><img class="gc-face-mark" src="images/logo-mark.png" alt="" width="20" height="26" />513 Auto Clean</span>
             <span class="gc-face-value">${dollars(valueCents)}</span>
             <span class="gc-face-label">Gift card</span>
           </div>`;
 }
 
+/** What a buy button says to a screen reader: "Buy a $250 gift card for $200" on a tile, "Buy a $250 card for $200" in the calculator, where it's also the button's text. */
 export function buyLabel(valueCents, payCents, custom) {
   if (custom) return payCents < valueCents ? `Buy a ${dollars(valueCents)} card for ${dollars(payCents)}` : `Buy a ${dollars(valueCents)} card`;
-  return `Buy for ${dollars(payCents)}`;
+  return payCents < valueCents ? `Buy a ${dollars(valueCents)} gift card for ${dollars(payCents)}` : `Buy a ${dollars(valueCents)} gift card`;
+}
+
+/**
+ * A tile's button words (approved mock, docs/GIFT-TILE-OPTIONS-2.png): "Buy
+ * for $250 $200", the value struck through during a sale and the price you
+ * pay the biggest thing in it; "Buy for $250" without one. Same markup as
+ * js/giftcards.js buyLine.
+ */
+export function buyLine(valueCents, payCents) {
+  const was = payCents < valueCents ? `<s class="gc-buy-was">${dollars(valueCents)}</s> ` : "";
+  return `<span class="gc-buy-line" aria-hidden="true"><span class="gc-buy-for">Buy for</span> ${was}<span class="gc-buy-now">${dollars(payCents)}</span></span>`;
+}
+
+/** A tile's hidden heading: "$250 gift card, you pay $200". Same words as js/giftcards.js tierName. */
+export function tierName(valueCents, payCents) {
+  return payCents < valueCents ? `${dollars(valueCents)} gift card, you pay ${dollars(payCents)}` : `${dollars(valueCents)} gift card`;
 }
 
 function buyButton(valueCents, v, { primary = false, custom = false } = {}) {
   const off = v.checkout.enabled ? "" : " disabled";
-  return `<button type="button" class="btn ${primary ? "btn-primary" : "btn-ghost"} btn-block" data-gc-buy="${custom ? "custom" : valueCents / 100}"${off}>${buyLabel(valueCents, pays(valueCents, v), custom)}</button>`;
+  const pay = pays(valueCents, v);
+  const words = custom ? `>${buyLabel(valueCents, pay, true)}` : ` aria-label="${buyLabel(valueCents, pay, false)}">${buyLine(valueCents, pay)}`;
+  return `<button type="button" class="btn ${primary ? "btn-primary" : "btn-ghost"} btn-block" data-gc-buy="${custom ? "custom" : valueCents / 100}"${off}${words}</button>`;
 }
 
 /** The sale in one sentence, marked so the page's script can show or hide it on the day. */
@@ -119,27 +129,45 @@ export function giftHead(v) {
     </div>`;
 }
 
-/** The tier cards. */
-export function giftTiers(v, rows = coverTable()) {
+/** The tier cards: the card's value on its face, the price in the button. */
+export function giftTiers(v) {
   return v.tiers.map((t) => {
     const value = t.value * 100;
     return `<article class="svc-card gc-tier${t.featured ? " featured" : ""}" data-gc-value="${t.value}">${t.featured ? '\n          <span class="svc-tag">Our pick</span>' : ""}
-          ${cardFace(value, v)}
-          <h2 class="sr-only">${dollars(value)} gift card</h2>
-          ${priceRow(value, v)}
-          <p class="gc-covers">${coversLine(value, rows)}</p>
+          ${cardFace(value)}
+          <h2 class="sr-only">${tierName(value, pays(value, v))}</h2>
           <div class="svc-foot">${buyButton(value, v, { primary: !!t.featured })}</div>
         </article>`;
   }).join("\n        ");
 }
 
 /** The covered list for one amount and size: the calculator's first state, which js/giftcards.js then keeps up to date. */
-export function coverList(valueCents, sizeId, rows = coverTable()) {
+export function coverList(valueCents, sizeId, rows = coverTable(), limits = null) {
   const { covered, next } = coverage(valueCents, sizeId, rows);
-  const items = covered.map((c) => `<li><b>${c.name}</b><em>${dollars(c.cents)}</em></li>`).join("");
+  const art = (n) => (/^[AEIOU]/i.test(n) ? "an" : "a");
+  const items = covered.map((c) => `<li>${pickRow(c.cents, `<b>${c.name}</b><em>${dollars(c.cents)}</em>`, `${art(c.name)} ${c.name}`, valueCents, limits)}</li>`).join("");
   const none = covered.length ? "" : '<li class="gc-none">Not a full detail yet: it goes toward one, or an add-on</li>';
-  const more = next ? `<p class="gc-next">${dollars(next.shortCents)} more covers ${/^[AEIOU]/i.test(next.name) ? "an" : "a"} ${next.name}</p>` : "";
+  const more = next ? `<p class="gc-next">${pickRow(valueCents + next.shortCents, `${dollars(next.shortCents)} more covers ${art(next.name)} ${next.name}`, `${art(next.name)} ${next.name}`, valueCents, limits)}</p>` : "";
   return `<ul class="gc-list">${items}${none}</ul>${more}`;
+}
+
+/**
+ * A row of the covered list as a button that makes the card that amount, so
+ * a price point can be picked from what it buys (Emmett, November 26). Plain
+ * text when the amount is outside what can be bought. Same markup as
+ * js/giftcards.js pickRow.
+ */
+function pickRow(cents, inner, what, valueCents, limits) {
+  if (!limits || cents < limits.min * 100 || cents > limits.max * 100) return `<span class="gc-row">${inner}</span>`;
+  const on = cents === valueCents ? ' aria-current="true"' : "";
+  return `<button type="button" class="gc-row gc-pick" data-gc-set="${(cents / 100).toFixed(2)}"${on} aria-label="Make it a ${dollars(cents)} card, ${what}">${inner}</button>`;
+}
+
+/** The calculator's price: "You pay $200 Save $50". The value is already in the box above it, so it isn't struck through here (Emmett, November 26). */
+export function calcPriceRow(valueCents, v) {
+  const pay = pays(valueCents, v);
+  const save = pay < valueCents ? ` <span class="gc-save">Save ${dollars(valueCents - pay)}</span>` : "";
+  return `<p class="gc-price gc-calc-price"><span class="gc-pay">You pay</span> <strong>${dollars(pay)}</strong>${save}</p>`;
 }
 
 /** The calculator, which is also where any other amount is bought. */
@@ -154,9 +182,9 @@ export function giftCalc(v, rows = coverTable()) {
           <div class="gc-amt"><span aria-hidden="true">$</span><input id="gcAmt" type="number" inputmode="decimal" min="${v.custom.min}" max="${v.custom.max}" step="0.01" value="${start / 100}" aria-describedby="gcAmtErr" /></div>
           <p class="gc-err" id="gcAmtErr" role="alert" hidden>Choose an amount from ${range}, to the cent.</p>
         </div>
-        ${priceRow(start, v, "gc-price gc-calc-price")}
+        ${calcPriceRow(start, v)}
         <fieldset class="gc-sizes"><legend>What would it cover?</legend>${sizes}</fieldset>
-        <div class="gc-out">${coverList(start, VEHICLE_SIZES[0].id, rows)}</div>
+        <div class="gc-out">${coverList(start, VEHICLE_SIZES[0].id, rows, v.custom)}</div>
         <p class="sr-only" id="gcSay" aria-live="polite"></p>
         ${buyButton(start, v, { primary: true, custom: true })}
         <p class="gc-small">Prices include sales tax at the highest local rate. A travel fee beyond the first ${DEFAULT_RULES.mileage.freeMinutes} minutes&rsquo; drive is added when you book, and the card can pay it too.${saleLines(v, ` Every card is ${v.sale.percentOff}% off through ${longDay(v.sale.ends)}.`, "")}</p>
@@ -166,7 +194,7 @@ export function giftCalc(v, rows = coverTable()) {
 /** Said once for every card, under the cards. */
 export function giftTerms(v) {
   const checkout = v.checkout.enabled ? "" : `\n      <p class="gc-soon">Buying online opens soon.</p>`;
-  const refund = v.refundDays > 0 ? `\n        <li>Unused cards can be refunded within ${v.refundDays} days (<a href="terms.html#gift-cards">terms</a>)</li>` : "";
+  const refund = v.refundDays > 0 ? `\n        <li><span>Unused cards can be refunded within ${v.refundDays} days (<a href="terms.html#gift-cards">terms</a>)</span></li>` : "";
   return `<ul class="gc-terms">
         <li>Good for ${v.expiryYears} years, no fees</li>
         <li>No tax when you buy it: sales tax is added to the detail when it&rsquo;s used</li>

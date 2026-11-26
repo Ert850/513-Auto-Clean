@@ -1,6 +1,6 @@
 import Stripe from "stripe";
 import { cincinnatiDay } from "./_pricing.mjs";
-import { GIFT_KIND, appendLog, cardFromMeta, codeFor, giftSecret, siteUrl } from "./_giftcards.mjs";
+import { GIFT_KIND, appendLog, cardFromMeta, claimedByPage, codeFor, giftSecret, siteUrl } from "./_giftcards.mjs";
 import { recipientEmail, sendMail } from "./_giftmail.mjs";
 import { issue } from "./gift-webhook.mjs";
 
@@ -16,6 +16,20 @@ import { issue } from "./gift-webhook.mjs";
  * marked "failed" and Elijah is told once, rather than every hour forever.
  */
 export const MAX_TRIES = 3;
+
+/**
+ * The hours this run starts, in UTC, as netlify.toml's schedule says
+ * ("0 13-23 * * *"; giftcards-backend.test.ts checks they agree). The card's
+ * page tells a buyer when a send that didn't go is tried again from these.
+ */
+export const RUN_HOURS_UTC = [13, 23];
+
+/** "8 AM to 6 PM": the run's hours on Cincinnati's clock on `nowMs`'s day (an hour later in daylight time). */
+export function runHoursWords(nowMs) {
+  const d = new Date(nowMs);
+  const at = (h) => new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), h)).toLocaleTimeString("en-US", { hour: "numeric", timeZone: "America/New_York" });
+  return `${at(RUN_HOURS_UTC[0])} to ${at(RUN_HOURS_UTC[1])}`;
+}
 /** One at a time, a little apart: Resend allows only a few sends a second (validation pass 3). */
 const GAP_MS = 600;
 const BUDGET_MS = 20_000;
@@ -50,6 +64,8 @@ export async function deliverDue(stripe, secret, nowMs = Date.now(), mail, start
     // A cancelled card isn't sent. A disputed one waits: if the dispute is
     // won, it goes out then (validation pass 2).
     if (m.gift_status === "disputed") { out.waiting++; return; }
+    // Being sent by the card's page right now (gift-send.mjs): left to it for a few minutes.
+    if (m.gift_deliver === "now" && claimedByPage(m, nowMs)) { out.waiting++; return; }
     if (m.gift_status === "void") {
       await stripe.paymentIntents.update(pi.id, { metadata: { gift_deliver: "cancelled" } });
       return;

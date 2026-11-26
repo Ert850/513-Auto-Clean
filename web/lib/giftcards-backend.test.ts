@@ -8,9 +8,19 @@ import { resetRateLimits } from "../../netlify/functions/_ratelimit.mjs";
 
 type Meta = Record<string, string>;
 type PI = { id: string; amount: number; metadata: Meta };
-type Session = { id: string; url: string; metadata: Meta; payment_status: string; amount_total: number; payment_intent: string; customer_details?: { email?: string } };
+type Session = { id: string; url: string; metadata: Meta; payment_status: string; amount_total: number; payment_intent: string; created: number; customer_details?: { email?: string } };
 
-const db = { sessions: new Map<string, Session>(), pis: new Map<string, PI>(), calls: [] as { what: string; params: unknown; opts: unknown }[], failNegation: false, refuseMethod: "" };
+const db = {
+  sessions: new Map<string, Session>(), pis: new Map<string, PI>(), calls: [] as { what: string; params: unknown; opts: unknown }[], failNegation: false, refuseMethod: "",
+  // Stripe's idempotency: the same key and body give the first answer again, another body an error, and a key still being written a 409.
+  idem: new Map<string, { body: string; result?: PI; busy: boolean }>(),
+  // Holds every keyed update open until released, to put a second request in the middle of the first.
+  hold: null as null | Promise<void>,
+  // The next n writes marking a card "sent" fail; the next n reads of a payment fail.
+  failSent: 0, failRetrieve: 0,
+  // The next keyed write is made, but its answer is lost (a timeout after Stripe wrote it).
+  loseAnswer: false,
+};
 
 vi.mock("stripe", () => ({
   default: class FakeStripe {
@@ -26,7 +36,7 @@ vi.mock("stripe", () => ({
           const id = `cs_test_${"a".repeat(20)}${n}`;
           const pi = { id: `pi_${n}`, amount: params.line_items[0]!.price_data.unit_amount, metadata: { ...params.payment_intent_data.metadata } };
           db.pis.set(pi.id, pi);
-          const s = { id, url: `https://checkout.stripe.com/c/${id}`, metadata: { ...params.metadata }, payment_status: "unpaid", amount_total: pi.amount, payment_intent: pi.id, customer_details: { email: "buyer@example.com" } };
+          const s = { id, url: `https://checkout.stripe.com/c/${id}`, metadata: { ...params.metadata }, payment_status: "unpaid", amount_total: pi.amount, payment_intent: pi.id, created: Math.floor(Date.now() / 1000), customer_details: { email: "buyer@example.com" } };
           db.sessions.set(id, s);
           return s;
         },
@@ -38,11 +48,27 @@ vi.mock("stripe", () => ({
       },
     };
     paymentIntents = {
-      retrieve: async (id: string) => structuredClone(db.pis.get(id)),
-      update: async (id: string, p: { metadata: Meta }, opts: unknown) => {
+      retrieve: async (id: string) => {
+        if (db.failRetrieve > 0) { db.failRetrieve--; throw Object.assign(new Error("timeout"), { type: "StripeConnectionError" }); }
+        return structuredClone(db.pis.get(id));
+      },
+      update: async (id: string, p: { metadata: Meta }, opts?: { idempotencyKey?: string }) => {
+        const key = opts?.idempotencyKey;
+        const body = JSON.stringify([id, p]);
+        if (key) {
+          const seen = db.idem.get(key);
+          if (seen?.busy) throw Object.assign(new Error("There is currently another in-progress request using this Idempotent Key."), { statusCode: 409, code: "idempotency_key_in_use", type: "StripeInvalidRequestError" });
+          if (seen && seen.body !== body) throw Object.assign(new Error("Keys for idempotent requests can only be used with the same parameters they were first used with."), { type: "StripeIdempotencyError", rawType: "idempotency_error" });
+          if (seen) return structuredClone(seen.result!);
+          db.idem.set(key, { body, busy: true });
+          if (db.hold) await db.hold;
+        }
+        if (p.metadata.gift_deliver === "sent" && db.failSent > 0) { db.failSent--; throw Object.assign(new Error("timeout"), { type: "StripeConnectionError" }); }
         db.calls.push({ what: "pi.update", params: p, opts });
         const pi = db.pis.get(id)!;
         Object.assign(pi.metadata, p.metadata);
+        if (key) db.idem.set(key, { body, result: structuredClone(pi), busy: false });
+        if (key && db.loseAnswer) { db.loseAnswer = false; throw Object.assign(new Error("timeout"), { type: "StripeConnectionError" }); }
         return structuredClone(pi);
       },
       search: async ({ query }: { query: string }) => {
@@ -66,9 +92,10 @@ const webhook = await import("../../netlify/functions/gift-webhook.mjs");
 const deliver = await import("../../netlify/functions/gift-deliver.mjs");
 const card = await import("../../netlify/functions/gift-card.mjs");
 const admin = await import("../../netlify/functions/gift-admin.mjs");
+const sender = await import("../../netlify/functions/gift-send.mjs");
 const { giftOffer, GIFT_CARDS } = (await import(`../../netlify/functions/${"_pricing"}.mjs`)) as {
   giftOffer: (v: unknown, now: number, cfg?: unknown) => { ok: boolean; valueCents?: number; payCents?: number; percentOff?: number; error?: string };
-  GIFT_CARDS: { mode: string; tiers: { value: number }[]; custom: { min: number; max: number }; sale: { percentOff: number; starts: string; ends: string }; checkout: { enabled: boolean; methods: string[] }; expiryYears: number };
+  GIFT_CARDS: { mode: string; tiers: { value: number }[]; custom: { min: number; max: number }; sale: { percentOff: number; starts: string; ends: string }; checkout: { enabled: boolean; methods: string[] }; expiryYears: number; sendWindowHours: number; scheduleDays: number };
 };
 
 const SECRET = "s".repeat(40);
@@ -81,6 +108,7 @@ const realFetch = globalThis.fetch;
 beforeEach(() => {
   resetRateLimits();
   db.sessions.clear(); db.pis.clear(); db.calls.length = 0; db.failNegation = false; db.refuseMethod = "";
+  db.idem.clear(); db.hold = null; db.failSent = 0; db.failRetrieve = 0; db.loseAnswer = false;
   mail = []; mailOk = true;
   for (const [k, v] of Object.entries(ENV)) vi.stubEnv(k, v);
   vi.useFakeTimers({ now: IN_SALE, toFake: ["Date"] });
@@ -654,5 +682,331 @@ describe("Elijah's answers (November 23)", () => {
       expect(h).not.toContain("Anything else");
       expect(h).not.toMatch(/never expires/i);
     }
+  });
+});
+
+describe("gift-send: sending the card after paying (one-click buying, November 26)", () => {
+  const completed = (id: string) => ({ type: "checkout.session.completed", data: { object: { id } } });
+  // What js/giftcards.js sends now: the value and a key, nothing about who it's for.
+  const oneClick = async () => {
+    expect((await post(checkout, { value: 50, requestKey: "gc_oneclick01" })).statusCode).toBe(200);
+    const s = [...db.sessions.values()].at(-1)!;
+    s.payment_status = "paid";
+    return s;
+  };
+  const sendIt = (s: string, extra: Record<string, unknown> = {}, headers: Record<string, string> = {}) =>
+    post(sender, { s, to: { name: "Sam", email: "Sam@Example.com" }, from: { name: "Alex" }, message: "Enjoy", sendOn: "", requestKey: "gs_request0001", ...extra }, headers);
+  const bodies: { to: string; subject: string; html: string }[] = [];
+  beforeEach(() => {
+    bodies.length = 0;
+    globalThis.fetch = (async (url: string, init?: { body?: string }) => {
+      if (String(url) !== "https://api.resend.com/emails") throw new Error("unexpected fetch " + url);
+      const b = JSON.parse(String(init?.body));
+      bodies.push({ to: b.to[0], subject: b.subject, html: b.html });
+      mail.push({ to: b.to[0], subject: b.subject });
+      return new Response("{}", { status: mailOk ? 200 : 500 });
+    }) as typeof fetch;
+  });
+
+  it("a one-click card is issued with no one to send it to, and the buyer's email says it can be sent from its page", async () => {
+    const s = await oneClick();
+    expect((await hook(completed(s.id))).statusCode).toBe(200);
+    expect(db.pis.get(s.payment_intent)!.metadata).toMatchObject({ gift_deliver: "none", gift_to_email: "" });
+    const buyer = bodies.find((b) => b.to === "buyer@example.com")!.html;
+    expect(buyer).toContain("Send it to someone");
+    expect(buyer).toContain(`https://513autoclean.com/gift-certificate#s=${s.id}`);
+    expect(bodies.find((b) => b.to === "owner@example.com")!.html).toContain("Not sent to anyone yet");
+    // The page offers it.
+    const page = JSON.parse((await card.handler({ httpMethod: "POST", headers: {}, body: JSON.stringify({ s: s.id }) })).body);
+    expect(page.canSend).toBe(true);
+  });
+
+  it("sends now: writes who it's for on the payment, emails them once, and the page stops offering it", async () => {
+    const s = await oneClick();
+    await hook(completed(s.id));
+    mail = []; bodies.length = 0;
+    const r = await sendIt(s.id);
+    expect(r.statusCode).toBe(200);
+    expect(JSON.parse(r.body)).toEqual({ ok: true, to: "sam@example.com", sendOn: "" });
+    expect(db.pis.get(s.payment_intent)!.metadata).toMatchObject({ gift_to_name: "Sam", gift_to_email: "sam@example.com", gift_from_name: "Alex", gift_message: "Enjoy", gift_deliver: "sent", gift_mail_to: "1", gift_send_req: "gs_request0001" });
+    expect(db.pis.get(s.payment_intent)!.metadata.gift_log).toContain("emailed to them");
+    expect(mail.map((m) => m.to)).toEqual(["sam@example.com"]);
+    expect(bodies[0]!.subject).toBe("Alex sent you a $50 gift card from 513 Auto Clean");
+    expect(bodies[0]!.html).toContain(G.codeFor(s.id, SECRET));
+    const page = JSON.parse((await card.handler({ httpMethod: "POST", headers: {}, body: JSON.stringify({ s: s.id }) })).body);
+    expect(page).toMatchObject({ canSend: false, toName: "Sam" });
+    // Nothing more goes out: not the webhook again, not the hourly run.
+    await hook(completed(s.id));
+    const pi = db.pis.get(s.payment_intent)! as PI & { created?: number };
+    pi.created = Math.floor(IN_SALE / 1000) - 3600;
+    const out = await deliver.deliverDue(new (await import("stripe")).default("x") as never, SECRET, IN_SALE + 3_600_000, async () => true);
+    expect(out.sent).toBe(0);
+    expect(mail.map((m) => m.to)).toEqual(["sam@example.com"]);
+  });
+
+  it("works before the webhook has run, and the webhook then emails the buyer and Elijah without sending it twice", async () => {
+    const s = await oneClick();
+    expect((await sendIt(s.id)).statusCode).toBe(200);
+    await hook(completed(s.id));
+    expect(mail.map((m) => m.to).sort()).toEqual(["buyer@example.com", "owner@example.com", "sam@example.com"]);
+    expect(bodies.find((b) => b.to === "buyer@example.com")!.html).toContain("emailed it to Sam");
+  });
+
+  it("schedules for a date: nothing now, and the hourly run sends it on the day, once", async () => {
+    const s = await oneClick();
+    await hook(completed(s.id));
+    mail = [];
+    const r = await sendIt(s.id, { sendOn: "2026-12-24" });
+    expect(JSON.parse(r.body)).toEqual({ ok: true, to: "sam@example.com", sendOn: "2026-12-24" });
+    expect(db.pis.get(s.payment_intent)!.metadata).toMatchObject({ gift_deliver: "pending", gift_send_on: "2026-12-24" });
+    expect(mail).toHaveLength(0);
+    // The card's page says when, to the buyer and to Sam alike.
+    const page = JSON.parse((await card.handler({ httpMethod: "POST", headers: {}, body: JSON.stringify({ s: s.id }) })).body);
+    expect(page).toMatchObject({ sendOn: "2026-12-24", canSend: false });
+    const stripe = new (await import("stripe")).default("x") as never;
+    const sent: string[] = [];
+    const send = async (to: string) => { sent.push(to); return true; };
+    expect(await deliver.deliverDue(stripe, SECRET, Date.parse("2026-12-23T15:00:00Z"), send)).toMatchObject({ sent: 0, waiting: 1 });
+    expect(await deliver.deliverDue(stripe, SECRET, Date.parse("2026-12-24T15:00:00Z"), send)).toMatchObject({ sent: 1 });
+    expect(await deliver.deliverDue(stripe, SECRET, Date.parse("2026-12-24T16:00:00Z"), send)).toMatchObject({ sent: 0 });
+    expect(sent).toEqual(["sam@example.com"]);
+  });
+
+  it("today's date is now, and a failed email goes to the hourly run instead", async () => {
+    const s = await oneClick();
+    mailOk = false;
+    const r = JSON.parse((await sendIt(s.id, { sendOn: "2026-12-01" })).body);
+    expect(r).toMatchObject({ ok: true, retrying: true, sendOn: "" });
+    expect(db.pis.get(s.payment_intent)!.metadata).toMatchObject({ gift_deliver: "pending", gift_send_on: "2026-12-01" });
+    expect(db.pis.get(s.payment_intent)!.metadata.gift_mail_to).toBeUndefined();
+  });
+
+  it("the same request twice changes nothing the second time", async () => {
+    const s = await oneClick();
+    await sendIt(s.id);
+    const updates = db.calls.filter((c) => c.what === "pi.update").length;
+    const r = JSON.parse((await sendIt(s.id)).body);
+    expect(r).toMatchObject({ ok: true, repeated: true, to: "sam@example.com" });
+    expect(db.calls.filter((c) => c.what === "pi.update").length).toBe(updates);
+    expect(mail.filter((m) => m.to === "sam@example.com")).toHaveLength(1);
+  });
+
+  it("only once: a second send (another request, another address) is refused and changes nothing", async () => {
+    const s = await oneClick();
+    await sendIt(s.id);
+    const before = { ...db.pis.get(s.payment_intent)!.metadata };
+    const r = await sendIt(s.id, { to: { email: "someone-else@example.com" }, requestKey: "gs_request0002" });
+    expect(r.statusCode).toBe(409);
+    expect(JSON.parse(r.body)).toEqual({ error: "already_sent" });
+    expect(db.pis.get(s.payment_intent)!.metadata).toEqual(before);
+    expect(mail.some((m) => m.to === "someone-else@example.com")).toBe(false);
+  });
+
+  it("a card bought with someone already (the old form, or the API) can't be sent again", async () => {
+    const s = await paidSession();
+    await hook(completed(s.id));
+    expect(JSON.parse((await sendIt(s.id, { requestKey: "gs_request0003" })).body)).toEqual({ error: "already_sent" });
+    expect(JSON.parse((await card.handler({ httpMethod: "POST", headers: {}, body: JSON.stringify({ s: s.id }) })).body).canSend).toBe(false);
+  });
+
+  it("refuses an unpaid, void, disputed, expired or too-old card, and changes nothing", async () => {
+    const unpaid = await oneClick();
+    unpaid.payment_status = "unpaid";
+    expect(JSON.parse((await sendIt(unpaid.id)).body)).toEqual({ error: "not_paid" });
+
+    const check = async (set: (s: Session) => void, error: string) => {
+      const s = await oneClick();
+      await hook(completed(s.id));
+      set(s);
+      const before = { ...db.pis.get(s.payment_intent)!.metadata };
+      mail = [];
+      const r = await sendIt(s.id);
+      expect(JSON.parse(r.body), error).toEqual({ error });
+      expect(r.statusCode).toBe(409);
+      expect(db.pis.get(s.payment_intent)!.metadata).toEqual(before);
+      expect(mail).toHaveLength(0);
+      expect(JSON.parse((await card.handler({ httpMethod: "POST", headers: {}, body: JSON.stringify({ s: s.id }) })).body).canSend).toBe(false);
+    };
+    await check((s) => { db.pis.get(s.payment_intent)!.metadata.gift_status = "void"; }, "not_active");
+    await check((s) => { db.pis.get(s.payment_intent)!.metadata.gift_status = "disputed"; }, "not_active");
+    await check((s) => { db.pis.get(s.payment_intent)!.metadata.gift_expires = "2026-11-30"; }, "expired");
+    // Outside the setting's window after buying: a link forwarded later can't send it.
+    await check((s) => { s.created = Math.floor(IN_SALE / 1000) - GIFT_CARDS.sendWindowHours * 3600 - 60; }, "too_late");
+    // Just inside it still works.
+    const s = await oneClick();
+    s.created = Math.floor(IN_SALE / 1000) - GIFT_CARDS.sendWindowHours * 3600 + 60;
+    expect((await sendIt(s.id)).statusCode).toBe(200);
+  });
+
+  it("checks what it's given: an email is required here, a real one, and a day inside the setting's range", async () => {
+    const s = await oneClick();
+    const err = async (x: Record<string, unknown>) => JSON.parse((await sendIt(s.id, x)).body).error;
+    expect(await err({ to: { name: "Sam" } })).toBe("need_email");
+    expect(await err({ to: { email: "" } })).toBe("need_email");
+    expect(await err({ to: { email: "not-an-email" } })).toBe("bad_email");
+    expect(await err({ sendOn: "2026-11-30" })).toBe("bad_date");
+    expect(await err({ sendOn: "2026-13-01" })).toBe("bad_date");
+    expect(await err({ sendOn: "2027-12-01" })).toBe("bad_date");
+    expect(await err({ message: "x".repeat(301) })).toBe("bad_details");
+    expect(await err({ requestKey: "x" })).toBe("bad_request");
+    expect(await err({ s: "cs_test_nope_nope_nope" })).toBe("not_found");
+    expect(await err({ s: "../etc" })).toBe("not_found");
+    // None of those touched the card.
+    expect(db.pis.get(s.payment_intent)!.metadata.gift_to_email).toBe("");
+    expect(mail).toHaveLength(0);
+  });
+
+  it("takes no price or value from the browser, and never returns the buyer's email", async () => {
+    const s = await oneClick();
+    const r = await sendIt(s.id, { value: 500, valueCents: 50000, balanceCents: 1, price: 1 });
+    expect(r.body).not.toContain("buyer@example.com");
+    expect(db.pis.get(s.payment_intent)!.metadata).toMatchObject({ gift_value_cents: "5000", gift_balance_cents: "5000" });
+    for (const body of [r.body, (await sendIt(s.id)).body, (await sendIt(s.id, { requestKey: "gs_request0009" })).body]) expect(body).not.toContain("buyer@example.com");
+  });
+
+  it("refuses while unconfigured, and is rate limited", async () => {
+    vi.stubEnv("RESEND_API_KEY", "");
+    const s = await oneClick();
+    expect((await sendIt(s.id)).statusCode).toBe(503);
+    expect(JSON.parse((await card.handler({ httpMethod: "POST", headers: {}, body: JSON.stringify({ s: s.id }) })).body).canSend).toBe(false);
+    vi.stubEnv("RESEND_API_KEY", "re_fake");
+    let last = 0;
+    for (let i = 0; i < 12; i++) last = (await sendIt(s.id, { requestKey: `gs_ratelimit${i}0` })).statusCode;
+    expect(last).toBe(429);
+  });
+
+  it("links in its email use the Deploy Preview it was called from", async () => {
+    const PREV = "deploy-preview-13--513-auto-clean.netlify.app";
+    const s = await oneClick();
+    expect((await sendIt(s.id, {}, { host: PREV })).statusCode).toBe(200);
+    expect(bodies[0]!.html).toContain(`https://${PREV}/gift-certificate#s=${s.id}`);
+    expect(bodies[0]!.html).not.toContain("https://513autoclean.com/gift-certificate");
+  });
+
+  it("the setting refuses a send window that isn't a sensible whole number of hours", async () => {
+    const { giftCardProblems } = (await import(`../../netlify/functions/${"_pricing"}.mjs`)) as { giftCardProblems: (c: unknown) => string[] };
+    expect(giftCardProblems(GIFT_CARDS)).toEqual([]);
+    for (const bad of [0, 1.5, -3, 10_000, undefined]) expect(giftCardProblems({ ...GIFT_CARDS, sendWindowHours: bad }).join(), String(bad)).toMatch(/sendWindowHours/);
+  });
+
+  describe("the claim is once per card even under races (review, November 26)", () => {
+    const tick = () => new Promise((r) => setTimeout(r, 0));
+    // Hold Stripe's first keyed write open, so a second request lands while the first is mid-claim.
+    const holdFirstClaim = async (first: Promise<{ statusCode: number; body: string }>) => {
+      let release!: () => void;
+      db.hold = new Promise<void>((r) => (release = r));
+      for (let i = 0; i < 200 && ![...db.idem.values()].some((v) => v.busy); i++) await tick();
+      expect([...db.idem.values()].some((v) => v.busy)).toBe(true);
+      return () => { release(); db.hold = null; return first; };
+    };
+    const status = async (r: Promise<{ statusCode: number; body: string }>) => { const x = await r; return { code: x.statusCode, ...JSON.parse(x.body) }; };
+
+    it("two different sends that both checked before either wrote: one email, the other already_sent", async () => {
+      const s = await oneClick();
+      await hook(completed(s.id));
+      mail = [];
+      const [a, b] = await Promise.all([status(sendIt(s.id)), status(sendIt(s.id, { to: { email: "other@example.com" }, requestKey: "gs_request0002" }))]);
+      expect([a, b].filter((x) => x.ok)).toHaveLength(1);
+      expect([a, b].filter((x) => x.error === "already_sent")).toHaveLength(1);
+      expect(mail).toHaveLength(1);
+      expect(db.pis.get(s.payment_intent)!.metadata.gift_to_email).toBe(mail[0]!.to);
+    });
+
+    it("a second send that arrives while the first is still writing is told to wait, then refused", async () => {
+      const s = await oneClick();
+      await hook(completed(s.id));
+      mail = [];
+      const first = sendIt(s.id);
+      const release = await holdFirstClaim(first);
+      expect(await status(sendIt(s.id, { to: { email: "other@example.com" }, requestKey: "gs_request0002" }))).toEqual({ code: 409, error: "busy" });
+      expect((await release()).statusCode).toBe(200);
+      expect(await status(sendIt(s.id, { to: { email: "other@example.com" }, requestKey: "gs_request0002" }))).toEqual({ code: 409, error: "already_sent" });
+      expect(mail.map((m) => m.to)).toEqual(["sam@example.com"]);
+    });
+
+    it("the same request twice at once (a double tap): one email, and the twin says it's the same send", async () => {
+      const s = await oneClick();
+      await hook(completed(s.id));
+      mail = [];
+      // Mid-claim: the twin waits.
+      const first = sendIt(s.id);
+      const release = await holdFirstClaim(first);
+      expect(await status(sendIt(s.id))).toEqual({ code: 409, error: "busy" });
+      expect(JSON.parse((await release()).body)).toEqual({ ok: true, to: "sam@example.com", sendOn: "" });
+      expect(JSON.parse((await sendIt(s.id)).body)).toEqual({ ok: true, to: "sam@example.com", sendOn: "", repeated: true });
+      // Both past the check before either wrote: Stripe refuses the twin's claim, and it answers from the card.
+      const t = await oneClick();
+      await hook(completed(t.id));
+      const both = await Promise.all([status(sendIt(t.id)), status(sendIt(t.id))]);
+      expect(both.every((x) => x.ok && x.to === "sam@example.com")).toBe(true);
+      expect(both.filter((x) => x.repeated)).toHaveLength(1);
+      // One email per card.
+      expect(mail.filter((m) => m.to === "sam@example.com")).toHaveLength(2);
+    });
+
+    it("a claim written but never sent (the answer lost): a retry says it's on its way, never Sent, and the hourly run sends it once after the hold", async () => {
+      const s = await oneClick();
+      await hook(completed(s.id));
+      mail = [];
+      db.loseAnswer = true;
+      expect((await sendIt(s.id)).statusCode).toBe(502);
+      const again = JSON.parse((await sendIt(s.id)).body);
+      expect(again).toMatchObject({ ok: true, to: "sam@example.com", retrying: true, repeated: true });
+      expect(again.hours).toBe("8 AM to 6 PM");
+      expect(mail).toHaveLength(0);
+      const stripe = new (await import("stripe")).default("x") as never;
+      const sent: string[] = [];
+      const send = async (to: string) => { sent.push(to); return true; };
+      // Within the hold the hourly run leaves it to the page; after it, it sends, once.
+      expect(await deliver.deliverDue(stripe, SECRET, IN_SALE + G.SEND_CLAIM_HOLD_MS - 60_000, send)).toMatchObject({ sent: 0, waiting: 1 });
+      expect(await deliver.deliverDue(stripe, SECRET, IN_SALE + G.SEND_CLAIM_HOLD_MS + 60_000, send)).toMatchObject({ sent: 1 });
+      expect(await deliver.deliverDue(stripe, SECRET, IN_SALE + G.SEND_CLAIM_HOLD_MS + 3_600_000, send)).toMatchObject({ sent: 0 });
+      expect(sent).toEqual(["sam@example.com"]);
+      expect(JSON.parse((await sendIt(s.id)).body)).toEqual({ ok: true, to: "sam@example.com", sendOn: "", repeated: true });
+    });
+
+    it("emailed but not marked sent: the mark is tried again, and if that fails too the webhook and the hourly run hold off", async () => {
+      const s = await oneClick();
+      await hook(completed(s.id));
+      db.failSent = 1;
+      expect(JSON.parse((await sendIt(s.id)).body)).toEqual({ ok: true, to: "sam@example.com", sendOn: "" });
+      expect(db.pis.get(s.payment_intent)!.metadata).toMatchObject({ gift_deliver: "sent", gift_mail_to: "1" });
+
+      const t = await oneClick();
+      mail = [];
+      db.failSent = 2;
+      const errors = vi.spyOn(console, "error").mockImplementation(() => {});
+      expect(JSON.parse((await sendIt(t.id, { requestKey: "gs_request0005" })).body)).toEqual({ ok: true, to: "sam@example.com", sendOn: "" });
+      errors.mockRestore();
+      expect(db.pis.get(t.payment_intent)!.metadata.gift_deliver).toBe("now");
+      // The webhook arriving now, and the hourly run inside the hold, don't email it again.
+      await hook(completed(t.id));
+      const stripe = new (await import("stripe")).default("x") as never;
+      expect(await deliver.deliverDue(stripe, SECRET, IN_SALE + 60_000, async () => true)).toMatchObject({ sent: 0 });
+      expect(mail.filter((m) => m.to === "sam@example.com")).toHaveLength(1);
+    });
+
+    it("the buyer's email says the deadline as a Cincinnati time and date, from the purchase and the setting", async () => {
+      const s = await oneClick();
+      await hook(completed(s.id));
+      const by = G.sendDeadline(s);
+      expect(by).toBe(IN_SALE + GIFT_CARDS.sendWindowHours * 3_600_000);
+      const { sendByWords } = await import("../../netlify/functions/_giftmail.mjs");
+      const buyer = bodies.find((b) => b.to === "buyer@example.com")!.html;
+      expect(buyer).toContain(`by ${sendByWords(by)}.`);
+      // Bought at noon on December 1 in Cincinnati: with 72 hours, noon on Friday, December 4.
+      expect(sendByWords(Date.parse("2026-12-04T17:00:00Z"))).toBe("12 PM on Friday, December 4");
+      expect(sendByWords(Date.parse("2026-12-04T17:59:00Z"))).toBe("12 PM on Friday, December 4");
+      expect(buyer).not.toMatch(/hours|within \d/);
+    });
+
+    it("the hourly run's hours in the page's words match netlify.toml's schedule", async () => {
+      const fs = await import("node:fs");
+      const toml = fs.readFileSync(new URL("../../netlify.toml", import.meta.url), "utf8");
+      const [from, to] = deliver.RUN_HOURS_UTC;
+      expect(toml).toMatch(new RegExp(`\\[functions\\."gift-deliver"\\]\\s*schedule = "0 ${from}-${to} \\* \\* \\*"`));
+      expect(deliver.runHoursWords(Date.parse("2026-12-01T17:00:00Z"))).toBe("8 AM to 6 PM");
+      expect(deliver.runHoursWords(Date.parse("2027-07-01T17:00:00Z"))).toBe("9 AM to 7 PM");
+    });
   });
 });
