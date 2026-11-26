@@ -111,5 +111,5 @@ Emmett: no new pairs until Elijah's better photos replace them. The 5 candidates
 
 ## Privacy policy, November 27 version (pending Emmett's yes)
 
-- The Google Calendar row names the job records sheet (JobsSync) and says only we and the listed providers can see the details; a new row covers our customer management system and the agency that runs it. Needed before Imperion and GoHighLevel get the calendars and the sheet (`IMPERION-CALENDAR-ACCESS-PLAN.md`).
+- The Google Calendar row adds "and into our job records (Google Sheets)" and says only we and the listed providers can see them. A new row, "Our customer management provider", can see our booked jobs and job records to help us run bookings (Imperion supplies the GoHighLevel account, so one row covers both; Emmett asked for the short version, November 27). The job copies go as they are, payment details included (Emmett). Needed before Imperion and GoHighLevel get the calendars and the sheet (`IMPERION-CALENDAR-ACCESS-PLAN.md`).
 
