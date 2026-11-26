@@ -12,7 +12,7 @@
     "src": "",
     "poster": ""
   },
-  "bookLinks": "inline",
+  "bookLinks": "page",
   "bookLinkParams": {
     "package": "package",
     "interest": "interest",

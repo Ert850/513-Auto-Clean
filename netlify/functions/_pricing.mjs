@@ -3441,7 +3441,7 @@ var booking_page_default = {
     src: "",
     poster: ""
   },
-  bookLinks: "inline",
+  bookLinks: "page",
   bookLinkParams: {
     package: "package",
     interest: "interest",
