@@ -59,8 +59,21 @@ export function sameSecret(given, expected) {
   return a.length === b.length && timingSafeEqual(a, b);
 }
 
-/** The site's own address for links in emails and Stripe's return: this deploy's, so a preview links to itself. */
-export function siteUrl(env = process.env) {
+/** A Deploy Preview of this site, as a request's Host header names it. */
+const PREVIEW_HOST = /^deploy-preview-\d+--513-auto-clean\.netlify\.app$/;
+
+/** The Host header of a function's request, or "". */
+export const requestHost = (event) => String(event?.headers?.host || event?.headers?.Host || "").trim().toLowerCase();
+
+/**
+ * The site's own address for links in emails and Stripe's return: this deploy's, so a preview links to itself.
+ * `host` is the request's Host header. It wins only when it is one of this
+ * site's Deploy Previews: DEPLOY_PRIME_URL doesn't reach a function at run
+ * time, so a test purchase on Deploy Preview 13 came back to the live domain's
+ * 404 (November 26). Any other host falls through to the settings below.
+ */
+export function siteUrl(env = process.env, host = "") {
+  if (PREVIEW_HOST.test(host)) return `https://${host}`;
   // Only a Deploy Preview's own address (deploy-preview-N--site): CONTEXT may
   // not reach a function at run time, and on the live site DEPLOY_PRIME_URL is
   // main--site.netlify.app, not the domain (validation pass 1).

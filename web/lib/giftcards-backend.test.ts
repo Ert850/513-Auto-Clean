@@ -380,6 +380,40 @@ describe("validation pass 1 fixes", () => {
 
 describe("validation pass 2 fixes", () => {
   const completed = (id: string) => ({ type: "checkout.session.completed", data: { object: { id } } });
+  // Exactly what js/giftcards.js sends when every box in the form is left empty.
+  const emptyForm = { value: 50, to: { name: "", email: "" }, from: { name: "" }, message: "", sendOn: "", requestKey: "gc_emptyform1" };
+
+  it("a purchase on a Deploy Preview comes back there and its emails link there; no other host can steer it (November 26)", async () => {
+    const PREV = "deploy-preview-13--513-auto-clean.netlify.app";
+    expect(G.siteUrl(ENV, PREV)).toBe(`https://${PREV}`);
+    expect(G.siteUrl(ENV, "evil.example")).toBe("https://513autoclean.com");
+    expect(G.siteUrl(ENV, "deploy-preview-13--other-site.netlify.app")).toBe("https://513autoclean.com");
+    expect(G.siteUrl(ENV, "513autoclean.com")).toBe("https://513autoclean.com");
+    const html: string[] = [];
+    globalThis.fetch = (async (_u: string, init?: { body?: string }) => { html.push(JSON.parse(String(init?.body)).html); return new Response("{}", { status: 200 }); }) as typeof fetch;
+    expect((await post(checkout, emptyForm, { host: PREV })).statusCode).toBe(200);
+    const c = db.calls[0] as { params: { success_url: string; cancel_url: string } };
+    expect(c.params.success_url).toBe(`https://${PREV}/gift-certificate#s={CHECKOUT_SESSION_ID}&new=1`);
+    expect(c.params.cancel_url).toBe(`https://${PREV}/gift-cards`);
+    const s = [...db.sessions.values()].at(-1)!;
+    s.payment_status = "paid";
+    expect((await post(webhook, completed(s.id), { "stripe-signature": "good", host: PREV })).statusCode).toBe(200);
+    expect(html.length).toBeGreaterThan(0);
+    for (const h of html) expect(h).not.toContain("https://513autoclean.com/gift-certificate");
+    expect(html.some((h) => h.includes(`https://${PREV}/gift-certificate#s=`))).toBe(true);
+  });
+
+  it("a buyer who fills in nothing still gets a working card, emailed to them (Emmett, November 26)", async () => {
+    expect((await post(checkout, emptyForm)).statusCode).toBe(200);
+    const s = [...db.sessions.values()].at(-1)!;
+    s.payment_status = "paid";
+    expect((await hook(completed(s.id))).statusCode).toBe(200);
+    const pi = db.pis.get(s.payment_intent)!;
+    expect(pi.metadata).toMatchObject({ gift_status: "active", gift_balance_cents: "5000", gift_to_email: "", gift_to_name: "", gift_from_name: "", gift_message: "", gift_mail_buyer: "1", gift_mail_owner: "1" });
+    expect(mail.map((m) => m.to).sort()).toEqual(["buyer@example.com", "owner@example.com"]);
+    const page = JSON.parse((await card.handler({ httpMethod: "POST", headers: {}, body: JSON.stringify({ s: s.id }) })).body);
+    expect(page).toMatchObject({ balanceCents: 5000 });
+  });
 
   it("a dispute closed as a warning keeps the card; only a lost one cancels it", async () => {
     const s = await paidSession();
