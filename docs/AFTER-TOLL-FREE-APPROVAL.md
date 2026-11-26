@@ -33,8 +33,9 @@ From `QUEUE-AFTER-FRIDAY.md`, "Swap the phone number back".
 ## 2. Settings that were switched for verification (Emmett's yes, after Imperion's answer in step 0)
 
 Both are one word in a config file, and a test proves each switch restores the old page exactly (CLAUDE.md, "Temporary or campaign changes").
-- [ ] **Contact form wording:** `config/contact-form.json` `"mode"`. It's `"quote"` today ("Request a quote", Imperion, November 12); `"question"` brings back "Got a question first?". The file itself says to switch back once texting is approved. Confirm with Imperion first.
-- [ ] **Book links:** `config/booking-page.json` `"bookLinks"`. It's `"page"` today, so every Book link goes to `/book`, where the consent boxes are (Imperion, November 14); `"inline"` opens the form in place on every page, as before. Keep `"page"` unless Imperion and Emmett both say it can go.
+- [x] **Done November 26, in the merge (Emmett):** Imperion said in a voice note that it is re-verifying the toll-free number under its own LLC, after three rejections over the LLC address, and that the website is no longer part of the verification. Both switches are back to the old behaviour: `mode: "question"` and `bookLinks: "inline"`. In question mode the `/book` page has no consent boxes either; the booking form keeps its own texts box in Your details. Each can flip back with its one word.
+- [x] **Contact form wording:** `config/contact-form.json` `"mode"`. It's `"quote"` today ("Request a quote", Imperion, November 12); `"question"` brings back "Got a question first?". The file itself says to switch back once texting is approved. Confirm with Imperion first.
+- [x] **Book links:** `config/booking-page.json` `"bookLinks"`. It's `"page"` today, so every Book link goes to `/book`, where the consent boxes are (Imperion, November 14); `"inline"` opens the form in place on every page, as before. Keep `"page"` unless Imperion and Emmett both say it can go.
 - These are code-repo changes, so they go in through step 3's PR (or a follow-up PR) and never straight to `main`.
 
 ## 3. Merge eNov14 (Emmett's separate yes; the PR is merged by Emmett)

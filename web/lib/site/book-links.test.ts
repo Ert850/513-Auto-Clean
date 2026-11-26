@@ -79,18 +79,24 @@ describe("Book links to /book (config/booking-page.json bookLinks)", () => {
 
 describe("the /book consent boxes", () => {
   const cfg = loadContactForm();
+  // Checked in quote mode whichever mode is live, so switching back is safe (November 26: live is "question").
+  const quote = { ...cfg, mode: "quote" };
   it("say exactly what the Contact form's boxes say", () => {
     const span = (html: string) => [...html.matchAll(/<label class="inq-tick">.*?<span>(.*?)<\/span><\/label>/g)].map((m) => m[1]);
-    expect(span(bookPageConsent(cfg))).toEqual(span(contactCard(cfg)));
-    expect(bookPageConsent(cfg)).toContain(cfg.modes[cfg.mode].termsLine.replace(/\{phone\}/g, "").slice(0, 20));
+    expect(span(bookPageConsent(quote))).toEqual(span(contactCard(quote)));
+    expect(bookPageConsent(quote)).toContain(quote.modes.quote.termsLine.replace(/\{phone\}/g, "").slice(0, 20));
   });
   it("are unticked and optional", () => {
-    const boxes = bookPageConsent(cfg).match(/<input[^>]*>/g) ?? [];
+    const boxes = bookPageConsent(quote).match(/<input[^>]*>/g) ?? [];
     expect(boxes.length).toBe(2);
     for (const b of boxes) expect(b).not.toMatch(/checked|required/);
   });
-  it("are in booking.html as built", () => {
-    expect(read("booking.html")).toContain(bookPageConsent(cfg).trim().slice(0, 60));
+  it("are gone in question mode, the page as it was", () => {
+    expect(bookPageConsent({ ...cfg, mode: "question" })).toBe("");
+  });
+  it("are in booking.html as built, only in quote mode", () => {
+    if (cfg.mode === "quote") expect(read("booking.html")).toContain(bookPageConsent(cfg).trim().slice(0, 60));
+    else expect(read("booking.html")).not.toContain('id="bpSms"');
   });
   it("a marketing yes reaches the server, and an odd value is dropped", () => {
     const NOW = Date.now();

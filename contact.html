@@ -132,8 +132,8 @@
         <div class="section-head inq-head">
 <!-- CONTACT:HEAD:START -->
           <span class="eyebrow">Contact Us</span>
-          <h1>Request a quote</h1>
-          <p>Tell us about your vehicle and what you need, and we will send you a quote. A real person answers, usually same day.</p>
+          <h1>Got a question first?</h1>
+          <p>Not ready to book, or not sure which package fits? Ask us anything about your vehicle&rsquo;s condition, what&rsquo;s realistic to fix, pricing, or timing. A real person answers, usually same day.</p>
 <!-- CONTACT:HEAD:END -->
         </div>
         <div class="inq-side-head">
@@ -160,13 +160,28 @@
 
       <div class="form-card reveal" data-d="1" id="inquiryCard">
 <!-- CONTACT:CARD:START -->
-        <h2>Request a quote</h2>
+        <h2>Ask us a question</h2>
         <p class="fc-sub">Tell us what you&rsquo;re dealing with and we&rsquo;ll point you the right way.</p>
-        <form id="inquiryForm" class="js-w3form inq-quote" action="https://api.web3forms.com/submit" method="POST" novalidate data-success="Thanks, your quote request is in. I'll get back to you shortly, usually the same day.">
+        <form id="inquiryForm" class="js-w3form" action="https://api.web3forms.com/submit" method="POST" novalidate>
           <input type="hidden" name="access_key" value="8a502fe3-2a53-4904-98e9-b18dabb1f579" />
-          <input type="hidden" name="subject" value="QUOTE REQUEST from 513autoclean.com" />
+          <input type="hidden" name="subject" value="QUESTION from 513autoclean.com" />
           <input type="hidden" name="from_name" value="513 Auto Clean Website" />
           <input type="checkbox" name="botcheck" style="display:none" tabindex="-1" autocomplete="off" />
+
+          <!-- Wide screens: the two free-text boxes side by side, then two rows of
+               three. Same fields and order of importance, about half the height. -->
+          <div class="field-row pair-wide">
+            <div class="field">
+              <label for="q-message">What&rsquo;s your question? <span class="req">*</span></label>
+              <textarea id="q-message" name="message" rows="4" required
+                placeholder="e.g. My back seats have old coffee stains and my dog sheds badly. Is a Full Interior enough, or do I need add-ons?"></textarea>
+            </div>
+            <div class="field">
+              <label for="q-condition">Your vehicle&rsquo;s condition</label>
+              <textarea id="q-condition" name="condition" rows="2"
+                placeholder="Pet hair, spills, smoke, kids, work truck, sat outside all winter&hellip;"></textarea>
+            </div>
+          </div>
 
           <div class="field-row three">
             <div class="field">
@@ -202,33 +217,12 @@
             </fieldset>
           </div>
 
-          <!-- Wide screens: the two free-text boxes side by side, then two rows of
-               three. Same fields and order of importance, about half the height. -->
-          <div class="field-row pair-wide">
-            <div class="field">
-              <label for="q-message">What&rsquo;s your question? <span class="req">*</span></label>
-              <textarea id="q-message" name="message" rows="4" required
-                placeholder="e.g. My back seats have old coffee stains and my dog sheds badly. Is a Full Interior enough, or do I need add-ons?"></textarea>
-            </div>
-            <div class="field">
-              <label for="q-condition">Your vehicle&rsquo;s condition</label>
-              <textarea id="q-condition" name="condition" rows="2"
-                placeholder="Pet hair, spills, smoke, kids, work truck, sat outside all winter&hellip;"></textarea>
-            </div>
-          </div>
-
-          <div class="inq-ticks">
-            <label class="inq-tick"><input type="checkbox" name="SMS consent" value="yes" data-yesno /> <span>I consent to receive SMS notifications, alerts &amp; occasional marketing communication from 513 Auto Clean. Message frequency varies. Message &amp; data rates may apply. Text HELP to (513) 279-2915 for assistance. You can reply STOP to unsubscribe at any time.</span></label>
-            <label class="inq-tick"><input type="checkbox" name="Marketing" value="yes" data-yesno /> <span>I want to receive news, feature updates, discounts &amp; offers from 513 Auto Clean.</span></label>
-            <p class="inq-terms">By continuing you agree to our <a href="terms.html">Terms &amp; Conditions</a> and <a href="privacy.html">Privacy Policy</a>.</p>
-          </div>
-
           <div class="form-foot">
             <button type="submit" class="btn btn-primary btn-lg btn-block">
-              Request Quote
+              Send My Question
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4z"/></svg>
             </button>
-            <p class="fineprint">No spam, ever. We only use your info to send your quote.</p>
+            <p class="fineprint">No spam, ever. We only use your info to answer your question. See our <a href="privacy.html">Privacy Policy</a>.</p>
           </div>
           <div class="form-msg" role="status" aria-live="polite"></div>
         </form>
@@ -310,7 +304,7 @@
 <link rel="stylesheet" href="book.css?v=ddd553527c" />
 <!-- Deferred, so they run in this order: the pricing bundle before the
      booking form and before any page script that prices (travel.js). -->
-<script src="js/pricing.bundle.js?v=23b069f9b4" defer></script>
+<script src="js/pricing.bundle.js?v=31ec1cd112" defer></script>
 <script src="js/funnel.js?v=fc849a0733" defer></script>
 <script src="script.js?v=0f81ec6fa1" defer></script>
 <!-- CHROME:SCRIPTS:END -->

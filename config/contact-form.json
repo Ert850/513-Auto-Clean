@@ -6,7 +6,7 @@
     "Both wordings stay in this file. HTML is allowed in the text (links, &rsquo;). {phone} becomes the business number (config/business.json, or BUSINESS_PHONE in Netlify).",
     "A mistake in this file fails the build."
   ],
-  "mode": "quote",
+  "mode": "question",
   "modes": {
     "question": {
       "heading": "Got a question first?",
