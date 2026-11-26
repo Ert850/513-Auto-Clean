@@ -72,7 +72,7 @@ Read this before changing anything. Every rule below came from a real bug or an 
 
 ## Owner rules
 - **Git:** push only to the working branch Emmett has approved (`eNov6`; `eNov14` since November 14). Never push to `main` or open or merge PRs without the owner's approval. Parallel sessions commit to their own branch and never push.
-- **The toll-free freeze** (from November 14 until Imperion approves): `main` and the live site are untouched. No PR, merge or hotfix, and don't offer one, even for a real live bug: fix it on the working branch and say it ships with the merge (Emmett, November 15). What waits for approval is `docs/AFTER-TOLL-FREE-APPROVAL.md`.
+- **The toll-free freeze is over** (November 14 to 26). Imperion says the website isn't part of the toll-free verification now and we have free rein to change it (November 26). Changes to `main` go through a PR with Emmett's yes, as always; live bugs can be fixed straight away that way. What's left of the approval steps (the phone number) is `docs/AFTER-TOLL-FREE-APPROVAL.md`.
 - **Others push to `eNov6` too** (Elijah's agent added `docs/BUSINESS-CONTEXT.md` on November 11). `git fetch` before pushing; if GitHub is ahead, rebase unpushed commits onto `origin/eNov6`. Never force-push.
 - **Design:** keep the site's current look (colors, type, components in `styles.css`). Changes are cleanup and reorganization for conversion, not restyling.
 - **Booking:** never break existing booking behavior. Check what the live site does first (`node web/scripts/check-live.mjs`, or step through the form without submitting). GoHighLevel runs *alongside* the current flow, not instead of it.
