@@ -1358,24 +1358,25 @@ body > #quote { padding-block: clamp(40px, 4.4vw, 64px); }
   .inquiry .field textarea { min-height: 72px; }
   .inquiry .inq-tick { padding: .5rem .7rem; font-size: .76rem; }
 }
-/* Quote mode adds two boxes and a line, which put Request Quote 63 px below a
-   1440x790 window (measured). The owner's test needs the button on the first
-   screen, so this mode trims its own spacing and the two text boxes. */
-#inquiryCard:has(.inq-quote) .fc-sub { margin-bottom: 1.1rem; }
-.inq-quote .field { margin-bottom: .75rem; }
-.inq-quote .field-row.pair-wide textarea { height: 4.6rem; min-height: 4.6rem; }
-.inq-quote .inq-tick { padding: .45rem .8rem; }
-.inq-quote .inq-ticks { gap: .4rem; }
-.inq-quote .form-foot { margin-top: .9rem; }
+/* The two tick boxes and the terms line (every mode since November 26) put
+   the button 63 px below a 1440x790 window (measured). The owner's test needs
+   the button on the first screen, so the form trims its own spacing and the
+   two text boxes (.inq-compact, on the form whenever the boxes show). */
+#inquiryCard:has(.inq-compact) .fc-sub { margin-bottom: 1.1rem; }
+.inq-compact .field { margin-bottom: .75rem; }
+.inq-compact .field-row.pair-wide textarea { height: 4.6rem; min-height: 4.6rem; }
+.inq-compact .inq-tick { padding: .45rem .8rem; }
+.inq-compact .inq-ticks { gap: .4rem; }
+.inq-compact .form-foot { margin-top: .9rem; }
 /* Short windows only (owner's pick, November 13): at 1280x720 Request Quote
    ended at 774 px. Under 760 px tall the card drops its grey sub-line and the
    boxes tighten; 1440x790 is unchanged. */
 @media (max-height: 759.98px) {
-  #inquiryCard:has(.inq-quote) { padding-top: 1.4rem; }
-  #inquiryCard:has(.inq-quote) .fc-sub { display: none; }
-  .inq-quote .field-row.pair-wide textarea { height: 3.2rem; min-height: 3.2rem; }
-  .inq-quote .inq-tick { padding: .35rem .7rem; font-size: .74rem; }
-  .inq-quote .field label { margin-bottom: .3rem; }
+  #inquiryCard:has(.inq-compact) { padding-top: 1.4rem; }
+  #inquiryCard:has(.inq-compact) .fc-sub { display: none; }
+  .inq-compact .field-row.pair-wide textarea { height: 3.2rem; min-height: 3.2rem; }
+  .inq-compact .inq-tick { padding: .35rem .7rem; font-size: .74rem; }
+  .inq-compact .field label { margin-bottom: .3rem; }
 }
 
 /* Booking CTA panel (replaces the old quote form in the contact section) */
