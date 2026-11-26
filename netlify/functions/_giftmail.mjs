@@ -148,3 +148,29 @@ export function ownerEmail({ card, code, payCents, buyer, toEmail, problem }) {
     html: SHELL("Gift card sold", `${warn}<table role="presentation" style="border-collapse:collapse;font-size:15px">${rows}</table><p style="margin:14px 0 0;color:#5a6069">Look it up or mark it used at /gift-admin. It's also on the payment in Stripe.</p>`),
   };
 }
+
+/** Elijah's address for the gift card emails: OWNER_EMAIL, or the default every gift function uses. */
+export const ownerAddress = (env = process.env) => env.OWNER_EMAIL || "elijahthackerllc@gmail.com";
+
+/**
+ * To Elijah when a card is sent to someone from its page after buying
+ * (gift-send.mjs; owner, November 26): who it's for, from whom, when it goes,
+ * and the card. `state`: "sent", "pending" (a later day, card.sendOn) or
+ * "retrying" (the email didn't go yet: the hourly run tries again).
+ */
+export function ownerSendEmail({ card, code, toEmail, state }) {
+  const when = state === "sent" ? "Now (emailed)"
+    : state === "pending" && card.sendOn ? `${longDay(card.sendOn)} (scheduled)`
+    : "Now, but the email didn't go through yet: the hourly run tries again, and tells you if it can't";
+  const rows = [
+    ["Card", `${dollars(card.valueCents)}, code ending ${code.slice(-4)}`],
+    ["For", [card.toName, toEmail].filter(Boolean).join(", ")],
+    ["From", card.fromName || "(not said)"],
+    ["Emailed to them", when],
+  ].map(([k, v]) => `<tr><td style="padding:4px 12px 4px 0;color:#5a6069">${k}</td><td style="padding:4px 0">${esc(v)}</td></tr>`).join("");
+  return {
+    subject: `${state === "retrying" ? "CHECK: " : ""}Gift card sent to someone: ${dollars(card.valueCents)}, code ending ${code.slice(-4)}`,
+    html: SHELL("Gift card sent to someone", `<p style="margin:0 0 12px">The buyer sent this card to someone from its page.</p><table role="presentation" style="border-collapse:collapse;font-size:15px">${rows}</table><p style="margin:14px 0 0;color:#5a6069">Look it up at /gift-admin. It's also on the payment in Stripe.</p>`),
+  };
+}
+
