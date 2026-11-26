@@ -58,6 +58,7 @@ export function fakeGoogle({ pageSize = 250 } = {}) {
   const cals = new Map<string, Cal>();
   const calls: Call[] = [];
   const emails: { to: string[]; subject: string; html: string }[] = [];
+  const refuseMailTo = new Set<string>();
   let n = 0;
   let saved: typeof fetch | null = null;
 
@@ -84,7 +85,12 @@ export function fakeGoogle({ pageSize = 250 } = {}) {
 
     if (init?.signal?.aborted) throw abortError();
     if (u.host === "oauth2.googleapis.com") return res(200, { access_token: "t", expires_in: 3600 });
-    if (u.host === "api.resend.com") { emails.push(body); return res(200, { id: "mail" }); }
+    if (u.host === "api.resend.com") {
+      // A refused address, as Resend answers it: the error names what it refused.
+      if (body.to.some((t: string) => refuseMailTo.has(t))) return res(422, { name: "validation_error", message: `Invalid \`to\` field: ${body.to.join(", ")} (reply to ${body.reply_to ?? "none"}, +1 513 555 1212)` });
+      emails.push(body);
+      return res(200, { id: "mail" });
+    }
     if (!m || u.host !== "www.googleapis.com") return res(404, {});
 
     const c = cals.get(calendarId!);
@@ -166,6 +172,7 @@ export function fakeGoogle({ pageSize = 250 } = {}) {
     cal,
     calls,
     emails,
+    refuseMailTo,
     /** Put an event on a calendar as a detailer would, from a phone. */
     add(calendarId: string, e: Partial<FakeEvent> & { startMs: number; endMs: number }) {
       const { startMs, endMs, ...rest } = e;

@@ -631,6 +631,27 @@ async function copyToMaster({ calendar, written, detailer }) {
   }
 }
 
+/**
+ * One line per booking that got this far: its key, who has it, how many
+ * events, what the calendar and the two emails did. Never the customer's
+ * name, phone, email or address.
+ */
+function bookingLine({ key, detailer, written, calendar, noTime, owner, customer }) {
+  const cal = noTime ? "request" : calendar.ok ? (calendar.unchecked ? "written-unchecked" : "written") : `failed:${String(calendar.reason || "write failed").replace(/\s+/g, "_").slice(0, 80)}`;
+  const ok = (noTime || calendar.ok) && owner === "sent" && customer !== "failed";
+  console.log(`[booking] ${ok ? "ok" : "check"} key=${key || "-"} detailer=${detailer ? detailer.name : "owner"} days=${written.length} calendar=${cal} owner=${owner} customer=${customer}`);
+}
+
+/**
+ * A provider's error text with any email address or phone number taken out,
+ * for the log: Resend's answer can name the address it refused.
+ */
+export function redact(text) {
+  return String(text ?? "")
+    .replace(/[^\s"'<>()[\],;:]+@[^\s"'<>()[\],;:]+/g, "[email]")
+    .replace(/\+?\(?\d[\d\s().-]{8,}\d/g, "[phone]");
+}
+
 export async function send(apiKey, from, to, { subject, html }, replyTo) {
   let res;
   try {
@@ -642,13 +663,13 @@ export async function send(apiKey, from, to, { subject, html }, replyTo) {
   } catch (e) {
     // A network failure used to throw a 500 after the calendar was written,
     // skipping the customer's email (final review, November 13).
-    console.error("resend network", String(e).slice(0, 200));
+    console.error("resend network", redact(String(e)).slice(0, 200));
     return false;
   }
   if (!res.ok) {
-    // The body can name the address that was refused, which is useful in a
-    // log and must never reach a browser.
-    console.error("resend", res.status, (await res.text()).slice(0, 300));
+    // The body can name the address that was refused: never in the log
+    // (redact) and never to a browser.
+    console.error("resend", res.status, redact(await res.text()).slice(0, 300));
     return false;
   }
   return true;
@@ -774,8 +795,13 @@ export async function handler(event) {
   if (calendar.taken) {
     return json(409, { error: "slot_taken", taken: true });
   }
-  if (!apiKey) {
+  const key = text(payload?.idempotencyKey, 120);
+  const done = async (mail) => {
     await copyToMaster({ calendar, written, detailer });
+    bookingLine({ key, detailer, written, calendar, noTime, ...mail });
+  };
+  if (!apiKey) {
+    await done({ owner: "unconfigured", customer: "unconfigured" });
     return json(200, { sent: false, reason: "unconfigured", calendar: calendarOut });
   }
   ctx.calendarOk = noTime || calendar.ok === true;
@@ -784,10 +810,12 @@ export async function handler(event) {
   ctx.unchecked = calendar.unchecked || "";
 
   // Elijah's copy first. If only one of the two can get through, it has to be
-  // the one that means the job happens.
+  // the one that means the job happens. So his email can't say whether the
+  // customer's went: a failed customer email is in the [booking] line and
+  // Resend's own log line (docs/BACKEND-LOGGING-STANDARD.md, G4).
   const toOwner = await send(apiKey, from, owner, ownerEmail(ctx), contact.email);
   const toCustomer = contact.email ? await send(apiKey, from, contact.email, customerEmail(ctx)) : false;
-  await copyToMaster({ calendar, written, detailer });
+  await done({ owner: toOwner ? "sent" : "failed", customer: contact.email ? (toCustomer ? "sent" : "failed") : "none" });
 
   return json(200, { sent: toOwner || toCustomer, owner: toOwner, customer: toCustomer, calendar: calendarOut });
 }
