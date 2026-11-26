@@ -2,6 +2,10 @@
 
 Draft, November 26, 2026. Nothing here is done yet. The decisions are marked **Decide**.
 
+**Done, November 27 (Emmett's go, from the business account in Chrome):** Imperion's Google account has **513 All Jobs: Make changes and see all event details** (not "manage sharing", so it can't share on), and **See event details** on 513 Auto Clean, 513 Kris Bookings, 513 Availability and 513 Kris Availability. Each showed "Sharing settings saved" and lists Imperion with that permission. 513 TEST All Jobs is not shared with them. One address that already had edit access on the bookings and Kris calendars was left as it was. `check-live.mjs` 0 failed afterwards.
+
+**Sheet: not shared.** The likely file, "Accounting LLC (Responses)", has 15 tabs including Employee Details and Elijah's other businesses' monthly tabs, and no JobsSync jobs tab was visible. Sharing the file would show all of it. Elijah decides: a separate file holding only the jobs (for example a JobsSync tab copied into its own sheet, or JobsSync pointed at a new file), shared as Viewer.
+
 **Update, November 26 evening:**
 - Imperion sent the Google account to share with (kept out of this public repo; Emmett has it). It's also the account GoHighLevel will connect with unless they say otherwise.
 - They also asked for **Elijah's tracking sheet**, the job records sheet that JobsSync fills from the bookings calendars (Elijah installed JobsSync). It holds one line per job: the title (customer's name first), service, ZIP, totals, lead source and detailer, plus Elijah's own override columns and any other tabs in that file.
