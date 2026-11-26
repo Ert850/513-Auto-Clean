@@ -72,7 +72,7 @@ export function slotStillFree(
       startMs: job.slotMs,
       openBlocks: win.open,
       busy: win.busy,
-      allowedWeekdays: job.correction ? SCHEDULING.correctionWeekdays : undefined,
+      ...(job.correction ? { allowedWeekdays: SCHEDULING.correctionWeekdays } : {}),
     });
     return { free, lateMin: 0 };
   }
@@ -90,8 +90,8 @@ export function slotStillFree(
     notAfter: range.to,
     hasExterior: job.hasExterior,
     ignoreReturnAfterMin: IGNORE_RETURN_AFTER_MIN,
-    ignoreOutboundBeforeMin: job.driveMin <= 60 ? IGNORE_OUTBOUND_BEFORE_MIN : undefined,
-    arrivalWindowMin: job.arrivalWindowMin,
+    ...(job.driveMin <= 60 ? { ignoreOutboundBeforeMin: IGNORE_OUTBOUND_BEFORE_MIN } : {}),
+    ...(job.arrivalWindowMin !== undefined ? { arrivalWindowMin: job.arrivalWindowMin } : {}),
     // Paint correction keeps its own starts and days, as the form offers them
     // (validation cycle 2, November 16: a hand-edited request got a Tuesday 3pm).
     ...(job.correction
