@@ -4,6 +4,8 @@ Draft, November 26, 2026. Nothing here is done yet. The decisions are marked **D
 
 **Done, November 27 (Emmett's go, from the business account in Chrome):** Imperion's Google account has **513 All Jobs: Make changes and see all event details** (not "manage sharing", so it can't share on), and **See event details** on 513 Auto Clean, 513 Kris Bookings, 513 Availability and 513 Kris Availability. Each showed "Sharing settings saved" and lists Imperion with that permission. 513 TEST All Jobs is not shared with them. One address that already had edit access on the bookings and Kris calendars was left as it was. `check-live.mjs` 0 failed afterwards.
 
+**Package and agent handoff sent to Imperion (Emmett, November 27):** `IMPERION-PACKAGE.pdf` (39 pages) with `IMPERION-AGENT-HANDOFF.md`. Next: their answers to the handoff's section 6, and step 5's check after a week.
+
 **Sheet: not shared.** The likely file, "Accounting LLC (Responses)", has 15 tabs including Employee Details and Elijah's other businesses' monthly tabs, and no JobsSync jobs tab was visible. Sharing the file would show all of it. Elijah decides: a separate file holding only the jobs (for example a JobsSync tab copied into its own sheet, or JobsSync pointed at a new file), shared as Viewer.
 
 **Update, November 26 evening:**
