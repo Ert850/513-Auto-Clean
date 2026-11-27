@@ -1,12 +1,13 @@
 # 513 Auto Clean backend: package for Imperion
 
-November 26, 2026. The website went live tonight with the master calendar for GoHighLevel (GHL), **513 All Jobs**, switched on. We are giving you access to the calendars so you can look before you decide anything. This first section asks the questions we need answered before exposing more to GHL. The three documents after it describe what exists today:
+November 26, 2026; access given November 27. The website went live on November 26 with the master calendar for GoHighLevel (GHL), **513 All Jobs**, switched on. Your Google account now has 513 All Jobs (make changes) and the four bookings and availability calendars (see all details), so you can look before you decide anything. This first section asks the questions we need answered before exposing more to GHL. The documents after it describe what exists today:
 
 1. **Questions: what GHL should get next** (this section)
 2. **What is exposed today**, and what isn't
-3. **Booking process flow**: how availability is tracked and shown, and how a booking reaches GHL
-4. **Backend logging standard**: what each system records, and where to read it
-5. **513 All Jobs setup**: how to link it in GHL, and the rules that keep it safe
+3. **Handoff for your GHL agent**: the conventions, the rules, and what we don't know yet about GHL
+4. **Booking process flow**: how availability is tracked and shown, and how a booking reaches GHL
+5. **Backend logging standard**: what each system records, and where to read it
+6. **513 All Jobs setup**: how to link it in GHL, and the rules that keep it safe
 
 Each later document ends with its own open questions. The questions most likely to change what we build are repeated in section 3 below.
 
